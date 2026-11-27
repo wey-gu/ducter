@@ -6,13 +6,14 @@
 export const agents = {
   /** Can be the partner itself, so one of these must be installed and signed in. */
   today: ["Claude Code", "Codex", "pi", "DeepSeek Harness"],
-  /** Take any task, never the partner (Devin CLI over its own sign-in). */
-  tasks: ["Devin CLI"],
+  /** Take any task, never the partner: Devin CLI over its own sign-in; Cursor through its own SDK,
+   *  which cannot carry the partner's prompt. */
+  tasks: ["Devin CLI", "Cursor"],
   /** Take a task only when the person names them (offered last; their terms keep those sign-ins
    *  interactive), so the site says them apart: "when you ask for them by name". */
   byName: ["Antigravity", "Kimi Code CLI", "OpenCode"],
   /** Built into a coming Ducter, not today: its tools aren't in this build yet. */
-  soon: ["Cursor", "Dim"],
+  soon: ["Dim"],
 };
 
 const join = (xs: string[], word: "and" | "or") =>

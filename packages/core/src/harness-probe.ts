@@ -25,7 +25,9 @@ import { CLAUDE_TOKEN_ENV, DSH_KEY_ENV, HARNESS_KEYS, deviceHarness, type AgentH
 import { ANTIGRAVITY, HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
+import { CURSOR_MIN_NODE_VERSION, cursorSdkReady, cursorSdkVersion } from "@ducter/protocol/src/cursor.ts";
 import { dshCredentialsFile, dshSignIns } from "@ducter/protocol/src/dsh.ts";
+import { toolsNodeBin } from "./agent-path.ts";
 
 type RawHarness = Omit<DeviceHarness, "canBePartner">;
 
@@ -48,6 +50,8 @@ export interface HarnessProbeEnv {
   piBundled?: () => string | undefined;
   /** D600: Cursor's SDK that ships inside Ducter, when this Ducter has one (its version); see bundledCursorVersion. */
   cursorBundled?: () => string | undefined;
+  /** D630, test seam: where the Node Cursor's SDK needs comes from, and its version. */
+  cursorNode?: () => { version: string; via: "ducter" | "system" } | undefined;
   /** D625: does this build's @botiverse/oar/community export createDimRuntime? Default: the real check, cached. */
   dimRuntime?: () => Promise<boolean>;
   /** D416: a link that is there but points at nothing (default: the file system's). */
@@ -162,8 +166,16 @@ export function agentPaths(
   }
 }
 
-/** D600: the Cursor SDK that ships inside Ducter (an optional peer OAR hands over), when it is there. */
-export function bundledCursorVersion(): string | undefined {
+/**
+ * D600/D630: the Cursor SDK installed in Ducter's own tools folder (OAR's optional peer,
+ * pinned by OAR). It is not bundled in the binary; `agent-setup` installs it there on demand.
+ * A checkout's node_modules copy is accepted only when this build is not the single binary.
+ */
+export function bundledCursorVersion(dataDir?: string): string | undefined {
+  if (dataDir) {
+    const v = cursorSdkVersion(dataDir);
+    if (v) return v;
+  }
   if (import.meta.url.includes("$bunfs") || import.meta.path.includes("$bunfs")) return undefined;
   try {
     const pkg = Bun.resolveSync("@cursor/sdk/package.json", join(import.meta.dir, "../../runner"));
@@ -172,6 +184,28 @@ export function bundledCursorVersion(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * D630: the Node the Cursor SDK's floor is read against: Ducter's own tools Node when it is
+ * there (the one `agent-setup` installs and can replace), else a Node on PATH. The probe never
+ * reads the host's Bun shim as if it were the person's Node, and never tells them to update Ducter
+ * for a Node Ducter itself owns.
+ */
+export async function cursorNodeHere(o: { dataDir: string; exec: ProbeExec; which: (cmd: string) => string | null; exists: (p: string) => boolean }): Promise<{ version: string; via: "ducter" | "system" } | undefined> {
+  const own = join(toolsNodeBin(o.dataDir), "node");
+  if (o.exists(own)) {
+    const r = await o.exec([own, "--version"], 15_000).catch(() => undefined);
+    const v = r && r.code === 0 ? versionIn(r.out) : undefined;
+    if (v) return { version: v, via: "ducter" };
+  }
+  const sys = o.which("node");
+  if (sys) {
+    const r = await o.exec([sys, "--version"], 15_000).catch(() => undefined);
+    const v = r && r.code === 0 ? versionIn(r.out) : undefined;
+    if (v) return { version: v, via: "system" };
+  }
+  return undefined;
 }
 
 let dimSeen: boolean | undefined;
@@ -193,14 +227,14 @@ export async function dimRuntimeAvailable(): Promise<boolean> {
 }
 
 /** One agent's copy on this machine, or undefined when it isn't there. */
-export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" | "which" | "env" | "realpath" | "exists" | "piBundled" | "cursorBundled">): Promise<AgentInstall | undefined> {
+export async function detectAgent(h: HarnessId, o: Pick<HarnessProbeEnv, "exec" | "which" | "env" | "realpath" | "exists" | "piBundled" | "cursorBundled" | "dataDir">): Promise<AgentInstall | undefined> {
   if (h === "pi") {
     const v = o.piBundled?.();
     if (v) return { version: v, how: "ducter" };
   }
   // D600: Cursor is its SDK, not the person's `agent` CLI (a separate product and credential store).
   if (h === "cursor") {
-    const v = (o.cursorBundled ?? bundledCursorVersion)();
+    const v = (o.cursorBundled ?? (() => bundledCursorVersion(o.dataDir)))();
     return v ? { version: v, how: "ducter" } : undefined;
   }
   const cmd = HARNESS_FACTS[h].version.command[0]!;
@@ -407,8 +441,17 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
   // D600: Cursor's SDK is what Ducter runs; its CLI is a different product with its own sign-in.
   // No SDK in this build: not installed, never a row that offers a sign-in Ducter can't keep.
   const cursor = async (): Promise<RawHarness> => {
-    const version = (o.cursorBundled ?? bundledCursorVersion)();
-    if (!version) return { harness: "cursor", installed: false, loggedIn: false };
+    // D630: the pinned SDK lives in Ducter's tools folder, installed on demand. A copy with
+    // another version is not handed to OAR (it pins exactly 1.4.1), so it is not "installed" here.
+    const version = (o.cursorBundled ?? (() => bundledCursorVersion(dataDir)))();
+    const ready = o.cursorBundled ? !!version : cursorSdkReady(dataDir);
+    if (!version || !ready) return { harness: "cursor", installed: false, loggedIn: false };
+    // OAR's cursor runtime needs Node 22.13+. Read the Node Ducter can actually own (its tools
+    // folder) before the system's; if it is old, the card offers to update that Node itself.
+    const node = await (o.cursorNode ?? (() => cursorNodeHere({ dataDir, exec: o.exec, which: o.which, exists: o.exists ?? existsSync })))();
+    if (node && (compareVersions(node.version, CURSOR_MIN_NODE_VERSION) ?? -1) < 0) {
+      return { harness: "cursor", installed: true, loggedIn: false, version, how: "ducter", trouble: { kind: "node_old", need: CURSOR_MIN_NODE_VERSION, have: node.version, via: node.via } };
+    }
     // The SDK keeps its own sign-in in ~/.cursor/sdk/auth.json; a key in Ducter's file or the env
     // also works, and its own status never reads or validates that key. Presence only, never the key.
     const home = o.home ?? env.HOME ?? homedir();

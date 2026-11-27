@@ -1,5 +1,6 @@
 // D600: the four new agents' sign-in routes, with fakes only: Kimi's device code is carried to the
-// person; Devin, OpenCode and Cursor have no sign-in Ducter can carry in this build. No CLI starts.
+// person; Devin and OpenCode sign in from a terminal there; Cursor's OAR login relays its link.
+// No CLI starts and no live sign-in runs.
 import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,6 +15,7 @@ function rig() {
   const dir = mkdtempSync(join(tmpdir(), "ducter-four-setup-"));
   const spawned: { argv: string[]; env: Record<string, string>; proc: FakeProc }[] = [];
   const said: string[] = [];
+  const logins: { h: string; url?: string; finish: (ok: boolean) => void }[] = [];
   class FakeProc implements LoginProc {
     onOutput(fn: (t: string) => void) { this.fns.push(fn); }
     write(t: string) { said.push(t); }
@@ -39,9 +41,14 @@ function rig() {
     which: (c) => (c === "kimi" ? "/home/w/.kimi-code/bin/kimi" : c === "devin" ? "/home/w/.local/bin/devin" : c === "opencode" ? "/home/w/.opencode/bin/opencode" : null),
     env: () => ({ PATH: "/usr/bin", HOME: "/home/w" }),
     exists: () => false,
+    // D630: the OAR Cursor login, faked: a link at once, then whatever the person does.
+    login: async (h, i) => {
+      i.onUrl("https://cursor.com/login?challenge=x");
+      return new Promise<{ ok: boolean }>((resolve) => logins.push({ h, finish: (ok) => resolve({ ok }) }));
+    },
   };
   const s = createAgentSetup({ dataDir: join(dir, "d"), sys, probe: async () => {}, changed: () => {}, signedIn: async () => true, waitMs: 60_000, setTimer: () => 0, clearTimer: () => {} });
-  return { s, spawned, said, done: () => rmSync(dir, { recursive: true, force: true }) };
+  return { s, spawned, said, logins, done: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
 test("D600: Kimi's device code is opened on any device and entered on the page, not pasted back", async () => {
@@ -64,16 +71,24 @@ test("D600: Kimi's device code is opened on any device and entered on the page, 
   expect(parseLogin("kimi", "Opening browser for Kimi device login: https://kimi.com/device?code=1\nenter code: K7QM-4XPA\n")).toEqual({ url: "https://kimi.com/device?code=1", code: "K7QM-4XPA" });
 });
 
-test("D600: Devin, OpenCode and Cursor sign in from a terminal there; Cursor never offers its forbidden OAuth app", async () => {
+test("D600: Devin and OpenCode sign in from a terminal there; Cursor's OAR login relays its link", async () => {
   const r = rig();
   try {
-    for (const [h, command] of [["devin", "devin auth login"], ["opencode", "opencode auth login"], ["cursor", "CURSOR_API_KEY"]] as const) {
+    for (const [h, command] of [["devin", "devin auth login"], ["opencode", "opencode auth login"]] as const) {
       r.s.login(h);
       expect(r.s.state(h).login).toEqual({ state: "terminal", command });
       expect(r.spawned).toHaveLength(0);
       r.s.cancel(h);
     }
-    expect(r.s.state("cursor").installable).toBe(false);
+    // D630: Cursor signs in through OAR's own Cursor.auth.login; the link is the only thing
+    // shown, and the key stays in the SDK's store.
+    r.s.login("cursor");
+    const login = r.logins[0]!;
+    expect(r.s.state("cursor").login).toMatchObject({ state: "waiting", url: "https://cursor.com/login?challenge=x" });
+    login.finish(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(r.s.state("cursor").login).toMatchObject({ state: "done" });
+    expect(r.s.state("cursor").installable).toBe(true);
     expect(r.s.state("devin").installable).toBe(false);
     expect(r.s.state("kimi").installable).toBe(false);
     expect(r.s.state("opencode").installable).toBe(true);

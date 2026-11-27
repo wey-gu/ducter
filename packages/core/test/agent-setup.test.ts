@@ -28,7 +28,7 @@ function rig(o: { nodeThere?: boolean; npm?: (argv: string[]) => { code: number;
     platform: o.platform ?? "linux",
     arch: "x64",
     download: (o.download as AgentSetupSys["download"]) ?? (async () => new Uint8Array([1, 2, 3])),
-    run: async (argv, { env }) => (runs.push({ argv, env }), argv[0] === "tar" ? { code: 1, out: "tar: not in tests" } : (o.npm?.(argv) ?? { code: 0, out: "added 1 package" })),
+    run: async (argv, { env }) => (runs.push({ argv, env }), argv[1] === "--version" ? { code: 0, out: `v${NODE_RELEASE.version}` } : argv[0] === "tar" ? { code: 1, out: "tar: not in tests" } : (o.npm?.(argv) ?? { code: 0, out: "added 1 package" })),
     spawn: (argv) => {
       const login = fakeLogin();
       spawned.push({ argv, login });
@@ -57,22 +57,24 @@ test("pins: each agent's npm package at the newest version Ducter verified", () 
   expect(agentPin("pi")).toEqual({ pkg: "@earendil-works/pi-coding-agent", version: HARNESS_FACTS.pi.verified.to });
   // D371: DeepSeek Harness's command line too.
   expect(agentPin("deepseek-harness")).toEqual({ pkg: "@deepseek-ai/dsh", version: HARNESS_FACTS["deepseek-harness"].verified.to });
+  // D630: Cursor's SDK, pinned exactly where OAR pins it.
+  expect(agentPin("cursor")).toEqual({ pkg: "@cursor/sdk", version: "1.4.1" });
   for (const a of Object.values(NODE_RELEASE.assets)) expect(a.sha256).toMatch(/^[0-9a-f]{64}$/);
 });
 
 test("install: queued in order, one at a time, npm with Ducter's node as the prefix; nothing else touched", async () => {
   const r = rig({ nodeThere: true });
-  r.s.install(["claude-code", "codex", "deepseek-harness", "nope"]);
+  r.s.install(["claude-code", "codex", "deepseek-harness", "cursor", "nope"]);
   expect(r.s.state("codex").setup).toEqual({ phase: "queued" });
   expect(r.s.state("nope").setup).toBeUndefined();
   await settle(r.s);
   const npm = r.runs.filter((x) => x.argv.includes("install"));
-  expect(npm.map((x) => x.argv.at(-1))).toEqual([`@anthropic-ai/claude-code@${HARNESS_FACTS["claude-code"].verified.to}`, `@openai/codex@${HARNESS_FACTS.codex.verified.to}`, `@deepseek-ai/dsh@${HARNESS_FACTS["deepseek-harness"].verified.to}`]);
+  expect(npm.map((x) => x.argv.at(-1))).toEqual([`@anthropic-ai/claude-code@${HARNESS_FACTS["claude-code"].verified.to}`, `@openai/codex@${HARNESS_FACTS.codex.verified.to}`, `@deepseek-ai/dsh@${HARNESS_FACTS["deepseek-harness"].verified.to}`, "@cursor/sdk@1.4.1"]);
   const prefix = join(r.dir, "tools", "node");
   expect(npm[0]!.argv).toEqual([join(prefix, "bin", "node"), join(prefix, "bin", "npm"), "install", "-g", "--prefix", prefix, expect.any(String)]);
   expect(npm[0]!.env.PATH.split(":")[0]).toBe(join(prefix, "bin"));
   expect(npm[0]!.env.npm_config_update_notifier).toBe("false");
-  expect(r.probes()).toBe(3); // a probe after each, so they arrive one by one
+  expect(r.probes()).toBe(4); // a probe after each, so they arrive one by one
   expect(r.s.state("codex").setup).toBeUndefined();
   r.done();
 });

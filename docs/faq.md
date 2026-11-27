@@ -39,14 +39,15 @@ your partner. You need at least one. Your partner thinks with Claude Code; when 
 signed in, it picks the first that is of Codex, DeepSeek Harness and pi, so a server with just one
 of them works.
 
-**Devin CLI** takes any task, but it can never be your partner. **Antigravity**, **Kimi Code CLI**
-and **OpenCode** take a task only when you ask for them by name: their terms keep those sign-ins to
-interactive use, so they never wait, wake on a timer or run a routine or a Keep. Devin CLI, Kimi
-Code CLI and OpenCode are installed with their own installers or from the computer's card, and
-signed in there.
+**Devin CLI** and **Cursor** take any task, but they can never be your partner. Cursor runs
+through the SDK Ducter installs into its own folder when you add it from its card, and signs in
+with a cursor.com link (or a Cursor API key already in that computer's keys file). **Antigravity**,
+**Kimi Code CLI** and **OpenCode** take a task only when you ask for them by name: their terms keep
+those sign-ins to interactive use, so they never wait, wake on a timer or run a routine or a Keep.
+Devin CLI, Kimi Code CLI and OpenCode are installed with their own installers or from the
+computer's card, and signed in there.
 
-**Cursor** is coming soon: Ducter needs to include Cursor's SDK first. **Dim** is coming soon: this
-version of Ducter can't run it yet; a coming Ducter update will.
+**Dim** is coming soon: this version of Ducter can't run it yet; a coming Ducter update will.
 
 Ducter also works with **pi** and **DeepSeek Harness**, which run on an API key you pay for by
 use rather than a plan. If one of them is installed and signed in, ask your partner to use it

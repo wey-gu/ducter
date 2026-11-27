@@ -1,5 +1,8 @@
 // D85: detecting the four first-wave harnesses on a machine, from presence only.
 import { expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compareVersions, probeHarnesses } from "../src/harness-probe.ts";
 
 const files = (m: Record<string, string>) => (p: string) => m[p];
@@ -110,6 +113,36 @@ test("D625: Dim is coming soon without createDimRuntime, and detected on PATH on
   // OAR_DIM_BIN alone is enough (OAR's own order), and the nightly names are candidates.
   const pinned = await probeHarnesses({ ...base, which: () => null, env: { OAR_DIM_BIN: "/opt/dima" }, dimRuntime: async () => true });
   expect(pinned[0]).toMatchObject({ harness: "dim", installed: true, loggedIn: true });
+});
+
+test("D630: Cursor is installed only when Ducter's pinned SDK is there, and says a Node floor plainly", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ducter-cursor-probe-"));
+  const sdk = (version: string) => {
+    const pkg = join(dir, "tools", "node", "lib", "node_modules", "@cursor", "sdk");
+    mkdirSync(pkg, { recursive: true });
+    writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@cursor/sdk", version, type: "module", exports: { ".": "./index.mjs" } }));
+    writeFileSync(join(pkg, "index.mjs"), "export const Cursor = {};\n");
+  };
+  const base = { which: () => null, exec: async () => ({ code: 1, out: "" }), env: {}, home: "/h", dataDir: dir, read: () => undefined, only: ["cursor"] as const };
+  try {
+    // Missing: the card offers 安装 (decorate adds installable); the probe itself says not there.
+    expect((await probeHarnesses({ ...base, exists: () => false }))[0]).toEqual({ harness: "cursor", installed: false, loggedIn: false, canBePartner: false });
+    sdk("1.4.1");
+    // Ready, signed out: the SDK is there; no credential file and no key.
+    expect((await probeHarnesses({ ...base, exists: () => false }))[0]).toEqual({ harness: "cursor", installed: true, loggedIn: false, canBePartner: false, version: "1.4.1", how: "ducter" });
+    // Signed in by the SDK's own store, or by CURSOR_API_KEY in keys.env.
+    expect((await probeHarnesses({ ...base, exists: (p: string) => p === "/h/.cursor/sdk/auth.json" }))[0]).toMatchObject({ installed: true, loggedIn: true });
+    expect((await probeHarnesses({ ...base, exists: () => false, read: files({ [`${dir}/keys.env`]: "CURSOR_API_KEY=key_x\n" }) }))[0]).toMatchObject({ installed: true, loggedIn: true });
+    // Node below OAR's 22.13 floor: said with the version and the need, never an install button.
+    expect((await probeHarnesses({ ...base, exists: () => false, cursorNode: () => ({ version: "20.11.0", via: "ducter" }) }))[0]).toMatchObject({ installed: true, version: "1.4.1", trouble: { kind: "node_old", need: "22.13.0", have: "20.11.0", via: "ducter" } });
+    // The system's Node is still Ducter's to avoid: the card says so and offers Ducter's own.
+    expect((await probeHarnesses({ ...base, exists: () => false, cursorNode: () => ({ version: "20.11.0", via: "system" }) }))[0]).toMatchObject({ installed: true, trouble: { kind: "node_old", via: "system" } });
+    // OAR pins the SDK exactly: another version is not runnable here.
+    sdk("1.4.0");
+    expect((await probeHarnesses({ ...base, exists: () => false }))[0]).toEqual({ harness: "cursor", installed: false, loggedIn: false, canBePartner: false });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("versions compare with prereleases", () => {

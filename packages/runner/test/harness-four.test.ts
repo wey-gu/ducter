@@ -1,7 +1,7 @@
-// D600: Cursor, Devin CLI, Kimi Code and OpenCode through OAR 0.124. No agent runs: each spec's
-// options come from OAR's own refused map (or the runtime's own declarations), and Ducter's MCP
-// reaches the agents that refuse credentials in an entry over its stdio bridge. Cursor's in-process
-// SDK refuses SessionOptions.env, so a start is refused before it could inherit Ducter's environment.
+// D600: Cursor, Devin CLI, Kimi Code and OpenCode through OAR. No agent runs: each spec's options
+// come from OAR's own refused map (or the runtime's own declarations), and Ducter's MCP reaches the
+// agents that refuse credentials in an entry over its stdio bridge. Cursor runs in OAR's subprocess
+// mode, so its refused map no longer includes the D102 env overlay (see cursor.test.ts).
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -12,7 +12,7 @@ import { kimiRuntime } from "@botiverse/oar/runtimes/kimi";
 import { opencodeRuntime } from "@botiverse/oar/runtimes/opencode";
 import { HARNESSES } from "@ducter/protocol";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { adaptSpec, createOarHarnessPort } from "../src/oar.ts";
+import { adaptSpec } from "../src/oar.ts";
 import { childEnvironment } from "../src/child-env.ts";
 
 let dir: string;
@@ -78,23 +78,23 @@ test("OpenCode: its prompt and appended instructions are native; tool denial is 
   expect(a.options.mcpServers).toEqual([{ name: "ducter", type: "http", url: ducterMcp.url, headers: ducterMcp.headers }]);
 });
 
-test("Cursor: its SDK refuses both prompts and env; start refuses the env instead of inheriting Ducter's", async () => {
-  const rt = createCursorRuntime({ sdk: async () => ({}) as never });
+test("Cursor: subprocess mode takes the D102 env; both prompts move to the first message and the clean setup is native", () => {
+  // D630: the subprocess refused map has no `env` (the child's environment is the session's).
+  const rt = createCursorRuntime({ execution: "subprocess", sdkModule: "file:///tmp/fake-cursor-sdk/index.js" });
   const refused = rt.refusedSessionOptions as Record<string, string>;
-  for (const k of ["systemPrompt", "appendSystemPrompt", "env", "launchArgs"]) expect(k in refused).toBe(true);
-  const a = adaptSpec(spec("cursor", { systemPrompt: "You are Ducter.", disallowedTools: ["WebFetch"], launchArgs: ["--x"] }), { dataDir: dir, refused });
+  for (const k of ["systemPrompt", "appendSystemPrompt", "launchArgs"]) expect(k in refused).toBe(true);
+  expect("env" in refused).toBe(false);
+  const a = adaptSpec(spec("cursor", { systemPrompt: "You are Ducter.", disallowedTools: ["WebFetch"], launchArgs: ["--x"], isolateUserConfig: true }), { dataDir: dir, refused });
   expect(a.options.systemPrompt).toBeUndefined();
   expect(a.options.appendSystemPrompt).toBeUndefined();
   expect(a.preamble).toBe("You are Ducter.\n\nBrief: fix the flaky test.");
   expect(a.options.launchArgs).toBeUndefined();
   expect(a.options.disallowedTools).toBeUndefined();
-  // The env overlay is still built (and refused at the open): Ducter never drops D102 silently.
+  // The env overlay is still Ducter's (D102), and the task gets Cursor's native clean setup.
   expect(Object.keys(a.options.env!).length).toBeGreaterThan(0);
-  const port = createOarHarnessPort({
-    dataDir: dir,
-    loadRuntime: async () => ({ installation: async () => ({ kind: "available", via: "bundled" }), refusedSessionOptions: refused, session: async () => { throw new Error("must not open"); } }) as never,
-  });
-  await expect(port.start(spec("cursor"))).rejects.toThrow("refuses the environment Ducter must pass");
+  expect(a.options.userConfiguration).toBe("exclude");
+  // OAR #1195: Cursor keeps HTTP MCP entries with headers in both modes (never the stdio bridge).
+  expect(a.options.mcpServers).toEqual([{ name: "ducter", type: "http", url: ducterMcp.url, headers: ducterMcp.headers }]);
 });
 
 test("D600: no new agent gets another agent's key; each gets only its own", () => {

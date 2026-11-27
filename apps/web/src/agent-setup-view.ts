@@ -23,6 +23,9 @@ export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "
   if (h.installed && (h.login?.state === "signing_out" || h.login?.reason === "signout_failed")) return "login";
   // D549: signed in or not, it won't run as root there: said once, never 登录 or 可以用.
   if (h.installed && h.trouble?.kind === "root") return "cant";
+  // D630: Cursor needs Node 22.13+ wherever the SDK child runs; a build that can't offer it
+  // says so instead of a button that changes nothing.
+  if (h.trouble?.kind === "node_old") return "cant";
   // D518: done is the agent's own check saying signed in: the row is ready at once (登录好了 its word).
   if (h.installed && h.loggedIn) return "ready";
   if (h.installed && h.login) return "login";
@@ -42,6 +45,7 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
   if (tr.kind === "broken") return { word: "ag.trouble.broken", args: [], button: "reinstall" };
   if (tr.kind === "root") return undefined; // D549: its own look ("cant"), not an install
   if (tr.kind === "coming") return undefined; // D625: its own look ("coming"), nothing to install
+  if (tr.kind === "node_old") return undefined; // D630: its own look ("cant"), not an install
   return { word: "ag.trouble.app_only", args: [tr.app], button: "install" };
 }
 

@@ -41,6 +41,9 @@ func agentRowLook(h protocol.DeviceHarness) string {
 	case h.Installed && h.Trouble != nil && h.Trouble.Kind == "root":
 		// D549: it won't run as root, and Ducter runs as root there: why, no button.
 		return "cant"
+	case h.Trouble != nil && h.Trouble.Kind == "node_old":
+		// D630: Cursor's SDK child needs Node 22.13+; a build that can't offer it says so.
+		return "cant"
 	case h.Installed && h.LoggedIn:
 		// D518: done is the agent's own check saying signed in: ready at once (登录好了 its word).
 		return "ready"
@@ -164,6 +167,9 @@ func (a *App) agentWord(dv *protocol.DeviceView, h protocol.DeviceHarness, look 
 		}
 		return a.L.T("ag.failed."+reason, a.deviceNameIn(dv))
 	case "cant":
+		if h.Trouble != nil && h.Trouble.Kind == "node_old" {
+			return a.L.T("ag.trouble.node_old")
+		}
 		return a.L.T("ag.trouble.root")
 	case "coming":
 		return a.L.T("ag.coming")
@@ -222,6 +228,14 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				if awake && a.buttonFor(c, a.L.T("ag.retry"), name, btnSecondary, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "install", protocol.AgentSetupReq{Harnesses: []string{h.Harness}})
 				}
+			case look == "cant" && h.Trouble != nil && h.Trouble.Kind == "node_old":
+				label := a.L.T("ag.node.update")
+				if h.Trouble.Via == "system" {
+					label = a.L.T("ag.node.install")
+				}
+				if awake && a.buttonFor(c, label, name, btnSecondary, t.ControlSM, t.Surface) {
+					a.agentSetupReq(dv, "install", protocol.AgentSetupReq{Harnesses: []string{h.Harness}})
+				}
 			case look == "signin":
 				if awake && a.buttonFor(c, a.L.T("ag.signin"), name, btnPrimary, t.ControlSM, t.Surface) {
 					a.agentSetupReq(dv, "login", protocol.AgentSetupReq{Harness: h.Harness})
@@ -236,9 +250,17 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		if look == "failed" && h.Setup != nil && h.Setup.Detail != "" {
 			uiText(c, h.Setup.Detail).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
-		// D549: why it won't run there, and what fixes it.
+		// D549: why it won't run there, and what fixes it. D630: Cursor's Node floor too.
 		if look == "cant" {
-			uiText(c, a.L.T("ag.trouble.root.why", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			if h.Trouble != nil && h.Trouble.Kind == "node_old" {
+				if h.Trouble.Via == "system" {
+					uiText(c, a.L.T("ag.node_old.why.system", h.Trouble.Need, h.Trouble.Have)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+				} else {
+					uiText(c, a.L.T("ag.node_old.why.ducter", h.Trouble.Have, h.Trouble.Need)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+				}
+			} else {
+				uiText(c, a.L.T("ag.trouble.root.why", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+			}
 		}
 		// D625: Dim before the OAR release that exports createDimRuntime: said, never a button.
 		if look == "coming" {
@@ -256,6 +278,10 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		// install comes from (its own installer), with the terms before its sign-in.
 		if (look == "install" || look == "queued") && h.Harness == "opencode" {
 			uiText(c, a.L.T("ag.opencode.where")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		// D630: Cursor's SDK goes in Ducter's own folder; no command line is involved.
+		if (look == "install" || look == "queued") && h.Harness == "cursor" {
+			uiText(c, a.L.T("ag.cursor.where")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		if look == "missing" || look == "signin" || (look == "login" && h.Login != nil && h.Login.State != "done") {
 			if k := manualWhereKey(h.Harness); k != "" {
@@ -338,40 +364,44 @@ func (a *App) agentLoginPanel(c *ui.Context, dv *protocol.DeviceView, h protocol
 				})
 			}
 		})
-		a.loginStep(c, key+":2", 2, func() {
-			line(a.L.T(code), t.Ink)
-			if l.Code != "" {
-				ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-					uiText(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
-					if a.buttonFor(c, a.L.T("ag.login.copy"), name, btnSecondary, t.ControlSM, t.Bg) {
-						c.WriteClipboard(l.Code)
-					}
-				})
-			}
-			if l.Paste && !checking { // checking: the live line under the steps says so
-				if a.ag.code == nil {
-					a.ag.code = map[string]string{}
+		if l.Code != "" || l.Paste {
+			a.loginStep(c, key+":2", 2, func() {
+				line(a.L.T(code), t.Ink)
+				if l.Code != "" {
+					ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+						uiText(c, l.Code).Font(t.Mono).FontSize(22).FontWeight(800).TextColor(t.Ink).Selectable()
+						if a.buttonFor(c, a.L.T("ag.login.copy"), name, btnSecondary, t.ControlSM, t.Bg) {
+							c.WriteClipboard(l.Code)
+						}
+					})
 				}
-				v := a.ag.code[key]
-				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					ui.TextInput(c.Key("ag-code:"+key), &v).Placeholder(a.L.T("ag.login.paste")).Label(a.L.T("ag.login.paste")).
-						FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)
-					if a.buttonFor(c, a.L.T("ag.login.send"), name, btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" && !checking {
-						a.agentSetupReq(dv, "code", protocol.AgentSetupReq{Harness: h.Harness, Code: v})
+				if l.Paste && !checking { // checking: the live line under the steps says so
+					if a.ag.code == nil {
+						a.ag.code = map[string]string{}
 					}
-				})
-				a.ag.code[key] = v
-			}
-			if l.Reason == "wrong_code" && !checking {
-				line(a.L.T("ag.login.wrong_code"), t.Failed.Ink)
-			}
-		})
+					v := a.ag.code[key]
+					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						ui.TextInput(c.Key("ag-code:"+key), &v).Placeholder(a.L.T("ag.login.paste")).Label(a.L.T("ag.login.paste")).
+							FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Grow(1).MinWidth(0)
+						if a.buttonFor(c, a.L.T("ag.login.send"), name, btnPrimary, t.ControlSM, t.Bg) && strings.TrimSpace(v) != "" && !checking {
+							a.agentSetupReq(dv, "code", protocol.AgentSetupReq{Harness: h.Harness, Code: v})
+						}
+					})
+					a.ag.code[key] = v
+				}
+				if l.Reason == "wrong_code" && !checking {
+					line(a.L.T("ag.login.wrong_code"), t.Failed.Ink)
+				}
+			})
+		}
 		if checking {
 			a.loginLive(c, key, h.Harness, a.L.T("ag.login.confirming", name), 0)
 		} else {
 			k := "ag.login.wait.self"
 			if l.Paste {
 				k = "ag.login.wait.paste"
+			} else if h.Harness == "cursor" {
+				k = "ag.login.wait.cursor"
 			}
 			a.loginLive(c, key, h.Harness, a.L.T(k), l.Until)
 		}
@@ -414,6 +444,8 @@ func loginSteps(harness string) (open, code string) {
 		k = "agy"
 	case "kimi":
 		k = "kimi"
+	case "cursor":
+		k = "cursor"
 	}
 	return "ag.login." + k + ".1", "ag.login." + k + ".2"
 }
@@ -425,8 +457,6 @@ func terminalKey(harness string) string {
 		return "ag.login.devin"
 	case "opencode":
 		return "ag.login.opencode"
-	case "cursor":
-		return "ag.login.cursor"
 	case "dim":
 		return "ag.login.dim"
 	}

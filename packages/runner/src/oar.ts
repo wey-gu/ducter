@@ -18,6 +18,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, directOnly, harnessName, type AccountUsage, type HarnessId } from "@ducter/protocol";
+import { CURSOR_SDK_VERSION } from "@ducter/protocol/src/cursor.ts";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, liveModels, modelForWindow, parseCodexCatalog, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
@@ -27,6 +28,7 @@ import { nativeUsage } from "./native-usage.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
 import { nmemOf, readContext, realExec, saveThread, theirMemPlugin, threadSaver, type MemStepsExec } from "./mem-steps.ts";
 import { childEnvOverlay } from "./child-env.ts";
+import { cursorRuntimePlan } from "./cursor.ts";
 import { taskCredentials } from "./task-credentials.ts";
 import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
@@ -475,7 +477,12 @@ export function dimRuntimeFrom(community: unknown): Runtime | undefined {
 export const DIM_COMING = "Dim is coming with the next @botiverse/oar release: this Ducter build's runtime does not export createDimRuntime yet";
 
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
-const defaultLoader = async (harness: HarnessId, variant?: PiVariant, community?: () => Promise<unknown>): Promise<Runtime | undefined> => {
+const defaultLoader = async (
+  harness: HarnessId,
+  variant?: PiVariant,
+  community?: () => Promise<unknown>,
+  cursor?: { dataDir: string; compiled?: boolean; execPath?: string },
+): Promise<Runtime | undefined> => {
   const key = `${harness}:${piFlags(variant).join(" ")}`;
   const cache = loaded.get(key);
   if (cache) return cache;
@@ -506,16 +513,15 @@ const defaultLoader = async (harness: HarnessId, variant?: PiVariant, community?
     case "antigravity":
       rt = (await import("@botiverse/oar/runtimes/antigravity")).antigravityRuntime as unknown as Runtime;
       break;
-    // D600: Cursor rides on its own SDK, which the host hands over (OAR's optional peer). It is not
-    // bundled in this build; the loader is a variable so TypeScript doesn't require the package,
-    // and a missing SDK fails at the first call that needs it with a plain reason (research/239).
+    // D630: Cursor rides on its own SDK, installed on demand in Ducter's tools folder and
+    // handed to OAR's subprocess mode as `sdkModule` (research/239; docs/runtimes/cursor.md at
+    // v0.137.0). In-process would refuse the D102 env overlay; a compiled binary re-enters itself
+    // as the child (`__cursor-child`) because it cannot run `node -e`.
     case "cursor": {
-      const specifier: string = "@cursor/sdk";
-      const sdk = () =>
-        import(specifier).catch(() => {
-          throw new Error("Cursor needs @cursor/sdk 1.4.1, which this Ducter build does not bundle (research/239)");
-        });
-      rt = (await import("@botiverse/oar/runtimes/cursor")).createCursorRuntime({ sdk }) as unknown as Runtime;
+      if (!cursor) throw new Error("Cursor needs its SDK installed in Ducter's tools folder");
+      const plan = cursorRuntimePlan(cursor);
+      if (!plan) throw new Error(`Cursor needs ${CURSOR_SDK_VERSION} in Ducter's tools folder; add Cursor from its device card (research/239)`);
+      rt = (await import("@botiverse/oar/runtimes/cursor")).createCursorRuntime(plan) as unknown as Runtime;
       break;
     }
     case "devin":
@@ -557,6 +563,10 @@ export interface OarPortOptions {
   community?: () => Promise<unknown>;
   /** D549, test seam: the user id this process runs as (default process.getuid; 0 is root). */
   uid?: () => number | undefined;
+  /** D630, test seam: is this a compiled single-executable host? Default: the real check. */
+  compiled?: boolean;
+  /** D630, test seam: the executable a compiled child re-enters (default process.execPath). */
+  execPath?: string;
   /** Env overlay for every session/probe (e.g. captured login-shell env), filtered per harness like the rest (D102). Never logged. */
   env?: Record<string, string | null>;
   /** Bound retained records per session (OAR retainedBytes). */
@@ -905,10 +915,10 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     // core), on open and on every resume; only where the agent takes one (harness-facts effort).
     effort: modelAllowed && spec.effort && !refused.effort && HARNESS_FACTS[h]?.effort ? spec.effort : undefined,
     env: harnessEnv(h, ctx, env),
-    // claude: --setting-sources project,local --strict-mcp-config + claudeMdExcludes. The other
-    // runtimes refuse "exclude"; their clean setup is made above. A browser sidecar may ask for
-    // it too (spec.userConfiguration, claude only).
-    userConfiguration: h === "claude-code" ? (clean ? "exclude" : spec.userConfiguration) : undefined,
+    // claude: --setting-sources project,local --strict-mcp-config + claudeMdExcludes. Cursor's SDK
+    // takes the same "exclude" (settingSources []); the other runtimes refuse it. A browser sidecar
+    // may ask for it too (spec.userConfiguration, claude only).
+    userConfiguration: h === "claude-code" ? (clean ? "exclude" : spec.userConfiguration) : h === "cursor" ? (clean ? "exclude" : spec.userConfiguration) : undefined,
   };
   for (const k of Object.keys(options) as (keyof SessionOptions)[]) if (options[k] === undefined) delete (options as any)[k];
   return { options, ...(preamble ? { preamble } : {}), clean };
@@ -940,8 +950,8 @@ function modelFor(h: HarnessId, model: string | undefined, dshAccount = false): 
 }
 
 export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
-  const load = opts.loadRuntime ?? ((h, v) => defaultLoader(h, v, opts.community));
   const dataDir = opts.dataDir ?? process.env.DUCTER_DATA_DIR ?? join(homedir(), ".ducter");
+  const load = opts.loadRuntime ?? ((h, v) => defaultLoader(h, v, opts.community, { dataDir, ...(opts.compiled === undefined ? {} : { compiled: opts.compiled }), ...(opts.execPath ? { execPath: opts.execPath } : {}) }));
   // D352: each listed model's window as the last listing gave it ("<harness> <model>").
   const liveWindows = new Map<string, number>();
   return {
@@ -1011,7 +1021,11 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
           // D625: Dim has no authStatus, login or model listing of its own: the home's sign-in
           // is Dim's, and an auth failure (credential missing/rejected) ends the first turn. Its
           // presence is the most this can say, so a start is offered and Dim answers for itself.
-          const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? !!dshSignIn(dataDir, opts.env ?? {}) : harness === "dim" ? true : (models?.length ?? 0) > 0;
+          // D630: Cursor's status never reads CURSOR_API_KEY and answers `unknown` with
+          // `configured` when one is set; that key is a real sign-in, so it counts (research/239).
+          const loggedIn = auth
+            ? auth.kind === "logged_in" || (harness === "cursor" && auth.kind === "unknown" && !!harnessKey(dataDir, "CURSOR_API_KEY", opts.env ?? {}))
+            : harness === "deepseek-harness" ? !!dshSignIn(dataDir, opts.env ?? {}) : harness === "dim" ? true : (models?.length ?? 0) > 0;
           out.push({ harness, installed: true, loggedIn, models });
         } catch {
           out.push({ harness, installed: false, loggedIn: false });
@@ -1064,6 +1078,41 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         return r.items.map((i) => ({ name: i.name, ...(i.description ? { description: i.description } : {}), ...(i.source ? { source: i.source } : {}), ...(i.userInvocable === false ? { userInvocable: false } : {}) }));
       } catch {
         return undefined;
+      }
+    },
+
+    // D630: Cursor's own OAR login. The SDK mints and stores a user API key in
+    // ~/.cursor/sdk/auth.json; OAR relays only the cursor.com link, and no key crosses this port.
+    // The child gets the same D102 overlay as a session, so the sign-in is written where the
+    // session's HOME points.
+    async login(harness, interaction) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return { ok: false, detail: "unknown agent" };
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const run = (rt as { login?: (i: unknown, x: unknown, o?: unknown) => Promise<{ kind: string; reason?: string; detail?: string }> } | undefined)?.login;
+        if (!rt || !run) return { ok: false, detail: "this agent has no sign-in Ducter can carry" };
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const inst = await rt.installation?.({ env });
+        if (!inst || inst.kind !== "available") return { ok: false, detail: "not installed here" };
+        const r = await run(
+          inst,
+          {
+            signal: interaction.signal,
+            onEvent: (e: { kind?: string; url?: string }) => {
+              if (e.kind === "auth_url" && typeof e.url === "string") interaction.onUrl(e.url);
+            },
+            // Cursor's login asks for no pasted code; a runtime that did would have to be carried
+            // by a client panel, which this port does not pretend to have.
+            prompt: async () => {
+              throw new Error("this sign-in needs no pasted code");
+            },
+          },
+          { env, openBrowser: false, timeoutMs: 15 * 60_000 },
+        );
+        return r.kind === "logged_in" ? { ok: true } : { ok: false, detail: r.detail ?? r.reason ?? r.kind };
+      } catch (e) {
+        return { ok: false, detail: (e as Error).message };
       }
     },
 

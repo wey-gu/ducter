@@ -75,6 +75,7 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
             )}
           </div>
         </li>
+        {(l.code || l.paste) && (
         <li>
           <StepNumber n={2} />
           <div class="ag-step">
@@ -104,8 +105,9 @@ export function LoginPanel({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
             )}
           </div>
         </li>
+        )}
       </ol>
-      <LiveLine harness={h.harness} text={checking ? t("ag.login.confirming", harnessName(h.harness)) : t(l.paste ? "ag.login.wait.paste" : "ag.login.wait.self")} checking={checking} left={checking ? undefined : l.until} />
+      <LiveLine harness={h.harness} text={checking ? t("ag.login.confirming", harnessName(h.harness)) : t(l.paste ? "ag.login.wait.paste" : h.harness === "cursor" ? "ag.login.wait.cursor" : "ag.login.wait.self")} checking={checking} left={checking ? undefined : l.until} />
       <div class="ag-acts">
         <Btn kind="text" size="sm" label={t("ag.login.cancel")} about={harnessName(h.harness)} onClick={() => A.agentSetup(dv.id, "cancel", { harness: h.harness })} />
       </div>
@@ -124,13 +126,13 @@ export function loginTrouble(l: { state: string; reason?: string }): string {
 
 /** D518: each agent's two steps, in its own words. */
 export function loginSteps(harness: string): { open: string; code: string } {
-  const k = harness === "codex" ? "codex" : harness === "antigravity" ? "agy" : harness === "kimi" ? "kimi" : "claude";
+  const k = harness === "codex" ? "codex" : harness === "antigravity" ? "agy" : harness === "kimi" ? "kimi" : harness === "cursor" ? "cursor" : "claude";
   return { open: `ag.login.${k}.1`, code: `ag.login.${k}.2` };
 }
 
 /** D600: the line a terminal-only sign-in says on that computer (pi, Devin, OpenCode, Cursor). */
 export function terminalKey(harness: string): string {
-  return harness === "devin" ? "ag.login.devin" : harness === "opencode" ? "ag.login.opencode" : harness === "cursor" ? "ag.login.cursor" : harness === "dim" ? "ag.login.dim" : "ag.login.pi";
+  return harness === "devin" ? "ag.login.devin" : harness === "opencode" ? "ag.login.opencode" : harness === "dim" ? "ag.login.dim" : "ag.login.pi";
 }
 
 /** D600: what the card says where an agent isn't there yet and Ducter can't install it (its own installer). */
@@ -224,7 +226,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
     : look === "installing" ? (h.setup?.pct ? `${t("ag.installing")} ${h.setup.pct}%` : t("ag.installing"))
     : look === "queued" ? t("ag.queued")
     : look === "failed" ? t(`ag.failed.${h.setup?.reason ?? "failed"}`, dv.name)
-    : look === "cant" ? t("ag.trouble.root")
+    : look === "cant" ? (h.trouble?.kind === "node_old" ? t("ag.trouble.node_old") : t("ag.trouble.root"))
     : look === "coming" ? t("ag.coming")
     : tr ? t(tr.word, ...tr.args)
     : t("ag.missing");
@@ -246,6 +248,15 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
           <Btn kind="secondary" size="sm" label={installLabel} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
         ) : look === "failed" ? (
           <Btn kind="secondary" size="sm" label={t("ag.retry")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })} />
+        ) : look === "cant" && h.trouble?.kind === "node_old" ? (
+          <Btn
+            kind="secondary"
+            size="sm"
+            label={t(h.trouble.via === "system" ? "ag.node.install" : "ag.node.update")}
+            about={name}
+            disabled={!awake}
+            onClick={() => A.agentSetup(dv.id, "install", { harnesses: [h.harness] })}
+          />
         ) : look === "signin" ? (
           <Btn kind="primary" size="sm" label={t("ag.signin")} about={name} disabled={!awake} onClick={() => A.agentSetup(dv.id, "login", { harness: h.harness })} />
         ) : look === "ready" && canSignOut(h.harness) ? (
@@ -254,7 +265,12 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       </div>
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
       {/* D549: why it won't run there, and what fixes it, in plain words; no button pretends otherwise. */}
-      {look === "cant" && <div class="ag-detail">{t("ag.trouble.root.why", name)}</div>}
+      {look === "cant" &&
+        (h.trouble?.kind === "node_old" ? (
+          <div class="ag-detail">{h.trouble.via === "system" ? t("ag.node_old.why.system", h.trouble.need, h.trouble.have) : t("ag.node_old.why.ducter", h.trouble.have, h.trouble.need)}</div>
+        ) : (
+          <div class="ag-detail">{t("ag.trouble.root.why", name)}</div>
+        ))}
       {/* D625: Dim before the OAR release that exports createDimRuntime: said, never a button. */}
       {look === "coming" && <div class="ag-detail">{t("ag.dim.coming")}</div>}
       {/* D371: its command line is big; say so before the tap. */}
@@ -263,6 +279,8 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       {(look === "install" || look === "queued") && h.harness === "antigravity" && tr?.button !== "update" && <div class="ag-detail">{t("ag.agy.size")}</div>}
       {/* D600: OpenCode's own installer line vs Ducter's folder. */}
       {(look === "install" || look === "queued") && h.harness === "opencode" && <div class="ag-detail">{t("ag.opencode.where")}</div>}
+      {/* D630: Cursor's SDK goes in Ducter's own folder; no command line is involved. */}
+      {(look === "install" || look === "queued") && h.harness === "cursor" && <div class="ag-detail">{t("ag.cursor.where")}</div>}
       {/* D600: where an agent Ducter doesn't install comes from, and the terms before its sign-in. */}
       {(look === "missing" || look === "signin" || (look === "login" && h.login?.state !== "done")) && manualWhereKey(h.harness) && <div class="ag-detail">{t(manualWhereKey(h.harness)!)}</div>}
       {(look === "signin" || (look === "login" && h.login?.state !== "done")) && termsKey(h.harness) && <div class="ag-detail">{t(termsKey(h.harness)!)}</div>}

@@ -659,7 +659,7 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 		if root || ((!h.Installed || !h.LoggedIn || signingOut) && !manage) {
 			a.agentRow(c, dv, h, nil)
 			a.setupAnswer(c, dv)
-			if h.Installed && h.Login == nil && !root {
+			if h.Installed && h.Login == nil && !root && (h.Trouble == nil || h.Trouble.Kind != "node_old") {
 				uiText(c, a.L.T("coin.signin.why", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
 			return

@@ -89,9 +89,11 @@ Kimi Code and OpenCode work only when you ask: they never wait for something and
 themselves, never run on a schedule, and Ducter never checks their quota. OpenCode can use a
 provider's subscription sign-in; don't use a Claude subscription sign-in there, because Anthropic
 doesn't allow other apps to use plan credentials that way. If you're unsure, use an API key.
-**Cursor** is coming soon: it needs its SDK bundled with Ducter first, so its card says so and
-doesn't offer a sign-in. **Dim** is coming soon too: this version of Ducter can't run it yet, so
-its card says that and offers no install or sign-in.
+**Cursor** runs through the SDK Ducter installs into its own folder, so its card offers **安装**
+the first time; then **登录** gives you a cursor.com link, and the key stays with Cursor's SDK
+(not in Ducter). A Cursor API key already in that computer's keys file works too. **Dim** is
+coming soon: this version of Ducter can't run it yet, so its card says that and offers no install
+or sign-in.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem

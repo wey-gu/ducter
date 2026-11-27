@@ -124,6 +124,9 @@
   (a helper, `run: perItem`); a first look now is the model's call (a fare has a value today, a weekly
   report doesn't). Rounds that would act outward unasked still go through `routine_propose`'s Go.
   A Keep in rounds on one task (`run: same`) is still made by a task that rests on its own wait.
+  Its owner is the partner whose conversation made it (D631, #243): its receipt card, `[keeps]`
+  line and `keep_list` are that partner's, and `keep_change` refuses another's in words. A start
+  repairs an old Keep whose routine carries another partner, once, as `keep_owner_repaired`.
 
 ## 1. The ask, and what is wrong today
 

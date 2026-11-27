@@ -42,6 +42,13 @@ one's conversation.
 | Chat apps (Telegram, Slack, WeChat, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one they are talking with); its words there lead with its name |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
+**A Keep is its conversation's.** A Keep made from a partner's words records that partner as its
+`persona` (`keep_make` takes the acting partner, the same one `routines.make` stamps; D631,
+#243). Its receipt card, its `[keeps]` line, `keep_list` and `keep_change` are that partner's;
+another partner's Keep is refused in words (**that one is {name}'s; ask in its conversation**),
+while the person on its page may still change any Keep (D546). At start, a Keep whose routine
+already carries another partner takes that persona once, recorded as `keep_owner_repaired`.
+
 **Privacy between partners.** A partner sees only its own conversation and its own memories. No
 partner can read another's Log stream: core never wakes one partner for another's words, and a
 client socket receives only the conversation it shows (the other partners arrive as counts and,

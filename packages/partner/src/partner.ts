@@ -3055,7 +3055,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(str(a.until) ? { until: str(a.until) } : {}),
           ...(str(a.speaks) ? { speaks: str(a.speaks) } : {}),
           lookNow: a.look_now === true || a.look_now === "true",
-          persona: core.persona.id,
+          // D631 (#243): the owner is the acting partner (keeps.make reads it), never this
+          // handler's captured default: a second partner's Keep is that partner's.
         });
         if (!r.ok) return { ok: false, error: r.error };
         if (turn) turn.keepCard = r.card;

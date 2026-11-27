@@ -777,6 +777,10 @@ export interface Bodies {
   // D533: a change to a Keep, by the person on its page or by the partner (keep_change), on stream
   // keep:<keepId>: each field from and to, shown as a line among its rounds.
   keep_edit: { keepId: string } & import("./keeps.ts").KeepEditLine;
+  // D631 (#243): a Keep made before keep_make recorded the acting partner took its routine's
+  // partner as its owner, once, at start. On stream keep:<keepId>, origin system, so the repair is
+  // in the Log and never silent; a second start finds nothing to repair.
+  keep_owner_repaired: { keepId: string; routineId: string; from: string; to: string; at: string };
   // D620: a doorbell rang for a Keep, on stream keep:<keepId>: when, and the caller's own short
   // "about" label when it gave one. Never a request body: the body is never read at all.
   keep_ring: { keepId: string; at: string; label?: string };

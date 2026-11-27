@@ -1,5 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { createPreviews, loopbackOf } from "./preview.ts";
+import { actingPersona } from "./acting.ts";
 import { createAlways, type Always } from "./always.ts";
 import { createBackgroundIndex } from "./background.ts";
 import { createWbFrames } from "./workbench.ts";
@@ -659,6 +660,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   // belongs to another partner's task, question, wait, call or routine (or is made while that
   // partner's tool call is handled) lands in that partner's conversation. One partner: as before.
   const isOther = (id: string | undefined) => !!id && id !== DEFAULT_PARTNER && id !== persona.id && partners.has(id);
+  // D312/D546: whether a Keep's persona belongs to a partner (absent and a removed partner are the default's).
+  const isOf = (p: string | undefined, want: string) => (want === persona.id ? !isOther(p) : p === want);
+  /** D631 (#243): the plain name a refusal says for a Keep's owner. */
+  const keepOwnerName = (p: string | undefined) => (isOther(p) ? partners.nameOf(p!) : persona.name);
   const whose = createWhose({ log, tasks, isOther });
   if (partners.on()) {
     const append = log.append.bind(log);
@@ -1922,7 +1927,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)),
     persona: () => persona.id,
-    isOf: (p, want) => (want === persona.id ? !isOther(p) : p === want),
+    isOf,
     lang: () => langNow(),
     zone: () => opts.work?.defaultZone,
     clock,
@@ -2015,7 +2020,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D593: a round whose context was compacted hears the Keep again first.
   api.keepNow = (taskId) => keeps.standingFor(taskId);
   // D511: the partner's keep_list and keep_change (keep_make is the partner's own, with its receipt card).
-  registerKeepTools(mcp, keeps, () => persona.id, (name) => (name === "local" || name === computers.homeName() ? "local" : ((computers.workers?.() ?? []).find((w) => w.name === name || w.id === name)?.id ?? (computers.nameOf(name) ? name : undefined))));
+  // D631 (#243): the caller (the hub sets it with actAs), never the captured default, so each
+  // partner lists and changes its own Keeps, and another partner's is a plain refusal.
+  registerKeepTools(mcp, keeps, () => actingPersona() ?? persona.id, (name) => (name === "local" || name === computers.homeName() ? "local" : ((computers.workers?.() ?? []).find((w) => w.name === name || w.id === name)?.id ?? (computers.nameOf(name) ? name : undefined))), { isOf, nameOf: keepOwnerName });
   // D407: an app given to a task (or taken back) changes what its Ongoing card opens.
   apps.onChange((c) => void (c.kind === "give" && setTimeout(() => ws.ongoingChanged(), 0)));
   // D422: an app's state has one truth each. Kept current: the Ongoing card of the task that keeps

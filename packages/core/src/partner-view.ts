@@ -14,6 +14,7 @@
 //    keeps its own digests, activity and memory port. The default partner keeps the core itself.
 import type { Brain, HarnessId, LogEvent, TaskCard } from "@ducter/protocol";
 import type { AppendInput, BrainHoldPort, CoreApi, LogStore, MemIdentity, SpineStore, TaskMemoryPort, TaskRegistry } from "@ducter/protocol/src/internal.ts";
+import type { KeepsApi } from "@ducter/protocol/src/keeps.ts";
 import { DEFAULT_PARTNER, channelOf, partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import { actingPersona } from "./acting.ts";
 import type { CoreMcpHub } from "./mcp.ts";
@@ -122,6 +123,36 @@ export function scopedSpine(spine: SpineStore, persona: string): SpineStore {
   };
 }
 
+/** D631 (#243): another partner's own Keeps: its reads return only its own, and a make is its own. */
+function scopedKeeps(keeps: KeepsApi, id: string): KeepsApi {
+  const own = (id: string) => {
+    const k = keeps.get(id);
+    return k && k.persona === id ? k : undefined;
+  };
+  const mine = (keepId: string) => !!own(keepId);
+  return {
+    all: () => keeps.all().filter((k) => k.persona === id),
+    get: (keepId) => own(keepId),
+    ofTask: (taskId) => {
+      const found = keeps.ofTask(taskId);
+      return found && mine(found.id) ? found : undefined;
+    },
+    isRound: (taskId) => mine(keeps.ofTask(taskId)?.id ?? "") && keeps.isRound(taskId),
+    sheets: (persona) => (persona === id ? keeps.sheets(id) : []),
+    ended: (persona) => (persona === id ? keeps.ended(id) : []),
+    page: (keepId) => (mine(keepId) ? keeps.page(keepId) : undefined),
+    act: (keepId, a) => (mine(keepId) ? keeps.act(keepId, a) : Promise.resolve({ ok: false as const, message: "That one isn't this partner's." })),
+    make: (input) => keeps.make({ ...input, persona: id }),
+    change: (keepId, c, o) => (mine(keepId) ? keeps.change(keepId, c, o) : Promise.resolve({ ok: false as const, error: "That one isn't this partner's." })),
+    ring: (token, label) => keeps.ring(token, label),
+    takeBell: (keepId) => (mine(keepId) ? keeps.takeBell(keepId) : undefined),
+    propose: (keepId, said) => (mine(keepId) ? keeps.propose(keepId, said) : Promise.resolve({ ok: false as const, said, error: "That one isn't this partner's." })),
+    sync: () => keeps.sync(),
+    say: (keepId) => (mine(keepId) ? keeps.say(keepId) : ""),
+    stop: () => keeps.stop(),
+  };
+}
+
 export interface PartnerViewOptions {
   core: CoreApi;
   id: string;
@@ -212,6 +243,7 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
   const view: CoreApi = {
     log,
     tasks,
+    ...(core.keeps ? { keeps: scopedKeeps(core.keeps, id) } : {}),
     mcp: o.mcp.forPersona(id),
     persona: {
       id,

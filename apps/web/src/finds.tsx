@@ -171,6 +171,17 @@ function Ask({ n }: { n: Bodies["finds"] }) {
         {n.answered ? <div class="small sub">{t("first.chosen", t(`proactive.${n.answered}`))}</div> : <ProactiveChips inNote />}
       </div>
     );
+  if (n.ask === "day_after") {
+    // D623: an offer, not a card: no needs count, no default, no timer. Ignored is recorded
+    // in the Log and shows nothing; yes/no settle in one tap.
+    if (n.answered) return null; // settled quietly: the Log keeps yes/no/ignored
+    return (
+      <div class="fstep">
+        <Btn kind="secondary" size="sm" label={t("day.after.yes")} onClick={() => A.answerNote(n.noteId, "day_after", true)} />
+        <Btn kind="text" size="sm" label={t("day.after.no")} onClick={() => A.answerNote(n.noteId, "day_after", false)} />
+      </div>
+    );
+  }
   if (n.ask !== "first_look" && n.ask !== "keep_note" && n.ask !== "note_again") return null;
   const ask = n.ask;
   const [yes, no] = ask === "keep_note" ? ["note.keep", "note.no_more"] : ask === "note_again" ? ["note.again_yes", "note.again_no"] : ["first.go", "first.no"];

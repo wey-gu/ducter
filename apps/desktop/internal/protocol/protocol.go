@@ -98,6 +98,7 @@ type Question struct {
 const (
 	KindUserMsg          = "user_msg"
 	KindAIMsg            = "ai_msg"
+	KindDayAfter         = "day_after" // D623: code's facts; the partner says them
 	KindAck              = "ack"
 	KindJobStatus        = "job_status"
 	KindLivingMsg        = "living_msg"
@@ -171,6 +172,8 @@ type AIMsg struct {
 	// Shelf (D410): the person asked where their apps are: a card that
 	// opens 小应用 / Apps goes under these words.
 	Shelf bool `json:"shelf,omitempty"`
+	// DayAfter (D623): what was set up the day before, each a link under these words.
+	DayAfter *DayAfter `json:"dayAfter,omitempty"`
 }
 
 type Ack struct {

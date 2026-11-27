@@ -53,7 +53,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL, pickTag, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL, pickTag, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type DayAfter, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
 import { roomFor } from "../../protocol/src/resources.ts";
 import type { DeviceResources } from "../../protocol/src/index.ts";
@@ -182,6 +182,8 @@ type HoldHit = Parameters<NonNullable<CoreApi["brainHold"]>["hit"]>[0];
 
 interface TurnState {
   triggers: LogEvent[];
+  /** D623: the day after's true facts, carried on the one message that says them. */
+  dayAfter?: DayAfter;
   /** D373: finished tasks this turn sent a follow-up to (each back at work under its own line). */
   continued?: Set<string>;
   /** D373: this turn's first task_open was weighed against the task the message follows. */
@@ -1200,6 +1202,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       body.cal = turn.cal;
       turn.cal = undefined;
     }
+    if (!decisionId && turn?.dayAfter) {
+      // D623: the day after's true facts ride the one message that says them, as links.
+      body.dayAfter = turn.dayAfter;
+      turn.dayAfter = undefined;
+    }
     const e = core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
     if (turn && !decisionId) (turn.saidLines ??= new Set()).add(raw);
     if (pinAsks.length) core.pins!.put(e.seq, rich.ui, pinAsks);
@@ -2109,6 +2116,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (core.noticedSources) core.noticedSources.links = core.noticedSources.whys = undefined; // D388: only a noticed call of this turn counts
     turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, results, recalls: 0, noted: [], early: [] };
+    const day = [...batch].reverse().find((e) => e.kind === "day_after");
+    if (day) turn.dayAfter = { items: (day.body as Bodies["day_after"]).items };
     const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : []));
     if (shows.length) turn.shows = shows;
     if (redo) turn.carried = redo;

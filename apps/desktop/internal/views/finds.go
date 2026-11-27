@@ -232,12 +232,17 @@ func (a *App) wrapLink(c *ui.Context, key, label, url string) {
 func (a *App) noteAsk(c *ui.Context, n *protocol.Finds) {
 	t := a.T
 	switch n.Ask {
-	case "first_look", "keep_note", "note_again":
+	case "first_look", "keep_note", "note_again", "day_after":
 		yes, no := "first.go", "first.no"
 		if n.Ask == "keep_note" {
 			yes, no = "note.keep", "note.no_more"
 		} else if n.Ask == "note_again" { // D250: the morning note offered back once
 			yes, no = "note.again_yes", "note.again_no"
+		} else if n.Ask == "day_after" { // D623: two quiet chips; settled quietly
+			yes, no = "day.after.yes", "day.after.no"
+			if n.Answered != "" {
+				return
+			}
 		}
 		if n.Answered != "" {
 			label := a.L.T(no)

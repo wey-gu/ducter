@@ -29,7 +29,7 @@
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, FindKind, FindOpenWhat, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
+import type { Bodies, DayAfterItem, FindKind, FindOpenWhat, FindView, LogEvent, ProactiveDay, ProactiveMode, ProactiveYesNo, QuietReason, ReadLine, ReadProblem, RuleView, SourceLook } from "@ducter/protocol";
 import { DAILY_CAP, OFFER_NOTE_MAX, OFFERS_A_DAY, OFFER_SHOWN, SEND_UNDO_MS, isFindKind, langName, normalizeTag, QUIET_REASONS, words, type LangTag } from "@ducter/protocol";
 import { talkLang } from "../lang.ts";
 import type { WebLookPort, WorkingMemoryPort } from "@ducter/protocol/src/internal.ts";
@@ -429,6 +429,16 @@ export interface ProactiveOptions {
   spotter?: Spotter;
   /** D502: cross-source findings over the ledger, in shadow (the cheapest model); set later, like the judge. Absent: no shadow pass. */
   cross?: CrossAsk;
+  /**
+   * D623: the day after the first run. Once in a home's life, on the first open on the day
+   * after it was first used, code offers the true facts of what was set up yesterday; the partner
+   * is woken by `day_after` and says them in its own words. Nothing found: nothing. canSpeak:
+   * whether a partner can answer now (a key-only home with no agent: nothing).
+   */
+  dayAfter?: {
+    facts: (o: { now: number; tz: string }) => DayAfterItem[] | undefined;
+    canSpeak?: () => boolean;
+  };
 }
 
 /** D243: the partner's view of what it noticed (the `noticed` tool). Words only, never mail. */
@@ -1622,6 +1632,21 @@ export function createProactive(o: ProactiveOptions): Proactive {
   const onEvent = (e: LogEvent) => {
     // D281: the person's lines (and the partner's promises) for later; a wait the partner arms keeps them.
     if (e.stream === "channel" && ((e.kind === "user_msg" && e.origin === "user") || (e.kind === "ai_msg" && e.origin === "partner"))) {
+      // D623: the day after's offer is settled by the person's next message: ignored, recorded
+      // in the Log as such, and never asked again.
+      if (e.kind === "user_msg" && e.origin === "user") {
+        const left = o.log
+          .read({ stream: "channel", kinds: ["finds"], limit: 100 })
+          .reverse()
+          .find((x) => {
+            const b = x.body as Bodies["finds"];
+            return b?.ask === "day_after" && !b.answered;
+          });
+        if (left) {
+          const b = left.body as Bodies["finds"];
+          note({ ...b, noteId: newId("note"), revises: b.noteId, answered: "ignored" });
+        }
+      }
       heard(e);
       armOwn();
     } else if (e.kind === "waiter") covered(e as LogEvent<"waiter">);
@@ -2138,6 +2163,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
       const b = prev?.body as Bodies["finds"] | undefined;
       if (!b || b.ask !== ask || b.answered) return;
       note({ ...b, noteId: newId("note"), revises: noteId, answered: yes ? "yes" : "no" });
+      if (ask === "day_after") {
+        // D623: the day after's offer is a quiet finds note, not a decision: no needs count,
+        // no default, no timer. Yes keeps the morning note on (or turns it on) and the partner says
+        // one short line; no changes nothing. Ignored is settled on the person's next message below.
+        if (yes) {
+          const m = mode();
+          o.settings.setProactive(m === "three" ? "three" : "useful", "chosen");
+          o.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: W.dayAfterTaken(lang()) } });
+        }
+        save();
+        return;
+      }
       if (ask === "keep_note") {
         st.paused = false;
         st.keepAsk = undefined;
@@ -2254,6 +2291,26 @@ export function createProactive(o: ProactiveOptions): Proactive {
         } catch {
           /* not a zone */
         }
+      }
+      // D623: the first open on the day after the first run: the true facts of what was set
+      // up yesterday, once in a home's life. The partner writes the recap; code gives the facts.
+      if (opened && o.dayAfter && mode() !== "off") {
+        const day = o.dayAfter;
+        void serial(async () => {
+          if (o.log.read({ stream: "channel", kinds: ["day_after"], limit: 1 }).length) return;
+          if (day.canSpeak && !day.canSpeak()) return;
+          const at = now();
+          const z = tz || zone();
+          let items: DayAfterItem[] | undefined;
+          try {
+            items = day.facts({ now: at, tz: z });
+          } catch (err) {
+            console.warn(`[proactive] the day after couldn't read what was set up: ${(err as Error).message}`);
+            return;
+          }
+          if (!items?.length) return;
+          o.log.append({ stream: "channel", origin: "system", kind: "day_after", body: { items, at: new Date(at).toISOString() } });
+        });
       }
       const q = holding();
       const at = now();

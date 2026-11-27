@@ -33,7 +33,7 @@ import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTu
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, TextLink, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
@@ -1468,6 +1468,27 @@ function RichWords({ e, ans, rk }: { e: Entry; ans?: { seq: number; quote: strin
   );
 }
 
+/**
+ * D623: the day after the first run. The partner's own words say the recap; code's true
+ * facts sit under them, each a link to the thing the person set up yesterday.
+ */
+function DayAfterBlock({ d }: { d: NonNullable<Bodies["ai_msg"]["dayAfter"]> }) {
+  const opens = (it: NonNullable<Bodies["ai_msg"]["dayAfter"]>["items"][number]) => {
+    if (it.kind === "task") return () => A.openTaskPage(it.id);
+    if (it.kind === "keep") return () => (A.openKeep ? A.openKeep(it.id) : (location.hash = `#keep=${encodeURIComponent(it.id)}`));
+    if (it.kind === "account") return () => A.openSettings("accounts");
+    if (it.kind === "chat") return () => A.openSettings("chats");
+    return () => openApp(it.id);
+  };
+  return (
+    <div class="day-after">
+      {d.items.map((it) => (
+        <TextLink key={`${it.kind}:${it.id}`} class="day-after-row" label={t(`day.after.${it.kind}`, it.title)} onClick={opens(it)} />
+      ))}
+    </div>
+  );
+}
+
 function EntryView(p: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
   // D426: the several things a message asked for stand under its words, line by line.
   const a = p.e.user ? p.e.asks : undefined;
@@ -1561,6 +1582,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
             <HoverReply k={rk} />
           </div>
         ))}
+        {/* D623: the day after the first run: what was set up yesterday, each a link. */}
+        {e.ai.dayAfter && <DayAfterBlock d={e.ai.dayAfter} />}
         {/* D222: the day card under the partner's words (or alone in its column). */}
         {e.ai.cal && <DayCard g={e.ai.cal} />}
         {/* D206: what a task showed, under the partner's words about it. */}

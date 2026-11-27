@@ -762,6 +762,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			if e.AI.Shelf {
 				a.shelfCard(c, itoa(e.FirstSeq))
 			}
+			// D623: the day after the first run: what was set up yesterday, each a link.
+			a.dayAfterRows(c, e.FirstSeq, e.AI.DayAfter)
 			if e.AI.First != nil {
 				a.firstWordsAfter(c, e) // D298: what they offer, where they were read, a key
 			}
@@ -1140,6 +1142,35 @@ func (a *App) heldLine(c *ui.Context) {
 		}
 		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
 			a.held = nil
+		}
+	})
+}
+
+// D623: the day after the first run. The partner's words say the recap; the true facts code
+// found sit under them, each a quiet link to the task, Keep, Settings page or app it names.
+func (a *App) dayAfterRows(c *ui.Context, seq int64, d *protocol.DayAfter) {
+	if d == nil || len(d.Items) == 0 {
+		return
+	}
+	t := a.T
+	ui.Column(c.Key(fmt.Sprintf("day-after:%d", seq))).Gap(t.S1).Children(func() {
+		for i, it := range d.Items {
+			label := fmt.Sprintf(a.L.T("day.after."+it.Kind), it.Title)
+			key := fmt.Sprintf("day-after:%d:%d", seq, i)
+			if a.quietLink(c, key, label, label) {
+				switch it.Kind {
+				case "task":
+					a.OpenTask(it.ID)
+				case "keep":
+					a.openKeep(it.ID)
+				case "account":
+					a.openTab(TabAccounts)
+				case "chat":
+					a.openTab(TabChats)
+				case "app":
+					a.openApp(it.ID)
+				}
+			}
 		}
 	})
 }

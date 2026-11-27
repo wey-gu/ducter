@@ -2487,7 +2487,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         asks: { type: "array", items: { type: "string" }, description: "Set it whenever the message asks for two or more separate things (even when each gets its own task): the ones THIS task does, each in the user's own short words; the app lists them under the message and ticks each off. One goal told in several clauses is not several things." },
         group: { type: "string", description: "When the user lists separate parts to do in turn (\"先…然后…最后…\", \"一件做完再做下一件\"): one task per part, one short name on every part, written first. Parts in the same repo or folder run one after another, each from the one before's branch (Ducter holds the later ones): open every part now, in order." },
-        title: { type: "string", description: "Short title in the user's language" },
+        title: { type: "string", description: "A whole short title in the user's language (about 24 Han characters or 48 letters), naming the work; never a sentence cut off mid-clause" },
         kind: {
           type: "string",
           enum: [...WORK_KINDS],
@@ -3069,6 +3069,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // A Go on Ducter's own card is the person's own word too.
     const own = (t: TurnState) =>
       t.triggers.some((e) => (e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask && !(e.body as Bodies["user_msg"]).forwarded) || (e.kind === "decision_resolved" && e.origin === "user" && (e.body as Bodies["decision_resolved"]).option === "go"));
+    // D636: a fill the person asked for in this turn (they named the app, or typed in its own
+    // sheet) may show its card; every later fill of an app the partner keeps current stays silent.
+    const askedForApp = (t: TurnState, m: AppMeta) =>
+      t.triggers.some((e) => {
+        if (e.kind !== "user_msg" || (e.body as Bodies["user_msg"]).forwarded) return false;
+        const b = e.body as Bodies["user_msg"];
+        return b.app?.id === m.id || !!b.text?.toLowerCase().includes(m.name.toLowerCase());
+      });
     const card = (t: TurnState, m: AppMeta, change: AppCard["change"]) => {
       // A change after a make in the same turn is still that new app.
       const was = t.appCard?.id === m.id ? t.appCard.change : undefined;
@@ -3171,13 +3179,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           card(t, r.app, "changed");
         }
         const put: string[] = [];
+        const firstFill = !m.filled;
+        const asked = askedForApp(t, m);
         if (seed) {
           for (const [k, v] of Object.entries(seed).slice(0, 40)) {
             const r = apps.put(m.id, k, v, "partner");
             if (!r.ok) return { ok: false, error: `${k}: ${r.error}`, ...(put.length ? { put } : {}) };
             put.push(k);
           }
-          if (!changed) card(t, apps.get(m.id)!, "data");
+          if (!changed && (firstFill || asked)) card(t, apps.get(m.id)!, "data");
         }
         if (summary) apps.summarize?.(m.id, summary);
         if (icon && icon !== m.icon) apps.set?.(m.id, { icon });
@@ -3650,10 +3660,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_retitle",
-    "Give a task a new title when a follow-up you sent it changes or widens what it is about, so its card says what it is doing now. Short, in the user's language, covering all of its work. Not for new separate work (open a new task for that).",
+    "Give a task a new title when a follow-up you sent it changes or widens what it is about, so its card says what it is doing now. Short, in the user's language, a whole clause covering all of its work (about 24 Han characters or 48 letters), never a sentence cut off mid-clause. Not for new separate work (open a new task for that).",
     {
       type: "object",
-      properties: { taskId: { type: "string" }, title: { type: "string" } },
+      properties: { taskId: { type: "string" }, title: { type: "string", description: "A whole short title in the user's language, never a cut-off clause" } },
       required: ["taskId", "title"],
     },
     async (args: { taskId: string; title: string }) => {

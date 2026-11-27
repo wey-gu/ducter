@@ -53,7 +53,7 @@ func wholeText(task *store.Task, seq int64, output bool) string {
 	switch b := body.(type) {
 	case *protocol.TaskEvent:
 		if output && b.Tool != nil {
-			s = b.Tool.Output
+			s = terminalText(b.Tool.Output)
 		} else {
 			s = b.Text
 		}

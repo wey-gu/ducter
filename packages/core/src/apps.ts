@@ -528,6 +528,13 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
         return { ok: false, error: `the app's data would be over ${APP_DATA_MAX} characters` };
       }
       write(join(dir(id), "data.json"), s);
+      // D636: a fill moves the app's own "updated" (the shelf and its tile show when it last
+      // changed); the first one is the card's moment, later ones are silent.
+      const at = now().toISOString();
+      const m = metas.get(id)!;
+      m.updated = at;
+      m.filled ??= at;
+      saveMeta(m);
       emit({ kind: "data", id, key, value: value ?? null, by });
       return { ok: true };
     },

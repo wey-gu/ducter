@@ -78,7 +78,7 @@ export interface AppMeta {
   name: string;
   /** The partner it belongs to (its persona id). */
   persona: string;
-  /** When it was made and last changed (ISO). */
+  /** When it was made and last changed, including a fill of its data (ISO). */
   made: string;
   updated: string;
   /** 1 when made; +1 at each change (an undo is a change too). */
@@ -87,6 +87,9 @@ export interface AppMeta {
   size: number;
   /** When it was last opened on any device (ISO). */
   opened?: string;
+  /** D636: the first time its data was filled (a screen, a task or the partner): its card
+   *  stands once, at the make or at this first fill, never after every later fill. */
+  filled?: string;
   /** The person's words it was made from. */
   ask?: string;
   /** What the last change was, in the partner's own short words ("加了合计"). */

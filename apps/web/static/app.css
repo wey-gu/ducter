@@ -25628,4 +25628,84 @@ button.fd-link,
   min-width: 44px;
   min-height: 44px;
   justify-content: center;
+/* ---------- D636: the web polish pass (On hand's source rows, the rail, the locator, the
+   reminder divider and the opened task's bar) ---------- */
+/* 1. 待办来源: the source row's one action sits in the row's trailing column, the same `.ocol`
+   every task row uses, so beside the conversation and on a phone it moves under the words on
+   their left edge, and at the whole screen it keeps its column. Its label is whole. */
+.ocard .ocol .btn {
+  flex: none;
+}
+.ocard .ocol .btn > .lbl {
+  overflow: visible;
+  text-overflow: clip;
+}
+.onhand-list.room-side .ocard.src-sum .ocol,
+.onhand-list.room-phone .ocard.src-sum .ocol {
+  padding: 0 16px 14px 52px;
+}
+.onhand-list.room-side .ocard.src-sum .ocol > .oacts.on,
+.onhand-list.room-phone .ocard.src-sum .ocol > .oacts.on {
+  padding: 0;
+}
+.onhand-list:not(.room-rail) .ocard.src-sum .ocol {
+  padding-right: 12px;
+}
+/* 3. The rail beside an opened task: the title gets the room first; the diff counts and the time
+   stay in the task itself (D244: a rail row says only its title and its status). */
+.room-rail .trow .l1 .stat,
+.room-rail .trow .l1 .pr,
+.room-rail .trow .l1 .time {
+  display: none;
+}
+/* The wait bubble's speech tail is the one stray dot beside a rail's clock; on the rail the bubble
+   is only the clock, on its own. */
+.room-rail .trow .l1 .wait-bub::after {
+  display: none;
+}
+/* 5. The locator at rest keeps its scroll track, so its one important mark and its thumb read as
+   places on a scrollbar, never as stray marks at the page's edge. */
+.locator .loc-rail::before {
+  opacity: 0.55;
+}
+/* 6. The reminder divider's time sits on the words' one baseline (the conversation's `.when` has a
+   12-point top margin; a hairline's time is not a time line of its own). */
+.tx-divider.wake .when {
+  margin: 0;
+  align-self: center;
+}
+/* 7. The opened task's bar: the title keeps 9 em before any secondary mark, the crumbs go first,
+   and the workbench and full-screen marks step into ⋯ (the leader's D421 menu). */
+.top.crumbs .here {
+  flex: 1 1 auto;
+  min-width: 9em;
+}
+@container bar (max-width: 1220px) {
+  .top.crumbs .info-btn {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  .top.crumbs .info-btn .info-label,
+  .top.crumbs .info-btn .chev-g {
+    display: none;
+  }
+  /* The crumbs shorten first: 对话 goes, 任务 / and the title stay. */
+  .top.crumbs .trail > .crumb:first-of-type,
+  .top.crumbs .trail > .slash:first-of-type {
+    display: none;
+  }
+}
+@container bar (max-width: 1100px) {
+  /* Two marks a title doesn't need on its line: both live in the ⋯ then. */
+  .top.crumbs .acts > .bench-toggle,
+  .top.crumbs .acts > .fill {
+    display: none;
+  }
+}
+@container bar (max-width: 980px) {
+  .top.crumbs .trail > .crumb,
+  .top.crumbs .trail > .slash {
+    display: none;
+  }
 }

@@ -75,8 +75,9 @@ is for, and the trust line under the buttons is what they need.
     `multi-agent`, `agent-orchestration`, `developer-tools`, `claude-code`, `codex`, `deepseek`,
     `self-hosted`, `self-hosted-ai`, `local-first`, `open-source`, `privacy`, `macos`, `linux`,
     `ios`, `android`, `homelab`.
-  - The share image is drawn from this line and the same words: GitHub's 1280 × 640 card is
-    `apps/site/scripts/og.mjs --layout social`, the site's `og.png` is `--layout a`.
+  - The share image is drawn from this line and the same words: GitHub's card is
+    `apps/site/scripts/og.mjs --layout social` (1280 × 640 at 2x, 2560 × 1280), the site's
+    `og.png` is `--layout a`.
 - **Not yet:** a 中文 site (site.md "Owed"); when it comes, its hero uses the zh column above.
 
 ## Rules for new copy

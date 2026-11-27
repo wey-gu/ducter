@@ -211,9 +211,9 @@ export async function cursorNodeHere(o: { dataDir: string; exec: ProbeExec; whic
 let dimSeen: boolean | undefined;
 /**
  * D625: whether this build can run Dim at all. Dim is a community runtime: `createDimRuntime`
- * exists in `@botiverse/oar/community` only from the OAR release after 0.137.0. Checked by the
- * export, not a version number, so the next release works with no change here; a missing entry or
- * a failed load reads as "not yet", never an exception. Cached: the module is fixed per process.
+ * is in `@botiverse/oar/community` since OAR 0.138.0. Checked by the export, not a version
+ * number; a missing entry or a failed load reads as unavailable, never an exception. Cached: the
+ * module is fixed per process.
  */
 export async function dimRuntimeAvailable(): Promise<boolean> {
   if (dimSeen !== undefined) return dimSeen;
@@ -502,11 +502,10 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     }
     return { harness: "opencode", installed: true, loggedIn };
   };
-  // D625: Dim is a community runtime: this build can only run it when @botiverse/oar/community
-  // exports createDimRuntime. Before that the row says 即将支持 / Coming soon (trouble "coming"),
-  // never "install" or a sign-in Ducter cannot keep. Once that export exists, `dima` on PATH is
-  // enough. OAR has no auth status for Dim (its home's sign-in is Dim's), and its own auth failure
-  // ends a turn with credential missing/rejected: presence is all this can say.
+  // D625: Dim is a community runtime (0.138.0 exports createDimRuntime), so `dima` on PATH is
+  // enough to offer it. OAR has no auth status for Dim (its home's sign-in is Dim's), and its own
+  // auth failure ends a turn with credential missing/rejected: presence is all this can say. A
+  // build with no export still says 即将支持 / Coming soon (trouble "coming"), for an older home.
   const dim = async (): Promise<RawHarness> => {
     const ready = await (o.dimRuntime ?? dimRuntimeAvailable)().catch(() => false);
     if (!ready) return { harness: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } };

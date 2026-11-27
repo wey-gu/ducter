@@ -460,13 +460,14 @@ function piCommand(): { command: string; args: string[] } | undefined {
 
 export type RuntimeLoader = (harness: HarnessId, variant?: PiVariant) => Promise<Runtime | undefined>;
 
-/** D625: the community entry, loaded dynamically: 0.137.0 exports no createDimRuntime, a later release does. */
+/** D625: the community entry, loaded dynamically; OAR 0.138.0 exports `createDimRuntime`. */
 type CommunityModule = { createDimRuntime?: () => Runtime };
 
 /**
  * D625: Dim's runtime out of the community entry, feature-detected. Undefined means this
- * build's `@botiverse/oar/community` has no `createDimRuntime` yet (0.137.0): Dim is said as
- * coming soon, never crashed, and the day a release exports it this same code runs it.
+ * build's `@botiverse/oar/community` has no `createDimRuntime`: Dim is said as unavailable,
+ * never crashed. OAR 0.138.0 added it, so this build runs it; the check stays for an older
+ * dependency or a build with no community entry.
  */
 export function dimRuntimeFrom(community: unknown): Runtime | undefined {
   const make = (community as CommunityModule | undefined)?.createDimRuntime;
@@ -474,7 +475,7 @@ export function dimRuntimeFrom(community: unknown): Runtime | undefined {
 }
 
 /** D625: the one line a build without Dim's runtime says, in the runner and on its setup row. */
-export const DIM_COMING = "Dim is coming with the next @botiverse/oar release: this Ducter build's runtime does not export createDimRuntime yet";
+export const DIM_COMING = "Dim needs an @botiverse/oar build that exports createDimRuntime; this Ducter build's runtime does not";
 
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
 const defaultLoader = async (
@@ -534,8 +535,8 @@ const defaultLoader = async (
       rt = (await import("@botiverse/oar/runtimes/opencode")).opencodeRuntime as unknown as Runtime;
       break;
     // D625: Dim is a community runtime, not one of the per-runtime entries: it comes from
-    // `@botiverse/oar/community` and only from a release that exports it (0.137.0 does not). A
-    // failed or absent import is feature-detected, never fatal; the port's start() says the line.
+    // `@botiverse/oar/community` (0.138.0 exports `createDimRuntime`). A failed or absent import
+    // is feature-detected, never fatal; the port's start() says the line.
     case "dim": {
       rt = dimRuntimeFrom(await (community ?? (() => import("@botiverse/oar/community")))().catch(() => undefined));
       break;

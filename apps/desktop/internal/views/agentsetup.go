@@ -29,7 +29,7 @@ type agentSetupState struct {
 func agentRowLook(h protocol.DeviceHarness) string {
 	switch {
 	case h.Trouble != nil && h.Trouble.Kind == "coming":
-		// D625: this Ducter build can't run it yet (Dim before the next OAR release).
+		// D625: an older home's Ducter can't run it yet (this build runs Dim; OAR 0.138.0).
 		return "coming"
 	case h.Setup != nil && h.Setup.Phase == "installing":
 		return "installing"
@@ -262,10 +262,7 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 				uiText(c, a.L.T("ag.trouble.root.why", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 			}
 		}
-		// D625: Dim before the OAR release that exports createDimRuntime: said, never a button.
-		if look == "coming" {
-			uiText(c, a.L.T("ag.dim.coming")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
-		}
+		// D625: an older home can't run it yet; the row's word says so, with no button.
 		// D371: its command line is big; say so before the tap.
 		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {
 			uiText(c, a.L.T("ag.dsh.size")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)

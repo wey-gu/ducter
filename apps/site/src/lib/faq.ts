@@ -4,7 +4,7 @@
  * answer lives (`test/faq.test.ts` holds the two together). Answers are plain text: the same
  * string is the visible answer and the structured one.
  */
-import { agentsByNameAnd, agentsSoonAnd, agentsTasksAnd, agentsTodayAnd } from "./agents";
+import { agentsByNameAnd, agentsSoonClause, agentsTasksAnd, agentsTodayAnd } from "./agents";
 
 export interface Faq { q: string; a: string; more: { href: string; label: string } }
 
@@ -26,7 +26,7 @@ export const homeFaq: Faq[] = [
   },
   {
     q: "Which AI agents does it work with?",
-    a: `${agentsTodayAnd} can be your partner, signed in as you; you need at least one. ${agentsTasksAnd} take any task, but never your partner. ${agentsByNameAnd} take a task only when you ask for them by name, because their terms keep those sign-ins interactive. ${agentsSoonAnd} is coming soon.`,
+    a: `${agentsTodayAnd} can be your partner, signed in as you; you need at least one. ${agentsTasksAnd} take any task, but never your partner. ${agentsByNameAnd} take a task only when you ask for them by name, because their terms keep those sign-ins interactive.${agentsSoonClause ? ` ${agentsSoonClause}.` : ""}`,
     more: { href: "/docs/faq#which-ai-agents-does-it-work-with", label: "Which AI agents" },
   },
   {

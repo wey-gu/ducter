@@ -14,6 +14,11 @@ const registry = async (u: string) =>
   u.includes("@openai/codex") ? new Response('{"version":"0.168.0"}') : u.includes("claude-code-releases") ? new Response("2.1.322") : new Response("", { status: 404 });
 // D630: Cursor's card states for shots: install, signin, node-old, ready.
 const cursorState = process.env.DEMO_CURSOR;
+// D637 (D625): Dim now runs. DEMO_DIM=install is the row before `dima` is on PATH (its own
+// npm line, no button Ducter can press); DEMO_DIM=ready is the row once it is there.
+const dimState = process.env.DEMO_DIM;
+const dimRow: { harness: string; installed: boolean; loggedIn: boolean; version?: string; how?: string } | undefined =
+  dimState === "ready" ? { harness: "dim", installed: true, loggedIn: true, version: "0.1.0-alpha.29", how: "npm" } : dimState ? { harness: "dim", installed: false, loggedIn: false } : undefined;
 const cursorRow = cursorState
   ? [{ harness: "cursor", installed: cursorState !== "install", loggedIn: cursorState === "ready", version: "1.4.1", how: "ducter", ...(cursorState === "signin" ? { login: { state: "waiting", url: "https://cursor.com/login?challenge=abc" } } : {}), ...(cursorState === "node-old" ? { trouble: { kind: "node_old", need: "22.13.0", have: "20.11.0" } } : {}) }]
   : [];
@@ -28,8 +33,7 @@ const core = startCore({ ooSource: noOo,
     harnesses: async () => [
       { harness: "claude-code", installed: true, loggedIn: true, version: "2.1.319", how: "installer" },
       { harness: "codex", installed: true, loggedIn: false, version: "0.167.0", how: "npm" },
-      // D625: the socket's Dim row when this build has no createDimRuntime.
-      ...(process.env.DEMO_DIM ? [{ harness: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } }] : []),
+      ...(dimRow ? [dimRow] : []),
       ...cursorRow,
     ],
     kind: async () => "server",
@@ -65,7 +69,7 @@ ws.send(
       { id: "claude-code", installed: true, loggedIn: true, version: "2.1.400", how: "installer" },
       { id: "codex", installed: true, loggedIn: true, version: "0.167.0", how: "brew" },
       { id: "pi", installed: true, loggedIn: true, version: "1.4.0", how: "installer" },
-      ...(process.env.DEMO_DIM ? [{ id: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } }] : []),
+      ...(dimRow ? [{ id: "dim", installed: dimRow.installed, loggedIn: dimRow.loggedIn, ...(dimRow.version ? { version: dimRow.version, how: dimRow.how } : {}) }] : []),
     ],
   }),
 );

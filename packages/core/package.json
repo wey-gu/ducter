@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@botiverse/oar": "0.137.0",
+    "@botiverse/oar": "0.138.1",
     "@ducter/protocol": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "qrcode": "1.5.4"

@@ -1,7 +1,7 @@
 // D625: Dim (DimAgent) is OAR's community runtime: `createDimRuntime` from
-// @botiverse/oar/community. This build carries OAR 0.137.0, which does not export it yet, so the
-// loader feature-detects the export: absent reads as unavailable (never a crash), present runs the
-// same shared path as every other agent. No `dima` process is started and no home is touched.
+// @botiverse/oar/community, exported since OAR 0.138.0. The loader feature-detects the export:
+// absent reads as unavailable (never a crash), present runs the same shared path as every other
+// agent. No `dima` process is started and no home is touched.
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -28,8 +28,8 @@ const spec = (over: Partial<SessionSpec> = {}): SessionSpec => ({
   ...over,
 });
 
-// The refusals OAR's community runtime declares (community/dim/options.ts, commit c8792876), so this
-// test says what a release that exports it will say without needing that release installed.
+// A subset of the refusals OAR's community runtime declares (community/dim/options.ts), so this
+// test says the adaptation without needing `dima` installed.
 const DIM_REFUSED: Record<string, string> = {
   systemPrompt: "no system prompt channel",
   appendSystemPrompt: "no append channel",
@@ -37,6 +37,18 @@ const DIM_REFUSED: Record<string, string> = {
   userConfiguration: "no clean setup",
   mcpServerCredentials: "credentials in an entry unverified",
 };
+
+test("this OAR exports Dim: the community entry yields a runtime and its own refusals", async () => {
+  const rt = dimRuntimeFrom(await import("@botiverse/oar/community"));
+  expect(rt?.id).toBe("dim");
+  expect(typeof rt?.refusedSessionOptions?.systemPrompt).toBe("string");
+  expect(typeof rt?.refusedSessionOptions?.userConfiguration).toBe("string");
+  // The shipped refusal map moves the same options this test's prefix does.
+  const a = adaptSpec(spec({ systemPrompt: "You are Ducter.", disallowedTools: ["WebFetch"] }), { dataDir: dir, refused: rt!.refusedSessionOptions });
+  expect(a.options.systemPrompt).toBeUndefined();
+  expect(a.options.disallowedTools).toBeUndefined();
+  expect(a.preamble).toBe("You are Ducter.\n\nBrief: fix the flaky test.");
+});
 
 test("feature detection: no createDimRuntime means unavailable, its own words, never an exception", async () => {
   expect(dimRuntimeFrom(undefined)).toBeUndefined();

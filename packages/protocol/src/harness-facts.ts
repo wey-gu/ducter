@@ -967,8 +967,9 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     },
   },
   // D625: Dim (DimAgent) through its ACP gateway, OAR's community runtime (createDimRuntime
-  // from @botiverse/oar/community; docs/runtimes/dim.md, commit c8792876). Every fact below is read
-  // from OAR's adapter and docs, not run: no `dima` was started and no home was touched. Baseline
+  // from @botiverse/oar/community since 0.138.0; docs/runtimes/dim.md, commit c8792876). Every fact
+  // below is read from OAR's adapter and docs, not run live: no `dima` was started and no home was
+  // touched. It is a task agent now (HARNESSES.dim), never the partner. Baseline
   // dimcode 0.1.0-alpha.29 (the npm package `dimcode-alpha`); OAR calls the versions evidence
   // baselines, not a support range. The root-only consequence is that context comes from
   // usage_update, there is no steer or task stop, attribution is opaque and the queue is not

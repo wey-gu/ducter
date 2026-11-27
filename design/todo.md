@@ -769,33 +769,28 @@ fact wrong.
   show the generic clay token. Take shots of a device card and the New task picker with each
   installed and signed in, zh and en, both themes, before calling the visible change done.
 
-## Dim, live (D625)
+## Dim, live (D625, D637)
 
-Dim is wired through OAR's community runtime, but no published OAR has it yet (it landed in
-commit c8792876, after 0.137.0), so this build says **即将支持 / Coming soon** and starts nothing.
+Dim is wired through OAR's community runtime, and OAR 0.138.0 exports it; this build carries
+0.138.1. `dima` on PATH is now enough: the device card shows Dim, and the partner may name it.
 
-- [ ] **Bump `@botiverse/oar` when a release exports `createDimRuntime`.** The runner's loader
-  feature-detects the export from `@botiverse/oar/community`; no code change should be needed. Run
-  the runner, cli, core, partner and protocol suites on the bump, and check that a device card's
-  Dim row leaves **即将支持** without another edit. The check for the export lives in
-  `packages/core/src/harness-probe.ts` (`dimRuntimeAvailable`) and `packages/runner/src/oar.ts`
-  (`dimRuntimeFrom`).
+- [x] **Bump `@botiverse/oar` to 0.138.1.** The runner's loader runs `createDimRuntime`, the probe
+  and the setup cards leave **即将支持**, and the scripted-turn test exercises the shared path with
+  OAR's test double. Done with no adapter change; OAR 0.138.0/0.138.1's releases touched Dim's
+  adapter, Claude Code `/limit-reset` parsing, Pi 1.6.1 and Qwen's pin, none of Ducter's seams.
 - [ ] **One live task on a real `dima` home.** With `dima` (dimcode 0.1.0-alpha.29 or later) and a
   signed-in provider on a scratch home: open a task, run a turn, read `usage_update`'s context, give
   input during the turn (held, not steered), abort, resume in the same folder, and have Dim reach
   Ducter's MCP through the stdio bridge. Confirm the home flag: none gives `~/.dimcode-alpha`, a
   person's `--home` is the one used, and a `--model-config` home takes no model or effort.
-- [ ] **Dim in the partner's named-agent lists.** `PARTNER_NAMED_HARNESS_IDS`
-  (`packages/protocol/src/harnesses.ts`) leaves `dim` out of `task_open`, `task_switch`,
-  `task_fork`, `rule_save` and `new_tasks` so the partner's tools/list JSON is unchanged and no
-  D175 eval is owed. Lifting the filter is the whole code change; run
-  `bun run eval:partner --model haiku --against latest` with it (D175) and commit the result.
+- [x] **Dim in the partner's named-agent lists.** `PARTNER_NAMED_HARNESS_IDS` is every harness now,
+  so `task_open`, `task_switch`, `task_fork`, `rule_save` and `new_tasks` name Dim. That changes
+  the partner's tools/list text: the D175 eval is the lead's to run with this change.
 - [ ] **Auth failures and the App Server.** A missing and a rejected key end the turn as `auth`
   with `credential: missing`/`rejected`, with no key in the message; the App Server started by
   `dima runtime list` outlives the session, and `dima daemon stop --home` is the only stop.
-- [ ] **Dim's coin** (D625). No image renderer was available in this pass, so Dim shows the
-  existing generic clay token. Sculpt its mark through `tools/art/coins.py` with the same recipe
-  as the other agents (light/dark/off, 20–96 sizes) and add it to `coin.tsx` / `coins.go`.
+- [x] **Dim's coin.** The coin exists (`coin_dim`, `coin_dim_off`; the web and Mac tests name it),
+  and the site's agents card now draws it with the others.
 
 ## Antigravity, live (D416, research/171)
 
@@ -3854,3 +3849,5 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **People read 待你处理 and 任务** (D586, research/234): the words were picked on haiku proxies only. *Trigger:* the next time two or three Chinese-speaking people try Ducter, show them the bar, the line over the composer and the 任务 page from `.shots/rename-d585/after/` and ask what each means; revisit if either reads as the person's own to-do list.
 - [ ] **The rest of D592's copy rules** (D592): Mem's own panes (`memory.go`, `workermem.go`: 接上, 装上, 没弄好, 再看一次, 记得你了, 看看), the remaining 看看 buttons, and the partner's 改好了 on a small app's window were left for D590 and a later pass; a guard test that fails on 改 alone, 停下, 算了, 先不X, 不X了 or 看细节 as a control's word on both clients. *Trigger:* D590 merged, or the next copy complaint.
 - [ ] **以后这类直接做 on hel** (D601): the tap, GQ4's offer and the chat apps' third button checked with fakes only. *Trigger:* the next hel release: watch a review loop's second round and one task's push ask go by themselves after a tap, and read the Log for a card that offered it on the floor (there must be none).
+
+- [ ] **Dim's install line as a copyable command (D637).** The card says `npm install -g dimcode-alpha` inside its prose, where it breaks across lines; give it the shared copy chip like other agents' commands.

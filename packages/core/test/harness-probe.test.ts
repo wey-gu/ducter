@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { compareVersions, probeHarnesses } from "../src/harness-probe.ts";
+import { compareVersions, dimRuntimeAvailable, probeHarnesses } from "../src/harness-probe.ts";
 
 const files = (m: Record<string, string>) => (p: string) => m[p];
 
@@ -36,9 +36,9 @@ test("a machine with all four: logins read from their own commands and files", a
     { harness: "devin", installed: false, loggedIn: false, canBePartner: false },
     { harness: "kimi", installed: false, loggedIn: false, canBePartner: false },
     { harness: "opencode", installed: false, loggedIn: false, canBePartner: false },
-    // D625: this build's OAR has no createDimRuntime (the caller passes the detector; the bare
-    // default is false), so Dim says 即将支持 rather than offering an install or a sign-in.
-    { harness: "dim", installed: false, loggedIn: false, canBePartner: false, trouble: { kind: "coming" } },
+    // D625/OAR 0.138.1: this build runs Dim, and no `dima` is on this machine, so the row is
+    // simply not installed (the card gives its own npm install line; Ducter never runs it).
+    { harness: "dim", installed: false, loggedIn: false, canBePartner: false },
   ]);
 });
 
@@ -98,7 +98,14 @@ test("D600: the four new agents are read where their own installers put them, an
   expect(noSdk[0]).toMatchObject({ harness: "cursor", installed: false, loggedIn: false });
 });
 
-test("D625: Dim is coming soon without createDimRuntime, and detected on PATH once it is there", async () => {
+test("D625: OAR 0.138.1 exports Dim, and the row is ready on `dima` on PATH", async () => {
+  expect(await dimRuntimeAvailable()).toBe(true);
+  const base = { which: (c: string) => (c === "dima" ? "/bin/dima" : c === "dim-nightly" ? "/bin/dim-nightly" : null), exec: async () => ({ code: 0, out: "dimcode 0.1.0-alpha.29\n" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, exists: () => false, only: ["dim"] as const };
+  const here = await probeHarnesses(base);
+  expect(here).toEqual([{ harness: "dim", installed: true, loggedIn: true, canBePartner: false, billing: "usage", version: "0.1.0-alpha.29", how: "unknown" }]);
+});
+
+test("D625: an older home with no createDimRuntime still says coming, and is detected on PATH once it is there", async () => {
   const base = { which: (c: string) => (c === "dima" ? "/bin/dima" : c === "dim-nightly" ? "/bin/dim-nightly" : null), exec: async () => ({ code: 0, out: "dimcode 0.1.0-alpha.29\n" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, exists: () => false, only: ["dim"] as const };
   const coming = await probeHarnesses({ ...base, dimRuntime: async () => false });
   expect(coming).toEqual([{ harness: "dim", installed: false, loggedIn: false, canBePartner: false, trouble: { kind: "coming" } }]);

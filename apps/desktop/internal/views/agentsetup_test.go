@@ -1,6 +1,7 @@
 package views
 
 import (
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -180,11 +181,16 @@ func TestAgentSetupShots(t *testing.T) {
 		protocol.DeviceHarness{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
 		protocol.DeviceHarness{Harness: "pi", Installable: true},
 	)
-	// D625: Dim on a device while this build carries no createDimRuntime.
-	dimComing := haswell(
+	// D625/OAR 0.138.1: Dim is a task agent: absent (Ducter gives its own npm line) and ready.
+	dimMissing := haswell(
 		protocol.DeviceHarness{Harness: "claude-code", Installed: true, Version: "2.1.322", How: "npm"},
 		protocol.DeviceHarness{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
-		protocol.DeviceHarness{Harness: "dim", Trouble: &protocol.AgentTrouble{Kind: "coming"}},
+		protocol.DeviceHarness{Harness: "dim"},
+	)
+	dimReady := haswell(
+		protocol.DeviceHarness{Harness: "claude-code", Installed: true, Version: "2.1.322", How: "npm"},
+		protocol.DeviceHarness{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
+		protocol.DeviceHarness{Harness: "dim", Installed: true, LoggedIn: true, Version: "0.1.0-alpha.29", How: "npm"},
 	)
 	for _, dark := range []bool{false, true} {
 		mode := "light"
@@ -219,10 +225,65 @@ func TestAgentSetupShots(t *testing.T) {
 			save(tt, p+"05-card-install.png")
 			app.devState().card.sheet.coin = coinKey("hw1", "claude-code")
 			save(tt, p+"06-card-signin.png")
-			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), dimComing}})
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), dimMissing}})
 			app.devState().card.sheet.coin = coinKey("hw1", "+")
-			save(tt, p+"07-card-dim-coming.png")
+			save(tt, p+"07-card-dim-install.png")
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), dimReady}})
+			app.devState().card.sheet.coin = coinKey("hw1", "dim")
+			save(tt, p+"08-card-dim-ready.png")
 		}
+	}
+}
+
+// D637 (D625): Dim on a Mac's device card at 1150, zh, light: the row as it stands
+// without `dima` (its own npm line; no install button Ducter can press) and ready.
+//
+//	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../.shots/dim-live go test ./internal/views -run DimCardShots
+func TestDimCardShots(t *testing.T) {
+	if os.Getenv("DUCTER_SHOTS") == "" {
+		t.Skip("DUCTER_SHOTS not set")
+	}
+	dir := shotsDir(t)
+	base := []protocol.DeviceHarness{
+		{Harness: "claude-code", Installed: true, LoggedIn: true, Version: "2.1.322", How: "npm", CanBePartner: true},
+		{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
+	}
+	states := []struct {
+		name string
+		dim  protocol.DeviceHarness
+	}{
+		{"install", protocol.DeviceHarness{Harness: "dim"}},
+		{"ready", protocol.DeviceHarness{Harness: "dim", Installed: true, LoggedIn: true, Version: "0.1.0-alpha.29", How: "npm"}},
+	}
+	for _, st := range states {
+		app, _ := iaApp(t, i18n.ZH)
+		app.Now = func() time.Time { return lendNow }
+		app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), haswell(append(base, st.dim)...)}})
+		app.Route = RouteDevices
+		app.devState().sel = "hw1"
+		open := "dim"
+		if !st.dim.Installed {
+			open = "+"
+		}
+		app.devState().card.sheet.coin = coinKey("hw1", open)
+		tt := ui.NewTesterWith(app.View, 1150, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+		tt.SetScale(2)
+		tt.Frame()
+		tt.Frame()
+		img := tt.Image()
+		f, err := os.Create(filepath.Join(dir, "mac-1150-zh-light-dim-"+st.name+".png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := png.Encode(f, img); err != nil {
+			f.Close()
+			t.Fatal(err)
+		}
+		f.Close()
+		// 2x: the card's tray and the open detail, the one place Dim stands.
+		b := img.Bounds()
+		d596Write(t, dir, "mac-1150-zh-light-dim-"+st.name+"-crop-2x", img.SubImage(image.Rect(1440, 760, b.Max.X, min(b.Max.Y, 1620))))
 	}
 }
 

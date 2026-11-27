@@ -1,6 +1,6 @@
 // D135: the harness facts registry and the small-window settings built on it.
 import { expect, test } from "bun:test";
-import { HARNESSES, HARNESS_IDS, HARNESS_KEYS, directOnly, directOnlyWhy } from "../src/harnesses.ts";
+import { HARNESSES, HARNESS_IDS, HARNESS_KEYS, PARTNER_NAMED_HARNESS_IDS, directOnly, directOnlyWhy } from "../src/harnesses.ts";
 import { claudeCompactPct, HARNESS_FACTS, modelForWindow, parseTokens, resolveWindows, saveBeforeAt, versionStanding, WINDOW_DEFAULTS, windowKnobs } from "../src/harness-facts.ts";
 
 test("every harness has facts, each with evidence", () => {
@@ -61,6 +61,12 @@ test("settings: defaults, env over the file, out-of-range values named and not u
   expect(parseTokens("1m")).toBe(1_000_000);
   expect(parseTokens("-5")).toBeUndefined();
   expect(saveBeforeAt(160_000)).toBe(140_000);
+});
+
+test("D625/D637: Dim runs as a task agent, and the partner may name it", () => {
+  expect(HARNESSES.dim).toMatchObject({ task: true, partner: false, command: "dima" });
+  expect([...PARTNER_NAMED_HARNESS_IDS]).toEqual([...HARNESS_IDS]);
+  expect(PARTNER_NAMED_HARNESS_IDS).toContain("dim");
 });
 
 test("D600: Cursor, Devin CLI, Kimi Code and OpenCode are task agents with every fact checked", () => {

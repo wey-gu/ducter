@@ -80,6 +80,8 @@ export interface WsData {
   imessageOn?: string;
   /** D293: how this socket reached the home (core reads it off the upgrade request). */
   via?: import("@ducter/protocol").DeviceVia & { url?: string };
+  /** D651 (research/246): an import's stream while its chunks arrive. */
+  importBuf?: string;
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
@@ -110,6 +112,8 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
   devices?: () => DevicesView | undefined;
+  /** D651 (research/246): `ducter import`'s reader stream, appended by core's import service. */
+  imports?: (data: string) => Promise<import("@ducter/protocol").ImportAnswer>;
   /** D347: 加一台做事的电脑 / Add a computer for tasks (lend.ts); absent in tests that don't need it. */
   lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
@@ -1151,12 +1155,14 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "task_send": {
+        const target = tasks.get(f.taskId);
+        if (!target) throw new Error(`unknown task ${f.taskId}`);
+        // D651 (research/246): what another app had is read only; typing in it is a Continue.
+        if (target.imported) throw new Error(`This task was brought in from ${target.imported.app} and is read only; open it, or start a new task from it.`);
         const r = deps.runner();
         if (!r) throw new Error("runner is not available");
         const media = mediaOf(f.media);
         if (!f.text?.trim() && !media.length) throw new Error("empty message");
-        const target = tasks.get(f.taskId);
-        if (!target) throw new Error(`unknown task ${f.taskId}`);
         // Before answeredByMessage: a dropped task's question must not be answered by a message
         // the runner then refuses to deliver.
         if (target.attention === "dropped") throw new Error("That task was dropped. Undo the drop first.");
@@ -1211,6 +1217,9 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}), ...(confirm ? { confirm } : {}) });
         const card = tasks.get(f.taskId);
         if (!card) return result(false, "I can't find that task.");
+        // D651 (research/246): a task brought in from another app is read only: no action on
+        // it can make it work again (open it, or start a new task from it).
+        if (card.imported) return result(false, `This task was brought in from ${card.imported.app} and is read only; open it, or start a new task from it.`);
         const r = deps.runner();
         try {
           switch (f.action) {
@@ -2372,6 +2381,32 @@ export function createWsHandler(deps: WsDeps) {
         const r = deps.mentions ? await deps.mentions.slash(taskId) : { entries: [] };
         return send(ws, { t: "slash_list", id, ...(taskId ? { taskId } : {}), entries: r.entries, ...(r.harness ? { harness: r.harness } : {}) });
       }
+      case "import": {
+        // D651 (research/246): the reader's stream arrives in chunks and the home's own
+        // import service is the one that writes it, so every open client sees it at once.
+        if (!deps.imports) throw new Error("import is not available");
+        const id = typeof f.id === "string" ? f.id.slice(0, 64) : "";
+        if (f.op === "begin") {
+          ws.data.importBuf = "";
+          return;
+        }
+        if (f.op === "chunk") {
+          if (typeof f.data !== "string") throw new Error("an import chunk needs data");
+          const grown = (ws.data.importBuf?.length ?? 0) + f.data.length;
+          if (grown > 512 * 1024 * 1024) {
+            ws.data.importBuf = undefined;
+            send(ws, { t: "import_result", ...(id ? { id } : {}), ok: false, threads: 0, messages: 0, skipped: 0, error: "the stream is too large (over 512 MB)" });
+            return;
+          }
+          ws.data.importBuf = (ws.data.importBuf ?? "") + f.data;
+          return;
+        }
+        const data = ws.data.importBuf ?? "";
+        ws.data.importBuf = undefined;
+        const r = await deps.imports(data);
+        send(ws, { t: "import_result", ...(id ? { id } : {}), ...r });
+        return;
+      }
       case "past": {
         if (!deps.past) throw new Error("past tasks are not available");
         const query = f.query && typeof f.query === "object" ? f.query : {};
@@ -2550,6 +2585,9 @@ export function createWsHandler(deps: WsDeps) {
         const result = (ok: boolean, message?: string) => send(ws, { t: "action_result", taskId: f.taskId, action: "continue", ok, ...(message ? { message } : {}) });
         const card = tasks.get(f.taskId);
         if (!card) return result(false, "I can't find that task.");
+        // D651 (research/246): a task brought in from another app is read only: no client's
+        // Continue (a keyboard's too) can make it work again.
+        if (card.imported) return result(false, `This task was brought in from ${card.imported.app} and is read only; open it, or start a new task from it.`);
         const r = deps.runner();
         if (!r?.reopen) return result(false, noRunnerLine());
         const reopen = r.reopen.bind(r);

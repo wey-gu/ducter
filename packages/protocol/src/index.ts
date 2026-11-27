@@ -127,7 +127,32 @@ export type Place =
 // ---------- Log events ----------
 
 // "peer": another agent reaching the persona through Nowledge Bridge (design/bridge.md).
-export type Origin = "user" | "partner" | "task" | "system" | "waiter" | "schedule" | "peer";
+// "import": read from another app and copied in (ducter-import/1): never the person's own words
+// said here, never the partner's, and never woken by.
+export type Origin = "user" | "partner" | "task" | "system" | "waiter" | "schedule" | "peer" | "import";
+
+/**
+ * One thread from another app, as the import service recorded it on its task's `task_open`.
+ * The task id is deterministic (app | account | threadId), so importing again finds it. Times are
+ * the source's own: `createdAt` when the thread began, `at` when it was last worked on.
+ */
+export interface ImportedTask {
+  app: string;
+  account?: string;
+  threadId: string;
+  runId: string;
+  createdAt: string;
+  at: string;
+  /** The source's agent, when Ducter knows it (else the thread's own word stays in `agent`). */
+  agent?: string;
+  model?: string;
+  repo?: string;
+  folder?: string;
+  /** The folder it worked in isn't on this computer any more (D299's 文件夹不在了). */
+  folderGone?: boolean;
+  /** The source said it was archived; it is shown as any read-only past task. */
+  archived?: boolean;
+}
 
 export interface EvidenceRef {
   kind: "ci" | "diff" | "file" | "url" | "log" | "test";
@@ -599,6 +624,9 @@ export interface Bodies {
     // D479: the task whose work this opens again, as the partner recorded it (task_open replaces):
     // one that failed is set aside as superseded by this one.
     replaces?: string;
+    // D651 (research/246): one thread from another app, brought in read only. Absent for
+    // Ducter's own tasks. Its task id is derived from app | account | threadId, so it is stable.
+    imported?: ImportedTask;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
@@ -620,6 +648,10 @@ export interface Bodies {
     thinking?: string[]; // a stretch of the model's thinking: its headings only, never its text (D127)
     usage?: Usage; // present on turn ends
     raw?: unknown;
+    // D651 (research/246): an imported message's own time (Past, ⌘K, time words and the
+    // order use it in place of the Log's ts) and its id in the source app (dedupe on re-import).
+    at?: string;
+    importedId?: string;
   };
   report: {
     taskId: string;
@@ -1020,6 +1052,12 @@ export interface Bodies {
   // absolute paths, the computer ("local" for the home), and what went with it. Place lookups apply
   // it as a prefix mapping, so a task opened before the move still resolves to its working copy.
   folder_moved: { from: string; to: string; device: string; projects: number; worktrees: number };
+  /**
+   * D651 (research/246): one import run's ledger, on the "system" stream, origin "import".
+   * One per run. phase stopped says the stream ended early (an invalid record, or no `end`), with
+   * the line and why; threads and messages are what this run actually opened and appended.
+   */
+  import_run: { runId: string; app: string; account?: string; phase: "started" | "done" | "stopped"; threads: number; messages: number; skipped: number; line?: number; reason?: string };
 }
 
 export interface Usage {
@@ -1170,6 +1208,8 @@ export interface TaskCard {
   from?: { taskId: string; title: string; step?: number };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: string; sessionId: string; startedAt: string };
+  /** D651 (research/246): brought in from another app, read only (never Continue). */
+  imported?: ImportedTask;
   /** D325: what the person held for after this turn, in order (absent: nothing held). */
   held?: HeldMsg[];
   /** D341: the outside to-do it is bound to (待办来源), with what Ducter last saw of it there and what it wrote back. */
@@ -1545,6 +1585,10 @@ export interface MoveControl {
 }
 
 export type ClientFrame =
+  // D651 (research/246): `ducter import` hands a reader's stream to the running home in
+  // chunks (begin, chunks, end), so the home's Log is the one that writes it and every client
+  // sees the imported tasks at once. Answered with import_result (same id). --check never sends.
+  | { t: "import"; id: string; op: "begin" | "chunk" | "end"; data?: string }
   // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
   // client: what is connecting (D128: `open_task` goes to the apps, never to a CLI); absent = an app.
   // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
@@ -2130,7 +2174,25 @@ export interface AgentModels {
 /** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, a time already past or a wait with nothing to wait for (D185), or anything else (message). */
 export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "past" | "no_condition" | "ducter_data" | "failed";
 
+/** D651 (research/246): what one `ducter import` run did, for the CLI and the socket. */
+export interface ImportAnswer {
+  ok: boolean;
+  runId?: string;
+  /** Threads opened this run. */
+  threads: number;
+  /** Messages appended this run. */
+  messages: number;
+  /** Messages not brought in: the reader's skipped records, edited ones, and a partial thread. */
+  skipped: number;
+  /** The stream ended early; what came before it was kept. */
+  stopped?: { line: number; reason: string };
+  error?: string;
+  taskIds?: string[];
+}
+
 export type ServerFrame =
+  // D651 (research/246): the answer to one `ducter import` (same id).
+  | ({ t: "import_result"; id?: string } & ImportAnswer)
   // D539: the keys Ducter keeps on that computer (names, where from, when; never a value).
   | ({ t: "kept_keys"; device: string; removed?: string } & import("./key-copy.ts").KeptKeysAnswer)
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes

@@ -3016,6 +3016,15 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, called: [{ tool: "task_find" }], noSend: true, notCalled: ["task_fork"], msgs: [0, 1], maxChars: 260 },
     rubric: "Last week there were two bloom filter tasks: hawdb's false-positive rate (6 days ago, pi) and mem search's bloom filter memory (5 days ago). The user's words fit both equally. The partner looks (task_find), carries neither on and opens nothing, and asks which in one short English question naming both by what they were about (a choice each, or a decision card with two choices, is fine).",
   },
+  {
+    id: "past-imported-readonly-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    steps: [{ user: "接着上个月在 Lody 里问的京都酒店，把机票也订了" }],
+    expect: { msgs: [1, 2], maxChars: 320, called: [{ tool: "task_find" }], notCalled: ["task_send", "task_fork"] },
+    rubric: "A thread about a Kyoto hotel and flights, brought in from Lody last month, is in Past tasks read only (task_find returns imported: {app: Lody, day}). The user asks to carry it on. The partner looks it up and does NOT send to it or redo it (no task_send, no task_fork). It says in its own words that the thread was brought in from Lody and is read only, and it may recap what it found and ask what flight they want or offer a new task for the booking.",
+  },
   // ---------- D383: 给你做的 / Made for you: found again from the conversation, shown as it is ----------
   {
     id: "made-itinerary-zh",

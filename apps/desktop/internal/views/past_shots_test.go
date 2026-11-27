@@ -159,6 +159,9 @@ func pastEnglish(items []protocol.PastItem) []protocol.PastItem {
 		"t_plan":        {"Think through the v2 roadmap", "Three stages: the phone complete, then team sharing, then plugins."},
 		"t_pay":         {"Pay this quarter's building fee", "Paid ¥1,860; the receipt is in the folder."},
 		"t_raft":        {"Read Raft's membership changes again", "Notes on joint consensus and the two steps our implementation lacks."},
+		"t_imp_wal":     {"Replaying the WAL with a torn tail", ""},
+		"t_imp_kyoto":   {"Kyoto hotel and flights together", ""},
+		"t_imp_old":     {"Try the old parser", ""},
 	}
 	tags := map[string]string{"测试": "tests", "旅行": "travel", "家里": "family", "分享": "talks"}
 	hits := map[string]string{

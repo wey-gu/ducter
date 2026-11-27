@@ -2855,7 +2855,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). A task brought in from another app (imported) is read only: never send to it. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -2880,6 +2880,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // failed again). Its place is checked first, as task_open's is; one that still doesn't hold is
       // never sent: the facts come back, with the verb that opens the work again somewhere it can.
       const stuck = core.tasks.get(args.taskId);
+      // D651 (research/246): what another app had is read only: never carried on.
+      if (stuck?.imported) return { ok: false, error: `Not sent: task ${args.taskId} was brought in from ${stuck.imported.app} and is read only. Open it, or start a new task from it when the user asks for work now; say nothing that claims it went on.` };
       if (stuck?.cant && core.places && placeStuck(args.taskId)) {
         const pf = await core.places.preflight({ place: stuck.place, texts: [stuck.title], userTexts: turn?.userTexts ?? [], replaces: args.taskId });
         if (!pf.ok || !samePlace(pf.place, stuck.place)) {
@@ -3412,11 +3414,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       ...(it.steps ? { steps: it.steps } : {}),
       ...(it.hit ? { matched: `${it.hit.field}: ${it.hit.text}` } : {}),
       ...(it.from ? { from: `${it.from.step ? `redoes step ${it.from.step} of` : "carries on from"} "${it.from.title}"` } : {}),
+      // D651 (research/246): read from another app, read only; name the app when citing it.
+      ...(it.imported ? { imported: { app: it.imported.app, day: it.updatedAt.slice(0, 10) } } : {}),
     });
     tools.register(
       "partner",
       "task_find",
-      "When the user names an earlier Ducter task (\"接着上周那个 compaction 的 PR\"): finds it by their words (time words kept), best first, with where it stopped; taskId: its steps. One clear fit: act (task_send or task_fork), naming it by title and day; several alike: ask which. Never unasked.",
+      "When the user names an earlier Ducter task (\"接着上周那个 compaction 的 PR\"): finds it by their words (time words kept), best first, with where it stopped; taskId: its steps. One clear fit: act (task_send or task_fork), naming it by title and day; several alike: ask which. An imported one (imported: {app, day}, read from another app) is read only: never task_send or task_fork it; open it or start a new task from it, and name the app when you cite it. Never unasked.",
       {
         type: "object",
         properties: {
@@ -3467,7 +3471,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ok: true,
           tasks: r.items.map(brief),
           ...(r.total > r.items.length ? { more: r.total - r.items.length } : {}),
-          note: "Best first. Pick by their words. One clearly fits: act now (task_send to carry it on in its own session, branch and worktree; task_fork to redo from a step) and name it in your line by title and day. Two or more fit alike: open nothing; one short question that names each by what it was about and its day in the words themselves (\"the hawdb false positives one (Nov 13) or the mem memory one (Nov 14)?\"); a choices block may follow, each option a short name and day under 40 characters.",
+          note:
+            "Best first. Pick by their words. One clearly fits: act now (task_send to carry it on in its own session, branch and worktree; task_fork to redo from a step) and name it in your line by title and day. Two or more fit alike: open nothing; one short question that names each by what it was about and its day in the words themselves (\"the hawdb false positives one (Nov 13) or the mem memory one (Nov 14)?\"); a choices block may follow, each option a short name and day under 40 characters." +
+            (r.items.some((x) => x.imported)
+              ? " An imported task (imported: {app, day}) was read from another app and is read only: never task_send or task_fork it. Your line must say it came from the app named in imported.app and is read only; if they want work now, offer a new task from it."
+              : ""),
         };
       },
     );
@@ -3491,6 +3499,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!t || !asked()) return { ok: false, error: "Only when the user asks to redo an earlier task, in this turn." };
         const c = core.tasks.get(String(a.taskId));
         if (!c || c.persona !== core.persona.id) return { ok: false, error: `unknown task ${a.taskId}` };
+        // D651 (research/246): read only: a redo starts a new task, never this one.
+        if (c.imported) return { ok: false, error: `Not redone: task ${c.taskId} was brought in from ${c.imported.app} and is read only. Start a new task from its words when the user asks for work now.` };
         const alike = ambiguousFor(c.taskId);
         if (alike) return { ok: false, error: alike };
         const r = await redo.fork({

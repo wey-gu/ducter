@@ -56,7 +56,9 @@ export interface LogStore {
   /**
    * D327: the one exception to append-only: replaces one event's body (and its search text) with
    * what is left after the person said to forget something Ducter read from outside the
-   * conversation. Never used for the person's words or the partner's.
+   * conversation. Never used for the person's words or the partner's, except content brought in
+   * from another app (D651, research/246): said elsewhere and read from outside, it is
+   * forgotten when the person removes that source.
    */
   forgetIn?(seq: number, body: LogEvent["body"]): void;
 }

@@ -23,6 +23,8 @@ interface H {
   report: [string, string];
   state?: "done" | "failed";
   pr?: string;
+  /** D651 (research/246): read from another app, read only (no report). */
+  imported?: { app: string; threadId: string };
 }
 
 const HISTORY: H[] = [
@@ -47,6 +49,7 @@ const HISTORY: H[] = [
     ["跑一遍伙伴的评测", "Run the partner eval"],
   ].map(([zh, en], i): H => ({ key: `recent${i}`, days: 0.3 + i * 0.15, title: [zh!, en!], report: ["做完了。", "Done."] })),
   { key: "hotel", days: 9, title: ["订 12 月 6 号京都的酒店", "Book a Kyoto hotel for Dec 6"], report: ["订好了京都站旁的酒店，两晚。", "Booked a hotel by Kyoto Station, two nights."] },
+  { key: "lody_kyoto", days: 34, title: ["京都酒店和机票一起看", "Kyoto hotel and flights together"], report: ["", ""], imported: { app: "Lody", threadId: "S-8f2a" } },
 ];
 
 /** Seeds the history; the scenario's keys map to their task ids (as seeded tasks do). */
@@ -61,6 +64,15 @@ export function seedHistory(core: EvalCore, back: { ms: number }, zh: boolean): 
     at(h.days, 0);
     const place: Place = h.repo ? { kind: "repo", device: h.device ?? "local", repoPath: h.repo, worktree: `/home/fake/.ducter/worktrees/${h.key}`, branch: h.branch, baseBranch: "main" } : { kind: "browser", device: "local", profile: "default" };
     const steps = h.steps ?? [[h.title[0], h.title[1]]];
+    if (h.imported) {
+      // D651 (research/246): a thread brought in from another app, read only: no report, its
+      // own day, one task per thread, and a closing state at done.
+      const at = new Date(Date.now() - back.ms).toISOString();
+      core.log.append({ stream, origin: "import", kind: "task_open", body: { taskId, title: L(h.title), project: "", place: { kind: "none" }, harness: "codex", brief: "", imported: { app: h.imported.app, threadId: h.imported.threadId, runId: "run_eval", createdAt: at, at, agent: "codex" } } satisfies Bodies["task_open"] });
+      core.log.append({ stream, origin: "import", kind: "task_event", body: { taskId, role: "user", from: "user", text: L(steps[0]!), at, importedId: "m1" } satisfies Bodies["task_event"] });
+      core.log.append({ stream, origin: "import", kind: "task_state", body: { taskId, attention: "done", residency: "archived" } satisfies Bodies["task_state"] });
+      continue;
+    }
     core.log.append({ stream, origin: "partner", kind: "task_open", body: { taskId, title: L(h.title), project: h.repo ? h.repo.split("/").pop()! : "", place, harness: h.harness ?? "claude-code", brief: L(steps[0]!) } satisfies Bodies["task_open"] });
     for (const [i, s] of steps.entries()) {
       at(h.days, i * 40 + 5);

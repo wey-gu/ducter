@@ -43,6 +43,23 @@ export interface PastMarkPatch {
 /** Where a result was found: why this card came up for these words. */
 export type PastField = "name" | "title" | "tag" | "words" | "report" | "file" | "branch" | "project" | "agent" | "brief";
 
+/**
+ * D651 (research/246): a past task copied in from another app, read only. `app` is the pill
+ * 从 {app} 带进来的 / From {app}; `at` is the source's own last time (the card's day); `gone` says
+ * its folder isn't on this computer any more (文件夹不在了 / Folder gone).
+ */
+export interface PastImported {
+  app: string;
+  account?: string;
+  threadId: string;
+  at: string;
+  folder?: string;
+  gone?: boolean;
+}
+
+/** How a past card ended; an imported one is its own word beside Done (带进来的 / Brought in). */
+export type PastEnd = "done" | "failed" | "cancelled" | "on_hand" | "imported";
+
 /** One task as Past tasks shows it: what it was and how it ended, at a glance. */
 export interface PastItem {
   taskId: string;
@@ -75,6 +92,8 @@ export interface PastItem {
   from?: { taskId: string; title: string; step?: number };
   /** D299: carried on from a session the person ran in their own agent outside Ducter. */
   outside?: { agent: OutsideAgent; startedAt: string };
+  /** D651 (research/246): brought in from another app, read only. */
+  imported?: PastImported;
   /** D391: the agent's last words in it, one line (where it stopped, in its own voice). */
   lastWords?: string;
   /** D391: what it asks the person, while it waits on them. */
@@ -170,7 +189,7 @@ export interface PastQuery {
   /** D391: the computer it ran on, by name ("" = the home). */
   computer?: string;
   /** D391: how it ended: done, didn't work, cancelled, or still on hand (anything not finished). */
-  ended?: "done" | "failed" | "cancelled" | "on_hand";
+  ended?: "done" | "failed" | "cancelled" | "on_hand" | "imported";
   /** ISO dates (inclusive start, exclusive end), on when it was last worked on. */
   since?: string;
   before?: string;

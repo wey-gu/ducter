@@ -406,7 +406,7 @@ export function createPast(d: PastDeps): Past {
       const doc = docOf(b.taskId);
       if (b.role === "user" && b.from === "user" && b.text) doc.words.push(b.text);
       // D391: each later message to it is a step (the person's, or the partner's for them).
-      if (b.role === "user" && (b.from === "user" || b.from === "partner") && b.text && doc.steps.length < STEPS_CAP) doc.steps.push({ seq: e.seq, at: e.ts, who: b.from === "user" ? "you" : "partner", text: b.text });
+      if (b.role === "user" && (b.from === "user" || b.from === "partner") && b.text && doc.steps.length < STEPS_CAP) doc.steps.push({ seq: e.seq, at: b.at ?? e.ts, who: b.from === "user" ? "you" : "partner", text: b.text });
       if (b.role === "assistant" && b.text?.trim()) {
         const line = firstLine(b.text);
         doc.last = line;
@@ -460,6 +460,20 @@ export function createPast(d: PastDeps): Past {
       ...(mark ? { mark } : {}),
       ...(from && fromCard ? { from: { taskId: from, title: d.marks.get(fromCard.persona, from)?.name ?? fromCard.title, ...((doc?.fromStep ?? c.from?.step) ? { step: doc?.fromStep ?? c.from!.step! } : {}) } } : {}),
       ...(c.outside && (OUTSIDE_AGENTS as readonly string[]).includes(c.outside.agent) ? { outside: { agent: c.outside.agent as OutsideAgent, startedAt: c.outside.startedAt } } : {}),
+      // D651 (research/246): brought in from another app, read only; its own day, its app
+      // and (when the folder is no longer here) Folder gone.
+      ...(c.imported
+        ? {
+            imported: {
+              app: c.imported.app,
+              ...(c.imported.account ? { account: c.imported.account } : {}),
+              threadId: c.imported.threadId,
+              at: c.imported.at,
+              ...(c.imported.folder ? { folder: c.imported.folder } : {}),
+              ...(c.imported.folderGone ? { gone: true as const } : {}),
+            },
+          }
+        : {}),
       // D391: where it stopped, in its own words, and what it asks while it waits on the person.
       ...(doc?.last && doc.last !== outcome ? { lastWords: doc.last } : {}),
       ...(c.pendingDecision?.question && (c.attention === "needs_you" || c.attention === "blocked") ? { asking: firstLine(c.pendingDecision.question, 240) } : {}),
@@ -478,6 +492,8 @@ export function createPast(d: PastDeps): Past {
     failed: (a) => a === "failed",
     cancelled: (a) => a === "dropped",
     on_hand: (a) => ACTIVE.has(a),
+    // D651 (research/246): brought in, its own ending; the card's word says so.
+    imported: (a) => a === "done",
   };
 
   /** The fields of one task, lowercased, in the order a hit is reported. */
@@ -491,7 +507,7 @@ export function createPast(d: PastDeps): Past {
     out.push(["project", `${c.project} ${"repoPath" in c.place ? c.place.repoPath : "path" in c.place ? (c.place as { path: string }).path : ""}`.toLowerCase()]);
     if (doc?.files.length) out.push(["file", doc.files.join("\n").toLowerCase()]);
     if (doc?.words.length) out.push(["words", doc.words.join("\n").toLowerCase()]);
-    out.push(["agent", `${c.harness} ${harnessName(c.harness)} ${c.model ?? ""} ${it.computer ?? ""}`.toLowerCase()]);
+    out.push(["agent", `${c.harness} ${harnessName(c.harness)} ${c.model ?? ""} ${c.imported?.app ?? ""} ${it.computer ?? ""}`.toLowerCase()]);
     if (doc?.reports.length) out.push(["report", doc.reports.join("\n").toLowerCase()]);
     if (doc?.brief) out.push(["brief", doc.brief.toLowerCase()]);
     if (doc?.said) out.push(["report", doc.said.toLowerCase()]);
@@ -540,7 +556,12 @@ export function createPast(d: PastDeps): Past {
       const pn = new Map<string, number>();
       const hn = new Map<string, number>();
       const cn = new Map<string, number>();
-      for (const c of all) pn.set(c.project, (pn.get(c.project) ?? 0) + 1), hn.set(c.harness, (hn.get(c.harness) ?? 0) + 1), cn.set(computerOf(c), (cn.get(computerOf(c)) ?? 0) + 1);
+      for (const c of all) {
+        pn.set(c.project, (pn.get(c.project) ?? 0) + 1);
+        // An imported thread whose app didn't name an agent Ducter knows has no agent chip.
+        if (c.harness) hn.set(c.harness, (hn.get(c.harness) ?? 0) + 1);
+        cn.set(computerOf(c), (cn.get(computerOf(c)) ?? 0) + 1);
+      }
       facets.projects = [...pn].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
       facets.harnesses = [...hn].map(([harness, n]) => ({ harness, n })).sort((a, b) => b.n - a.n);
       facets.computers = [...cn].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
@@ -555,7 +576,7 @@ export function createPast(d: PastDeps): Past {
         if (q.project !== undefined && q.project !== null && c.project !== q.project) continue;
         if (q.harness && c.harness !== q.harness) continue;
         if (typeof q.computer === "string" && computerOf(c).toLowerCase() !== q.computer.trim().toLowerCase()) continue;
-        if (q.ended && ENDED[q.ended] && !ENDED[q.ended](c.attention)) continue;
+        if (q.ended === "imported" ? !c.imported : q.ended && ENDED[q.ended] && !ENDED[q.ended](c.attention)) continue;
         const it = itemOf(c);
         if (q.starred && !it.mark?.starred) continue;
         if (q.tag && !it.mark?.tags?.includes(cleanTag(q.tag))) continue;

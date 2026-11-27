@@ -902,12 +902,16 @@ export const OPEN_TASKS_MAX = 20;
 export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup" | "keptBy">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
   const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
+  // D651 (research/246): what another app had is never listed here (it is read only, and
+  // task_find is how it is reached); the count below says it is one task_find away.
+  const earlier = cards.filter((c) => c.imported);
+  const own = cards.filter((c) => !c.imported);
   // Those that need the user first, then the most recently moved.
   const rank = (c: TaskCard) => (c.attention === "needs_you" || c.attention === "blocked" ? 0 : 1);
-  const allOpen = cards.filter((c) => ACTIVE.has(c.attention));
+  const allOpen = own.filter((c) => ACTIVE.has(c.attention));
   const open = allOpen.length > OPEN_TASKS_MAX ? [...allOpen].sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, OPEN_TASKS_MAX) : allOpen;
   const hidden = allOpen.length - open.length;
-  const closed = cards
+  const closed = own
     .filter((c) => !ACTIVE.has(c.attention))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, maxDone);
@@ -932,10 +936,11 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
   if (closed.length) {
     out.push("Recently finished:");
     out.push(...closed.map(line));
-    // D391: everything older is one task_find away.
-    const older = cards.length - allOpen.length - closed.length;
-    if (older > 0) out.push(`- (${older} earlier tasks not listed; task_find finds one by the user's words)`);
   }
+  // D391: everything older is one task_find away. D651 (research/246): imported threads are
+  // never listed, but they are counted here among them.
+  const older = earlier.length + (own.length - allOpen.length - closed.length);
+  if (older > 0) out.push(`- (${older} earlier tasks not listed; task_find finds one by the user's words)`);
   return out.join("\n");
 }
 

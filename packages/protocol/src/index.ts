@@ -466,6 +466,12 @@ export interface Bodies {
     forApp?: AppAnswer; // D405: the card answers an app's ask (something outward it asked for waits for this Go)
     unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
     loop?: { taskId: string; move?: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now; D429: with move (a device id), Go runs it on that awake computer instead
+    // D650: a Keep's own ask (no task): it stalled (结束 / 再看 6 轮 / 改结束条件) or Ducter paused it
+    // (a budget, a sign-in). Go is the first choice, Hold the second; the Keep's page is the third.
+    keep?: { id: string; title: string; ask: "stall" | "paused" };
+    // D650 (B11): a routine paused by Ducter because the month's budget is used: Go raises the cap,
+    // Hold leaves it paused. `monthTokens` is the cap the question asks about.
+    budget?: { monthTokens: number };
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     checkout?: CheckoutAsk; // D436: 去付款 / Go to checkout: the person pays in the live view; Go = 付好了 / I've paid, no default
@@ -1466,6 +1472,10 @@ export interface RoutineBody {
   reports: "every" | "on_change" | "needs_you"; // digests the user asked for are "every"
   effect: "read_only" | "drafts" | "local_writes"; // anything beyond it becomes a question
   budget: { perRunTokens?: number; monthTokens: number }; // perRun: 2x the first run's, once known
+  /** D650: the first run's real cost was said once, with the default month (20M). */
+  budgetSaid?: string;
+  /** D650: the budget pause was asked once; a restart does not ask again (cleared on a resume). */
+  budgetAsked?: string;
   state: "proposed" | "active" | "paused" | "ended" | "dismissed";
   decisionId?: string; // its proposal card
   createdAt: string;

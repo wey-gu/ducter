@@ -804,7 +804,12 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
 	a.doorCard(c, card, "d:"+d.DecisionID) // D535
 	card.Children(func() {
-		if d.Asker != nil {
+		// D650: a Keep's own ask names the Keep and links to its page (a question stands alone).
+		if d.Keep != nil {
+			if a.quietButton(c, "keepask:"+d.Keep.ID, d.Keep.Title, d.Keep.Title, true, 1) {
+				a.openKeep(d.Keep.ID)
+			}
+		} else if d.Asker != nil {
 			// X1 (D170): the agent's coin and who it is stand where a task's title would.
 			a.peerAskerRow(c, d.Asker)
 		} else {

@@ -277,8 +277,15 @@ helper my agents hand PRs to, and watch them until they can merge". Your partner
 and puts a card under it: when it runs, when it tells you, until when, and **Open**, **Edit**, **Undo**.
 
 Each one is a card under **Looking after**. Its lantern is lit while it is on and dim while paused.
-The tasks at work on it are listed under it; one that needs you (a question, a pull request ready to
-merge) is under **Needs you** instead, with its name, and the card only says how many wait.
+Its head says when it ends, how many rounds it has run and how long it has been going ("#11230 merges, round 5, running for 40 minutes"); when your words gave no end it says **No end was given**, and
+**Change the end** on its page is where you add one. The tasks at work on it are listed under it;
+one that needs you (a question, a pull request ready to merge) is under **Needs you** instead, with
+its name, and the card only says how many wait.
+
+When nothing has changed for six rounds, it asks once under **Needs you**: **End** (the default
+after a day), **Six more rounds**, or **Change the end**. A pause Ducter itself makes — the month's
+usage is used up — is the same kind of ask, in words and with the number ("This month's usage is
+used up (20M). Raise it?"), never a code.
 
 Tap a card to open its page: what you said, what waits for you (answered right there), what it holds
 (each pull request with its own title and checks), every round (newest first, each in one plain line
@@ -286,7 +293,7 @@ of what happened; **Details** shows what the task reported; the quiet ones fold 
 and **How it runs**. To go back to the whole list, tap **Tasks** at the top (or press Esc); when
 you leave Tasks and come back, it opens on the whole list again. Type what to change in the box under the rounds ("make it every hour", "tell me
 under ¥1,800"), or use **Pause** (an hour, until tomorrow morning, a week, or until you resume),
-**Run now**, and, last, **End**, which asks once and ends it for good. To change one rule yourself, tap it under **How it runs**. A round never ends it: only you, or the goal you gave it.
+**Run now**, and, last, **End**, which asks once and ends it for good. To change one rule yourself, tap it under **How it runs**. A round never ends it by itself: it ends when the end you gave it can be read and holds, or when you end it. "Stop looking" ends it; **Pause** is only for a while.
 
 To give a helper one more piece of work, say so: "hand mem#11393 to the PR Babysitter: review it, /lgtm if it's fine". Your tasks can hand it work too, once their pull request is ready. When a task handed it over, that task keeps one quiet line under its last report: 交给 {helper}，等它接手, then {helper} 接手了, then what came of it. The helper's page groups what it holds in one card: 等接手 first, then 在做, then 退回了 or 没接. A 等接手 row has 让它现在接 and 不用跟了; after 不用跟了, the sending task's line says 不用 {helper} 跟了. It shows up there as soon as one of its tasks takes it, and only then does your partner say the helper is on it; until then it says the work is handed over and waiting to be taken. If nothing takes it within ten minutes, your partner says so once and offers to do it directly. Handing the same item over again adds what is new to that one piece of work; it never becomes two. If the helper can't take it, the reason goes back to whoever handed it over, where it came from. Something you add from now on ("the Babysitter owns each PR to the end") reaches the work the helper already holds, at once.
 

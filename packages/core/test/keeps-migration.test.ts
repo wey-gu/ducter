@@ -23,8 +23,9 @@ const asked: string[] = [];
 const fakeEnd: KeepEndAsk = async (w) => {
   asked.push(w.title);
   if (w.title === "Watch the nightly hawdb build") throw new Error("the model timed out");
-  if (/babysitter/i.test(w.title)) return { until: "每个 PR 跟到能合并为止" };
-  return {};
+  // D650: a helper's end is per piece ("每个 PR 跟到能合并"), never one end of the whole Keep.
+  if (/babysitter/i.test(w.title)) return { none: true };
+  return { none: true };
 };
 
 function boot(dir: string, roundAsk?: KeepRoundAsk) {
@@ -83,16 +84,17 @@ describe("D511: the migration on start", () => {
     expect(byFrom("helper", "docs-proofreader")).toMatchObject({ life: "stopped" });
     // Its end, read once by the (fake) cheap model from the person's words and recorded as its judgment.
     await Bun.sleep(30);
-    expect(keeps.get(byFrom("helper", "nowledge-mem-pr-babysitter")!.keepId)).toMatchObject({ until: "每个 PR 跟到能合并为止", end: { said: "until" } });
+    expect(keeps.get(byFrom("helper", "nowledge-mem-pr-babysitter")!.keepId)).toMatchObject({ end: { said: "none" } });
+    expect(keeps.get(byFrom("helper", "nowledge-mem-pr-babysitter")!.keepId)!.until).toBeUndefined();
     // Their words give no end: recorded as none, and the page says 没有终点.
     expect(keeps.get(byFrom("routine", "rt_weekly")!.keepId)).toMatchObject({ end: { said: "none" } });
     expect(keeps.get(byFrom("routine", "rt_weekly")!.keepId)!.until).toBeUndefined();
     expect(keeps.sheets("default").find((x) => x.title === "周报")!.noEnd).toBe(true);
-    // The model failed: recorded, nothing said under 做到什么时候 (neither a goal nor 没有终点).
+    // D650: the model failed; the head still says 没有说什么时候结束, never guessing an end.
     const failed = keeps.sheets("default").find((x) => x.title === "Watch the nightly hawdb build")!;
     expect(keeps.get(failed.id)!.end?.said).toBe("failed");
     expect(failed.until).toBeUndefined();
-    expect(failed.noEnd).toBeUndefined();
+    expect(failed.noEnd).toBe(true);
     // A goal the person stated (the fare's, D427's loop) is never asked about; an ended Keep neither.
     expect(asked).not.toContain("Docs proofreader");
     const askedFirst = asked.length;
@@ -117,7 +119,8 @@ describe("D511: the migration on start", () => {
       ["time", "asked", "上一轮：2 个有新提交已复审，7 个没变；2 份评审草稿等你看。", undefined],
       ["first", "silent", "第一轮：9 个请求在等你，7 个没变。", undefined],
     ]);
-    expect(review.line).toBeUndefined();
+    // D650 (B9): no model line was read here, so the newest round's own report's first sentence is the line.
+    expect(review.line).toEqual({ at: review.rounds[0]!.at, text: "没有新的请求。" });
     const weekly = keeps.page(byFrom("routine", "rt_weekly")!.keepId)!;
     expect(weekly.rounds.map((r) => [r.spoke, r.report])).toEqual([
       ["told", "周报草稿写好了：9 个 PR 合并。"],
@@ -314,7 +317,9 @@ describe("D519: a Keep's page says what happened, to the person", () => {
     ]);
     expect(page.rounds).toHaveLength(6);
     expect(page.rounds.slice(3).every((r) => r.did?.startsWith("读过："))).toBe(true);
-    expect(page.line?.text).toBe("发布端的授权已用上，例行检查照旧");
+    // D650 (B9): the newest round is a silent wake with no report, so the head has no line; it is
+    // never the older round's line, which is how a card read 22 hours old on hel.
+    expect(page.line).toBeUndefined();
     expect(page.lines).toBe(4);
     // What it holds: the PR, titled as itself; never the loop's own task under the Keep's title.
     expect(page.items.map((x) => [x.title, x.pr])).toEqual([["fix(release): sign the macOS build in CI", "nowledge-co/mem#11024"]]);

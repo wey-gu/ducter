@@ -22446,6 +22446,16 @@ html[data-text-size="large"] .brand-mark > svg {
   color: var(--needs-ink);
   font-weight: 600;
 }
+.kp-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.kp-tally .e {
+  color: var(--ink-soft);
+}
 .kp-line {
   font-size: var(--sm);
   color: var(--ink-soft);

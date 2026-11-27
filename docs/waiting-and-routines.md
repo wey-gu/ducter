@@ -54,10 +54,18 @@ round"): that round does it first, and the review is on GitHub when it's done. O
 its card also says where your requests stand, like "8 requests wait on you: 3 had new commits and
 are reviewed again, 5 unchanged".
 
-Something that runs in rounds keeps going until you say stop. A round that finishes, a round that
+Something that runs in rounds keeps going until it ends. A round that finishes, a round that
 fails, a restart or an update never ends it; if its next round goes missing, Ducter brings it
-back by itself. Only you end it: **End** on its card, or say "stop the review loop". If you gave
-it an end ("until #10473 merges"), it stops there.
+back by itself. It ends when the end you gave it can be read and holds ("until #10473 merges" ends
+the minute the pull request merges, with one quiet line), or when you end it: **End** on its card,
+or say "stop the review loop". "Stop looking" is an end, never a pause; **Pause** is only for a
+while. A rule you gave ("only Tide batch-merges") is a rule, not an end.
+
+If the end you gave is something only a person can judge, or you gave none, Ducter does not
+pretend: after six rounds with nothing new it asks once under **Needs you**, with **End** (the
+default after a day), **Six more rounds** and **Change the end**. A round that says the whole
+thing is done asks the same question once. When something Ducter cannot test keeps it from
+running — the month's usage is used up — that pause is also an ask, in words and with the number.
 
 In Past tasks › Looking after each card says how it is keeping its time, and only when it isn't:
 **1 h late: Ada's MacBook Pro is asleep; it catches up as soon as it wakes**, **Its last 3 rounds

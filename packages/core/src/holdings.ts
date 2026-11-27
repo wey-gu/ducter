@@ -119,6 +119,8 @@ export function createHoldings(o: {
   handoffs: Pick<Handoffs, "all" | "open" | "observeGithub">;
   waiters: Waiters;
   loops?: Loops;
+  /** D650: a Keep whose end is this ref ends at once, from the fact Ducter already read. */
+  keeps?: () => { endByLook(ref: string, state: "merged" | "closed"): number } | undefined;
   /** One read-only look where a task works (work.look); no task: this home. */
   look: (spec: CheckSpec, taskId: string) => Promise<CheckResult>;
   clock?: Clock;
@@ -219,6 +221,8 @@ export function createHoldings(o: {
     busy.add(key(r));
     let changed = false;
     try {
+      // D650: a Keep whose testable end is this ref ends the minute the fact is read.
+      if (o.keeps?.()?.endByLook(r.ref, state)) changed = true;
       // The hand-off records: D628's own settle, for every record about this ref.
       for (const h of o.handoffs.open()) {
         if (h.item.kind !== r.kind || h.item.ref.toLowerCase() !== r.ref) continue;

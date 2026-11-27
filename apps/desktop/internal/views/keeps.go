@@ -65,6 +65,13 @@ func (a *App) openKeep(id string) {
 	a.Route = RouteOnHand
 }
 
+// openKeepEdit opens a Keep's page with one rule's editor already open (D650:
+// the stall ask's 改结束条件 / Change the end goes straight to Until).
+func (a *App) openKeepEdit(id, field string) {
+	a.openKeep(id)
+	a.oh.keep.edit.open = field
+}
+
 func (a *App) closeKeep() { a.oh.keep = keepState{} }
 
 // keepOfTask is the Keep whose own work a task is (a Keep in rounds: its
@@ -145,6 +152,18 @@ type keepFact struct {
 	needs bool
 }
 
+// keepFactParts keeps two facts apart whether the source joined them with a dot
+// or a comma (D291): the clock and its zone are two elements, never one line.
+func keepFactParts(s string) []string {
+	var out []string
+	for _, p := range strings.Split(strings.ReplaceAll(s, ", ", " \u00b7 "), " \u00b7 ") {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // keepFacts are a Keep's facts, each its own element: what it holds, what
 // waits, its rhythm, a short goal.
 func (a *App) keepFacts(k *protocol.KeepSheet) []keepFact {
@@ -173,13 +192,56 @@ func (a *App) keepFacts(k *protocol.KeepSheet) []keepFact {
 	if k.EveryMs > 0 {
 		out = append(out, keepFact{text: a.L.T("keep.every", a.rhythm(time.Duration(k.EveryMs)*time.Millisecond))})
 	} else if k.Cadence != "" {
-		out = append(out, keepFact{text: k.Cadence})
+		// D650 (D291): the clock and the zone are two facts, never one dot-joined line.
+		for _, part := range keepFactParts(k.Cadence) {
+			out = append(out, keepFact{text: part})
+		}
 	}
 	if k.Reviews != nil && k.Reviews.Waiting > 0 {
 		out = append(out, keepFact{text: a.L.T("keep.reviews", k.Reviews.Waiting)})
 	}
-	if k.Until != "" && len([]rune(k.Until)) <= 24 {
-		out = append(out, keepFact{text: k.Until})
+	return out
+}
+
+// keepEndWords is a Keep's end as its head says it (D650): a testable sentence
+// or that their words gave none. Never a rule, never an older round's words.
+func (a *App) keepEndWords(k *protocol.KeepSheet) string {
+	if k.End != nil && k.End.Sentence != "" {
+		return k.End.Sentence
+	}
+	if k.NoEnd {
+		return a.L.T("keep.end.none")
+	}
+	return ""
+}
+
+// keepAge is how long it has run, in the person's words ("40 分钟" / "40 min").
+func (a *App) keepAge(since string) string {
+	d := a.Now().Sub(store.ParseTime(since))
+	if d < 0 {
+		d = 0
+	}
+	switch {
+	case d >= 36*time.Hour:
+		return a.L.T("keep.age.day", int(d.Hours()/24+0.5))
+	case d >= time.Hour:
+		return a.L.T("keep.age.hour", int(d.Hours()))
+	}
+	return a.L.T("keep.age.min", int(d.Minutes()))
+}
+
+// keepTally is the head's three facts (D650): when it ends, how many rounds,
+// how long it has run; each its own element, never a " · " join.
+func (a *App) keepTally(k *protocol.KeepSheet) []string {
+	var out []string
+	if s := a.keepEndWords(k); s != "" {
+		out = append(out, s)
+	}
+	if k.RoundsRun > 0 {
+		out = append(out, a.L.T("keep.rounds.n", k.RoundsRun))
+	}
+	if s := a.keepAge(k.Since); s != "" {
+		out = append(out, a.L.T("keep.age", s))
 	}
 	return out
 }
@@ -189,6 +251,9 @@ func (a *App) keepFacts(k *protocol.KeepSheet) []keepFact {
 func (a *App) keepLine(k *protocol.KeepSheet) string {
 	if k.Health != nil {
 		return strings.Join(a.ongoingHealthLine(k.Health), "")
+	}
+	if k.PausedWhy != "" {
+		return k.PausedWhy
 	}
 	if k.Run == "perItem" || k.Line == nil {
 		return ""
@@ -288,6 +353,17 @@ func (a *App) keepSheet(c *ui.Context, k *protocol.KeepSheet, w float32) {
 							if f.needs {
 								e.TextColor(t.NeedsYou.Ink).FontWeight(600)
 							}
+						}
+					})
+				}
+				if tally := a.keepTally(k); len(tally) > 0 {
+					ui.Row(c.Key("tally")).Gap(t.S3).Wrap().Children(func() {
+						for i, x := range tally {
+							ink := t.InkMuted
+							if i == 0 && k.End != nil {
+								ink = t.InkSoft // the end reads as a fact about it, not as another label
+							}
+							uiText(c.Key(fmt.Sprint("t", i)), x).FontSize(t.SM).LineHeight(1.45).TextColor(ink)
 						}
 					})
 				}
@@ -551,6 +627,13 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 				a.tag(c, "life", a.L.T("keep.life."+k.Life), life)
 				if k.Asks > 0 {
 					a.tag(c, "asks", a.L.T("keep.asks", k.Asks), tagNeeds)
+				}
+				// D650: the head says its end and its rounds beside since.
+				if e := a.keepEndWords(&k.KeepSheet); e != "" {
+					a.tag(c, "end", e, tagPlain)
+				}
+				if k.RoundsRun > 0 {
+					a.tag(c, "rounds", a.L.T("keep.rounds.n", k.RoundsRun), tagPlain)
 				}
 				a.tag(c, "since", a.L.T("keep.since", a.when(store.ParseTime(k.Since))), tagPlain)
 				if k.Run == "perItem" && k.Week > 0 {

@@ -164,9 +164,11 @@ your yes on that computer), but are not listed in Past tasks yet.
 
 ## Looking after: pause, resume, run now
 
-Each card in **看守中 / Looking after** says when it runs next and shows its recent runs as small
-pebbles: green for done, red for didn't work, yellow for "looked, nothing yet", an outline for
-skipped. Tap a pebble to open that run.
+Each card in **看守中 / Looking after** says when it ends, how many rounds it has run and how
+long it has been going, says when it runs next, and shows its recent runs as small pebbles: green
+for done, red for didn't work, yellow for "looked, nothing yet", an outline for skipped. Tap a
+pebble to open that run. When nothing has changed for six rounds it asks once under **Needs you**:
+**End** (the default after a day), **Six more rounds**, or **Change the end**.
 
 - **暂停 / Pause:** for an hour, until tomorrow morning, for a week, or until you resume it. It
   comes back by itself at that time. Pausing a task that keeps looking keeps exactly what it was

@@ -45,6 +45,8 @@ export interface Owned {
   standing(taskId: string): string;
   /** One look at every owned PR now (tests; the timer otherwise). */
   sweep(): Promise<void>;
+  /** D650 (B10): this task reviewed these PRs; they are never its own (nor a reason to keep waiting). */
+  reviewed(taskId: string, refs: string[]): void;
   stop(): void;
 }
 
@@ -136,6 +138,17 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   const owns = new Map<string, Map<string, OwnedSeen>>(); // taskId -> pr -> what was told
   const gitRefs = new Map<string, Set<string>>(); // taskId -> its own checkpointed commits
   const pending = new Map<string, Map<string, string[]>>(); // taskId -> pr -> other tasks' lines not yet told
+  // D650 (B10): PRs this task reviewed; they are never its own (a review is not an ownership).
+  const reviewedBy = new Map<string, Set<string>>();
+  const noteReviewed = (taskId: string, refs: string[]) => {
+    const s = reviewedBy.get(taskId) ?? new Set<string>();
+    for (const r of refs) {
+      const pr = prIdentity(r);
+      if (pr) s.add(pr);
+    }
+    if (s.size) reviewedBy.set(taskId, s);
+  };
+  const isReviewed = (taskId: string, pr: string) => reviewedBy.get(taskId)?.has(pr) ?? false;
   let stopped = false;
   let running: Promise<void> | undefined;
   const wordsOf = (taskId: string) => words(W, langOfText(tasks.get(taskId)?.title));
@@ -144,11 +157,14 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   const declare = (taskId: string, refs: string[] | undefined, at: string, from?: OwnedSeen["from"]) => {
     for (const r of refs ?? []) {
       const pr = prIdentity(r);
-      if (!pr) continue;
+      if (!pr || isReviewed(taskId, pr)) continue;
       const m = owns.get(taskId) ?? new Map<string, OwnedSeen>();
-      if (!m.has(pr)) {
-        m.set(pr, { since: at, ...(from ? { from } : {}) });
-        fresh = true;
+      // D650 (B10): a PR it reviewed is never its own, even when its report or a checkpoint names it.
+      if (!m.has(pr) || !m.get(pr)!.letGo) {
+        if (!m.has(pr)) {
+          m.set(pr, { since: at, ...(from ? { from } : {}) });
+          fresh = true;
+        }
       }
       owns.set(taskId, m);
     }
@@ -175,6 +191,13 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   };
   const ownCommit = (taskId: string, sha: string) => [...(gitRefs.get(taskId) ?? [])].some((r) => sha.toLowerCase().startsWith(r) || r.startsWith(sha.toLowerCase()));
 
+  // D650 (B10): what each task reviewed, from its own review_report calls (the structured input,
+  // never its words). Read once on start; `reviewed()` keeps it current.
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_event"] })) {
+    const b = e.body as Bodies["task_event"];
+    const prs = b.tool && /(^|__)review_report$/.test(b.tool.name) ? (b.tool.input as { prs?: { ref?: unknown }[] } | undefined)?.prs : undefined;
+    if (Array.isArray(prs)) noteReviewed(b.taskId, prs.map((x) => String(x?.ref ?? "")));
+  }
   for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["checkpoint", "owned_news", "report", "job_status"] })) {
     if (e.kind === "report" || e.kind === "job_status") adopt(e);
     else if (e.kind === "checkpoint") {
@@ -446,6 +469,22 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
   };
   timer = clock.setTimeout(tick, o.everyMs ?? OWNED_EVERY_MS);
 
+  /** D650 (B10): a reviewed PR is never the reviewer's own (hel: #419 was counted as the 403 task's PR). */
+  function reviewed(taskId: string, refs: string[]) {
+    for (const r of refs) {
+      const pr = prIdentity(r);
+      if (!pr) continue;
+      noteReviewed(taskId, [r]);
+      const m = owns.get(taskId) ?? new Map<string, OwnedSeen>();
+      if (m.get(pr)?.letGo) continue; // already let go; no second record
+      const seen = { ...(m.get(pr) ?? { since: new Date(clock.now()).toISOString() }), letGo: { why: "unneeded" as const, at: new Date(clock.now()).toISOString() } };
+      m.set(pr, seen);
+      owns.set(taskId, m);
+      pending.get(taskId)?.delete(pr);
+      log.append({ stream: `task:${taskId}`, origin: "system", kind: "owned_news", body: { taskId, pr, news: [], seen } });
+    }
+  }
+
   return {
     standing: (taskId) =>
       [...(owns.get(taskId)?.entries() ?? [])]
@@ -457,6 +496,7 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
         .filter(Boolean)
         .join("\n\n"),
     of: (taskId) => [...(owns.get(taskId)?.entries() ?? [])].filter(([, s]) => (!s.state || s.state === "open") && !s.letGo).map(([pr]) => pr),
+    reviewed,
     all: () =>
       [...owns]
         .map(([taskId, m]) => {

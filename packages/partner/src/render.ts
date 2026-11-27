@@ -247,6 +247,8 @@ export interface RenderCtx {
   /** D259: the whole text of a short text file the user sent (≤ FILE_INLINE_CHARS), else undefined. */
   fileText?(m: MediaRef): string | undefined;
   taskTitle(taskId: string): string | undefined;
+  /** The person's own words last sent into a task (the same reading fresh-look uses). */
+  taskWords?(taskId: string): string | undefined;
   /** D473: why a task couldn't start, and the fixes core found (a rethink names them). */
   taskCant?(taskId: string): CantStart | undefined;
   /** D477: the facts a hand-over carries: the person's recorded word on where, the task's agent and where it ran, what the agent did before it stopped. */
@@ -520,6 +522,15 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "source_seen": {
       // D341: new to-dos in a source the user wants told, or taken under their standing go.
       const b = e.body as Bodies["source_seen"];
+      if (b.change === "closed" && b.item) {
+        // research/244 §5.3: code guards the facts; the partner judges whether stopping still matters.
+        const app = b.item.kind === "obsidian" ? "Obsidian" : b.item.kind === "github" ? "GitHub" : "its app";
+        const where = b.item.kind === "github" ? `${b.item.where}${b.item.label}` : `"${clip(b.item.title, 120)}"`;
+        const task = b.taskId ? (ctx.taskTitle(b.taskId) ?? b.taskId) : "";
+        const words = b.taskId ? ctx.taskWords?.(b.taskId) : undefined;
+        const by = b.item.closedBy ? ` by ${b.item.closedBy}` : "";
+        return `[to-do closed] ${where} in ${app} ("${clip(b.item.title, 120)}") was closed there${by}. Its task "${task}" (${b.taskId ?? "?"}) is still running. The person's latest words about that task: ${words ? `"${clip(words, 300)}"` : "none"}. This is a fact, not an instruction. Judge it: if their own words already answer it (for example they just said to continue), or this was the task's own write-back or a merged PR of its own, say nothing and ask nothing. If stopping still matters, ask once, naming the task by its title; Go = stop it, Hold = carry on. If it no longer matters, say nothing.`;
+      }
       const items = (b.items ?? []).slice(0, 8).map((i) => `${i.kind === "github" ? `${i.where}${i.label}` : `${i.ref}`} "${clip(i.title, 100)}"`).join("; ");
       const app = b.items?.[0]?.kind === "obsidian" ? "Obsidian" : "GitHub";
       if (b.taken) return `[to-dos: new in ${app}, standing go] ${items}. The user lets these start without asking: for each, todos do=take with its ref, then task_open it. Say nothing before; the acks say it.`;

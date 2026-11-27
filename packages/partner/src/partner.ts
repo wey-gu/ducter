@@ -212,6 +212,8 @@ interface TurnState {
   askedId?: string; // the last decision it made this turn
   sheet?: boolean; // D215: that card is a call sheet: its one plain line ("I can't call there yet") is kept
   quiet?: boolean; // woken only by task questions: the partner says each in its own words (D129)
+  /** research/244 §5.2: woken only by Ducter's own local traffic: act, and say nothing to the person. */
+  internal?: boolean;
   relayed?: boolean; // a task question was said this turn
   results?: number; // done reports in this turn (several = one combined message)
   lang: LangTag | undefined; // D292: the language the user reads, when known (any language)
@@ -950,6 +952,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     trusted: (agent) => !!core.settings?.get().peers?.trusted.includes(agent),
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    // research/244 §5.3: the person's latest words about a task, for a closed to-do's fact.
+    taskWords: (id) => {
+      const evs = core.log.read({ stream: `task:${id}`, kinds: ["task_event"], beforeSeq: core.log.head() + 1, limit: 2000 });
+      for (let i = evs.length - 1; i >= 0; i--) {
+        const b = evs[i]!.body as Bodies["task_event"];
+        if (b.role === "user" && b.from === "user" && b.text?.trim()) return b.text.trim();
+      }
+      return undefined;
+    },
     // D473: why a task couldn't start and the fixes core found, for a rethink.
     taskCant: (id) => core.tasks.get(id)?.cant,
     // D477: the facts a hand-over carries (render.ts MendFacts): recorded, counted, never inferred here.
@@ -1118,6 +1129,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const appendAiMsg = (text: string, decisionId?: string, mark?: string) => {
     const raw = text.trim();
     if (!raw) return;
+    // research/244 §5.2: Ducter talking to itself is not conversation. A turn woken only by its
+    // own local traffic acts (opens the helper's task) and writes no line of its own.
+    if (!decisionId && turn?.internal) return;
     // Said already in the cut-off turn this one redoes: once is enough.
     if (turn?.carried && turn.carried.said.delete(raw)) return;
     // D570 (live, hel: "好，授权码出来了我马上给你。" twice, 0.8 s apart): the correction turn's call took
@@ -1376,6 +1390,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
+    // research/244 §5.2: no ack line for Ducter's own local traffic (its task cards say it opened).
+    if (t.internal) {
+      t.acked = true;
+      return { jobId };
+    }
     const e = core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: parseRich(text.trim(), userLang()).text, replyTo: replyToFor(t) } });
     t.acked = true;
     (t.saidLines ??= new Set()).add(text.trim()); // D570
@@ -2116,9 +2135,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // A turn woken only by task questions: its words become each question's words (D129), and
     // anything more is dropped (eval: a second line restated it in 4 of 4 runs).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
+    // research/244 §5.2: a turn woken only by Ducter's own partner/task/helper traffic is not a
+    // conversation turn: it may open the helper's task, but it never acks the person.
+    const internal = batch.length > 0 && batch.every((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).local);
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (core.noticedSources) core.noticedSources.links = core.noticedSources.whys = undefined; // D388: only a noticed call of this turn counts
-    turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, results, recalls: 0, noted: [], early: [] };
+    turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, internal, results, recalls: 0, noted: [], early: [] };
     const day = [...batch].reverse().find((e) => e.kind === "day_after");
     if (day) turn.dayAfter = { items: (day.body as Bodies["day_after"]).items };
     // D640 (#254): a report that becomes a question's card carries its files on that card
@@ -4847,7 +4869,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // task that handed it (at work or waiting on it; a finished one only has it in its transcript).
     if (kind === "reply" && base.inReplyTo?.startsWith(LOCAL_MSG)) {
       const orig = bridgeIn(base.inReplyTo);
-      const op = { ...base, opId: base.opId ?? newId("bo") };
+      const op = { ...base, local: true as const, ...(orig?.fromTask ? { fromTask: orig.fromTask } : {}), opId: base.opId ?? newId("bo") };
       logOut(op, "sending");
       if (orig?.fromTask) {
         const helperName = (base.helper && core.helpers?.get(base.helper)?.name) || base.to || "helper";
@@ -5273,7 +5295,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const store = core.handoffs;
     if (!store) return { ok: false, error: "Hand-offs aren't available on this home right now." };
     const clean = redactSecrets(text);
-    const r = store.giveLocal({ helper: h, text: clean, fromTask: card.taskId, fromTaskTitle: card.title, fromName: core.persona.name || "Ducter", head: relayHead(core.persona.name || "Ducter", card.title, clean), ...(card.persona ? { persona: card.persona } : {}) });
+    const r = store.giveLocal({ helper: h, text: clean, fromTask: card.taskId, fromTaskTitle: card.title, fromName: card.title || core.persona.name || "Ducter", head: relayHead(core.persona.name || "Ducter", card.title, clean), ...(card.persona ? { persona: card.persona } : {}) });
     const record = r.handoff;
     if (!r.created) {
       const lastTask = record.taskId ? core.tasks.get(record.taskId) : undefined;

@@ -150,9 +150,14 @@ The set card is never pinned (D381 keeps partner-made lists only).
 - **一起过目 / Review together:** when every part of a group is done (done_claimed or merged), its
   card offers it. The sheet lists each part: its PR, checks (**检查都过了 / Checks passed**, **1 项没过
   / 1 check failed**), size, its result line, and the comment it will leave (**会留一句 / Will
-  comment**, **不留这条 / Not this one**). **在这 n 个下面留言 / Comment on these n** is the Go for all of
-  them: one decision (D359's close sheet's pattern), each comment a `source_write` in 替你做过的; the
-  already-fixed ones also close; the rest close when their PR merges. The per-task write-back cards of
+  comment**, **不留这条 / Not this one**). **A comment that says an item is fixed names the PR that
+  fixed that item, per item, from the task's own report and bindings, and only once GitHub says that
+  PR is merged** (the same read-only state reader D633's holdings pass uses, research/244 rule 9). An
+  item with no merged PR of its own gets no "fixed" line: it is left out of the card with the true
+  reason (its PR is open, was closed without merging, or is unknown). The card names every item it
+  will comment on and the exact text each gets. **在这 n 个下面留言 / Comment on these n** is the Go for
+  those comments only: one decision (D359's close sheet's pattern), each comment a `source_write` in
+  替你做过的; the already-fixed ones also close; the rest close when their PR merges. The per-task write-back cards of
   D341 are not raised for a group's parts while the group is under way.
 
 ## 7. Mechanics (as designed; §9 is what was built)

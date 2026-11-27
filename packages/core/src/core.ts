@@ -332,7 +332,7 @@ export interface CoreOptions {
   /** D345 test seam: puts gh on the home (default: Homebrew or GitHub's own build; tests: none). */
   ghInstaller?: GhInstaller;
   /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
-  taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">> & { /** D359: the model the pile sorts and pre-reads with (tests, demos: a fake). */ ask?: import("./task-sources/pile.ts").Ask };
+  taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">> & { /** D359: the model the pile sorts and pre-reads with (tests, demos: a fake). */ ask?: import("./task-sources/pile.ts").Ask; /** A review's PR state read (tests: a fake; the home: D633's holdings reader). */ prState?: import("./task-sources/handover.ts").HandoverDeps["prState"] };
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
   models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -541,9 +541,9 @@ export function triggersPartner(e: LogEvent): boolean {
     return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
   }
   // D341: new to-dos in a source the person wants told (or taken under the standing go); a write
-  // they said Go to that didn't go through. A closed or edited to-do is told to its task and asked
-  // on its own card, so it doesn't wake the partner.
-  if (e.kind === "source_seen") return (e.body as Bodies["source_seen"]).change === "new";
+  // they said Go to that didn't go through. A to-do closed by someone else while its task runs is a
+  // fact the partner judges (research/244 §5.3); one already handled or a finished task logs none.
+  if (e.kind === "source_seen") return (e.body as Bodies["source_seen"]).change === "new" || (e.body as Bodies["source_seen"]).change === "closed";
   if (e.kind === "source_write") {
     const w = e.body as Bodies["source_write"];
     return w.state === "failed" && w.by === "go";
@@ -577,7 +577,14 @@ export function triggersPartner(e: LogEvent): boolean {
   // D473: a failure Ducter couldn't mend by itself goes to the partner to rethink, with what was tried.
   if (e.kind === "mend") return (e.body as Bodies["mend"]).rung === "rethink";
   // An incoming Bridge message wakes the partner, unless it was set aside or predates Bridge (D170).
-  if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;
+  // Ducter's own traffic is not conversation (research/244 §5.2): a helper's reply in a local
+  // hand-off thread wakes nobody. A local hand-off itself still wakes the partner to open the
+  // helper's task, but that turn says nothing to the person (partner.ts's `internal` turn).
+  if (e.kind === "bridge_msg") {
+    const b = e.body as Bodies["bridge_msg"];
+    if (b.direction !== "in" || b.state) return false;
+    return !(b.local && b.inReplyTo);
+  }
   // The second switch the same way: the partner offers a rule once (loadout.ts).
   if (isRuleHint(e)) return true;
   // D193: a call that ended on its own (not the owner's hang-up or Not now) is said once.
@@ -1952,7 +1959,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D540: a one-off ask while a round is under way reaches it now.
     tell: (taskId, text) => (runner ? runner.send(taskId, text, undefined, "partner").then(() => true) : Promise.resolve(false)),
     // D609: keep_change hand is one door, through the one record (never a second arrival for the same item).
-    hand: ({ helper, text }) => handoffs.giveLocal({ helper, text, fromName: langNow().startsWith("zh") ? "你" : "you", ...(persona.id ? { persona: persona.id } : {}) }),
+    hand: ({ helper, text }) => handoffs.giveLocal({ helper, text, fromName: persona.name, ...(persona.id ? { persona: persona.id } : {}) }),
   }));
   let keepSync = false;
   const syncKeeps = () => {
@@ -2812,6 +2819,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       newTasks: () => settings.get().newTasks,
       // D395: the one resolver task_open uses, so the sheet's Where and the tasks it opens agree with it.
       repoWhere: (a) => repoWhere.resolve(a) as Promise<import("./task-sources/handover.ts").RepoWhereAnswer>,
+      // D633's reader: a review's "fixed" comment is only made for a PR GitHub says merged.
+      prState: (ref) => opts.taskSources?.prState?.(ref) ?? holdings.readPr(ref),
       addRule: (r) => void rules.add(r),
       open: async (input) => {
         if (!runner) throw new Error("Tasks can't run right now.");
@@ -2935,7 +2944,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       const helper = helpersRef?.get(k.from.helperId);
       if (!helper) return { taken: false, handed: false };
       const head = fill(w.head, { name: persona.name, title });
-      const r = handoffs.giveLocal({ helper, text, fromTask: item.taskId, fromTaskTitle: title, fromName: persona.name, head, item: { kind: "pr", ref: item.pr, title: item.pr }, ...(k.persona ? { persona: k.persona } : {}) });
+      const r = handoffs.giveLocal({ helper, text, fromTask: item.taskId, fromTaskTitle: title, fromName: title || persona.name, head, item: { kind: "pr", ref: item.pr, title: item.pr }, ...(k.persona ? { persona: k.persona } : {}) });
       const taken = r.handoff.state === "taken" || r.handoff.state === "done";
       return { taken, handed: true };
     }

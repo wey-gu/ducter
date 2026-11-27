@@ -50,6 +50,10 @@ const W = {
     fixedIn: "已在 {where} 修好。",
     doneIn: "已在 {pr} 修好。",
     done: "做完了。",
+    notMerged: "还没修好：{pr} 还开着，先不留言。",
+    notMergedClosed: "{pr} 关掉了，没有合并，先不留言。",
+    notConfirmed: "还没确认 {pr} 合并了没有，先不留言。",
+    noPr: "还没看到它的 PR，先不留言。",
     oneTitle: "{title} 等 {n} 个",
     sep: "、",
     commentQ: "先在这 {n} 个下面留一句，再开始？",
@@ -74,6 +78,10 @@ const W = {
     fixedIn: "This was fixed in {where}. Closing.",
     doneIn: "Fixed in {pr}.",
     done: "Done.",
+    notMerged: "Not fixed yet: {pr} is still open, so nothing is said on it.",
+    notMergedClosed: "{pr} was closed without merging, so nothing is said on it.",
+    notConfirmed: "It isn't known whether {pr} merged, so nothing is said on it.",
+    noPr: "No PR for it is known yet, so nothing is said on it.",
     oneTitle: "{title} and {n} more",
     sep: ", ",
     commentQ: "Comment on these {n} first, then start?",
@@ -133,6 +141,11 @@ export interface HandoverDeps {
   commentAllowed?: (ref: string) => { id: string; text: string } | undefined;
   /** A PR's checks (GitHub's), when they can be read. */
   checks?: (prRef: string) => Promise<ReviewRow["checks"]>;
+  /**
+   * D633: a PR's true state, read from GitHub by the same reader the holdings pass uses. A
+   * "fixed" comment is only made for a PR this says is merged; absent or unknown: no claim.
+   */
+  prState?: (prRef: string) => Promise<"open" | "merged" | "closed" | undefined>;
   /** D428: the person's GitHub login (我 / me in a find), when a GitHub source reads. */
   me?: () => string | undefined;
   changed: () => void;
@@ -1266,6 +1279,56 @@ export function createHandover(d: HandoverDeps): Handover {
     const m = /github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)/.exec(url);
     return m ? `${m[1]}#${m[2]}` : undefined;
   };
+  /** A PR address as the to-do's own repo writes it: "#n" there, its address elsewhere. */
+  const prWords = (p: { url?: string; label: string }, item?: SourceItemRef) => {
+    const n = (p.url ? /\/pull\/(\d+)/.exec(p.url)?.[1] : undefined) ?? /#(\d+)/.exec(p.label)?.[1];
+    if (n && p.url && item?.where && new RegExp(`github\\.com/${item.where.replace(/[.]/g, "\\.")}/pull/(\\d+)`, "i").test(p.url)) return `#${n}`;
+    return p.url ?? (n ? `#${n}` : p.label);
+  };
+  /** The PR a task's own report, branches or bindings name, with the ref the reader can look up. */
+  const prCandidates = (c: TaskCard): { url?: string; label: string; ref?: string; known?: "open" | "merged" | "closed" }[] => {
+    const out: { url?: string; label: string; ref?: string; known?: "open" | "merged" | "closed" }[] = [];
+    const add = (url?: string, label?: string, known?: "open" | "merged" | "closed") => {
+      const ref = url ? prRef(url) : label && /#(\d+)/.test(label) && label.includes("/") ? label.toLowerCase() : undefined;
+      const key = ref ?? url ?? "";
+      if (!key || out.some((x) => (x.ref ?? x.url ?? "") === key)) return;
+      const n = url ? /\/pull\/(\d+)/.exec(url)?.[1] : label && /#(\d+)/.exec(label)?.[1];
+      out.push({ ...(url ? { url } : {}), label: label ?? (n ? `PR #${n}` : "PR"), ...(ref ? { ref } : {}), ...(known ? { known } : {}) });
+    };
+    for (const p of c.prs ?? []) {
+      const n = /\/pull\/(\d+)/.exec(p.url)?.[1];
+      add(p.url, n ? `PR #${n}` : "PR", p.state);
+    }
+    if (c.integrated?.act === "open_pr" && c.integrated.ref) add(c.integrated.ref);
+    for (const e of c.lastReport?.evidence ?? []) if (/\/pull\/\d+/.test(String(e.ref ?? ""))) add(String(e.ref));
+    if (c.handoff?.item.kind === "pr") {
+      const m = /^([\w.-]+\/[\w.-]+)#(\d+)$/.exec(c.handoff.item.ref);
+      if (m) add(`https://github.com/${m[1]}/pull/${m[2]}`, `PR #${m[2]}`);
+    }
+    return out;
+  };
+  const prStateOf = async (p: { ref?: string; url?: string; known?: "open" | "merged" | "closed" }) => {
+    const ref = p.ref ?? (p.url ? prRef(p.url) : undefined);
+    const read = ref ? await d.prState?.(ref).catch(() => undefined) : undefined;
+    return read ?? p.known;
+  };
+  /** The first PR this task's own record names that GitHub says is merged. */
+  const mergedPrOf = async (c: TaskCard) => {
+    for (const p of prCandidates(c)) {
+      if (!p.ref) continue;
+      if ((await prStateOf(p)) === "merged") return p;
+    }
+    return undefined;
+  };
+  /** The true line for a PR that is not merged: open, closed without merging, or unknown. */
+  const notFixedWords = (lang: Lang, p: { url?: string; label: string }, state: "open" | "merged" | "closed" | undefined, item?: SourceItemRef) =>
+    fill(state === "open" ? W[lang].notMerged : state === "closed" ? W[lang].notMergedClosed : W[lang].notConfirmed, { pr: prWords(p, item) });
+  const planFixedRef = (it: SourceItemRef, where: string) => {
+    const n = /(?:pull\/|#)(\d+)/.exec(where)?.[1];
+    if (!n) return undefined;
+    const repo = it.where ?? /([\w.-]+\/[\w.-]+)#\d+/.exec(where)?.[1];
+    return repo ? `${repo}#${n}` : undefined;
+  };
 
   async function review(groupId: string): Promise<GroupReview | undefined> {
     const g = groups()?.get(groupId);
@@ -1281,10 +1344,32 @@ export function createHandover(d: HandoverDeps): Handover {
       const refs = parts[m.taskId] ?? (c.source ? [c.source.ref] : []);
       const its = refs.map((r) => itemsBy.get(r)).filter((i): i is SourceItemRef => !!i);
       if (!its.length) continue;
-      const pr = prOf(c);
+      // Rule: a "fixed" comment names the PR that fixed THIS item, and only once GitHub says it
+      // merged. The task's own merged PR is read from the task's own report, branches and bindings.
+      const merged = await mergedPrOf(c);
+      const pr = merged ?? prOf(c);
+      const displayState = pr && !merged ? await prStateOf(pr) : undefined;
       const checks = pr?.url && d.checks ? await d.checks(prRef(pr.url) ?? "").catch(() => undefined) : undefined;
       const result = c.lastReport?.summary?.split(/\n/)[0]?.slice(0, 200);
       const l = langOfItem(its[0]!);
+      const github = its.some((i) => i.kind === "github");
+      let comment: string;
+      let mergedFlag = false;
+      let why: string | undefined;
+      if (merged) {
+        comment = fill(W[l].doneIn, { pr: prWords(merged, its[0]) });
+        mergedFlag = true;
+      } else if (!github) {
+        // No PR is part of an errand's own record; "done" is the true line for it.
+        comment = W[l].done;
+        mergedFlag = true;
+      } else if (pr) {
+        comment = notFixedWords(l, pr, displayState, its[0]);
+        why = comment;
+      } else {
+        comment = W[l].noPr;
+        why = comment;
+      }
       rows.push({
         taskId: c.taskId,
         items: its,
@@ -1292,24 +1377,39 @@ export function createHandover(d: HandoverDeps): Handover {
         ...(checks ? { checks } : {}),
         ...(c.changes ? { size: { added: c.changes.adds, removed: c.changes.dels } } : {}),
         ...(result ? { result } : {}),
-        // A PR in the to-do's own repository is "#n" there (GitHub links it); elsewhere its address.
-        comment: pr ? fill(W[l].doneIn, { pr: pr.url && its[0]!.where && new RegExp(`github\\.com/${its[0]!.where.replace(/[.]/g, "\\.")}/pull/(\\d+)`, "i").test(pr.url) ? `#${/\/pull\/(\d+)/.exec(pr.url)![1]}` : (pr.url ?? pr.label) }) : W[l].done,
+        comment,
         close: false,
+        merged: mergedFlag,
+        ...(why ? { why } : {}),
       });
     }
     for (const f of hv.fixed ?? []) {
       const it = itemsBy.get(f.ref);
       if (!it) continue;
-      rows.push({ items: [it], fixedIn: f.where, comment: f.comment || fill(W[langOfItem(it)].fixedIn, { where: f.where }), close: true });
+      const ref = planFixedRef(it, f.where);
+      const state = ref ? await prStateOf({ ref }) : undefined;
+      const merged = state === "merged";
+      const l = langOfItem(it);
+      const gone = state === "merged" ? undefined : notFixedWords(l, { label: f.where }, state, it);
+      rows.push({
+        items: [it],
+        ...(merged ? { fixedIn: f.where } : {}),
+        comment: merged ? f.comment || fill(W[l].fixedIn, { where: f.where }) : gone!,
+        close: merged,
+        merged,
+        ...(gone ? { why: gone } : {}),
+      });
     }
-    return { groupId, name: g.name, rows, prs: rows.filter((r) => r.pr).length, fixed: rows.filter((r) => r.fixedIn).length };
+    return { groupId, name: g.name, rows, prs: rows.filter((r) => r.pr).length, fixed: rows.filter((r) => r.fixedIn && r.merged !== false).length };
   }
 
   async function reviewSend(groupId: string, keep: string[]) {
     const r = await review(groupId);
     if (!r) return { ok: false, done: 0, failed: 0, error: "That group isn't there any more." };
     const k = new Set(keep);
-    const out = r.rows.flatMap((row) => row.items.filter((i) => k.has(i.ref)).map((i) => ({ item: i, text: row.comment, close: row.close, taskId: row.taskId })));
+    // Only a line whose PR is merged goes out: an item with no merged PR of its own is never
+    // called fixed. Its row stays in the review with the true words and the reason.
+    const out = r.rows.flatMap((row) => (row.merged === false ? [] : row.items.filter((i) => k.has(i.ref)).map((i) => ({ item: i, text: row.comment, close: row.close, taskId: row.taskId }))));
     if (!out.length) return { ok: false, done: 0, failed: 0, error: "Nothing is kept to send." };
     const lang = d.lang();
     const w = W[lang];

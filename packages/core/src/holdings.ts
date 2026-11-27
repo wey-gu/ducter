@@ -27,7 +27,7 @@ const REF = /^([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#(\d+)$/;
 
 type Check = (spec: CheckSpec, w: { taskId?: string }) => Promise<CheckResult>;
 type Kind = "pr" | "issue";
-type State = "open" | "merged" | "closed";
+export type State = "open" | "merged" | "closed";
 interface Ref {
   ref: string;
   kind: Kind;
@@ -46,6 +46,8 @@ export interface Holdings {
   started: Promise<void>;
   /** D628: the line a task hears when it wakes after a hand-off's ref ended. */
   noteFor(taskId: string, lang: LangTag): string | undefined;
+  /** The PR's true state from the same read-only reader this pass uses (a review's "fixed" comment). */
+  readPr(ref: string): Promise<State | undefined>;
   stop(): void;
 }
 
@@ -390,6 +392,10 @@ export function createHoldings(o: {
       if (!h) return undefined;
       const w = words(NOTE, lang);
       return (h.settledBy === "merged" ? w.merged : w.closed).replaceAll("{item}", h.item.title?.trim() || h.item.ref).replaceAll("{helper}", h.to.name);
+    },
+    readPr(ref) {
+      const m = REF.exec(ref.trim().toLowerCase());
+      return m ? read({ ref: m[0], kind: "pr" }) : Promise.resolve(undefined);
     },
     stop() {
       stopped = true;

@@ -175,3 +175,16 @@ func TestD296PeersTrustSaid(t *testing.T) {
 		}
 	}
 }
+
+// research/244 §5.2: Ducter's own local traffic is no line and no origin.
+func TestD470LocalTrafficIsNotConversation(t *testing.T) {
+	if !peerInConversation(&protocol.BridgeMsg{}) || peerInConversation(&protocol.BridgeMsg{Local: true}) {
+		t.Fatal("local traffic must not be a conversation line")
+	}
+	es := d470Feed()
+	es[7].Peer.Local = true
+	hidden, origin := spokenPeers(es, func(string) bool { return false })
+	if len(hidden) != 0 || len(origin) != 0 {
+		t.Fatalf("local traffic drew hidden %v origin %v", hidden, origin)
+	}
+}

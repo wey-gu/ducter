@@ -312,6 +312,13 @@ export interface ReviewRow {
   /** The line each of its to-dos gets (in the to-do's own language), and whether it also closes. */
   comment: string;
   close: boolean;
+  /**
+   * The PR that fixed these items is merged (read from GitHub), so its "fixed" comment is true.
+   * Absent on rows from before this rule; false: no fixed comment is sent.
+   */
+  merged?: boolean;
+  /** Why an item gets no fixed comment (no merged PR of its own), in the to-do's language. */
+  why?: string;
 }
 
 export interface GroupReview {

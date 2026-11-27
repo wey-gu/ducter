@@ -32,6 +32,9 @@ const MEM: [number, string, string[]?][] = [
   [405, "Retry a failed automatic distillation once?"],
   [366, "长对话的自动提炼总是失败"],
   [290, "Distillation as a tool loop"],
+  [11115, "Fix the settings card's focus ring"],
+  [11108, "Fix the settings card's label"],
+  [11156, "Fix the settings card's scroll"],
 ];
 
 function issues(): FakeIssue[] {
@@ -67,7 +70,7 @@ function fakeAsk(calls: { finds: number }): Ask {
 
 /** D395: the author's computers: a server home with no clone, a Mac worker that has it (or none, and the Mac can read it). */
 type Where = { macHas?: string; macReads?: boolean };
-function boot(where?: Where) {
+function boot(where?: Where, prs?: Record<string, "open" | "merged" | "closed">) {
   const t = tempDir();
   const gh = fakeGh(issues(), { login: "lin-dev" });
   const calls = { finds: 0 };
@@ -101,7 +104,7 @@ function boot(where?: Where) {
         } as never),
     homeRepos: () => (where ? { folder: "/root/ducter", repos: [] } : { folder: "/Users/lin/ducter", repos: [{ path: "/Users/lin/dev/mem", name: "mem", remote: "github.com/acme/mem", touchedAt: "2026-11-18T00:00:00Z" }] }),
     ...(where ? { platform: "linux", homeClones: async () => ({ clones: [], canRead: false }) } : {}),
-    taskSources: { ghRun: gh.run, ghEnv: {}, home: join(t.dir, "home"), pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-19", now: () => clock, ask: fakeAsk(calls) },
+    taskSources: { ghRun: gh.run, ghEnv: {}, home: join(t.dir, "home"), pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-19", now: () => clock, ask: fakeAsk(calls), prState: async (ref: string) => prs?.[ref.toLowerCase()] ?? "merged" },
   });
   stops.push(t.cleanup, () => core.stop());
   core.settings.set({ language: "zh" });
@@ -359,6 +362,45 @@ test("plan first: a read-only lead part; its typed plan becomes a card (no defau
   expect(b.gh.comments.length).toBe(keep.length);
   expect(b.gh.closes.map((c) => c.number)).toEqual([351]);
   expect(g().hand?.review).toBe("sent");
+});
+
+test("review together: a fixed comment names each item's own merged PR; an open PR gets no fixed line and is not sent", async () => {
+  // hel's shape (research/244 rule 9, seq 83456): three issues, one PR still open (#11230), another
+  // merged (#11163) covering two of them. The old card said "Fixed in #11230." on all three.
+  const b = boot(undefined, { "acme/mem#11230": "open", "acme/mem#11163": "merged" });
+  await sorted(b);
+  const refs = ["acme/mem#11115", "acme/mem#11108", "acme/mem#11156"];
+  const r = await b.ho.hand({ refs, shape: "one_by_one" });
+  await b.ho.idle();
+  const g = () => b.core.taskGroups.get(r.groupId!)!;
+  report(b, "t1", "done", "设置卡的焦点环好了，PR 开着等评审。", "https://github.com/acme/mem/pull/11230");
+  await until(() => b.opened.length === 2);
+  report(b, "t2", "done", "标签修好了，和 #11156 一起合的。", "https://github.com/acme/mem/pull/11163");
+  await until(() => b.opened.length === 3);
+  report(b, "t3", "done", "滚动也好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => g().hand?.review === "ready");
+  const rev = (await b.ho.review(r.groupId!))!;
+  const open = rev.rows.find((x) => x.items.some((i) => i.ref === "acme/mem#11115"))!;
+  // The open PR's row says what is true and is never called fixed.
+  expect(open.merged).toBe(false);
+  expect(open.comment).not.toContain("Fixed in");
+  expect(open.comment).toContain("#11230");
+  const fixed = rev.rows.filter((x) => x.merged);
+  expect(fixed.flatMap((x) => x.items.map((i) => i.ref))).toEqual(["acme/mem#11108", "acme/mem#11156"]);
+  for (const row of fixed) expect(row.comment).toBe("Fixed in #11163.");
+  // One Go sends only the two true comments; the open one is left out with its reason.
+  const sent = await b.ho.reviewSend(r.groupId!, refs);
+  expect(sent).toMatchObject({ ok: true, done: 2, failed: 0 });
+  expect(b.gh.comments.map((c) => c.body)).toHaveLength(2);
+  for (const c of b.gh.comments) {
+    expect(c.body).toContain("Fixed in #11163.");
+    expect(c.body).not.toContain("#11230");
+  }
+  // The card names every item it comments on, and the exact words for each.
+  const card = decisions(b).find((d) => d.src?.kind === "group_review")!;
+  expect(card.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#11108", "acme/mem#11156"]);
+  expect(card.src!.items!.map((x) => x.text)).toEqual(["Fixed in #11163.", "Fixed in #11163."]);
+  expect(card.question).toBe("在这 2 个下面留言？");
 });
 
 test("plan first: Hold keeps it waiting; a reply goes to the plan's own task, which plans again in place", async () => {

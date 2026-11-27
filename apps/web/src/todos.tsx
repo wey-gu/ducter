@@ -686,6 +686,11 @@ export function TodoPick(p: { picked?: SourceItemRef; onPick: (it: SourceItem | 
   );
 }
 
+/** research/244 rule 9: each item the review will comment on, and the exact line it gets. */
+export function groupReviewLines(src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]>): { ref: string; title: string; text: string }[] {
+  return (src.items ?? []).map(({ item, text }) => ({ ref: item.ref, title: item.title, text: text ?? "" }));
+}
+
 /** The write-back card's body: the comment whole, as it goes out, and whether it closes too. */
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
@@ -731,7 +736,32 @@ export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/proto
           </blockquote>
         </>
       )}
-      {(src.kind === "group_review" || src.kind === "batch") && src.items && src.items.length > 1 && <small class="muted">{t("ho.batch.n", src.items.length)}</small>}
+      {/* research/244 rule 9: every item it will comment on, and the exact line each one gets. */}
+      {src.kind === "group_review" && src.items && (
+        <div class="src-review-lines">
+          <small class="muted">{t("ho.review.says")}</small>
+          <ul class="src-reviews">
+            {groupReviewLines(src).map(({ ref, title, text }) => (
+              <li key={ref} class="src-review src-review-detail">
+                <div class="grow">
+                  <div class="src-review-head">
+                    <SourceChip src={(src.items ?? []).find((x) => x.item.ref === ref)!.item} small states={false} />
+                    <span class="src-review-title" dir="auto">
+                      {title}
+                    </span>
+                  </div>
+                  {text && (
+                    <blockquote class="src-quote" dir="auto">
+                      {text}
+                    </blockquote>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {src.kind === "batch" && src.items && src.items.length > 1 && <small class="muted">{t("ho.batch.n", src.items.length)}</small>}
       {/* D394: a review task's round: each drafted review opens as its PR's pre-read. */}
       {src.kind === "reviews" && src.items && (
         <>

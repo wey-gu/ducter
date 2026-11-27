@@ -95,6 +95,8 @@ test("a hand-over group's state: planning, waiting for a look, held, going, revi
 test("review together sends every to-do of the rows not left out; the set card carries its own ticks", () => {
   const row = (refs: string[]) => ({ items: refs.map((ref) => ({ source: "s", kind: "github" as const, ref, label: ref.slice(ref.indexOf("#")), title: ref })), comment: "x", close: false });
   expect(reviewKeep([row(["a#1", "a#2"]), row(["a#3"]), row(["a#4"])], new Set([1]))).toEqual(["a#1", "a#2", "a#4"]);
+  // research/244 rule 9: a row with no merged PR of its own is never sent.
+  expect(reviewKeep([{ ...row(["a#5"]), merged: false }, { ...row(["a#6"]), merged: true }], new Set())).toEqual(["a#6"]);
   const own = new Map<string, Set<string>>();
   expect([...setTicks("s1", ["a", "b"], own)]).toEqual(["a", "b"]);
   own.set("s1", new Set(["b"]));
@@ -117,4 +119,15 @@ test("the note placeholders fit one short line at 320 in both languages (D638)",
   // The link's words are still a link (the placeholder is its own key, never the link's).
   expect(handoverWords.zh["ho.item.note"]).toBe("给这个的话…");
   expect(handoverWords.en["ho.item.note"]).toBe("A note for this one…");
+});
+
+// research/244 rule 9: the review card names every item it will comment on, with the exact line each gets.
+test("group review card lines: item, title and the exact comment per item", async () => {
+  const { groupReviewLines } = await import("../src/todos.tsx");
+  const item = (n: number, title: string) => ({ source: "s", kind: "github" as const, ref: `acme/mem#${n}`, label: `#${n}`, where: "acme/mem", title });
+  const src = { kind: "group_review" as const, item: item(11108, "设置卡的标签"), items: [{ item: item(11108, "设置卡的标签"), text: "Fixed in #11163." }, { item: item(11156, "设置卡的滚动"), text: "Fixed in #11163." }] };
+  expect(groupReviewLines(src)).toEqual([
+    { ref: "acme/mem#11108", title: "设置卡的标签", text: "Fixed in #11163." },
+    { ref: "acme/mem#11156", title: "设置卡的滚动", text: "Fixed in #11163." },
+  ]);
 });

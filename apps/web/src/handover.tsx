@@ -1636,7 +1636,7 @@ export function ReviewSheet({ groupId }: { groupId: string }) {
                             {row.result}
                           </span>
                         )}
-                        {!off && (
+                        {!off && row.merged !== false && (
                           <span class="pile-says">
                             <span class="pile-says-label">{t("ho.review.says")}</span>
                             <q class="pile-says-text" dir="auto">
@@ -1644,8 +1644,13 @@ export function ReviewSheet({ groupId }: { groupId: string }) {
                             </q>
                           </span>
                         )}
+                        {row.merged === false && row.why && (
+                          <span class="pile-why" dir="auto">
+                            {row.why}
+                          </span>
+                        )}
                       </span>
-                      <Btn kind={off ? "text" : "secondary"} size="sm" label={off ? t("ho.review.keep") : t("ho.review.drop")} about={row.items[0]!.title} onClick={() => (off ? HR.dropped.delete(i) : HR.dropped.add(i), A.changed())} />
+                      {row.merged !== false && <Btn kind={off ? "text" : "secondary"} size="sm" label={off ? t("ho.review.keep") : t("ho.review.drop")} about={row.items[0]!.title} onClick={() => (off ? HR.dropped.delete(i) : HR.dropped.add(i), A.changed())} />}
                     </div>
                   );
                 })}

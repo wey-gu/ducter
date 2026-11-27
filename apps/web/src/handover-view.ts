@@ -109,7 +109,8 @@ export const handNeeds = (g: TaskGroupView) => {
 
 /** Review together: the refs a Go sends (every to-do of a row not left out), and its counts. */
 export function reviewKeep(rows: ReviewRow[], dropped: Set<number>): string[] {
-  return rows.flatMap((r, i) => (dropped.has(i) ? [] : r.items.map((x) => x.ref)));
+  // research/244 rule 9: only a row whose PR really merged has a line to send.
+  return rows.flatMap((r, i) => (dropped.has(i) || r.merged === false ? [] : r.items.map((x) => x.ref)));
 }
 
 /** The set card: the ticks it carries into the sheet (the card's own, else the set's default). */

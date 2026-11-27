@@ -14,6 +14,7 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // D385: handing several over on the Mac: the frames decode as the home
@@ -649,6 +650,26 @@ func TestHandoverShots(t *testing.T) {
 				app.rv.dropped[rowKey(memReview(lang).Rows[2])] = true
 				save(tt, "51-review-sheet", lang, dark)
 			}
+		}
+	}
+}
+
+// research/244 rule 9: the review card names every item it will comment on and the exact line each gets.
+func TestGroupReviewCardNamesEveryItem(t *testing.T) {
+	app, _, _ := handApp(t, i18n.ZH, 1000, 800, "")
+	d := &store.DecisionState{Decision: protocol.Decision{DecisionID: "d_gr", Question: "在这 2 个下面留言？", Src: &protocol.SourceAsk{
+		Kind: "group_review", Item: ghRef(11108, "设置卡的标签"),
+		Items: []protocol.SourceAskItem{
+			{Item: ghRef(11108, "设置卡的标签"), Text: "已在 #11163 修好。"},
+			{Item: ghRef(11156, "设置卡的滚动"), Text: "已在 #11163 修好。"},
+		},
+	}}}
+	tt := ui.NewTesterWith(func(c *ui.Context) { a := app; ui.Column(c).Children(func() { a.todoAskBody(c, d) }) }, 900, 500, ui.TesterOptions{})
+	tt.Frame()
+	all := strings.Join(tt.Texts(), " | ")
+	for _, want := range []string{"会留一句", "#11108", "设置卡的标签", "#11156", "设置卡的滚动", "已在 #11163 修好。"} {
+		if !strings.Contains(all, want) {
+			t.Fatalf("missing %q in %s", want, all)
 		}
 	}
 }

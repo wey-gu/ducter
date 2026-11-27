@@ -670,12 +670,15 @@ export function trustOf(th: Pick<Thread, "agent" | "mine">, peers: Pick<PeersSet
   return peers?.trusted.includes(th.agent) ? "trusted" : "own";
 }
 
+/** research/244 §5.2: Ducter's own partner/task/helper traffic is never a conversation line. */
+export const peerInConversation = (b: { local?: boolean }): boolean => !b.local;
+
 /**
  * D470: the conversation's request lines the partner's own next words already say: an incoming request
  * (no card asked for it) followed by the partner's message before the person's next word. Its line gives
  * way to one quiet origin line over that message (the seq of the message, mapped to the request's body).
  */
-export function spokenPeers<B extends { direction: "in" | "out"; state?: string; messageId?: string }>(
+export function spokenPeers<B extends { direction: "in" | "out"; state?: string; messageId?: string; local?: boolean }>(
   channel: readonly { ev: { seq: number }; peer?: B; ai?: unknown; user?: unknown }[],
   asked: (messageId: string) => boolean,
 ): { hidden: Set<number>; origin: Map<number, B> } {
@@ -683,7 +686,7 @@ export function spokenPeers<B extends { direction: "in" | "out"; state?: string;
   const origin = new Map<number, B>();
   for (let i = 0; i < channel.length; i++) {
     const p = channel[i]!.peer;
-    if (!p || p.direction !== "in" || p.state || (p.messageId && asked(p.messageId))) continue;
+    if (!p || !peerInConversation(p) || p.direction !== "in" || p.state || (p.messageId && asked(p.messageId))) continue;
     for (let j = i + 1; j < channel.length; j++) {
       const n = channel[j]!;
       if (n.user) break;

@@ -1442,3 +1442,9 @@ Flip, Razr, Magic V Flip, Find N Flip, MIX Flip) open into a phone and stay one.
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain
   git with no LFS (D64); raw generations stay in the concept-art canvas. Labels are always live UI text, never
   baked into art.
+- **The tab and the app tile (D641):** one master, `design/art/assets/alpha/ducter_idle.png`.
+  The tab icon is the character alone on true transparency at 88% of the square (16/32/48 in an
+  `.ico`, plus named 32/48 PNGs) so a browser tab never shows a tile; the app tile, apple-touch
+  icon and manifest `any` icons stay opaque cream with the character at 65%; the `maskable` tiles
+  put the character at 60%, inside Android's middle-80% safe zone. `tools/art/icons.py` makes every
+  size from the master; an SVG is not used because the clay art is raster.

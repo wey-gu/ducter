@@ -6,7 +6,8 @@
 apps/desktop/internal/views/readme_shots_test.go (conversation, onhand, task-diff, devices,
 partner) and the iOS Simulator's phone-sheet.png. Keep both folders outside git (D75), e.g.
 ~/dev/ducter-evidence/readme/{raw,out}. Writes a lossless PNG and a WebP (cwebp -q 82) per
-image; only the WebPs the README shows are copied into .github/readme. Needs cwebp on PATH.
+image. The README now shows the site's own shots (apps/site/public/shots); these WebPs stay in
+the evidence folder. Needs cwebp on PATH.
 """
 
 import subprocess

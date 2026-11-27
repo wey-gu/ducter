@@ -9,8 +9,9 @@
 //     DUCTER_SHOTS_DIR=~/dev/ducter-evidence/readme/raw go test ./internal/views -run ReadmeShots  (in apps/desktop)
 //   - the phone: the iOS Simulator with the pairing command printed below, then
 //     -open 'app#d=<decision id>' for the decision sheet, saved as phone-sheet.png;
-//   - python3 scripts/readme-shots/compose.py ~/dev/ducter-evidence/readme/raw ~/dev/ducter-evidence/readme/out,
-//     then copy the WebPs the README shows into .github/readme (D75: nothing else is committed).
+//   - python3 scripts/readme-shots/compose.py ~/dev/ducter-evidence/readme/raw ~/dev/ducter-evidence/readme/out.
+//     The README now shows the site's own shots (apps/site/public/shots), so these captures stay
+//     in the evidence folder (D75).
 // DEMO_WORKTREE is where the fixture is made; DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky" is the
 // path the task records, read relative to DUCTER_README_CWD, so the opened task shows a real path.
 import { mkdirSync, writeFileSync } from "node:fs";

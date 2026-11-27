@@ -98,20 +98,17 @@ when the screens they show change, then redraw the share image (below).
 
 ## Owed
 
-- **README screenshots.** `devices.webp` was retaken for D319 (test renderer against the demo core,
-  `scripts/readme-shots/demo.ts`). Still owed: `hero.webp` (needs the iOS Simulator's decision
-  sheet), `on-hand.webp` (the D287 layout; the renderer's capture shows a hover tooltip over the
-  decision card, and the demo seeds both a "HawDB" and a "hawdb" project), `task.webp` (the
-  capture shows the fixture's folder name and "Worked for 1s"; run with
-  `DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky"`), `partner.webp` (`compose.py`'s crop no longer
-  matches Settings). Raw captures: `.shots/d319/readme/`.
+- **README screenshots.** Resolved 2026-11-27: the README now shows the site's own real shots
+  (`apps/site/public/shots/many-{light,dark}.webp`, under 70 KB each, inside D75); the old
+  `.github/readme` compositions were removed, and `scripts/readme-shots` no longer feeds the
+  README. Raw captures stay in `.shots/d319/readme/` as evidence.
 - **Chinese.** The site and the docs are English only (kept by D326). The zh line and paragraph are
   designed ([positioning.md](positioning.md), D414); a 中文 home and Get started come when the site
   goes bilingual, with `/download`'s mainland-China note (D78's type is already in the CSS).
 - **A mirror for mainland China.** Releases come only from GitHub; `install.sh` has no mirror. If
   one is set up, `install.sh` and `/download` say so together.
-- **The share image with D558's promise** was redrawn (`og.png?v=6`, layout A) but not re-rated:
-  the line is longer (five lines at 74 px), so the thumbnail test of 2026-11-18 should be run again.
+- **The share image with D558's promise** was redrawn (`og.png?v=7`, layout A, no overlap) but not
+  re-rated: the thumbnail test of 2026-11-18 should be run again on the new composition.
 - **Docs search.** Twenty-odd pages, no search; Pagefind at build time is the cheap option.
 - **From the real Mac app** (D326): the hero in the Mac window, and a Devices picture to replace the
   drawn Isles if the real view reads as well. The web client's Devices sheet is a list.
@@ -195,14 +192,23 @@ page had their elements), which still held joined strings.
 
 ## The share image (D346)
 
-`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=6` (D558's promise) so X and Slack fetch it
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=7` so X and Slack fetch it
 again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
 first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
 it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
-real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (70 KB
+real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (71 KB
 now). It reads the tagline from the home page's `<h1>`; `test/copy.test.ts` fails if the alt in
 `Head.astro` doesn't carry that line, so a new line means running it again. Retaken shots mean the
 same. `--layout b|c --out <file>` draws the two that lost.
+
+**The composition, redrawn 2026-11-27.** The line sits on the left, the real screen on the right
+fully inside the card, and the character on its own ground above `ducter.ai` at the lower left.
+Nothing overlaps the screen's edge (the old layout A had the character peeking over it). The same
+pipeline draws GitHub's new social preview at 1280 × 640: `--layout social` reads the Line from
+[positioning.md](positioning.md), crops On hand (`public/shots/many-light.webp`) to the part that
+shows the 6 things that need you, and writes `.shots/brand/social-preview.png`; at 400 px wide the
+line still reads and the card reads as a real app. The 1200 × 630 `og.png` uses the home page's
+promise instead, in the same composition. Neither was re-rated with the five naive raters.
 
 **Three layouts, rated** (`.shots/og/cand-{a,b,c}.png`, the 300-px thumbnails beside them; the winner
 `.shots/og/winner-a.png`). Five naive LLM raters (Haiku), the same five as research/113: a developer
@@ -210,7 +216,9 @@ from a forum (en), a consumer who uses a chat assistant for life admin (en), a t
 on her phone (en), an office worker in Shanghai sent it on WeChat (zh), an indie developer from
 GitHub (zh). Each saw the three as thumbnails first and then full size, under neutral letters in a
 different order, and said what it thinks the product is, would it tap (1–5), and whether the words
-read at thumbnail size. One run each; LLM proxies, not people.
+read at thumbnail size. One run each; LLM proxies, not people. **The table is the 2026-11-18 test;
+A was redrawn on 2026-11-27 with the same text-first order and no overlap, so its 18/25 and the
+notes below describe the old card.**
 
 | Layout | What it is | Dev en | Consumer en | Fresh en | Consumer zh | Dev zh | Σ /25 | Would tap |
 |---|---|---|---|---|---|---|---|---|
@@ -293,3 +301,39 @@ has no Simple Icons mark, so it gets a plain drawn speech bubble; its DMs-only f
 `/docs/chat-apps`. Under 900 px the copy leads, the five tiles follow, and the link closes; at 320
 they wrap 3 + 2. **Footer:** `con` (con.nowledge.co) sits beside Nowledge Mem as one family. Shots:
 `.shots/site-chat/{before,after}/`.
+
+## 2026-11-27: the tab icon, the GitHub card, and the README a builder lands on
+
+The author asked for three things: the tab showed a hard-cornered square, GitHub had no social
+preview and a 334-character description, and the README was 232 lines with stale shots and stale
+claims. Nothing here was applied to GitHub; the description, topics and upload are the lead's by
+hand after the author approves.
+
+- **The tab.** The web client pointed its `rel="icon"` at `app/icon-192.png`: the character on an
+  opaque cream square, so every tab showed the square. `tools/art/icons.py` now derives both
+  products' sets from the one master (`design/art/assets/alpha/ducter_idle.png`): a transparent
+  favicon at 16/32/48 in an `.ico` plus named 32/48 PNGs, and the app icons stay opaque. The
+  manifest gains `maskable` 192/512 tiles with the character inside Android's 80% safe zone. The
+  site's `favicon.ico`/`icon.png` had the same fault in a quieter form (the 16 px frame was cut to
+  its edges, and the manifest's icons were transparent); both are fixed the same way, its
+  manifest icons are now opaque, and `Head.astro` links the new PNGs. `packages/core/src/web.ts`
+  serves the new files and answers `/favicon.ico` too, since browsers ask for it whatever the page
+  links to. Shots: `.shots/brand/tabs/before-after.png` (16 and 32 px on light and dark chrome,
+  before/after, 4× detail) and `.shots/brand/favicons/app-icons.png` (opaque tiles and the maskable
+  safe circle).
+- **The GitHub card.** `.shots/brand/social-preview.png` is 1280 × 640, drawn by
+  `apps/site/scripts/og.mjs --layout social` from positioning.md's Line, the character, one real
+  screen of On hand and `ducter.ai`, with at least 40 px of air at the edges. `og.png` was redrawn in the
+  same composition and `Head.astro`'s alt and `?v=7` follow. The 400 px thumbnail
+  (`.shots/brand/social-preview-400.png`) still reads the line; the screen is proof, not body copy.
+- **The description and topics.** The proposal is `.shots/brand/description.txt`: the Line (116
+  characters) instead of the 334-character paragraph, and 20 topics (the old 15 plus `deepseek`,
+  `self-hosted-ai`, `open-source`, `privacy` and `homelab`; nothing dropped). positioning.md's
+  GitHub section now states the 150-character ceiling.
+- **The README.** The first screen is the promise and the Line, the real On hand shot (light and
+  dark, from `apps/site/public/shots`), one install line, and *Why it's different*; then
+  *Install*, *What runs where*, *The agents it drives*, *What it can reach*, *How it goes*,
+  *Ducter is for you if*, *Under the hood* (the footer's anchor, now in user words), *Privacy and
+  self-hosting*, *Docs*, *Contributing* and *License*. Stale claims and names are gone: no
+  `OAR`, no `Log`, no harness vocabulary, no `.github/readme` images, no HawDB in the words, and
+  the agent list follows `apps/site/src/lib/agents.ts`. `bun scripts/check-links.ts` passes.

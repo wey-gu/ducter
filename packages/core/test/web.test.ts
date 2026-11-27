@@ -66,11 +66,18 @@ describe("the phone/web client", () => {
       ["/app/art/needsyou.webp", "image/webp"],
       ["/app/fonts/rounded-sc-bold.woff2", "font/woff2"],
       ["/app/manifest.webmanifest", "manifest"],
+      // The tab icon is transparent and served by name; browsers also ask for /favicon.ico.
+      ["/app/favicon.ico", "image/x-icon"],
+      ["/app/favicon-32.png", "image/png"],
+      ["/app/icon-maskable-192.png", "image/png"],
+      ["/favicon.ico", "image/x-icon"],
     ]) {
       const r = await fetch(base + path!, { headers: REMOTE });
       expect(r.status).toBe(200);
       expect(r.headers.get("content-type")).toContain(type!);
     }
+    const manifest = await (await fetch(`${base}/app/manifest.webmanifest`, { headers: REMOTE })).json();
+    expect(manifest.icons.filter((i: { purpose?: string }) => i.purpose === "maskable").length).toBe(2);
     // Every piece of art the web client names is served (idle_closed.webp was a 404 on every load).
     const src = await Bun.file(new URL("../../../apps/web/src/views.tsx", import.meta.url)).text();
     const named = [...new Set([...src.matchAll(/app\/art\/([a-z_]+)\.webp/g)].map((m) => m[1]!))];

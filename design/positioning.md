@@ -36,7 +36,7 @@ tasks.
 | **Promise** (D558, the hero's `<h1>`, above the line) | Hand it ten things. Hear back only what needs you. | 十件事一起交给它。只有要你拍板的，才来找你。 |
 | **Second line** (D558, the line's first half, under the promise) | A personal AI for builders, on your own computers or servers. | 开发者的私人 AI，跑在你自己的电脑或服务器上。 |
 | **Lede** (D558, one sentence per line) | You talk to one partner, from your phone, your desk or the chat app you already use. It hands the work to the AI agents you already pay for, like Claude Code or Codex, and brings it back with how it was checked. | 你只跟一个伙伴说话，用手机、在电脑上，或者在常用的聊天软件里都行。活交给你本来就在用的 AI agent（比如 Claude Code、Codex）去做，做完连同怎么验证的一起交回来。 |
-| **Line** (the GitHub description's opening, the docs index) | A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters. | 开发者的私人 AI：在你自己的电脑或服务器上，带着一群 AI agent 替你干活，只在要紧时找你。 |
+| **Line** (the GitHub description, the docs index) | A personal AI for builders. It runs your AI agents on your own computers or servers, and you hear only what matters. | 开发者的私人 AI：在你自己的电脑或服务器上，带着一群 AI agent 替你干活，只在要紧时找你。 |
 | **Paragraph** | Ducter is a personal AI you run yourself, on your Mac or a server you own, and on any computer you lend it. You talk to one partner, from your phone, your desk or the chat app you already use. When you build, it hands the work to as many AI agents as it needs (Claude Code, Codex, pi and DeepSeek Harness), side by side on the plans you already pay for, and any task is yours to open and steer. Finished work comes back with how it was checked. In between it minds your mail and calendar, runs errands, and stays quiet until something needs you. | Ducter 是你自己部署的私人 AI，跑在你的 Mac 或你自己的服务器上，也能用你借给它的其他电脑。你只跟一个伙伴说话，用手机、在电脑前，或者在常用的聊天软件里都行。写代码、做东西的时候，它把活分给需要的几个 AI agent 同时去做（Claude Code、Codex、pi、DeepSeek Harness），用的是你已有的订阅；每一个你都能随时打开看、亲手接着做。做完了，结果连同怎么验证的一起交给你。平时它帮你盯着邮件和日历、跑跑腿，没事不打扰你。 |
 | **Trust line** (under the hero's buttons) | Free and open source. It lives on your Mac or a server you own, and anything that spends your money or reaches other people waits for your OK. | 免费、开源。住在你的 Mac 或你自己的服务器上；凡是要花你的钱、或者要发给别人的，都先等你点头。 |
 
@@ -62,23 +62,29 @@ is for, and the trust line under the buttons is what they need.
   is for you if* with *Before / With Ducter*, *For the rest of your day*, where it runs and
   *Everything it can reach*, *It only asks when it matters*, where you reach it, memory, trust,
   open source, *Questions people ask*.
-- **README** (D558) opens with the promise and two lines, the hero shot and the install line, then
-  *How it goes*, *What it can reach*, *Ducter is for you if* with *Before / With*, then Get Ducter.
+- **README** opens with the promise and the second line, the lede, the real On hand shot, one
+  install line and *Why it's different*; then *Install*, *What runs where*, *The agents it drives*, *What it can
+  reach*, *How it goes*, *Ducter is for you if* with *Before / With*, *Under the hood*,
+  *Privacy and self-hosting*, *Docs*, *Contributing* and *License*.
 - **Docs index** (`docs/README.md`) states the product in the same words, in user terms.
 - **GitHub** (applied by hand after the author approves; nothing in the repo sets it):
-  - Description (334 characters): *A personal AI for builders, on your own computers or servers.
-    Talk to one partner from your phone, desk or chat app; it runs your AI agents (Claude Code,
-    Codex, pi, DeepSeek Harness) side by side on the plans you already pay for, every task open to
-    you, and you hear only what matters. It minds your day too. Open source, self-hosted.*
-  - Topics: `personal-ai`, `ai-agents`, `coding-agents`, `multi-agent`, `self-hosted`,
-    `local-first`, `developer-tools`, `claude-code`, `codex`, `agent-orchestration`,
-    `ai-assistant`, `macos`, `linux`, `ios`, `android`.
+  - Description: **the Line** (116 characters). GitHub cuts a long description in lists and
+    search; the old 334-character paragraph was cut mid-sentence. One block, never a second
+    paragraph, and **150 characters is the ceiling**.
+  - Topics (20, GitHub's maximum): `personal-ai`, `ai-agents`, `ai-assistant`, `coding-agents`,
+    `multi-agent`, `agent-orchestration`, `developer-tools`, `claude-code`, `codex`, `deepseek`,
+    `self-hosted`, `self-hosted-ai`, `local-first`, `open-source`, `privacy`, `macos`, `linux`,
+    `ios`, `android`, `homelab`.
+  - The share image is drawn from this line and the same words: GitHub's 1280 × 640 card is
+    `apps/site/scripts/og.mjs --layout social`, the site's `og.png` is `--layout a`.
 - **Not yet:** a 中文 site (site.md "Owed"); when it comes, its hero uses the zh column above.
 
 ## Rules for new copy
 
 - A sentence about what Ducter is names the builder and the personal half, or says which one it
   is about; "your own computers or servers" is said, not implied.
+- The GitHub description is **the Line**, never the Paragraph and never a new sentence; 150
+  characters is the ceiling.
 - "Elegant" is shown, never claimed: no adjective about the product's looks in the copy.
 - Only what is built (`design/scenarios.md`); an agent that isn't verified end to end is not
   named (`apps/site/src/lib/agents.ts` holds the list).

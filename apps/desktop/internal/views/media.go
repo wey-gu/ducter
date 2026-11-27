@@ -15,6 +15,7 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/media"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // Pictures in the conversation and in a task (D206, design/media.md). A
@@ -646,6 +647,16 @@ func (a *App) messageMedia(c *ui.Context, key string, refs []protocol.MediaRef, 
 	})
 }
 
+// askFiles draws what a task showed with its question, on the card itself
+// (D640, #254): the same pictures and file rows a message uses (D206),
+// so the person sees them before they answer, wherever the card is shown.
+func (a *App) askFiles(c *ui.Context, d *store.DecisionState, scope string) {
+	if d == nil || len(d.Media) == 0 {
+		return
+	}
+	a.messageMedia(c, "ask-media:"+d.DecisionID, d.Media, nil, false, scope)
+}
+
 // attRef is the ref a file on its way stands for: its kind from its name
 // (the home reads the bytes once it lands).
 func attRef(x *attach) protocol.MediaRef {
@@ -1066,6 +1077,11 @@ func (a *App) mediaOf(scope string) []protocol.MediaRef {
 				add(b.Media)
 			}
 		}
+		for _, e := range a.S.Channel {
+			if e.Decision != nil && e.Decision.TaskID == id {
+				add(e.Decision.Media) // D640 (#254): a question's own files
+			}
+		}
 		return out
 	}
 	for _, e := range a.S.Channel {
@@ -1074,6 +1090,8 @@ func (a *App) mediaOf(scope string) []protocol.MediaRef {
 			add(e.User.Media)
 		case e.AI != nil:
 			add(e.AI.Media)
+		case e.Decision != nil:
+			add(e.Decision.Media) // D640 (#254): a question's own files
 		}
 	}
 	return out

@@ -111,6 +111,16 @@ export function mediaWords(media: MediaRef[]): string {
 export const FILE_INLINE_CHARS = 6000;
 
 /**
+ * D640 (#254): a report that becomes a question's card: its state asks, or one of its
+ * questions blocks. Such a report's files stand on that card, never under the relaying line.
+ * The same test core's onReport uses to make the decision.
+ */
+export function reportMakesCard(r: Pick<Bodies["report"], "state" | "questions">): boolean {
+  if (r.state === "needs_input") return true;
+  return (r.questions ?? []).some((q) => q.blocking && q.text.trim());
+}
+
+/**
  * D259: the files (not pictures) a user's message carries: each by its id, name, kind and size,
  * where it is on this computer, and the whole text of a short one. The partner reads a longer
  * one (or a PDF) there with its own read tool, in parts; a task gets it by its id in media.
@@ -184,8 +194,12 @@ function renderReport(r: Bodies["report"], title?: string, told?: string[], undo
   // shows it under your message (每一页都看过 / Every page checked); never call the document ready to send.
   if (r.doc?.left.length)
     lines.push(`  Ducter checked the document page by page before it reached the user, and this is still so: ${r.doc.left.map((x) => `"${clip(x, 80)}"`).join("; ")}. The app shows it under your message; don't repeat it word for word, and don't call the document ready to send. Offer to fix it in a few words if it matters.`);
-  // D206: what it showed the user. The app puts it under your next message about this report.
-  if (r.media?.length) lines.push(`  it shows the user: ${mediaWords(r.media)}. They appear under your message about this report: say what they are in a few words; never describe the path or the file name.`);
+  // D206, D640 (#254): what it showed the user. With a question, the files are on the
+  // question's own card; otherwise they go under the partner's message about this report.
+  if (r.media?.length)
+    lines.push(
+      `  it shows the user: ${mediaWords(r.media)}. ${reportMakesCard(r) ? "They are on the question's card, shown with the question: say what they are in a few words; never describe the path or the file name." : "They appear under your message about this report: say what they are in a few words; never describe the path or the file name."}`,
+    );
   // D142: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.
   const f = r.folder;
   if (f && f.undo === "open" && f.added + f.changed + f.removed + f.moved + f.renamed + f.folders > 0) {

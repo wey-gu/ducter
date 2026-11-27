@@ -411,10 +411,12 @@ function picturesOf(ctx: ViewCtx): MediaRef[] {
   const add = (ms?: MediaRef[]) => {
     for (const m of ms ?? []) if (isImage(m) && !seen.has(m.id)) seen.add(m.id), out.push(m);
   };
-  if (ctx.kind === "conv") for (const e of A.S.channel) add(e.user?.media ?? e.ai?.media);
+  if (ctx.kind === "conv") for (const e of A.S.channel) add(e.user?.media ?? e.ai?.media ?? e.decision?.media);
   else {
     const task = A.S.tasks.get(ctx.taskId);
     for (const ev of task?.events ?? []) add((ev.body as { media?: MediaRef[] }).media);
+    // D640 (#254): a question's own files are on its card, so the viewer steps through them.
+    for (const d of A.S.decisions.values()) if (d.taskId === ctx.taskId) add(d.media);
   }
   return out;
 }

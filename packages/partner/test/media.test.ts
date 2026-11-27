@@ -8,7 +8,9 @@ import type { Bodies, MediaRef } from "../../protocol/src/index.ts";
 import { shortId } from "../../protocol/src/media.ts";
 import { createMediaStore } from "../../core/src/media.ts";
 import { png } from "../../core/test/fixtures-media.ts";
+import type { LogEvent } from "../../protocol/src/index.ts";
 import { createPartner } from "../src/index.ts";
+import { renderTrigger } from "../src/render.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
 
 function setup(script: Script, opts: { harness?: "deepseek-harness" } = {}) {
@@ -121,4 +123,49 @@ test("what a task showed goes under the partner's first words about it, once", a
   expect(msgs[0]!.text).toContain("橘猫");
   expect(msgs[0]!.media?.map((m) => m.id)).toEqual([cat.id]);
   expect(msgs[1]!.media).toBeUndefined();
+});
+
+// #254: a question that comes with files shows them on its own card, before the person answers;
+// the relaying line does not carry them again. A done report keeps D206.
+test("a question's files are on its decision, never under the relaying line", async () => {
+  const { fc, fr, partner, media } = setup((_i, s) => {
+    s.say("看一下截图和报告，结论站得住吗？");
+    s.end();
+  });
+  fc.cards.set("t9", { taskId: "t9", persona: "p1", title: "看这份报告", project: "", place: { kind: "none" }, harness: "claude-code", attention: "needs_you", residency: "hot", openedAt: "", updatedAt: "" });
+  const shot = media.put(png(1024, 768, 7), { name: "report.png", from: { taskId: "t9" } });
+  const pdf = media.put(new TextEncoder().encode(`%PDF-1.7 ${"x".repeat(2000)}`), { files: true, name: "季度报告.pdf", from: { taskId: "t9" } });
+  const report = fc.core.log.append({
+    stream: "task:t9",
+    origin: "task",
+    kind: "report",
+    body: { taskId: "t9", state: "needs_input", summary: "看一下截图和报告。", questions: [{ id: "q", text: "按这个结论发出去吗？", blocking: true, reversible: false }], evidence: [], media: [shot, pdf] },
+  });
+  // As core's decisions module does on the report.
+  const d = fc.core.log.append({
+    stream: "channel",
+    origin: "system",
+    kind: "decision",
+    body: { decisionId: "d1", taskId: "t9", question: "按这个结论发出去吗？", goLabel: "发出去", defaultOption: "hold", reversible: false, media: [shot, pdf] },
+  });
+  partner.onTrigger(report);
+  await partner.idle();
+  expect((d.body as Bodies["decision"]).media?.map((m) => m.id)).toEqual([shot.id, pdf.id]);
+  const [said] = aiMsgs(fc.events);
+  expect(said!.decisionId).toBe("d1");
+  expect(said!.media).toBeUndefined();
+  // The partner is told the truth about where they are.
+  expect(fr.sessions[0]!.inputs.at(-1)).toContain("on the question's card");
+});
+
+test("the hint: a question's files are on its card, a done report's under the message", () => {
+  const ctx = { taskTitle: () => "看这份报告", decision: () => undefined };
+  const ev = (state: "needs_input" | "done", blocking: boolean): LogEvent =>
+    ({ seq: 1, ts: new Date(0).toISOString(), persona: "p1", stream: "task:t9", origin: "task", kind: "report", body: { taskId: "t9", state, summary: "看这个。", questions: blocking ? [{ id: "q", text: "发出去吗？", blocking: true }] : [], evidence: [], media: [{ id: "a".repeat(64), type: "application/pdf", bytes: 2000, name: "季度报告.pdf", k: "k" }] } }) as LogEvent;
+  const asked = renderTrigger(ev("needs_input", true), ctx);
+  expect(asked).toContain("on the question's card");
+  expect(asked).not.toContain("They appear under your message");
+  const done = renderTrigger(ev("done", false), ctx);
+  expect(done).toContain("They appear under your message");
+  expect(done).not.toContain("on the question's card");
 });

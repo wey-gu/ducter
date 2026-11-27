@@ -64,6 +64,146 @@ func nmemOlder(v, min string) bool {
 	return false
 }
 
+// memWord is one line from the Mem state table: the key and its arguments.
+type memWord struct {
+	Key  string
+	Args []any
+}
+
+// memStateView is D646's one table of Mem's states: the same Overview line, the same pane
+// line and at most one way through, used by Overview, Memory and Agent messaging. The web's twin is
+// memStateView (apps/web/src/mem-view.ts). A state never names the persona's identity or Mem's
+// "workspace admin" in its lines: the name a person would repeat to Mem's people is behind 详情
+// (Fact), so a red sentence never asks them to decode a name they never chose.
+type memStateView struct {
+	State    string
+	Title    memWord
+	Line     memWord
+	Overview memWord
+	Need     memWord
+	NeedPage string
+	Action   string // sign_in, open_mem, check_again, update, retry, none
+	Act      string
+	Tone     string // bad or muted
+	Fact     *memWord
+}
+
+type memStateDef struct {
+	Title, Line, Overview, Need string
+	Page, Action, Act, Tone     string
+}
+
+var memStateTable = map[string]memStateDef{
+	"signed_out":    {Title: "mem.health.signed_out", Line: "mem.health.signed_out.line", Overview: "home.mem.down", Need: "need.mem.signed_out", Page: "memory", Action: "sign_in", Act: "mem.health.signin", Tone: "bad"},
+	"closed":        {Title: "bridge.mem.closed", Line: "bridge.mem.closed.open", Overview: "home.mem.closed", Need: "need.mem.closed", Page: "memory", Action: "open_mem", Act: "bridge.mem.open", Tone: "muted"},
+	"unreachable":   {Title: "mem.health.unreachable", Line: "mem.health.unreachable.line", Overview: "home.mem.down", Need: "need.mem.unreachable", Page: "memory", Action: "check_again", Act: "mem.health.again", Tone: "bad"},
+	"old":           {Title: "mem.health.old", Line: "mem.health.old.line", Overview: "home.mem.old", Need: "need.mem.old", Page: "memory", Action: "update", Act: "mem.health.old.go", Tone: "bad"},
+	"old_elsewhere": {Title: "mem.health.old", Line: "mem.health.old.elsewhere", Overview: "home.mem.old", Need: "need.mem.old", Page: "memory", Action: "none", Tone: "bad"},
+	"local_mem":     {Title: "bridge.mem.local.title", Line: "bridge.mem.local", Overview: "home.mem.local", Need: "need.mem.local", Page: "peers", Action: "retry", Act: "bridge.retry", Tone: "bad"},
+	"no_space":      {Title: "bridge.no_space.title", Line: "bridge.no_space", Overview: "home.mem.no_space", Need: "need.mem.no_space", Page: "peers", Action: "check_again", Act: "mem.health.again", Tone: "bad"},
+	"failed":        {Title: "bridge.failed.title", Line: "bridge.failed", Overview: "home.mem.refused", Need: "need.mem.refused", Page: "peers", Action: "retry", Act: "bridge.retry", Tone: "bad"},
+	"unconfirmed":   {Title: "bridge.unconfirmed.title", Line: "bridge.unconfirmed", Overview: "home.mem.unconfirmed", Need: "need.mem.unconfirmed", Page: "peers", Action: "retry", Act: "bridge.retry", Tone: "bad"},
+}
+
+// memStateOf is which state Mem is in, from the settings frame only. The bridge's own state wins
+// over Mem's doctor (a closed app is a closed app, not a lapsed sign-in). Nil when nothing is wrong.
+// why is a failed connect's reason already in the person's words (a.failedWhy).
+func memStateOf(m *protocol.MemView, b *protocol.BridgeView, home, why string) *memStateView {
+	if b == nil {
+		// Memory on with no Bridge view (DUCTER_BRIDGE=0, an older frame): Mem's own doctor still counts.
+		b = &protocol.BridgeView{}
+	}
+	if home == "" {
+		home = b.Home
+	}
+	word := func(key string, args ...any) memWord { return memWord{Key: key, Args: args} }
+	h := func(k string) []any {
+		switch k {
+		case "mem.health.unreachable.line", "bridge.mem.closed.open", "bridge.mem.local", "mem.health.old.elsewhere":
+			return []any{home}
+		case "bridge.failed":
+			return []any{why}
+		}
+		return nil
+	}
+	make := func(state string) *memStateView {
+		d := memStateTable[state]
+		line := word(d.Line, h(d.Line)...)
+		if state == "failed" {
+			if why == "" {
+				line = word("bridge.failed.line")
+			} else {
+				line = word("bridge.failed.why", why)
+			}
+		}
+		return &memStateView{
+			State: state, Title: word(d.Title), Line: line, Overview: word(d.Overview),
+			Need: memWord{Key: d.Need, Args: needArgs(d.Need, home)}, NeedPage: d.Page, Action: d.Action, Act: d.Act, Tone: d.Tone,
+		}
+	}
+	switch b.State {
+	case "mem_closed":
+		v := make("closed")
+		if !b.CanOpen {
+			v.Line = word("bridge.mem.closed.there", home)
+			v.Action, v.Act = "none", ""
+		}
+		return v
+	case "local_mem":
+		return make("local_mem")
+	case "no_space":
+		return make("no_space")
+	case "refused":
+		reason := b.Reason
+		if reason == "" {
+			reason = "control_denied"
+		}
+		d := memStateDef{Title: "bridge.refused." + reason + ".title", Line: "bridge.refused." + reason + ".line", Overview: "home.mem.refused", Need: "need.mem.refused", Page: "peers", Action: "retry", Act: "bridge.retry", Tone: "bad"}
+		if reason == "lifetime_inactive" || reason == "conflict" {
+			d.Action, d.Act = "none", ""
+		}
+		v := make("failed")
+		v.State, v.Title, v.Line, v.Overview, v.Need, v.NeedPage, v.Action, v.Act = "refused", word(d.Title), word(d.Line), word(d.Overview), memWord{Key: d.Need}, d.Page, d.Action, d.Act
+		v.Fact = &memWord{Key: "bridge.refused.detail", Args: []any{b.Identity}}
+		return v
+	case "failed":
+		return make("failed")
+	case "unconfirmed":
+		return make("unconfirmed")
+	}
+	look := memHealthLook(healthOf(m), b, nil)
+	switch look.Look {
+	case "signed_out":
+		if m != nil && m.Health != nil && m.Health.Fresh {
+			return nil
+		}
+		return make("signed_out")
+	case "unreachable":
+		return make("unreachable")
+	case "old":
+		if look.CanUpdate {
+			return make("old")
+		}
+		return make("old_elsewhere")
+	}
+	return nil
+}
+
+func healthOf(m *protocol.MemView) *protocol.MemHealth {
+	if m == nil {
+		return nil
+	}
+	return m.Health
+}
+
+func needArgs(key, home string) []any {
+	switch key {
+	case "need.mem.unreachable", "need.mem.old", "need.mem.local":
+		return []any{home}
+	}
+	return nil
+}
+
 // peersNamesUpdate (D364): on the connected Talk with your other agents
 // pane, an nmem older than memNames while Mem says a newer one is out:
 // Mem's update, offered there with what it gives the pane. Nil otherwise.
@@ -218,6 +358,11 @@ func memUpdate(b *protocol.BridgeView) *memUpd {
 		return &memUpd{Kind: "app", Newer: newer, Version: b.Version}
 	}
 	return nil
+}
+
+// memWord is one line from the Mem state table, in the person's language.
+func (a *App) memWord(w memWord) string {
+	return a.L.T(w.Key, w.Args...)
 }
 
 // memBadge is the Memory tab's line in the rail: a key, or "".

@@ -347,43 +347,49 @@ func (a *App) peersProblem(c *ui.Context, b *protocol.BridgeView, name string) {
 			}
 		})
 		return
-	case "local_mem":
-		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.mem.local", a.memHome()), "", nil)
+	}
+	// D646: one Mem state table: a title, one line, at most one action. The identity and who to
+	// tell in Mem stay behind 详情, so a refusal asks the person to do something they can picture.
+	v := memStateOf(a.S.Mem, b, a.memHome(), a.failedWhy(b.Detail))
+	if v == nil {
 		return
-	case "no_space":
-		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.no_space"), "", nil)
-		return
-	case "mem_closed":
-		// D329: the Nowledge Mem app on the home is closed: the agents can't
-		// reach the partner until it's open; Memory's own row, said here.
-		home := a.memHome()
-		line := a.L.T("bridge.mem.closed.there", home)
-		var control func()
-		if b.CanOpen {
-			line = a.L.T("bridge.mem.closed.open", home)
-			control = func() {
-				if a.buttonFor(c, a.L.T("bridge.mem.open"), home, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.BridgeAction{T: "bridge_mem_open"})
-				}
+	}
+	line := a.memWord(v.Line)
+	if b.Newer != nil && (v.State == "failed" || v.State == "refused" || v.State == "unconfirmed") {
+		line += " " + a.L.T("peers.mem.newer")
+	}
+	a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.memWord(v.Title), line, func() {
+		switch v.Action {
+		case "open_mem":
+			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.BridgeAction{T: "bridge_mem_open"})
+			}
+		case "sign_in":
+			if a.buttonFor(c, a.L.T(v.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
+				a.openTab(TabMemory)
+			}
+		case "update":
+			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
+				b.State = "updating"
+				a.send(protocol.BridgeAction{T: "bridge_mem_install"})
+			}
+		case "check_again", "retry":
+			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
+				b.State = "connecting"
+				a.send(protocol.BridgeAction{T: "bridge_connect"})
 			}
 		}
-		a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.L.T("bridge.mem.closed"), line, control)
-		return
-	}
-	line := a.bridgeNote(b)
-	tryNewer := b.Newer != nil
-	if tryNewer {
-		line += "\n" + a.L.T("peers.mem.newer")
-	}
-	a.tileRow(c, "peers-problem", a.coinsTile(c, true), line, "", func() {
-		if tryNewer && a.button(c, a.L.T("peers.mem.go"), btnSecondary, t.ControlSM, t.Surface) {
-			a.openTab(TabMemory)
-		}
-		if a.buttonFor(c, a.L.T("bridge.retry"), b.Identity, btnSecondary, t.ControlSM, t.Surface) {
-			b.State = "connecting"
-			a.send(protocol.BridgeAction{T: "bridge_connect"})
-		}
 	})
+	if v.Fact != nil {
+		a.footRow(c, "peers-fact", "", func() {
+			if a.quietButton(c, "peers-fact", a.L.T("mem.details"), "Nowledge Mem", a.peersFact, 0) {
+				a.peersFact = !a.peersFact
+			}
+		})
+		if a.peersFact {
+			a.textBlock(c, "peers-fact-body", func() { a.note(c, a.memWord(*v.Fact)) })
+		}
+	}
 }
 
 // peerName is an agent's tool by name, for its coin ("terminal-claude" → Claude Code).

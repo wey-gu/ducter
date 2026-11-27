@@ -1,7 +1,7 @@
 // D257: what Settings › 记忆 / Memory and › 和你的其他 agent 通信 / Talk with your other agents (D332) show, from the
 // settings frame (settings.memory, mem, bridge). Pure, so the phone, the wide page and the tests
 // read it the same way; the Mac has the same rules (apps/desktop/internal/views/memory.go).
-import type { BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
+import type { BridgeRefusal, BridgeView, MemHealth, MemView, PeersSettings } from "@ducter/protocol";
 import { agentBack, MEM_BRIDGE_SKILL, type AgentBack } from "@ducter/protocol/src/mem-health.ts";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 
@@ -106,6 +106,110 @@ export function memHealthLook(h: MemHealth | undefined, b: BridgeView | undefine
     }
   }
   return { look: "unread" };
+}
+
+/**
+ * D646: one table of Mem's states: the same Overview line, the same pane line and at most one
+ * way through, used by Overview, Memory and Agent messaging on both clients (the Mac's twin is
+ * memStateView in memory.go). A state never names the persona's identity or Mem's "workspace admin"
+ * in its lines: the name a person would repeat to Mem's people is behind 详情 (`fact`), so a red
+ * sentence never asks them to decode a name they never chose (`bridge.md` "Simple, by who").
+ *
+ * signed_out: Mem's sign-in stopped working (the link field in place); closed: the Nowledge Mem app
+ * on the home isn't open; unreachable: Mem is set up but doesn't answer; old / old_elsewhere: this
+ * nmem is too old to say how it is, with Ducter able to update it (D225's one tap) or only on its
+ * own computer; local_mem / no_space: Mem here offers no place for Bridge, with one look again; a
+ * refusal, a failed connect and an unconfirmed one: what the person can do in their own words.
+ */
+export type MemProblem = "signed_out" | "closed" | "unreachable" | "old" | "old_elsewhere" | "local_mem" | "no_space" | "refused" | "failed" | "unconfirmed";
+/** The one action a state offers, if any: the sign-in field, opening Mem, looking again, updating Mem, a new connect. */
+export type MemAction = "sign_in" | "open_mem" | "check_again" | "update" | "retry" | "none";
+export type MemWord = { key: string; args: string[] };
+export type MemStateView = {
+  state: MemProblem;
+  title: MemWord;
+  line: MemWord;
+  /** Overview's short line for the same state (the 记得 line). */
+  overview: MemWord;
+  /** What Overview says needs the person, and which pane holds the fix. */
+  need: MemWord & { page: "memory" | "peers" };
+  action: MemAction;
+  act: string;
+  tone: "bad" | "muted";
+  /** The refusal's identity and who to ask in Mem, behind 详情, never in the lines above. */
+  fact?: MemWord;
+};
+
+type MemStateDef = { title: string; line: string; overview: string; need: string; page: "memory" | "peers"; action: MemAction; act: string; tone: "bad" | "muted" };
+
+const MEM_STATE: Record<MemProblem, MemStateDef> = {
+  signed_out: { title: "mem.health.signed_out", line: "mem.health.signed_out.line", overview: "home.mem.down", need: "need.mem.signed_out", page: "memory", action: "sign_in", act: "mem.health.signin", tone: "bad" },
+  closed: { title: "bridge.mem.closed", line: "bridge.mem.closed.open", overview: "home.mem.closed", need: "need.mem.closed", page: "memory", action: "open_mem", act: "bridge.mem.open", tone: "muted" },
+  unreachable: { title: "mem.health.unreachable", line: "mem.health.unreachable.line", overview: "home.mem.down", need: "need.mem.unreachable", page: "memory", action: "check_again", act: "mem.health.again", tone: "bad" },
+  old: { title: "mem.health.old", line: "mem.health.old.line", overview: "home.mem.old", need: "need.mem.old", page: "memory", action: "update", act: "mem.health.old.go", tone: "bad" },
+  old_elsewhere: { title: "mem.health.old", line: "mem.health.old.elsewhere", overview: "home.mem.old", need: "need.mem.old", page: "memory", action: "none", act: "", tone: "bad" },
+  local_mem: { title: "bridge.mem.local.title", line: "bridge.mem.local", overview: "home.mem.local", need: "need.mem.local", page: "peers", action: "retry", act: "bridge.retry", tone: "bad" },
+  no_space: { title: "bridge.no_space.title", line: "bridge.no_space", overview: "home.mem.no_space", need: "need.mem.no_space", page: "peers", action: "check_again", act: "mem.health.again", tone: "bad" },
+  refused: { title: "", line: "", overview: "home.mem.refused", need: "need.mem.refused", page: "peers", action: "retry", act: "bridge.retry", tone: "bad" },
+  failed: { title: "bridge.failed.title", line: "bridge.failed", overview: "home.mem.refused", need: "need.mem.refused", page: "peers", action: "retry", act: "bridge.retry", tone: "bad" },
+  unconfirmed: { title: "bridge.unconfirmed.title", line: "bridge.unconfirmed", overview: "home.mem.unconfirmed", need: "need.mem.unconfirmed", page: "peers", action: "retry", act: "bridge.retry", tone: "bad" },
+};
+
+/**
+ * Which state Mem is in, and what that says, from the settings frame only (read-only, pure). The
+ * bridge's own state wins over Mem's doctor (a closed app is a closed app, not a lapsed sign-in);
+ * `why` is the connect failure's reason already in the person's words (memory.tsx `failedWhy`).
+ * Undefined when nothing is wrong: a working Mem, before its first health read, and every setup
+ * phase that has its own steps.
+ */
+export function memStateView(mem: MemView | undefined, b: BridgeView | undefined, home = "", why = ""): MemStateView | undefined {
+  const word = (key: string, ...args: string[]): MemWord => ({ key, args });
+  const withHome = (k: string) => (k === "mem.health.unreachable.line" || k === "bridge.mem.closed.open" || k === "bridge.mem.local" || k === "mem.health.old.elsewhere" ? [home || b?.home || ""] : []);
+  const make = (state: MemProblem, over: { reason?: BridgeRefusal; action?: MemAction; act?: string; line?: MemWord } = {}): MemStateView => {
+    const d = MEM_STATE[state];
+    const h = home || b?.home || "";
+    const ref = over.reason ? `bridge.refused.${over.reason}` : "";
+    const noWhy = state === "failed" && !why;
+    return {
+      state,
+      title: word(ref ? `${ref}.title` : d.title),
+      line: over.line ?? word(noWhy ? "bridge.failed.line" : ref ? `${ref}.line` : d.line === "bridge.failed" ? "bridge.failed.why" : d.line, ...(noWhy || ref ? [] : d.line === "bridge.failed" ? [why] : withHome(d.line))),
+      overview: word(d.overview),
+      need: { key: d.need, args: d.need === "need.mem.unreachable" || d.need === "need.mem.old" || d.need === "need.mem.local" ? [h] : [], page: d.page },
+      action: over.action ?? d.action,
+      act: over.act ?? d.act,
+      tone: d.tone,
+      ...(state === "refused" ? { fact: word("bridge.refused.detail", b?.identity ?? "") } : {}),
+    };
+  };
+  switch (b?.state) {
+    case "mem_closed":
+      return b.canOpen ? make("closed") : make("closed", { action: "none", act: "", line: word("bridge.mem.closed.there", home || b.home || "") });
+    case "local_mem":
+      return make("local_mem");
+    case "no_space":
+      return make("no_space");
+    case "refused": {
+      const reason = b.reason ?? "control_denied";
+      const settled = reason === "lifetime_inactive" || reason === "conflict";
+      return make("refused", { reason, ...(settled ? { action: "none" as const, act: "" } : {}) });
+    }
+    case "failed":
+      return make("failed");
+    case "unconfirmed":
+      return make("unconfirmed");
+  }
+  const look = memHealthLook(mem?.health, b);
+  if (look.look === "signed_out" && !mem?.health?.fresh) return make("signed_out");
+  if (look.look === "unreachable") return make("unreachable");
+  if (look.look === "old") return look.canUpdate ? make("old") : make("old_elsewhere");
+  return undefined;
+}
+
+/** D646: Overview's needs for Mem's own states: what blocks the partner, with the pane that holds the fix. */
+export function memNeeds(mem: MemView | undefined, b: BridgeView | undefined, home = ""): (MemWord & { page: "memory" | "peers" })[] {
+  const v = memStateView(mem, b, home);
+  return v ? [v.need] : [];
 }
 
 /** D364: the first nmem that asks Mem who sent a message and what it answers (Mem #10278, research/134). */

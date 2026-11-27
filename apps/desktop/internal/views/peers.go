@@ -212,40 +212,28 @@ func (a *App) peerLineText(b *protocol.BridgeMsg) string {
 	return a.L.T("peer.replied", who)
 }
 
-// bridgeNote is the line under the persona's connection row (D205), in its
-// state: what 连上 will do, each step, Mem's refusal and the step in Mem.
-func (a *App) bridgeNote(b *protocol.BridgeView) string {
-	space := "Only me"
-	if b.Space != nil && b.Space.Label != "" {
-		space = b.Space.Label
+// failedLine is a failed connect's own words (the web's failedLine): the home's short reason when
+// it knows one, else the detail itself after 没连上.
+func (a *App) failedLine(d string) string {
+	if d == "" {
+		return ""
 	}
-	switch b.State {
-	case "ready":
-		return a.L.T("bridge.ready", b.Identity, space)
-	case "connecting":
-		return a.L.T("bridge.connecting")
-	case "disconnecting":
-		return a.L.T("bridge.disconnecting")
-	case "connected":
-		if b.Pinned {
-			return a.L.T("bridge.pinned")
-		}
-		return a.L.T("bridge.connected", b.Identity, space)
-	case "no_space":
-		return a.L.T("bridge.no_space")
-	case "refused":
-		r := b.Reason
-		if r == "" {
-			r = "control_denied"
-		}
-		return a.L.TFamily("bridge.refused."+r, b.Identity)
-	case "unconfirmed":
-		return a.L.T("bridge.unconfirmed", b.Identity)
-	}
-	if k, ok := failedDetails[b.Detail]; ok {
+	if k, ok := failedDetails[d]; ok {
 		return a.L.T(k)
 	}
-	return a.L.T("bridge.failed", b.Detail)
+	return a.L.T("bridge.failed", d)
+}
+
+// failedWhy is a failed connect's reason alone, for the state table's line (its title already
+// says 没连上); the web's failedWhy. A detail Ducter has no words for is the home's own, clipped.
+func (a *App) failedWhy(d string) string {
+	if d == "" {
+		return ""
+	}
+	if k, ok := failedDetails[d]; ok {
+		return a.L.T(k)
+	}
+	return d
 }
 
 // failedDetails (D404): the home's own words for a failed connect

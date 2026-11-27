@@ -43,14 +43,24 @@ func (a *App) setNeeds() []setNeed {
 			out = append(out, setNeed{key: "src:" + cv.ID, text: a.L.T("need.source", cv.Name), goLabel: a.L.T("need.go.look"), tab: TabAccounts})
 		}
 	}
-	// D552: Mem itself down or signed out, while memory is on: said here too,
-	// never only in the pane's head.
-	if m := a.S.Mem; m != nil && m.Health != nil && a.S.Settings != nil && a.S.Settings.Memory {
-		switch m.Health.Issue {
-		case "signed_out":
-			out = append(out, setNeed{key: "memhealth", text: a.L.T("need.mem.signed_out"), goLabel: a.L.T("need.go.signin"), tab: TabMemory})
-		case "unreachable":
-			out = append(out, setNeed{key: "memhealth", text: a.L.T("need.mem.unreachable", a.memHome()), goLabel: a.L.T("need.go.look"), tab: TabMemory})
+	// D646: Mem's own states (signed out, closed, out of reach, too old) and any Agent messaging
+	// problem that stops the partner hearing from the person's agents are needs here, with the same
+	// line the pane says and the pane that holds the one fix (D552: never only in the pane's head).
+	if a.S.Settings != nil && a.S.Settings.Memory {
+		peersOn := a.S.Settings.Peers != nil && peersSwitchOn(a.S.Settings.Peers.Reach, a.S.Bridge)
+		why := ""
+		if b := a.S.Bridge; b != nil {
+			why = a.failedWhy(b.Detail)
+		}
+		if v := memStateOf(a.S.Mem, a.S.Bridge, a.memHome(), why); v != nil && (v.NeedPage != "peers" || peersOn) {
+			goLabel, tab := a.L.T("need.go.look"), TabMemory
+			if v.Need.Key == "need.mem.signed_out" {
+				goLabel = a.L.T("need.go.signin")
+			}
+			if v.NeedPage == "peers" {
+				tab = TabPeers
+			}
+			out = append(out, setNeed{key: v.Need.Key, text: a.memWord(v.Need), goLabel: goLabel, tab: tab})
 		}
 	}
 	// D569: what Nowledge Mem couldn't settle by itself is its own bookkeeping,
@@ -62,6 +72,14 @@ func (a *App) setNeeds() []setNeed {
 	// D569: only one that can run from here (the computer awake, any AI signed
 	// in there): its fix is the pane's own 更新, right here, never a 去更新 to a
 	// row with no button. One that can't is no need; its row says why.
+	// D646 (D590's leftover 6): while Mem itself has a way through, an agent plugin's
+	// update is not a second need on the same head; its row on Memory stays an offer.
+	memDown := false
+	for _, n := range out {
+		if strings.HasPrefix(n.key, "need.mem.") {
+			memDown = true
+		}
+	}
 	var memp []memPluginRow
 	comps := map[string]bool{}
 	for _, r := range memPluginRowsFor(a.S.Devices) {
@@ -75,6 +93,9 @@ func (a *App) setNeeds() []setNeed {
 		comps[r.dv.ID] = true
 	}
 	for _, r := range memp {
+		if memDown {
+			continue
+		}
 		text := a.L.T("need.memplug", harnessName(r.h.Harness))
 		if len(comps) > 1 || !r.dv.Home { // D569: a computer not the home is always named (haswell, not hel)
 			text = a.L.T("need.memplug.on", harnessName(r.h.Harness), a.deviceNameIn(r.dv))
@@ -152,9 +173,9 @@ func (a *App) paneSay(tab, lede string) string {
 		if a.S.Settings == nil {
 			return lede
 		}
-		// D552: Mem down or signed out is said by its need alone.
-		for _, n := range a.setNeeds() {
-			if n.key == "memhealth" {
+		// D552: Mem down or signed out is said by its need alone (a plugin's update is not Mem itself).
+		for _, n := range a.needsOf(TabMemory) {
+			if strings.HasPrefix(n.key, "need.mem.") {
 				return ""
 			}
 		}
@@ -555,14 +576,23 @@ func (a *App) homeMem() string {
 	if st == nil {
 		return ""
 	}
+	if !st.Memory {
+		return a.L.T("home.mem.off")
+	}
+	// D646: the 记得 line says Mem's real state, the same one the pane says: closed is
+	// 「Nowledge Mem 没开着」, never 「还没连上」.
+	why := ""
+	if b := a.S.Bridge; b != nil {
+		why = a.failedWhy(b.Detail)
+	}
+	if v := memStateOf(a.S.Mem, a.S.Bridge, a.memHome(), why); v != nil {
+		peersOn := a.S.Settings.Peers != nil && peersSwitchOn(a.S.Settings.Peers.Reach, a.S.Bridge)
+		if v.NeedPage == "memory" || peersOn {
+			return a.memWord(v.Overview)
+		}
+	}
 	switch memPhase(st.Memory, a.S.Mem, a.S.Bridge) {
 	case "on":
-		// D552: Mem signed out or out of reach is never 「你说过的都在 Nowledge Mem 里」.
-		for _, n := range a.setNeeds() {
-			if n.key == "memhealth" {
-				return a.L.T("home.mem.down")
-			}
-		}
 		if m := a.S.Mem; m != nil {
 			if n := memWeek(m.Noted, a.Now()); n > 0 {
 				return a.L.T("home.mem.week", n)

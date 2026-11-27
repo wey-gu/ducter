@@ -14,8 +14,8 @@ import { Btn, Chev } from "./controls.tsx";
 import { clientArt, deviceArt, foldClients, runningOn } from "./devcard.tsx";
 import { ago, harnessName, keepClauses, memWords, modelName, shownDeviceName } from "./format.ts";
 import { MemAsk, memCant, memLine, memPluginRows } from "./mem-plugin.tsx";
-import { groupNoted, memPhase } from "./mem-view.ts";
-import { Notebook, peersReaching, peersSay } from "./memory.tsx";
+import { groupNoted, memNeeds, memPhase, memStateView, peersSwitchOn } from "./mem-view.ts";
+import { failedWhy, Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
 import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
@@ -51,11 +51,16 @@ export function setNeeds(): SetNeed[] {
   const out: SetNeed[] = [];
   if (A.settings && noBrain()) out.push({ key: "brain", text: t("need.brain"), go: t("need.go.signin"), page: "partner" });
   for (const c of sources()) if (down(c)) out.push({ key: `src:${c.id}`, text: t("need.source", c.name), go: t("need.go.look"), page: "accounts" });
-  // D552: Mem itself down or signed out, while memory is on: said here too, never only in the pane's head
-  // (the Overview read 「我都记在 Nowledge Mem 里」 over a Mem that kept nothing).
-  const issue = A.settings?.memory ? A.mem?.health?.issue : undefined;
-  if (issue === "signed_out") out.push({ key: "memhealth", text: t("need.mem.signed_out"), go: t("need.go.signin"), page: "memory" });
-  if (issue === "unreachable") out.push({ key: "memhealth", text: t("need.mem.unreachable", A.bridge?.home || homeName() || "Ducter"), go: t("need.go.look"), page: "memory" });
+  // D646: Mem's own states (signed out, closed, out of reach, too old) and any Agent messaging
+  // problem that stops the partner hearing from the person's agents are needs here, with the same
+  // line the pane says and the pane that holds the one fix (D552: never only in the pane's head).
+  if (A.settings?.memory) {
+    const peersOn = !!A.settings.peers && peersSwitchOn(A.settings.peers.reach, A.bridge);
+    for (const n of memNeeds(A.mem, A.bridge, A.bridge?.home || homeName())) {
+      if (n.page === "peers" && !peersOn) continue;
+      out.push({ key: n.key, text: t(n.key, ...n.args), go: t(n.key === "need.mem.signed_out" ? "need.go.signin" : "need.go.look"), page: n.page });
+    }
+  }
   // D569: what Nowledge Mem couldn't settle by itself is its own bookkeeping, never a need: it waits,
   // one quiet row on Memory, the partner's suggestions in it.
   // D552: one per agent per computer, each saying which computer when there is more than one, so two
@@ -64,8 +69,12 @@ export function setNeeds(): SetNeed[] {
   // pane's own Update, right here, never a 去更新 to a row with no button. One that can't is no need;
   // its row on Memory says why.
   const memp = memPluginRows(A.devices).filter(({ dv, h }) => h.mem?.state === "update" && !memCant(dv));
+  // D646 (D590's leftover 6): while Mem itself has a way through, an agent plugin's update is
+  // not a second need on the same head; its row on Memory stays an offer.
+  const memDown = out.some((n) => n.key.startsWith("need.mem."));
   const several = new Set(memp.map(({ dv }) => dv.id)).size > 1;
   for (const { dv, h } of memp) {
+    if (memDown) continue;
     const w = memWords(A.L, memLine(dv, h), harnessName(h.harness), h.harness);
     if (!w.action && !w.busy) continue;
     // D569: a computer not the home is always named (haswell, not hel).
@@ -152,7 +161,7 @@ export function paneSay(page: SettingsPage): string {
     case "memory": {
       if (!A.settings) return "";
       // D552: Mem down or signed out is said by its need alone, never 「我都记在 Nowledge Mem 里」.
-      if (needsOf("memory").some((n) => n.key === "memhealth")) return "";
+      if (needsOf("memory").some((n) => n.key.startsWith("need.mem."))) return "";
       const ph = memPhase(!!A.settings.memory, A.mem, A.bridge);
       return ph === "on" ? t("say.memory.on") : ph === "off" ? t("say.memory.off") : ph === "closed" ? t("say.memory.closed") : t("say.memory.first");
     }
@@ -246,14 +255,18 @@ function homeReads(): string {
 
 function homeMem(): string {
   if (!A.settings) return "";
-  const ph = memPhase(!!A.settings.memory, A.mem, A.bridge);
+  if (!A.settings.memory) return t("home.mem.off");
+  // D646: the 记得 line says Mem's real state, the same one the pane says: closed is
+  // 「Nowledge Mem 没开着」, never 「还没连上」.
+  const sv = memStateView(A.mem, A.bridge, A.bridge?.home || homeName());
+  // Agent messaging off by the person's own choice is not a problem to raise here.
+  if (sv && (sv.need.page === "memory" || (!!A.settings.peers && peersSwitchOn(A.settings.peers.reach, A.bridge)))) return t(sv.overview.key, ...sv.overview.args);
+  const ph = memPhase(true, A.mem, A.bridge);
   if (ph === "on") {
-    // D552: Mem signed out or out of reach is never 「你说过的都在 Nowledge Mem 里」.
-    if (needsOf("memory").some((n) => n.key === "memhealth")) return t("home.mem.down");
     const n = groupNoted(A.mem?.noted ?? []).filter((g) => g.when !== "earlier").reduce((k, g) => k + g.items.length, 0);
     return n > 0 ? t("home.mem.week", n) : t("home.mem.on");
   }
-  return ph === "off" ? t("home.mem.off") : t("home.mem.none");
+  return t("home.mem.none");
 }
 
 function homeReach(): string {

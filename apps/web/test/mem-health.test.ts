@@ -57,6 +57,6 @@ test("a lent computer's row: only while it would ask to sign in, and only these 
 test("D375: the offer closed by itself reads as done; re-signing in has its own line", () => {
   expect(TABLES.zh["memp.card.done"]).toBe("已装好");
   expect(TABLES.en["memp.card.done"]).toBe("Installed");
-  expect(TABLES.zh["mem.health.resign.how"]).toBe("在 Nowledge Mem 的 设置 › Connectors 里重新生成连接提示，把整段贴在这里。");
-  expect(TABLES.en["mem.health.resign.how"]).toContain("Settings › Connectors");
+  expect(TABLES.zh["mem.health.resign.how"]).toBe("在 Nowledge Mem 的设置里点「生成连接链接并复制提示」，把整段贴在这里。");
+  expect(TABLES.en["mem.health.resign.how"]).toContain("Generate connect link & copy prompt");
 });

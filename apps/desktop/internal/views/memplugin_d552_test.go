@@ -191,7 +191,7 @@ func TestMemHealthNeedD552(t *testing.T) {
 		for _, n := range app.setNeeds() {
 			got = append(got, n.key)
 		}
-		if fmt.Sprint(got) != "[memhealth]" {
+		if fmt.Sprint(got) != "[need.mem.signed_out]" {
 			t.Fatalf("%s: needs %v", lang, got)
 		}
 		if app.homeMem() != L.T("home.mem.down") {

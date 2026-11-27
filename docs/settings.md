@@ -49,15 +49,18 @@ Settings opens with your partner telling you, in a few lines, how things stand: 
 thinks with, which accounts it reads (and that anything sent or paid asks you first), what it
 remembers, and where else you can reach it (your chat apps, and your own agents that can reach it,
 such as **Your Codex, Claude Code**). Click a line to open its tab. When something needs you
-(a source of accounts that can't be reached, Nowledge Mem signed out or out of reach, a newer
-Nowledge Mem for one of your AI agents that can be updated from here (with the computer's name when
-it isn't the one your partner runs on, or you have more than one), updates ready), your partner raises its little flag,
+(a source of accounts that can't be reached, Nowledge Mem closed, signed out, out of reach or too
+old, a connection problem that stops your agents reaching your partner, a newer Nowledge Mem for one
+of your AI agents that can be updated from here (with the computer's name when it isn't the one your
+partner runs on, or you have more than one), updates ready), your partner raises its little flag,
 says so first, and gives you a button that takes you to where you fix it. When all is well it simply
 says **All's well. I'm right here.**
 
 Where it can be done safely right there, the button does it: a newer Nowledge Mem for one of your
 AI agents asks you first, in place, then updates it on that computer (any AI signed in there does
-it); the **Memory** page carries the same **Update** right under the line that says so. Updates ready
+it); the **Memory** page carries the same **Update** right under the line that says so. When the app
+is closed, **Remembered** on Overview says **Nowledge Mem isn't open**, never **Not connected yet**,
+and a connection problem on Agent messaging is named here too, with a way to that page. Updates ready
 start with one tap, as in **Devices**. What Nowledge Mem itself isn't sure about never asks for your
 attention here; it waits quietly on the **Memory** page.
 
@@ -275,9 +278,12 @@ What your partner remembers about you has its own section, **Memory**.
   and space, for when you need help. When you use agents of your own, **Your other agents reach
   {name} through it too** leads to **Agent messaging**. When Nowledge Mem's sign-in stopped
   working, it can't be reached, or it is too old, this group comes first on the page, with its one
-  button (**Sign in again**, **Check again** or **Update**), right under the line that says so. Until
-then, if you ask about something you told it before, it says it can't look back right now rather than
-acting as if it forgot.
+  button (**Sign in**, **Check again** or **Update**), right under the line that says so. When it is
+  too old to say how it is, **Update** fixes it if Ducter can update that copy; otherwise the line
+  names the computer where it has to be updated. With no place only you read, the line says so and
+  **Check again** reads Mem again after you make one. Until
+  then, if you ask about something you told it before, it says it can't look back right now rather than
+  acting as if it forgot.
 - **Also keep files I make in Nowledge Mem**, off until you turn it on: when a task is done, the
   reports and documents it made (PDFs, documents, sheets, slides, Markdown and text) go to a folder
   named **Ducter** in your Nowledge Mem (in your own space there, the one only you read; if Nowledge
@@ -367,6 +373,17 @@ up in your conversation. A message {name} sends one of them for you says quietly
 whether it arrived and whether it has been read: **Delivered** while nobody has opened it, **Read**
 once someone has, and **2/5 read** in a Space with several people. When Nowledge Mem has no read
 receipt for it, nothing is shown rather than a guess.
+
+When a connection can't be made, the page says what you can do in your own words, as a title and one
+line: this sign-in can't act as you yet, this connection is bound elsewhere, Nowledge Mem can't take
+it right now, and so on. **Try again** is there wherever trying again can help; where the way through
+is in Nowledge Mem itself (a retired identity, a connection bound to another sign-in), the line says
+so and there is no button. **Details** shows the exact name and who to ask in Nowledge Mem. If the
+Nowledge Mem app is closed, the page says **Nowledge Mem isn't open** with **Open Nowledge Mem** on a
+Mac, or names the computer to open it on; if Mem here keeps its own memory and offers no place to
+connect, it says that too, and **Try again** reads it again after you update Nowledge Mem or sign in
+to a cloud workspace. With no place only you read, the page says so and **Check again** reads Mem
+again once you make one.
 
 **Your agents** lists each AI tool you use, one row each: its mark, its name, and what it can do with
 your partner, in plain words, with when it last came at the right:

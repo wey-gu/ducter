@@ -51,8 +51,9 @@ func (a *App) memoryPanel(c *ui.Context) {
 	case "off":
 		a.memHead(c, st)
 	case "closed":
-		a.memHead(c, st)
+		// D646: the fix sits under the line that says it, never a card below.
 		a.memClosed(c, b)
+		a.memHead(c, st)
 	default:
 		a.memFirst(c, phase, b)
 	}
@@ -395,6 +396,18 @@ func (a *App) memAbout(c *ui.Context) {
 	}
 	groups := aboutGroups(items)
 	if len(groups) == 0 {
+		// D646: with Mem out of reach or signed out and nothing cached, the head says Mem is out
+		// of reach (D590's line), never 「我还不太了解你」: an empty page must not read as forgetting.
+		why := ""
+		if b := a.S.Bridge; b != nil {
+			why = a.failedWhy(b.Detail)
+		}
+		if v := memStateOf(m, a.S.Bridge, a.memHome(), why); v != nil && (v.State == "unreachable" || v.State == "signed_out") {
+			a.group(c, "mem-none", "", "", func() {
+				a.tileRow(c, "mem-none", a.pebbleTile(c), a.memWord(v.Title), a.memWord(v.Line), nil)
+			})
+			return
+		}
 		a.group(c, "mem-none", "", "", func() {
 			a.tileRow(c, "mem-none", a.pebbleTile(c), a.L.T("mem.about.empty"), a.L.T("mem.hero.empty.body"), nil)
 		})
@@ -614,37 +627,41 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 	}
 	h := memHealthLook(health, b, hs)
 	homeName := a.memHome()
+	why := ""
+	if b != nil {
+		why = a.failedWhy(b.Detail)
+	}
+	// D646: a state says the same line here as on Agent messaging and Overview, with its one action.
+	sv := memStateOf(a.S.Mem, b, homeName, why)
 	line, tone := a.L.T("mem.app.on"), sideDone
 	var act func()
-	switch h.Look {
-	case "ok":
-		line = a.L.T("mem.health.ok")
-	case "old":
-		line, tone = a.L.T("mem.health.old"), sideFailed
-		if h.CanUpdate {
+	if sv != nil && (sv.State == "signed_out" || sv.State == "unreachable" || sv.State == "old" || sv.State == "old_elsewhere") {
+		line, tone = a.memWord(sv.Line), sideFailed
+		switch sv.Action {
+		case "sign_in":
+			if !a.memReSign {
+				act = func() {
+					if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
+						a.memReSign = true
+					}
+				}
+			}
+		case "check_again":
 			act = func() {
-				if a.buttonFor(c, a.L.T("mem.health.old.go"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) && b != nil {
+				if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.MemHealthReq{T: "mem_health"})
+				}
+			}
+		case "update":
+			act = func() {
+				if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) && b != nil {
 					b.State = "updating"
 					a.send(protocol.BridgeAction{T: "bridge_mem_install"})
 				}
 			}
 		}
-	case "unreachable":
-		line, tone = a.L.T("mem.health.unreachable", homeName), sideFailed
-		act = func() {
-			if a.buttonFor(c, a.L.T("mem.health.again"), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
-				a.send(protocol.MemHealthReq{T: "mem_health"})
-			}
-		}
-	case "signed_out":
-		line, tone = a.L.T("mem.health.signed_out"), sideFailed
-		if !a.memReSign {
-			act = func() {
-				if a.buttonFor(c, a.L.T("mem.health.signin"), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
-					a.memReSign = true
-				}
-			}
-		}
+	} else if h.Look == "ok" {
+		line = a.L.T("mem.health.ok")
 	}
 	a.headRow(c, "mem-app", a.memTile(c, tone == sideFailed), "Nowledge Mem", line, tone, act)
 	// D554: an agent without Mem's plugin is an offer under the head, never
@@ -809,17 +826,21 @@ func (a *App) memUpdateRow(c *ui.Context, u *memUpd, b *protocol.BridgeView) {
 func (a *App) memClosed(c *ui.Context, b *protocol.BridgeView) {
 	t := a.T
 	home := a.memHome()
-	a.group(c, "mem-closed", "", "", func() {
-		line := a.L.T("bridge.mem.closed.there", home)
-		var control func()
-		if b != nil && b.CanOpen {
-			line = a.L.T("bridge.mem.closed.open", home)
+	// D646: one state table: the same title, line and action on Memory and Agent messaging.
+	sv := memStateOf(a.S.Mem, b, home, "")
+	line := a.L.T("bridge.mem.closed.there", home)
+	var control func()
+	if sv != nil {
+		line = a.memWord(sv.Line)
+		if sv.Action == "open_mem" {
 			control = func() {
-				if a.buttonFor(c, a.L.T("bridge.mem.open"), home, btnSecondary, t.ControlSM, t.Surface) {
+				if a.buttonFor(c, a.L.T(sv.Act), home, btnSecondary, t.ControlSM, t.Surface) {
 					a.send(protocol.BridgeAction{T: "bridge_mem_open"})
 				}
 			}
 		}
+	}
+	a.group(c, "mem-closed", "", "", func() {
 		a.headRow(c, "mem-closed", a.memTile(c, true), a.L.T("bridge.mem.closed"), line, sideMuted, control)
 	})
 }

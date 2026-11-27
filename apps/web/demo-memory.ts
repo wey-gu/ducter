@@ -11,6 +11,8 @@
 // D466: DEMO_HEALTH=update: Claude Code's Mem plugin 0.7.34 with 0.7.37 out, Codex's in twice (0.1.10, 0.1.53)
 // D552: DEMO_HEALTH=update552: Claude Code's 0.7.34 with 0.7.38 out; 更新 opens its task after 1.5 s (the
 //   button reads 更新中… from the tap), and the task ends DEMO_DONE_MS later (default 8 s) with 0.7.38 there.
+// D646: DEMO_MEM=no_space | local_mem | refused (Brief B): Mem signed in with no place to
+// connect in, Mem keeping its own memory, and a refusal from Mem (research/243).
 // D597: DEMO_HEALTH=update597: Claude Code's 0.7.38 with 0.7.39 out; 更新 runs its own commands
 //   (pretended, DEMO_DIRECT: ok · fail, a task takes over · stuck, no task could · running); DEMO_TAP=1
 //   taps it as the core starts, so a picture opens in that state.
@@ -73,11 +75,12 @@ const run = async (args: string[]) => {
   if (a === "status")
     return want === "sign_in"
       ? { code: 1, out: "", err: "not signed in" }
-      : ok({ status: "healthy", backend: "cloud", update: { current: version, latest: want === "newer" ? "0.10.121" : version, update_available: want === "newer" } });
-  if (a === "bridge setup") return ok({ state: "selection_needed", candidates: [{ id: SPACE, label: "Only me", kind: "personal", readers: 1, write_default: true }] });
-  if (a.includes("connections connect")) return ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
+      : ok({ status: "healthy", backend: want === "local_mem" ? "local" : "cloud", update: { current: version, latest: want === "newer" ? "0.10.121" : version, update_available: want === "newer" } });
+  if (a === "bridge setup") return ok({ state: "selection_needed", candidates: want === "no_space" || want === "local_mem" ? [] : [{ id: SPACE, label: "Only me", kind: "personal", readers: 1, write_default: true }] });
+  if (a.includes("connections connect"))
+    return want === "refused" ? { code: 1, out: JSON.stringify({ error_code: "cloud_bridge_setup_role_authority_missing" }), err: "" } : ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
   if (a.includes("--agent-context ducter bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
-  if (a.includes("connections list")) return ok({ schema_version: 1, connections: [conn], next_connection_id: null });
+  if (a.includes("connections list")) return ok({ schema_version: 1, connections: want === "refused" || want === "no_space" || want === "local_mem" ? [] : [conn], next_connection_id: null });
   if (check) {
     // D465 (DEMO_CHECK=1): Mem's own asks, shaped as research/202 read them; answers are taken.
     if (a.startsWith("feed --type flag_contradiction")) return ok({ events: [checkContra] });
@@ -191,7 +194,7 @@ if (want !== "empty" && want !== "fresh" && want !== "sign_in")
     core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: zh ? z : e, memoryId: `m-${back}` } });
   }
 shift = 0;
-if (want === "newer" || want === "on" || want === "empty") void core.bridgeLink.connect();
+if (want === "newer" || want === "on" || want === "empty" || want === "refused" || want === "local_mem" || want === "no_space") void core.bridgeLink.connect();
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app#settings=memory (data: ${core.dataDir})`);
 // D597: DEMO_TAP=1: 更新 tapped as it starts (after the first check), so the page opens in that state.
 if (health === "update597" && process.env.DEMO_TAP === "1") setTimeout(() => void core.memPlugins.check().then(() => core.memPlugins.install("local", "claude-code")), 500);

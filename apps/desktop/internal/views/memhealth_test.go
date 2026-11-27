@@ -71,7 +71,7 @@ func TestMemHealthHead(t *testing.T) {
 		// Unreachable: 再看一次 asks the home to read it again.
 		app.S.Mem.Health = &protocol.MemHealth{Issue: "unreachable"}
 		frames(tt)
-		if _, ok := tt.Find(L.T("mem.health.unreachable", "hel")); !ok {
+		if _, ok := tt.Find(L.T("mem.health.unreachable.line", "hel")); !ok {
 			t.Fatalf("%s: no unreachable line", lang)
 		}
 		if err := tt.Click(L.T("mem.health.again")); err != nil {

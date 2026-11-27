@@ -48,6 +48,8 @@ export interface HarnessProbeEnv {
   piBundled?: () => string | undefined;
   /** D600: Cursor's SDK that ships inside Ducter, when this Ducter has one (its version); see bundledCursorVersion. */
   cursorBundled?: () => string | undefined;
+  /** D625: does this build's @botiverse/oar/community export createDimRuntime? Default: the real check, cached. */
+  dimRuntime?: () => Promise<boolean>;
   /** D416: a link that is there but points at nothing (default: the file system's). */
   dangling?: (p: string) => boolean;
   /** D549: the user id Ducter runs as here (default process.getuid; 0 is root). */
@@ -139,7 +141,7 @@ export function agentPaths(
   const exists = o.exists ?? existsSync;
   const add = (p: string | undefined | null) => (p && exists(p) ? p : undefined);
   if (h === "antigravity") return agyPaths(o);
-  const pinned: string | undefined = { cursor: env.OAR_CURSOR_BIN, devin: env.OAR_DEVIN_BIN, kimi: env.OAR_KIMI_BIN, opencode: env.OAR_OPENCODE_BIN }[h as "cursor" | "devin" | "kimi" | "opencode"];
+  const pinned: string | undefined = { cursor: env.OAR_CURSOR_BIN, devin: env.OAR_DEVIN_BIN, kimi: env.OAR_KIMI_BIN, opencode: env.OAR_OPENCODE_BIN, dim: env.OAR_DIM_BIN }[h as "cursor" | "devin" | "kimi" | "opencode" | "dim"];
   if (pinned) return [pinned];
   const cmd = HARNESS_FACTS[h].version.command[0]!;
   const onPath = o.which(cmd);
@@ -152,6 +154,9 @@ export function agentPaths(
     }
     case "opencode":
       return [...new Set([onPath, add(join(home, ".opencode", "bin", "opencode"))].filter((p): p is string => !!p))];
+    // D625: Dim's npm package puts `dima` on PATH; OAR also accepts the nightly's names.
+    case "dim":
+      return [...new Set([onPath, o.which("dim-nightly"), o.which("dimn")].filter((p): p is string => !!p))];
     default:
       return [...new Set([onPath].filter((p): p is string => !!p))];
   }
@@ -167,6 +172,24 @@ export function bundledCursorVersion(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+let dimSeen: boolean | undefined;
+/**
+ * D625: whether this build can run Dim at all. Dim is a community runtime: `createDimRuntime`
+ * exists in `@botiverse/oar/community` only from the OAR release after 0.137.0. Checked by the
+ * export, not a version number, so the next release works with no change here; a missing entry or
+ * a failed load reads as "not yet", never an exception. Cached: the module is fixed per process.
+ */
+export async function dimRuntimeAvailable(): Promise<boolean> {
+  if (dimSeen !== undefined) return dimSeen;
+  try {
+    const m = (await import("@botiverse/oar/community")) as { createDimRuntime?: unknown };
+    dimSeen = typeof m.createDimRuntime === "function";
+  } catch {
+    dimSeen = false;
+  }
+  return dimSeen;
 }
 
 /** One agent's copy on this machine, or undefined when it isn't there. */
@@ -436,6 +459,20 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     }
     return { harness: "opencode", installed: true, loggedIn };
   };
+  // D625: Dim is a community runtime: this build can only run it when @botiverse/oar/community
+  // exports createDimRuntime. Before that the row says 即将支持 / Coming soon (trouble "coming"),
+  // never "install" or a sign-in Ducter cannot keep. Once that export exists, `dima` on PATH is
+  // enough. OAR has no auth status for Dim (its home's sign-in is Dim's), and its own auth failure
+  // ends a turn with credential missing/rejected: presence is all this can say.
+  const dim = async (): Promise<RawHarness> => {
+    const ready = await (o.dimRuntime ?? dimRuntimeAvailable)().catch(() => false);
+    if (!ready) return { harness: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } };
+    const bin = agentPaths("dim", { which: o.which, env, home, ...(o.exists ? { exists: o.exists } : {}) })[0];
+    if (!bin) return { harness: "dim", installed: false, loggedIn: false };
+    const v = await o.exec([bin, "--version"], 15_000);
+    if (v.code !== 0 || !HARNESS_FACTS.dim.version.pattern.test(v.out)) return { harness: "dim", installed: false, loggedIn: false };
+    return { harness: "dim", installed: true, loggedIn: true };
+  };
   const probes: [string, () => Promise<RawHarness>][] = [
     ["claude-code", claude],
     ["codex", codex],
@@ -446,6 +483,7 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     ["devin", devin],
     ["kimi", kimi],
     ["opencode", opencode],
+    ["dim", dim],
   ];
   // D549 (research/225): an agent that refuses to run as root, on a computer where Ducter runs as
   // root, is there and may be signed in, but can't take a task here: said as trouble "root".

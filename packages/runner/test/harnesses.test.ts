@@ -34,14 +34,14 @@ const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}):
   ...over,
 });
 
-test("the capability table covers the four and (D416/D600) the task-only agents, each task-capable", () => {
-  expect([...HARNESS_IDS]).toEqual(["claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode"]);
+test("the capability table covers the four and (D416/D600/D625) the task-only agents, each task-capable", () => {
+  expect([...HARNESS_IDS]).toEqual(["claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode", "dim"]);
   for (const id of HARNESS_IDS) expect(HARNESSES[id]).toMatchObject({ id, task: true });
   // D177: all four may be the partner; pi and DeepSeek Harness passed the eval (research/50 §5).
   expect(HARNESS_IDS.filter((id) => HARNESSES[id].partner)).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);
   expect(HARNESSES["deepseek-harness"].name).toBe("DeepSeek Harness");
   // D600: the new agents are tasks only, none a partner.
-  for (const id of ["cursor", "devin", "kimi", "opencode"] as const) expect(HARNESSES[id]).toMatchObject({ id, partner: false, task: true });
+  for (const id of ["cursor", "devin", "kimi", "opencode", "dim"] as const) expect(HARNESSES[id]).toMatchObject({ id, partner: false, task: true });
 });
 
 test("D202: effort goes to OAR on open and on a resume, only to an agent that takes one", () => {

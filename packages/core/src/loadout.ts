@@ -3,7 +3,7 @@
 // rules, and after two switches the same way asks the partner to offer a rule once.
 import type { Bodies, BodyWhy, Candidate, DeviceHarness, RuleView, KindDefault, LogEvent, Place, TaskBound, TaskNeeds, WorkKind } from "@ducter/protocol";
 import { allowedBy } from "./bound.ts";
-import { HARNESSES, HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_KIND, whichPhone, WORK_KINDS, type HarnessId } from "@ducter/protocol";
+import { HARNESSES, HARNESS_IDS, PARTNER_NAMED_HARNESS_IDS, harnessName, isHarnessId, isWorkKind, NO_LOOK_KIND, whichPhone, WORK_KINDS, type HarnessId } from "@ducter/protocol";
 import { effectiveBrain } from "./brain.ts";
 import { resolveModel } from "@ducter/protocol/src/harness-facts.ts";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
@@ -519,7 +519,7 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore, o?: { comp
       type: "object",
       properties: {
         text: { type: "string", description: 'The rule in one line, in the user\'s language, as "<kind of work> → <AI agent>", e.g. "后端的事 → Codex" or "跑腿的事 → 不用 Claude Code"' },
-        harness: { type: "string", enum: [...HARNESS_IDS] },
+        harness: { type: "string", enum: [...PARTNER_NAMED_HARNESS_IDS] },
         model: { type: "string", description: "Only when the user named a model" },
         device: { type: "string", description: "D157: only when the rule names a computer (\"要登录的网页都在 MacBook 上做\"): its name from the [devices] line" },
         match: { type: "array", items: { type: "string" }, description: "3–10 words that mark this kind of work in a task title or brief, in both Chinese and English (e.g. [\"后端\", \"backend\", \"api\", \"server\"])" },
@@ -587,7 +587,7 @@ export function registerSwitchTool(mcp: CoreMcpHub, o: { loadout: Loadout; tasks
       type: "object",
       properties: {
         taskId: { type: "string" },
-        harness: { type: "string", enum: [...HARNESS_IDS], description: "Only to change the agent" },
+        harness: { type: "string", enum: [...PARTNER_NAMED_HARNESS_IDS], description: "Only to change the agent" },
         model: { type: "string" },
         effort: { type: "string" },
         device: {
@@ -748,7 +748,7 @@ export function neverPick<P extends { harness: string; model?: string; why: Body
  * words; code only checks the names (a computer of this home, an agent that does tasks).
  */
 export function registerNewTasksTool(mcp: CoreMcpHub, o: { settings: SettingsStore; computers: () => { id: string; name: string; home: boolean; aliases?: string[] }[] }) {
-  const agents = HARNESS_IDS.filter((h) => HARNESSES[h].task);
+  const agents = PARTNER_NAMED_HARNESS_IDS.filter((h) => HARNESSES[h].task);
   mcp.register(
     "partner",
     "new_tasks",

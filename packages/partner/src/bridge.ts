@@ -343,6 +343,7 @@ const HOSTS: Record<string, string> = {
   "gemini-cli": "Gemini CLI",
   "copilot-cli": "Copilot CLI",
   opencode: "OpenCode",
+  dim: "Dim",
   pi: "pi",
 };
 

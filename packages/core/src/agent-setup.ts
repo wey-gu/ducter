@@ -612,7 +612,8 @@ export function createAgentSetup(o: {
       }
       // D600: these three sign in from a terminal on that computer, with their own command; Cursor's
       // SDK sign-in is not carried in this build (its CLI's login writes a different credential store).
-      const terminal = h === "devin" ? "devin auth login" : h === "opencode" ? "opencode auth login" : h === "cursor" ? "CURSOR_API_KEY" : undefined;
+      // D625: Dim's sign-in is its own (`dima` then /login, or /connect for a key).
+      const terminal = h === "devin" ? "devin auth login" : h === "opencode" ? "opencode auth login" : h === "cursor" ? "CURSOR_API_KEY" : h === "dim" ? "dima" : undefined;
       if (terminal) return void (logins.set(h, { view: { state: "terminal", command: terminal }, out: "" }), o.changed());
       const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
       const bin = argv ? sys.which(argv[0]!) : null;

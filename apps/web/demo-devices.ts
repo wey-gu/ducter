@@ -23,6 +23,8 @@ const core = startCore({ ooSource: noOo,
     harnesses: async () => [
       { harness: "claude-code", installed: true, loggedIn: true, version: "2.1.319", how: "installer" },
       { harness: "codex", installed: true, loggedIn: false, version: "0.167.0", how: "npm" },
+      // D625: the socket's Dim row when this build has no createDimRuntime.
+      ...(process.env.DEMO_DIM ? [{ harness: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } }] : []),
     ],
     kind: async () => "server",
   },
@@ -57,6 +59,7 @@ ws.send(
       { id: "claude-code", installed: true, loggedIn: true, version: "2.1.400", how: "installer" },
       { id: "codex", installed: true, loggedIn: true, version: "0.167.0", how: "brew" },
       { id: "pi", installed: true, loggedIn: true, version: "1.4.0", how: "installer" },
+      ...(process.env.DEMO_DIM ? [{ id: "dim", installed: false, loggedIn: false, trouble: { kind: "coming" } }] : []),
     ],
   }),
 );

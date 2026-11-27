@@ -135,7 +135,7 @@ import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } fro
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
 import { createUpdateAll, type UpdateAll } from "./update-all.ts";
-import { bundledPiVersion, detectAgent, probeHarnesses, signedInNow } from "./harness-probe.ts";
+import { bundledPiVersion, detectAgent, dimRuntimeAvailable, probeHarnesses, signedInNow } from "./harness-probe.ts";
 import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
 import { checkMemPluginUpdates, inspectMemBridge, inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
@@ -2204,7 +2204,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const agentTesting = process.env.NODE_ENV === "test";
   const agentSys = a.sys ?? u.sys ?? realSys;
   const agentLatest = createAgentLatest({ dataDir, ...(a.fetch ? { fetch: a.fetch } : agentTesting ? {} : { fetch: (x, i) => fetch(x, i) }), env: process.env });
-  const agentProbe = { exec: (argv: string[], ms?: number) => agentSys.run(argv, { timeoutMs: ms ?? 15_000 }), which: a.which ?? ((c: string) => whichNow(c)), env: process.env, dataDir, ...(agentTesting ? {} : { piBundled: bundledPiVersion }) };
+  const agentProbe = { exec: (argv: string[], ms?: number) => agentSys.run(argv, { timeoutMs: ms ?? 15_000 }), which: a.which ?? ((c: string) => whichNow(c)), env: process.env, dataDir, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), dimRuntime: dimRuntimeAvailable };
   const isWorker = (dev: string) => devices.list().some((x) => x.kind === "worker" && (x.id === dev || x.name === dev));
   const agents = createAgentUpdates({
     log,

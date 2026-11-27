@@ -14,7 +14,7 @@ import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/nativ
 import { deviceForm, type DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
 import { pairFragment, type DeviceVia, type HomeKey, type ReachWay } from "@ducter/protocol/src/reach.ts";
-import { probeHarnesses } from "./harness-probe.ts";
+import { dimRuntimeAvailable, probeHarnesses } from "./harness-probe.ts";
 import type { BrowserSetup } from "./browser/index.ts";
 import { spawnNow, whichNow } from "@ducter/protocol/src/which.ts";
 
@@ -314,7 +314,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     // one not there waits in the socket); pi only once signed in, so a Mac without it reads as before.
     harnesses:
       o.probes?.harnesses ??
-      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir, ...(o.piBundled ? { piBundled: o.piBundled } : {}) })).filter((h) => (h.harness === "pi" ? h.loggedIn : true))),
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir, ...(o.piBundled ? { piBundled: o.piBundled } : {}), dimRuntime: dimRuntimeAvailable })).filter((h) => (h.harness === "pi" ? h.loggedIn : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 

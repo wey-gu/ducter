@@ -64,7 +64,7 @@ test("settings: defaults, env over the file, out-of-range values named and not u
 });
 
 test("D600: Cursor, Devin CLI, Kimi Code and OpenCode are task agents with every fact checked", () => {
-  expect(HARNESS_IDS.slice(-4)).toEqual(["cursor", "devin", "kimi", "opencode"]);
+  expect(HARNESS_IDS.slice(-5)).toEqual(["cursor", "devin", "kimi", "opencode", "dim"]);
   for (const h of ["cursor", "devin", "kimi", "opencode"] as const) {
     expect(HARNESSES[h].task).toBe(true);
     expect(HARNESSES[h].partner).toBe(false);
@@ -91,6 +91,22 @@ test("D600: Cursor, Devin CLI, Kimi Code and OpenCode are task agents with every
   expect(versionStanding("kimi", "2.6.4")).toBe("newer");
   expect(versionStanding("opencode", "opencode 2.3.0")).toBe("verified");
   expect(versionStanding("opencode", "1.18.30")).toBe("older");
+});
+
+test("D625: Dim's facts are read from OAR's community runtime: usage_update, no steer or task stop, opaque, volatile queue", () => {
+  const f = HARNESS_FACTS.dim;
+  expect(f.harness).toBe("dim");
+  expect(f.version.command).toEqual(["dima", "--version"]);
+  expect(f.version.pattern.exec("dimcode 0.1.0-alpha.29")?.[1]).toBe("0.1.0-alpha.29");
+  expect(f.verified).toEqual({ from: "0.1.0-alpha.29", to: "0.1.0-alpha.29" });
+  expect(f.models.value).toEqual({});
+  expect(f.windowKnob.value.via).toBe("none");
+  expect(f.contextReport.value).toContain("usage_update");
+  expect(f.session?.value).toEqual({ steer: false, stopTask: false, queue: "volatile", attribution: "opaque" });
+  expect(HARNESSES.dim.steer).toBe(f.session!.value.steer);
+  expect(f.compactionEvents.value).toEqual({ started: false, ended: false });
+  expect(f.effort?.value.levels).toEqual(["provider-default", "none", "low", "high", "max"]);
+  expect(f.channels.value.npm).toBe("dimcode-alpha");
 });
 
 test("versions against the verified range", () => {

@@ -28,6 +28,9 @@ type agentSetupState struct {
 // agentRowLook is where an agent stands, in the web's order (agent-setup-view.ts).
 func agentRowLook(h protocol.DeviceHarness) string {
 	switch {
+	case h.Trouble != nil && h.Trouble.Kind == "coming":
+		// D625: this Ducter build can't run it yet (Dim before the next OAR release).
+		return "coming"
 	case h.Setup != nil && h.Setup.Phase == "installing":
 		return "installing"
 	case h.Installed && h.Login != nil && (h.Login.State == "signing_out" || h.Login.Reason == "signout_failed"):
@@ -54,7 +57,7 @@ func agentRowLook(h protocol.DeviceHarness) string {
 }
 
 // installOrder is the order the lend sheet offers them in.
-var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"}
+var installOrder = []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor", "dim"}
 
 // agentTrouble is what the row says of an agent partly there (D416), and
 // what its one button does then: install, update (its own updater) or
@@ -162,6 +165,8 @@ func (a *App) agentWord(dv *protocol.DeviceView, h protocol.DeviceHarness, look 
 		return a.L.T("ag.failed."+reason, a.deviceNameIn(dv))
 	case "cant":
 		return a.L.T("ag.trouble.root")
+	case "coming":
+		return a.L.T("ag.coming")
 	}
 	if w, _ := a.agentTrouble(h); w != "" {
 		return w
@@ -234,6 +239,10 @@ func (a *App) agentRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 		// D549: why it won't run there, and what fixes it.
 		if look == "cant" {
 			uiText(c, a.L.T("ag.trouble.root.why", name)).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
+		}
+		// D625: Dim before the OAR release that exports createDimRuntime: said, never a button.
+		if look == "coming" {
+			uiText(c, a.L.T("ag.dim.coming")).FontSize(t.XS).TextColor(t.InkSoft).LineHeight(1.4)
 		}
 		// D371: its command line is big; say so before the tap.
 		if (look == "install" || look == "queued") && h.Harness == "deepseek-harness" {
@@ -418,6 +427,8 @@ func terminalKey(harness string) string {
 		return "ag.login.opencode"
 	case "cursor":
 		return "ag.login.cursor"
+	case "dim":
+		return "ag.login.dim"
 	}
 	return "ag.login.pi"
 }
@@ -431,6 +442,8 @@ func manualWhereKey(harness string) string {
 		return "ag.devin.where"
 	case "kimi":
 		return "ag.kimi.where"
+	case "dim":
+		return "ag.dim.where"
 	}
 	return ""
 }

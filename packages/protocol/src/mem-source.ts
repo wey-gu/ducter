@@ -17,6 +17,7 @@ export const AI_TOOLS: Record<string, string> = {
   chatgpt: "ChatGPT",
   openclaw: "OpenClaw",
   opencode: "OpenCode",
+  dim: "Dim",
   pi: "pi",
   cline: "Cline",
   copilot: "GitHub Copilot",

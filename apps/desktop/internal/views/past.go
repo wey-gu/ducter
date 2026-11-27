@@ -37,7 +37,7 @@ const (
 )
 
 // pastHarnesses are the agents Continue with another agent offers.
-var pastHarnesses = []string{"claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode"}
+var pastHarnesses = []string{"claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode", "dim"}
 
 // pastFilter is the chip chosen: "" (all), starred, project, harness, tag.
 type pastFilter struct{ kind, value string }

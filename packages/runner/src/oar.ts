@@ -458,8 +458,24 @@ function piCommand(): { command: string; args: string[] } | undefined {
 
 export type RuntimeLoader = (harness: HarnessId, variant?: PiVariant) => Promise<Runtime | undefined>;
 
+/** D625: the community entry, loaded dynamically: 0.137.0 exports no createDimRuntime, a later release does. */
+type CommunityModule = { createDimRuntime?: () => Runtime };
+
+/**
+ * D625: Dim's runtime out of the community entry, feature-detected. Undefined means this
+ * build's `@botiverse/oar/community` has no `createDimRuntime` yet (0.137.0): Dim is said as
+ * coming soon, never crashed, and the day a release exports it this same code runs it.
+ */
+export function dimRuntimeFrom(community: unknown): Runtime | undefined {
+  const make = (community as CommunityModule | undefined)?.createDimRuntime;
+  return typeof make === "function" ? make() : undefined;
+}
+
+/** D625: the one line a build without Dim's runtime says, in the runner and on its setup row. */
+export const DIM_COMING = "Dim is coming with the next @botiverse/oar release: this Ducter build's runtime does not export createDimRuntime yet";
+
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
-const defaultLoader: RuntimeLoader = async (harness, variant) => {
+const defaultLoader = async (harness: HarnessId, variant?: PiVariant, community?: () => Promise<unknown>): Promise<Runtime | undefined> => {
   const key = `${harness}:${piFlags(variant).join(" ")}`;
   const cache = loaded.get(key);
   if (cache) return cache;
@@ -511,6 +527,13 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
     case "opencode":
       rt = (await import("@botiverse/oar/runtimes/opencode")).opencodeRuntime as unknown as Runtime;
       break;
+    // D625: Dim is a community runtime, not one of the per-runtime entries: it comes from
+    // `@botiverse/oar/community` and only from a release that exports it (0.137.0 does not). A
+    // failed or absent import is feature-detected, never fatal; the port's start() says the line.
+    case "dim": {
+      rt = dimRuntimeFrom(await (community ?? (() => import("@botiverse/oar/community")))().catch(() => undefined));
+      break;
+    }
   }
   if (rt) loaded.set(key, rt);
   return rt;
@@ -530,6 +553,8 @@ export function rootRefusal(h: string, uid: number | undefined): string | undefi
 export interface OarPortOptions {
   /** Test seam: supply runtimes (e.g. @botiverse/oar/testing scriptedRuntime). */
   loadRuntime?: RuntimeLoader;
+  /** Test seam (D625): the `@botiverse/oar/community` module a build exports, for Dim's feature detection. */
+  community?: () => Promise<unknown>;
   /** D549, test seam: the user id this process runs as (default process.getuid; 0 is root). */
   uid?: () => number | undefined;
   /** Env overlay for every session/probe (e.g. captured login-shell env), filtered per harness like the rest (D102). Never logged. */
@@ -631,6 +656,9 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   let preamble: string | undefined;
   let launchArgs: string[] | undefined;
   let dshAccount = false;
+  // D625: a Dim home addressed by a --model-config file has no model or effort config option;
+  // OAR refuses both there, so Ducter leaves them to the file (the person's own choice).
+  let modelAllowed = true;
   let disallowed = [...new Set([...(DISALLOWED[h] ?? []), ...(spec.disallowedTools ?? [])])];
   let mcpServers: McpServer[] = spec.mcp.map((m): McpServer =>
     "command" in m
@@ -808,6 +836,19 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       // in process, which Ducter always passes for D102: start() refuses it with a plain reason.
       disallowed = [];
       break;
+    case "dim": {
+      // D625: Dim's ACP gateway refuses tool denial, a prompt replacement/append and a home
+      // that excludes the person's setup (OAR's refused map moves the prompt to the first message).
+      // It also refuses MCP entries carrying env or headers, so Ducter's endpoint goes through the
+      // same stdio bridge as Devin and Antigravity; a stdio entry with its own env is left out.
+      disallowed = [];
+      mcpServers = bridged(mcpServers, ctx.dataDir).filter((m) => !("env" in m && m.env && Object.keys(m.env).length));
+      // The person's own home selection (--home, --server, --model-config) rides only when they set
+      // one; with none, OAR runs Dim's default home. OAR owns the acp subcommand and the session.
+      if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
+      if ((launchArgs ?? []).some((a) => a === "--model-config" || a.startsWith("--model-config="))) modelAllowed = false;
+      break;
+    }
   }
 
   if (spec.readOnly) {
@@ -848,9 +889,10 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   if (refused.disallowedTools) disallowed = [];
   if (refused.launchArgs) launchArgs = undefined;
 
+  const model = modelAllowed ? (window ? modelForWindow(h, spec.model, window) : spec.model) : undefined;
   const options: SessionOptions = {
     cwd: spec.cwd,
-    model: modelFor(h, window ? modelForWindow(h, spec.model, window) : spec.model, dshAccount),
+    model: modelFor(h, model, dshAccount),
     systemPrompt,
     appendSystemPrompt,
     // D16 bypass: OAR launches every runtime without approval gates (claude
@@ -861,7 +903,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     resume: spec.resumeSessionId,
     // D202: the effort picked on the New task card (checked against the model's own levels by
     // core), on open and on every resume; only where the agent takes one (harness-facts effort).
-    effort: spec.effort && !refused.effort && HARNESS_FACTS[h]?.effort ? spec.effort : undefined,
+    effort: modelAllowed && spec.effort && !refused.effort && HARNESS_FACTS[h]?.effort ? spec.effort : undefined,
     env: harnessEnv(h, ctx, env),
     // claude: --setting-sources project,local --strict-mcp-config + claudeMdExcludes. The other
     // runtimes refuse "exclude"; their clean setup is made above. A browser sidecar may ask for
@@ -898,7 +940,7 @@ function modelFor(h: HarnessId, model: string | undefined, dshAccount = false): 
 }
 
 export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
-  const load = opts.loadRuntime ?? defaultLoader;
+  const load = opts.loadRuntime ?? ((h, v) => defaultLoader(h, v, opts.community));
   const dataDir = opts.dataDir ?? process.env.DUCTER_DATA_DIR ?? join(homedir(), ".ducter");
   // D352: each listed model's window as the last listing gave it ("<harness> <model>").
   const liveWindows = new Map<string, number>();
@@ -909,7 +951,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       const refusal = rootRefusal(spec.harness, (opts.uid ?? (() => process.getuid?.()))());
       if (refusal) throw new Error(refusal);
       const rt = await load(spec.harness, piVariant(spec));
-      if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
+      if (!rt) throw new Error(spec.harness === "dim" ? DIM_COMING : `harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
       // D416: a copy OAR refuses (agy below its floor) says why, not "not installed".
       if (inst?.kind === "unsupported") throw new Error(`harness ${spec.harness} can't run here: ${(inst as { reason?: string }).reason ?? "unsupported"}`);
@@ -966,7 +1008,10 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
           const auth = rt.authStatus ? await rt.authStatus(inst, { env, timeoutMs: 15_000 }).catch(() => undefined) : undefined;
           const listed = await rt.listModels?.(inst, { env, timeoutMs: 30_000 }).catch(() => undefined);
           const models = listed?.kind === "ok" ? listed.models.filter((m) => !m.disabled).map((m) => m.id) : undefined;
-          const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? !!dshSignIn(dataDir, opts.env ?? {}) : (models?.length ?? 0) > 0;
+          // D625: Dim has no authStatus, login or model listing of its own: the home's sign-in
+          // is Dim's, and an auth failure (credential missing/rejected) ends the first turn. Its
+          // presence is the most this can say, so a start is offered and Dim answers for itself.
+          const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? !!dshSignIn(dataDir, opts.env ?? {}) : harness === "dim" ? true : (models?.length ?? 0) > 0;
           out.push({ harness, installed: true, loggedIn, models });
         } catch {
           out.push({ harness, installed: false, loggedIn: false });

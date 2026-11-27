@@ -33,6 +33,9 @@ test("a machine with all four: logins read from their own commands and files", a
     { harness: "devin", installed: false, loggedIn: false, canBePartner: false },
     { harness: "kimi", installed: false, loggedIn: false, canBePartner: false },
     { harness: "opencode", installed: false, loggedIn: false, canBePartner: false },
+    // D625: this build's OAR has no createDimRuntime (the caller passes the detector; the bare
+    // default is false), so Dim says 即将支持 rather than offering an install or a sign-in.
+    { harness: "dim", installed: false, loggedIn: false, canBePartner: false, trouble: { kind: "coming" } },
   ]);
 });
 
@@ -90,6 +93,23 @@ test("D600: the four new agents are read where their own installers put them, an
   // The Kimi OAuth file is only looked for; its contents never read (read stays unused above).
   const noSdk = await probeHarnesses({ ...({ which: () => null, exec: async () => ({ code: 1, out: "" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, exists: () => false } as const), only: ["cursor"] });
   expect(noSdk[0]).toMatchObject({ harness: "cursor", installed: false, loggedIn: false });
+});
+
+test("D625: Dim is coming soon without createDimRuntime, and detected on PATH once it is there", async () => {
+  const base = { which: (c: string) => (c === "dima" ? "/bin/dima" : c === "dim-nightly" ? "/bin/dim-nightly" : null), exec: async () => ({ code: 0, out: "dimcode 0.1.0-alpha.29\n" }), env: {}, home: "/h", dataDir: "/d", read: () => undefined, exists: () => false, only: ["dim"] as const };
+  const coming = await probeHarnesses({ ...base, dimRuntime: async () => false });
+  expect(coming).toEqual([{ harness: "dim", installed: false, loggedIn: false, canBePartner: false, trouble: { kind: "coming" } }]);
+  const here = await probeHarnesses({ ...base, dimRuntime: async () => true });
+  expect(here).toEqual([{ harness: "dim", installed: true, loggedIn: true, canBePartner: false, billing: "usage", version: "0.1.0-alpha.29", how: "unknown" }]);
+  // No `dima`: nothing but the truth, not a coming row (the build can run it, it isn't installed).
+  const gone = await probeHarnesses({ ...base, which: () => null, dimRuntime: async () => true });
+  expect(gone).toEqual([{ harness: "dim", installed: false, loggedIn: false, canBePartner: false }]);
+  // A command that answers without Dim's own version line is not Dim.
+  const wrong = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "some other cli 1.2.3" }), dimRuntime: async () => true });
+  expect(wrong[0]).toMatchObject({ harness: "dim", installed: false, loggedIn: false });
+  // OAR_DIM_BIN alone is enough (OAR's own order), and the nightly names are candidates.
+  const pinned = await probeHarnesses({ ...base, which: () => null, env: { OAR_DIM_BIN: "/opt/dima" }, dimRuntime: async () => true });
+  expect(pinned[0]).toMatchObject({ harness: "dim", installed: true, loggedIn: true });
 });
 
 test("versions compare with prereleases", () => {

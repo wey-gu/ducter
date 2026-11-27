@@ -42,7 +42,8 @@ own thinking. Cursor is coming soon: it needs its SDK bundled with Ducter first.
 Code CLI and OpenCode are installed with their own installers or from the computer's card, and
 signed in there. Kimi Code and OpenCode work only when you ask: they never wait for something,
 wake on a timer or run a routine or a Keep, because their own terms keep those sign-ins to
-interactive use.
+interactive use. **Dim** is coming soon: this version of Ducter can't run it yet; a coming Ducter
+update will.
 
 Ducter also works with **pi** and **DeepSeek Harness**, which run on an API key you pay for by
 use rather than a plan. If one of them is installed and signed in, ask your partner to use it

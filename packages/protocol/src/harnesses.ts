@@ -3,12 +3,20 @@
 // it; only the runner turns it into OAR options (packages/runner/src/oar.ts).
 // Evidence: research/34-harness-adapters.md.
 
-export const HARNESS_IDS = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode"] as const;
+export const HARNESS_IDS = ["claude-code", "codex", "pi", "deepseek-harness", "antigravity", "cursor", "devin", "kimi", "opencode", "dim"] as const;
 export type HarnessId = (typeof HARNESS_IDS)[number];
 
 export function isHarnessId(s: unknown): s is HarnessId {
   return typeof s === "string" && (HARNESS_IDS as readonly string[]).includes(s);
 }
+/**
+ * D625: the agents the partner's own tools name (`task_open`, `task_fork`, `task_switch`,
+ * `rule_save`, `new_tasks`). Dim is left out until the D175 partner eval can judge the list with
+ * it: adding one id changes the partner's tools/list JSON, and that eval is a real-model run this
+ * pass could not make. The app's New task picker, Tasks and the runner still take `dim`; lifting
+ * this one filter is the whole change once the eval is run (see todo.md).
+ */
+export const PARTNER_NAMED_HARNESS_IDS: readonly HarnessId[] = HARNESS_IDS.filter((h) => h !== "dim");
 
 /**
  * D448: the agents whose Nowledge Mem plugin carries Bridge (its `bridge` skill), so a session of
@@ -330,6 +338,33 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     },
     noWebTasks: true,
   },
+  // D625: Dim (DimAgent) over its ACP gateway (`dima acp`), OAR's community runtime
+  // (createDimRuntime from @botiverse/oar/community; docs/runtimes/dim.md). Tasks only: the gateway
+  // refuses tool denial, a replaced or appended prompt, and excluding the person's home, so it can
+  // never be the partner, a one-shot or a quick web look. Pictures, stdio and HTTP MCP; no steer,
+  // no task stop, opaque attribution and a non-durable queue. `model`/`effort` exist only on a
+  // catalog home (a --model-config file has neither), and OAR has no model listing, login or usage
+  // reader: sign in with dima itself, and its own auth failure ends a turn.
+  dim: {
+    id: "dim",
+    name: "Dim",
+    badge: "dm",
+    command: "dima",
+    partner: false,
+    task: true,
+    images: true,
+    steer: false,
+    isolation: "none",
+    systemPrompt: "none",
+    taskInstructions: "first-turn",
+    mcp: "stdio-bridge",
+    login: "account",
+    billing: "usage",
+    modelForm: "a model id from the home's provider catalog, or none with a --model-config file",
+    install: "npm install -g dimcode-alpha",
+    signIn: "dima itself: /login, or /connect in its TUI for an API key",
+    noWebTasks: true,
+  },
 };
 
 /** D594/D600: the one-line why for an agent that works only when asked. */
@@ -402,6 +437,10 @@ export const HARNESS_KEYS: Readonly<Record<HarnessId, readonly string[]>> = {
   kimi: [],
   // D600: OpenCode's own key only: its plugins run in-process and can read the child env (never a provider key).
   opencode: ["OPENCODE_API_KEY"],
+  // D625: Dim signs in through its own home (a catalog account or /connect); a --model-config
+  // file can name any apiKeyEnv, which Ducter cannot grant by name without knowing the file. Nothing
+  // static is granted here.
+  dim: [],
 };
 
 /** A device's view of one harness, completed from the table: may it be the partner, how is it paid. */

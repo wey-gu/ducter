@@ -762,10 +762,14 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx int, ws [
 	d := a.devState()
 	a.detailBox(c, coinKey(dv.ID, "+"), a.L.T("coin.socket"), idx, ws, func() {
 		uiText(c, a.L.T("coin.socket.there", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
-		installable, agyOnly := false, false
+		installable, agyOnly, other := false, false, false
 		for _, h := range dv.Harnesses {
 			if h.Installed || anySetup([]protocol.DeviceHarness{h}, "installing", "queued") {
 				continue
+			}
+			// D625: a coming agent has nothing to do on that computer; its own row says so.
+			if h.Trouble == nil || h.Trouble.Kind != "coming" {
+				other = true
 			}
 			// D363: Ducter puts it there itself (the Mac this app runs Ducter on keeps its own sheet).
 			if !a.manageAccount(dv, h) {
@@ -787,7 +791,7 @@ func (a *App) socketDetail(c *ui.Context, dv *protocol.DeviceView, idx int, ws [
 		a.setupAnswer(c, dv)
 		if installable {
 			uiText(c, a.L.T("ag.where")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
-		} else if !agyOnly && !(a.Backend != nil && dv.Home) {
+		} else if !agyOnly && other && !(a.Backend != nil && dv.Home) {
 			uiText(c, a.L.T("coin.there", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 		}
 	})

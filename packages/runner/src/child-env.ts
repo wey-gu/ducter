@@ -54,6 +54,9 @@ const HARNESS_CONFIG: Record<HarnessId, RegExp> = {
   kimi: /^(?:OAR_KIMI_BIN$|KIMI_|KIMI_CODE_)/,
   // D600: OpenCode's own switches and bin override; OPENCODE_API_KEY is granted separately.
   opencode: /^(?:OAR_OPENCODE_BIN$|OPENCODE_)/,
+  // D625: Dim's own bin override and non-secret switches; its home is chosen by --home in
+  // launchArgs, and provider keys for a --model-config file ride in the session's env by name.
+  dim: /^(?:OAR_DIM_BIN$|DIM_|DIMCODE_)/,
 };
 
 /** Whether a name a harness inherited may stay in its process (keys excepted: see grants). */

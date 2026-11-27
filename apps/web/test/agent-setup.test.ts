@@ -30,6 +30,9 @@ describe("a row's look", () => {
     expect(agentRowLook(h("codex", { installed: true, loggedIn: true }))).toBe("ready");
     // An older Ducter there can't install: nothing to press.
     expect(agentRowLook(h("deepseek-harness"))).toBe("missing");
+    // D625: Dim before the OAR release that exports createDimRuntime: its own quiet look.
+    expect(agentRowLook(h("dim", { trouble: { kind: "coming" } }))).toBe("coming");
+    expect(agentRowLook(h("dim"))).toBe("missing");
   });
 
   test("the lend sheet offers what can be installed, Codex and Claude Code checked, pi not", () => {
@@ -89,7 +92,7 @@ test("a sign-in's steps, its trouble and its time left, in both languages", () =
   expect(minutesLeft(15 * 60_000, 0)).toBe(15);
   expect(minutesLeft(61_000, 0)).toBe(2);
   expect(minutesLeft(0, 5000)).toBe(1);
-  const keys = ["ag.signing_in", "ag.login.wait.paste", "ag.login.wait.self", "ag.login.left", "ag.login.confirming", "ag.login.not_seen", "ag.login.no_answer", "ag.login.send", "ag.login.claude.1", "ag.login.claude.2", "ag.login.codex.1", "ag.login.codex.2", "ag.login.agy.1", "ag.login.agy.2", "ag.login.kimi.1", "ag.login.kimi.2", "ag.login.devin", "ag.login.opencode", "ag.login.cursor", "ag.kimi.where", "ag.kimi.terms", "ag.opencode.where", "ag.opencode.terms", "ag.devin.where", "ag.devin.terms", "ag.cursor.where", "ag.cursor.terms"];
+  const keys = ["ag.signing_in", "ag.login.wait.paste", "ag.login.wait.self", "ag.login.left", "ag.login.confirming", "ag.login.not_seen", "ag.login.no_answer", "ag.login.send", "ag.login.claude.1", "ag.login.claude.2", "ag.login.codex.1", "ag.login.codex.2", "ag.login.agy.1", "ag.login.agy.2", "ag.login.kimi.1", "ag.login.kimi.2", "ag.login.devin", "ag.login.opencode", "ag.login.cursor", "ag.kimi.where", "ag.kimi.terms", "ag.opencode.where", "ag.opencode.terms", "ag.devin.where", "ag.devin.terms", "ag.cursor.where", "ag.cursor.terms", "ag.login.dim", "ag.dim.where", "ag.dim.coming", "ag.coming"];
   for (const lang of ["zh", "en"] as const) for (const k of keys) expect(agentSetupWords[lang][k]).toBeTruthy();
   // 好了 / Done read as "I finished" beside the paste box; it sends the code.
   expect(agentSetupWords.zh["ag.login.send"]).toBe("确认登录");
@@ -110,6 +113,11 @@ test("D600: the four new agents' terminal, manual-install and terms lines", () =
   expect(manualWhereKey("kimi")).toBe("ag.kimi.where");
   expect(manualWhereKey("cursor")).toBe("ag.cursor.where");
   expect(manualWhereKey("opencode")).toBeUndefined();
+  // D625: Dim signs in by itself and is not installed by Ducter.
+  expect(terminalKey("dim")).toBe("ag.login.dim");
+  expect(manualWhereKey("dim")).toBe("ag.dim.where");
+  expect(agentSetupWords.en["ag.coming"]).toBe("Coming soon");
+  expect(agentSetupWords.zh["ag.coming"]).toBe("即将支持");
   expect(termsKey("kimi")).toBe("ag.kimi.terms");
   expect(termsKey("opencode")).toBe("ag.opencode.terms");
   expect(agentSetupWords.en["ag.login.opencode"]).toContain("do not choose Claude's subscription");

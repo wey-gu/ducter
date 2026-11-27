@@ -42,6 +42,7 @@ interface Raw {
   repository?: { full_name?: string };
   repository_url?: string;
   user?: { login?: string };
+  closed_by?: { login?: string } | null;
   comments?: number;
   created_at?: string;
   assignees?: { login?: string }[];
@@ -69,6 +70,7 @@ export function itemOf(source: string, r: Raw): SourceItem {
     ...(r.updated_at ? { updatedAt: r.updated_at } : {}),
     ...(labels.length ? { labels } : {}),
     ...(r.user?.login ? { author: r.user.login } : {}),
+    ...(r.closed_by?.login ? { closedBy: r.closed_by.login } : {}),
     ...(assignees.length ? { assignees } : {}),
     ...(r.created_at ? { createdAt: r.created_at } : {}),
     ...(r.milestone?.title ? { milestone: r.milestone.title } : {}),

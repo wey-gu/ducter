@@ -8,7 +8,7 @@ import type { Bodies, TaskCard } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
 import { isHelperWork, localHandoff, LOCAL_MSG } from "@ducter/protocol/src/helpers.ts";
 import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
-import { startCore } from "../src/core.ts";
+import { startCore, triggersPartner } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 import { seedOld } from "./fixtures/keeps-old.ts";
 
@@ -85,7 +85,12 @@ describe("D598: what counts as work handed to a helper", () => {
     expect(r).toMatchObject({ ok: true, edits: [] });
     const mail = core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 9999 });
     expect(mail.length).toBe(before + 1);
-    expect(mail[mail.length - 1]!.body as Bodies["bridge_msg"]).toMatchObject({ direction: "in", helper: HELPER, local: true, mine: true, text: "接手 mem#11393：独立评审，OK 就 /lgtm" });
+    const hand = mail[mail.length - 1]!.body as Bodies["bridge_msg"];
+    expect(hand).toMatchObject({ direction: "in", helper: HELPER, local: true, mine: true, text: "接手 mem#11393：独立评审，OK 就 /lgtm" });
+    // research/244 §5.2: the giver is the partner by name, never 你 / you.
+    expect(hand.from).toBe(core.persona.name);
+    expect(["你", "you"]).not.toContain(hand.from);
+    expect(triggersPartner(mail[mail.length - 1]!)).toBe(true); // an original: it wakes the partner to open it
     expect(arrivals()).toHaveLength(3);
     expect(core.log.read({ stream: `keep:${h.keepId}`, kinds: ["keep_edit"], limit: 99 }).some((e) => JSON.stringify(e.body).includes("11393"))).toBe(false);
 
@@ -93,5 +98,11 @@ describe("D598: what counts as work handed to a helper", () => {
     const loop = keeps.all().find((k) => k.from.kind === "loop" && k.life === "on")!;
     expect(await keeps.change(loop.keepId, { hand: "审 #551" }, { by: "partner" })).toMatchObject({ ok: false, error: expect.stringContaining("next_round") });
     expect(await keeps.change(h.keepId, { hand: "  " }, { by: "partner" })).toMatchObject({ ok: false });
+  });
+
+  test("a helper's reply in a local thread wakes nobody: Ducter's own traffic is not conversation", () => {
+    const local = (inReplyTo?: string) => ({ seq: 1, ts: "2026-11-27T14:00:00.000Z", persona: "p", stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: "local-a", helper: HELPER, local: true, mine: true, text: "接了", ...(inReplyTo ? { inReplyTo } : {}) } }) as never;
+    expect(triggersPartner(local("local-handoff"))).toBe(false);
+    expect(triggersPartner(local())).toBe(true);
   });
 });

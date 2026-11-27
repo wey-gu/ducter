@@ -309,7 +309,7 @@ func spokenPeers(entries []*store.Entry, asked func(string) bool) (map[int64]boo
 	origin := map[int64]*protocol.BridgeMsg{}
 	for i, e := range entries {
 		p := e.Peer
-		if p == nil || p.Direction != "in" || p.State != "" || (p.MessageID != "" && asked(p.MessageID)) {
+		if p == nil || !peerInConversation(p) || p.Direction != "in" || p.State != "" || (p.MessageID != "" && asked(p.MessageID)) {
 			continue
 		}
 		for _, n := range entries[i+1:] {

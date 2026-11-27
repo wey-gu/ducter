@@ -529,6 +529,11 @@ func (a *App) takeReview() {
 	}
 }
 
+// rowSendable is research/244 rule 9: only a row whose PR really merged has a line to send.
+func rowSendable(row protocol.ReviewRow) bool {
+	return row.Merged == nil || *row.Merged
+}
+
 // reviewKeep is every to-do whose line goes out.
 func (r *reviewState) reviewKeep() []string {
 	var out []string
@@ -536,7 +541,7 @@ func (r *reviewState) reviewKeep() []string {
 		return nil
 	}
 	for _, row := range r.review.Rows {
-		if r.dropped[rowKey(row)] {
+		if r.dropped[rowKey(row)] || !rowSendable(row) {
 			continue
 		}
 		for _, i := range row.Items {
@@ -701,6 +706,13 @@ func (a *App) reviewRow(c *ui.Context, row protocol.ReviewRow) {
 		})
 		if row.Result != "" {
 			uiText(c.Key("result"), autospace(row.Result)).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+		}
+		if !rowSendable(row) {
+			// research/244 rule 9: no "fixed" line is sent; the true reason stands instead.
+			if row.Why != "" {
+				uiText(c.Key("why"), autospace(row.Why)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.45))
+			}
+			return
 		}
 		ui.Row(c.Key("says")).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 			ui.Column(c.Key("q")).Gap(2).Grow(1).Shrink(1).MinWidth(0).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {

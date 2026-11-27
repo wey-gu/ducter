@@ -1289,6 +1289,8 @@ D470 rebuilt it in D469's: the partner reports, Pebble's art carries state, the 
   ignored by default, asked once per sender, questions only (D334), **不再听它的**; the muted with **恢复**.
 - **The conversation says it once**: a request the partner's next message says (no card, no word from the
   person between) keeps no line; one quiet origin line (**从你的 Codex（Mem 协作）来的**) stands over the message.
+  Ducter's own local hand-offs and helper replies are never conversation: no 已回复 marker, no origin line,
+  no ack turn; real outside agents keep theirs, with the peer's real name (research/244 rule 2).
 - **Round 2, after the live round trip on hel (D470 rev.).** A known sender is logged by its name, never
   "another agent". One delivered reply is one line: D106's write-ahead **sending** then **sent** stays (it is what
   keeps a crash from sending twice), a second **sent** is never logged, and both clients fold any repeat.

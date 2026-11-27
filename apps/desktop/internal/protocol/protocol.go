@@ -1034,6 +1034,9 @@ type BridgeMsg struct {
 	// answer to it, delivered into that task.
 	By   string `json:"by,omitempty"`
 	Head string `json:"head,omitempty"`
+	// research/244 §5.2: work handed to a helper on this home by Ducter's own
+	// task or partner: written here, never conversation.
+	Local bool `json:"local,omitempty"`
 }
 
 // BridgeReceipt is what Nowledge Mem last said about who opened a message Ducter sent on the

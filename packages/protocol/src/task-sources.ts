@@ -33,6 +33,10 @@ export interface SourceItemRef {
   url?: string;
   /** github: a pull request rather than an issue. */
   pr?: boolean;
+  /** What the app said when this was bound (research/245 B2): an item already closed then never reads as "closed by someone". */
+  state?: "open" | "closed" | "gone";
+  /** github: who closed it, when GitHub names them (a closed `source_seen` says by whom). */
+  closedBy?: string;
 }
 
 /** An item as a list shows it (the composer's pick, the partner's list). */

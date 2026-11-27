@@ -79,7 +79,11 @@ describe("D598: a hand-off on this home", () => {
     const { fc, fr, partner, main, hb, agentMessage, helperId } = await setup(async (input, s) => {
       inputs.push(input);
       const m = input.match(/work handed to your helper "[^"]+" on this home by your task m2uifpyn, message (local-[\w-]+)/);
-      if (m) opened.push(await fc.callTool("task_open", { title: "接手 mem#11393：独立评审，OK 就 /lgtm", brief: "nowledge-co/mem#11393: independent review of the latest head; /lgtm once it holds.", forMessage: m[1] }));
+      if (m) {
+        // research/244 §5.2: whatever the model says, Ducter's own traffic gets no line of its own.
+        s.say("好，我让 Babysitter 接手。");
+        opened.push(await fc.callTool("task_open", { title: "接手 mem#11393：独立评审，OK 就 /lgtm", brief: "nowledge-co/mem#11393: independent review of the latest head; /lgtm once it holds.", forMessage: m[1] }));
+      }
       s.end();
     });
     const r = await agentMessage({ to: "PR Babysitter", text: ASK });
@@ -93,6 +97,8 @@ describe("D598: a hand-off on this home", () => {
     expect(hand.text).toContain("Ducter 的任务「用 agy 处理 Mem #11390 并准备 PR 交接」：");
     await partner.idle();
     await settle();
+    // No ack, no partner message: the task card is the only thing the person sees.
+    expect(fc.events.filter((e) => e.kind === "ai_msg" || e.kind === "ack")).toHaveLength(0);
     // Before the task opened, the turn's facts said it was handed and not taken.
     expect(inputs[0]).toContain("handed, waiting to be taken");
     expect(inputs[0]).toContain("from task m2uifpyn");
@@ -111,7 +117,9 @@ describe("D598: a hand-off on this home", () => {
     const again = await agentMessage({ to: "PR Babysitter", text: "只差 /lgtm 了：Tide 的 pending 不是要等的检查。" });
     expect(again).toMatchObject({ ok: true, sent: true });
     expect(fr.sent.find((x) => x.taskId === helperTask)?.text).toContain("只差 /lgtm");
-    expect(fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).local)).toHaveLength(1);
+    expect(fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).local && (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).inReplyTo)).toHaveLength(1);
+    // The helper's claim and outcome are local replies too (research/244 §5.2: no markers).
+    expect(fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).local && (e.body as Bodies["bridge_msg"]).direction === "out")).toHaveLength(2);
   }, 20_000);
 
   test("no task takes it: the facts say so, and after ten minutes the person hears it once, with the offer", async () => {

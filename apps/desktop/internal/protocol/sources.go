@@ -22,6 +22,8 @@ type SourceItemRef struct {
 	Title string `json:"title"`
 	URL   string `json:"url,omitempty"`
 	PR    bool   `json:"pr,omitempty"`
+	// ClosedBy: who closed it, when GitHub names them.
+	ClosedBy string `json:"closedBy,omitempty"`
 }
 
 // TaskSource is TaskCard.source: the bound to-do, how it stands in its app

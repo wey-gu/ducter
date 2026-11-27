@@ -78,7 +78,7 @@ describe("D609: one record per item", () => {
     // D609: the helper's page carries the facts the views group; the task's card carries its line.
     const page = core.keeps.page(keep.keepId)!;
     expect(page.handoffs).toHaveLength(1);
-    expect(page.handoffs![0]).toMatchObject({ state: "taken", sender: "you", to: HELPER, taskId: "t-a" });
+    expect(page.handoffs![0]).toMatchObject({ state: "taken", sender: "Ducter", to: HELPER, taskId: "t-a" });
     expect(page.handoffs![0]!.givenAt).toBeTruthy();
     // More words after it was taken: still one record, merged.
     await core.keeps.change(keep.keepId, { hand: "还要看 Prow/Tide 的检查" }, { by: "partner" });

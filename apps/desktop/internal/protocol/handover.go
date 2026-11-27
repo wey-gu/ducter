@@ -286,6 +286,10 @@ type ReviewRow struct {
 	Result  string          `json:"result,omitempty"`
 	Comment string          `json:"comment"`
 	Close   bool            `json:"close"`
+	// Merged: the item's own PR is merged (read from GitHub), so its
+	// "fixed" comment is true. Absent on older rows; false: not sent.
+	Merged *bool  `json:"merged,omitempty"`
+	Why    string `json:"why,omitempty"`
 }
 
 // GroupReview is a done group's review together.

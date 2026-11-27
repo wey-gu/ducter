@@ -28,6 +28,11 @@ for the partner say whose a thing is (a task's own wait that ended is the task's
 line that is not a question never reads as one (the checkout's pay card asks for the person; a
 blocked task asks nothing).
 
+**Ducter's own traffic is not a line (research/244 rule 2).** A hand-over or a reply between
+Ducter's own partner, tasks and helpers is never drawn in the conversation: no **已回复 / Replied to**
+marker, no **从…来的 / From…** origin line, and no ack turn. The giver is the task or the partner by
+name, never 你 / you. Agents Ducter didn't start keep their markers, with the peer's real name.
+
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
 

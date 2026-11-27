@@ -180,7 +180,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         const b = e.body as Bodies["task_bound"];
         const c = cards.get(b.taskId);
         if (!c) return;
-        if (b.item) c.source = { ...b.item, state: "open" };
+        // research/245 B2: what the app said at bind is the first state; absent: unknown, and the
+        // first look only records it (a to-do closed before the bind never reads as "closed now").
+        if (b.item) c.source = { ...b.item, state: b.item.state === "closed" ? "closed" : "open" };
         else delete c.source;
         break;
       }
@@ -188,10 +190,11 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         const b = e.body as Bodies["source_seen"];
         const c = b.taskId ? cards.get(b.taskId) : undefined;
         if (!c?.source || !b.item || b.item.ref !== c.source.ref) return;
-        const wrote = c.source.wrote;
-        if (b.change === "closed" || b.change === "gone") c.source = { ...c.source, state: b.change };
-        else if (b.change === "reopened") c.source = { ...c.source, state: "open" };
-        else if (b.change === "edited") c.source = { ...c.source, title: b.item.title };
+        const cur = c.source;
+        const wrote = cur.wrote;
+        if (b.change === "closed" || b.change === "gone") c.source = { ...cur, state: b.change };
+        else if (b.change === "reopened") c.source = { ...cur, state: "open" };
+        else if (b.change === "edited") c.source = { ...cur, title: b.item.title };
         if (wrote) c.source.wrote = wrote;
         break;
       }

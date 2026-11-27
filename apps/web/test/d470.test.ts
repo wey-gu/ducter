@@ -5,7 +5,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { exchangeThreads, reachSplit, reachWays, SENDER_DAILY, spokenPeers, standing, trustOf, TRUSTED_DAILY, type ReachRow } from "../src/mem-view.ts";
+import { exchangeThreads, peerInConversation, reachSplit, reachWays, SENDER_DAILY, spokenPeers, standing, trustOf, TRUSTED_DAILY, type ReachRow } from "../src/mem-view.ts";
 import { memoryWords } from "../src/i18n-memory.ts";
 import { memSetupBrief } from "../../../packages/core/src/mem-plugins.ts";
 import { renderBridge } from "../../../packages/partner/src/render.ts";
@@ -112,6 +112,16 @@ describe("the conversation says it once (D470)", () => {
     expect(spokenPeers(f as never, (id) => id === "h").hidden.size).toBe(0);
     const g = [...f.slice(0, 8), { ev: { seq: 20, ts: "" }, user: { text: "?" } }, f[8]!];
     expect(spokenPeers(g as never, () => false).hidden.size).toBe(0);
+  });
+  test("Ducter's own local traffic is no line and no origin (research/244 §5.2)", () => {
+    expect(peerInConversation({})).toBe(true);
+    expect(peerInConversation({ local: true })).toBe(false);
+    const f = feed().map((x, i) => (i === 7 ? { ...x, peer: { ...(x as { peer: object }).peer, local: true } } : x));
+    const { hidden, origin } = spokenPeers(f as never, () => false);
+    expect(hidden.size).toBe(0);
+    expect(origin.size).toBe(0);
+    // And the conversation row itself checks it before drawing the marker.
+    expect(read("src/views.tsx")).toContain("!peerInConversation(e.peer)");
   });
   test("both clients use it", () => {
     expect(read("src/app.ts")).toContain("spokenPeers(rows,");

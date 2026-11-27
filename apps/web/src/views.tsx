@@ -59,7 +59,7 @@ import { NewTaskSheet } from "./newtask.tsx";
 import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
 import { homeThinks, PaneSays, PlacesMap, SetBrief, speakerThinks } from "./settings-home.tsx";
-import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
+import { memBadge, memUpdate, peerCalled, peerInConversation } from "./mem-view.ts";
 import { benchable, openBenchAt } from "./workbench.tsx";
 import { PhoneMore, ShareButton, taskPr } from "./task-sheet.tsx";
 import { TaskMenu } from "./task-menu.tsx";
@@ -1611,6 +1611,8 @@ function EntryBody({ e, chipOwner, livingItems, join, prevUser }: { e: Entry; ch
     return <Ask d={d} rk={rk} seq={e.firstSeq} />;
   }
   if (e.peer) {
+    // research/244 §5.2: traffic between Ducter's own partner, tasks and helpers is not conversation.
+    if (!peerInConversation(e.peer)) return null;
     // A question it asked shows once, as its card (which already says who asks).
     const asked = e.peer.direction === "in" && [...A.S.decisions.values()].some((d) => d.asker?.messageId === e.peer!.messageId);
     // D321: the very first message from another agent explains itself once, under its line (or before its card).

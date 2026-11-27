@@ -65,6 +65,12 @@ func (a *App) peerWho(agent string) string {
 	return a.peerCalledText(agent, "")
 }
 
+// peerInConversation: research/244 §5.2 — traffic between Ducter's own
+// partner, tasks and helpers is not a conversation line.
+func peerInConversation(b *protocol.BridgeMsg) bool {
+	return b == nil || !b.Local
+}
+
 // peerWhoOf is peerWho for a message, with the tool it runs in. D418: one
 // of the person's own agents named by its own words reads as theirs (你的
 // Codex（Mem 协作）); one Mem names in no way is 你自己的一个 agent.

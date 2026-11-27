@@ -783,6 +783,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			a.ask(c, d, "")
 		}
 	case e.Peer != nil:
+		// research/244 §5.2: Ducter's own partner/task/helper traffic is not conversation.
+		if !peerInConversation(e.Peer) {
+			break
+		}
 		// D321: the very first message from another agent explains itself once.
 		// D418: the partner marks the first one; a window of the Log can't tell.
 		first := e.Peer.Direction == "in" && e.Peer.First

@@ -107,7 +107,7 @@ describe("Settings' brief (D469)", () => {
     A.connections = [];
     expect(h.paneSay("accounts")).toBe("连上邮箱和日历，我就替你留意；发出去、花钱的都先问你。");
     expect(h.paneSay("devices")).toBe("我在 Hetzner Server 上运行，一直开着；这个窗口是你看我的地方。");
-    expect(h.paneSay("memory")).toBe("我们聊过的我都记着；接上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。");
+    expect(h.paneSay("memory")).toBe("我们聊过的我都记着；连上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。");
     A.mem = { state: "connected", noted: [] } as any;
     expect(h.paneSay("memory")).toBe("你说过的偏好、定下的事，我都记在 Nowledge Mem 里；随时能看，也能让我忘掉。");
     expect(h.paneSay("partner")).toBe("");

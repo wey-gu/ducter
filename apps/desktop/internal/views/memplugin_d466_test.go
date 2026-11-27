@@ -44,7 +44,7 @@ func TestMemPluginWordsD466(t *testing.T) {
 			t.Fatalf("%s tidy: %q", lang, ok)
 		}
 	}
-	if zh := i18n.New(i18n.ZH); zh.T("memp.update.to", "0.7.34", "0.7.37") != "Nowledge Mem 0.7.34，有新的 0.7.37 了" {
+	if zh := i18n.New(i18n.ZH); zh.T("memp.update.to", "0.7.34", "0.7.37") != "Nowledge Mem 0.7.34，可更新到 0.7.37" {
 		t.Fatalf("zh: %q", zh.T("memp.update.to", "0.7.34", "0.7.37"))
 	}
 }

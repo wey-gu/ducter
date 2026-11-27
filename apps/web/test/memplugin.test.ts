@@ -19,7 +19,7 @@ test("the line per state, in zh and en, never claiming more than the check knows
 test("D466: a newer version out from to, two copies by their versions, a task's line by what it does", async () => {
   const { memWords: words } = await import("../src/format.ts");
   let L = strings("zh");
-  expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37" })).toEqual({ line: "Nowledge Mem 0.7.34，有新的 0.7.37 了", action: "更新" });
+  expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37" })).toEqual({ line: "Nowledge Mem 0.7.34，可更新到 0.7.37", action: "更新" });
   expect(words(L, { state: "review", why: "multiple", versions: ["0.1.10", "0.1.53"] })).toEqual({ line: "Nowledge Mem 装了两份：0.1.10 和 0.1.53", action: "理成一份" });
   // D552: a task on it, or the tap still on its way (busy): the line says to which version, the button 更新中….
   expect(words(L, { state: "update", version: "0.7.34", available: "0.7.37", taskId: "t1" })).toEqual({ line: "正在更新到 0.7.37…", busy: "更新中…" });

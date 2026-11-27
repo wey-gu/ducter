@@ -50,12 +50,14 @@ export function CopyLine({ text, kind }: { text: string; kind: "line" | "ask" | 
   const doCopy = () => void copy(text).then((ok) => ok && (setCopied(true), setTimeout(() => setCopied(false), 1800)));
   return (
     <div class={`lend-copy ${kind}`}>
-      {kind === "line" && (
-        <span class="prompt" aria-hidden="true">
-          $
-        </span>
-      )}
-      <code>{text}</code>
+      <span class="lend-cmd">
+        {kind === "line" && (
+          <span class="prompt" aria-hidden="true">
+            $
+          </span>
+        )}
+        <code>{text}</code>
+      </span>
       <Btn kind="secondary" size="sm" label={t(copied ? "lend.copied" : "lend.copy")} onClick={doCopy} />
     </div>
   );

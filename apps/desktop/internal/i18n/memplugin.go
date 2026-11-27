@@ -34,7 +34,7 @@ var zhMemPlugin = Table{
 	"memp.card.hold":       "暂不安装",
 	"memp.card.done":       "已装好",
 	// D466: a newer plugin out, several copies, and what each tap does.
-	"memp.update.to":         "Nowledge Mem %[1]s，有新的 %[2]s 了",
+	"memp.update.to":         "Nowledge Mem %[1]s，可更新到 %[2]s",
 	"memp.review.two":        "Nowledge Mem 装了两份：%[1]s 和 %[2]s",
 	"memp.btn.tidy":          "理成一份",
 	"memp.ask.update":        "要把 %[2]s 上 %[1]s 的 Nowledge Mem 更新到 %[3]s 吗？",

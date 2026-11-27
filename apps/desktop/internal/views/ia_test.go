@@ -106,7 +106,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	app.openTab(TabMemory)
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"我们聊过的我都记着；接上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。", "还没接上", "了解 Nowledge Mem"} {
+	for _, want := range []string{"我们聊过的我都记着；连上 Nowledge Mem，你的偏好、定下的事就能一直记得，你别的 AI 也用得上。", "还没连上", "了解 Nowledge Mem"} {
 		if !hasText(tt, want) {
 			t.Errorf("Memory: no %q in %q", want, tt.Texts())
 		}
@@ -148,8 +148,8 @@ func TestMemoryTabKeptUnder(t *testing.T) {
 		lang i18n.Lang
 		want string
 	}{
-		{i18n.ZH, "在 Nowledge Mem 里叫「小鸭」，它记的都署这个名字"},
-		{i18n.EN, "“小鸭” in Nowledge Mem; everything it saves carries that name"},
+		{i18n.ZH, "在 Nowledge Mem 里叫「小鸭」，我记下的都用这个名字"},
+		{i18n.EN, "“小鸭” in Nowledge Mem; everything I save carries that name"},
 	} {
 		app, _ := iaApp(t, tc.lang)
 		f := settingsFrame()

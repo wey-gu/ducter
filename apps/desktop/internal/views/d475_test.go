@@ -41,7 +41,7 @@ func TestPaneHeadsSayTheStateD475(t *testing.T) {
 	}
 
 	app.S.Saved = &protocol.ServerFrame{T: "saved", SavedItems: []protocol.SavedView{{Kind: "signin"}, {Kind: "signin"}, {Kind: "card"}}, SavedKeys: []protocol.KeyView{{ID: "k"}}}
-	if got := app.paneSay(TabAutofill, ""); got != "我替你锁着 2 个登录、1 张卡、1 个密钥；填的时候我看不见，付款都先问你。" {
+	if got := app.paneSay(TabAutofill, ""); got != "我替你锁着 2 组登录信息、1 张卡、1 个密钥；填的时候我看不见，付款都先问你。" {
 		t.Fatalf("autofill: %q", got)
 	}
 }

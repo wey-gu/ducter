@@ -61,7 +61,7 @@ var zhPartners = Table{
 	"partners.thinks.acct":        "%s想事情也用它",
 	"partners.thinks.and":         "、",
 	"loadout.brain.title.default": "默认用什么想事情",
-	"loadout.brain.default.note":  "%s 和没单独选的伙伴都用这个。要给哪个伙伴单独选，点它的「改一下」。",
+	"loadout.brain.default.note":  "%s 和没单独选的伙伴都用这个。要给哪个伙伴单独选，点它的「修改」。",
 	"said.effort":                 "好，从你的下一句话开始，思考深度用「%s」。",
 	// D565: each partner's figure, its shape, and the one line of how it carries itself.
 	"partners.look.butter":       "奶黄",

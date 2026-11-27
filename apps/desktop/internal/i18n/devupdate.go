@@ -70,8 +70,8 @@ var zhDevup = Table{
 	"settings.versions.night.quiet":  "免打扰时段（%s 到 %s）里，没事时一台一台地更新。",
 	"settings.versions.night.how":    "AI agent 只更新到 Ducter 验证过的版本。",
 	"settings.versions.worker":       "帮你做事",
-	"settings.versions.current":      "%s看过，已经是最新的",
-	"settings.versions.current.now":  "刚看过，已经是最新的",
+	"settings.versions.current":      "%s检查过，已是最新",
+	"settings.versions.current.now":  "刚检查过，已是最新",
 	"settings.versions.looked":       "%s看过",
 	"settings.versions.looked.now":   "刚看过",
 }

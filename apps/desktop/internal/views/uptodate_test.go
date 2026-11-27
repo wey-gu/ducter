@@ -21,9 +21,9 @@ func TestUpToDateSaysWhenItChecked(t *testing.T) {
 	}{
 		// D296: one phrase in the partner's words (D291 allows one natural phrase). D500: once the About
 		// head says every computer is current, the home's row says only when it looked; here it doesn't.
-		{i18n.ZH, 3 * time.Hour, "3 小时前看过，已经是最新的", "检查更新"},
+		{i18n.ZH, 3 * time.Hour, "3 小时前检查过，已是最新", "检查更新"},
 		{i18n.EN, 3 * time.Hour, "Up to date, checked 3 h ago", "Check now"},
-		{i18n.ZH, 20 * time.Second, "刚看过，已经是最新的", "检查更新"},
+		{i18n.ZH, 20 * time.Second, "刚检查过，已是最新", "检查更新"},
 	} {
 		app, sent := iaApp(t, tc.lang)
 		at := time.Now().Add(-tc.ago).UTC().Format(time.RFC3339)

@@ -261,15 +261,15 @@ function homeReach(): string {
   return names.length ? t("home.reach", names.join(t("acct.sep"))) : "";
 }
 
-/** D470: the person's own agents that reach the partner, after the chat apps (or alone). */
-function homeReachAgents(chats: boolean): string {
+/** D470: the person's own agents that reach the partner, standalone (never a leading-comma fragment). */
+function homeReachAgents(): string {
   const names = peersReaching();
   if (!names.length) return "";
-  return t(chats ? "home.reach.and" : "home.reach.agents", names.join(t("acct.sep")));
+  return t("home.reach.agents", names.join(t("acct.sep")));
 }
 
 /** The labelled lines of the brief, each opening its page. */
-type HomeLine = { key: string; label: string; text: string; page: Exclude<SettingsPage, "">; more?: { text: string; page: Exclude<SettingsPage, ""> } };
+type HomeLine = { key: string; label: string; text: string; page: Exclude<SettingsPage, "">; more?: { label: string; text: string; page: Exclude<SettingsPage, ""> } };
 export function homeLines(): HomeLine[] {
   const out: HomeLine[] = [];
   const lives = homeLives();
@@ -283,9 +283,9 @@ export function homeLines(): HomeLine[] {
   const mem = homeMem();
   if (mem) out.push({ key: "mem", label: t("home.l.mem"), text: mem, page: "memory" });
   const reach = homeReach();
-  const agents = homeReachAgents(!!reach);
-  // D470: the agents that reach it are said after the chat apps, each part opening its own page.
-  if (reach) out.push({ key: "reach", label: t("home.l.reach"), text: reach, page: "chats", ...(agents ? { more: { text: agents, page: "peers" as const } } : {}) });
+  const agents = homeReachAgents();
+  // D470: the agents that reach it follow the chat apps, each part opening its own page with standalone words.
+  if (reach) out.push({ key: "reach", label: t("home.l.reach"), text: reach, page: "chats", ...(agents ? { more: { label: t("settings.short.peers"), text: agents, page: "peers" as const } } : {}) });
   else if (agents) out.push({ key: "reach", label: t("home.l.reach"), text: agents, page: "peers" });
   return out;
 }
@@ -367,12 +367,12 @@ function PhoneBrief({ needs, lines, pose, go }: { needs: SetNeed[]; lines: HomeL
       <div class="set-card set-list sb-rows">
         {lines.flatMap((l) => {
           const rows = [{ key: l.key, label: l.label, text: l.text, page: l.page }];
-          if (l.more) rows.push({ key: `${l.key}-more`, label: "", text: l.more.text, page: l.more.page });
+          if (l.more) rows.push({ key: `${l.key}-more`, label: l.more.label, text: l.more.text, page: l.more.page });
           return rows.map((r) => (
             <button key={r.key} class="set-row sb-row" onClick={() => go(r.page)}>
               <span class="grow">
                 {r.label && <small class="sb-k">{r.label}</small>}
-                <b>{r.text}</b>
+                <b>{keepClauses(r.text)}</b>
               </span>
               <Chev />
             </button>

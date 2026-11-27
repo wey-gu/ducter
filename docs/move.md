@@ -45,8 +45,8 @@ The plan comes in your language (`DUCTER_LOCALE=zh` or `en` picks one) and has s
   to the sites in Ducter's own browser.
 - **What follows the new address:** your Ducter apps, the command line and the computers that
   do tasks find the new address by themselves, with no pairing again. A web page stays on its
-  address, so you open the new one once. Telegram, Slack and WeChat need nothing changed in the
-  apps. If you use your own domain, its DNS record has to point at the new computer.
+  address, so you open the new one once. Telegram, Slack, Feishu / Lark and WeChat need nothing
+  changed in the apps. If you use your own domain, its DNS record has to point at the new computer.
 - **Work under way:** what happens to each task that's running. A task on another computer
   keeps going. A task with no folder pauses after its current step and carries on there. A task
   in a repository pushes its branch first. A task in a folder on this computer carries on here.

@@ -220,7 +220,7 @@ that partner's shape and colour, and an opened task says which partner gave it t
   still picked as **New tasks start** and your rules say. You can also just say it to any partner:
   "Have Ma think with Opus".
 
-Chat apps (Telegram, Slack, iMessage) talk to your first partner for now.
+Chat apps (Telegram, Slack, Feishu / Lark, WeChat, iMessage) talk to your first partner for now.
 
 ### Who's doing a task
 

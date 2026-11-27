@@ -9,7 +9,7 @@ import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
 import Shot from "../components/Shot.astro";
 import { launchFilm, siteLinks } from "../lib/links";
-import { agents, agentsToday, agentsTodayAnd } from "../lib/agents";
+import { agentsByNameAnd, agentsSoonAnd, agentsTasksAnd, agentsTodayAnd } from "../lib/agents";
 import { homeFaq } from "../lib/faq";
 
 // D326, D414, D558: the page answers a visitor's questions in their order: what will it do for me
@@ -23,7 +23,7 @@ const { facts, dl, gh } = await siteLinks();
 const film = launchFilm();
 const title = "Ducter: a personal AI for builders, running your AI agents on your own computers or servers";
 const description =
-  "Ducter is a free, open-source personal AI for builders. It runs your AI agents (Claude Code, Codex and more) side by side on your own computers or servers, on the plans you already pay for, and you hear only what matters.";
+  "Ducter is a free, open-source personal AI for builders. It runs your AI agents (Claude Code, Codex, pi, DeepSeek Harness and more) side by side on your own computers or servers, on the plans and keys you already have, and you hear only what matters.";
 const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
 const ld = [
   {
@@ -66,16 +66,16 @@ const beforeWith = [
 
 // D558: what it can reach and use, in the person's words, each with the clay object the app
 // draws for it and the page that says how. Only what is built; a part that isn't says so.
-type Reach = { art: (keyof typeof import("../art.json"))[]; title: string; text: string; href: string };
+type Reach = { art: (keyof typeof import("../art.json"))[]; title: string; text: string; href: string; agentCoins?: true };
 const reach: Reach[] = [
   { art: ["server_awake"], title: "Your computers and servers", text: "It lives on your Mac or a Linux server you own. Add a NAS, a cloud machine or another Mac with one line, and say where a task should run.", href: "/docs/add-a-computer" },
-  { art: ["coin_claude_code", "coin_codex", "coin_pi", "coin_deepseek_harness", "coin_antigravity"], title: "The AI agents you have", text: `${agentsTodayAnd}, signed in as you, on the plans you already pay for. ${agents.byName.join(" and ")} too, when you ask for it by name.`, href: "/docs/faq#which-ai-agents-does-it-work-with" },
+  { art: ["coin_claude_code", "coin_codex", "coin_pi", "coin_deepseek_harness", "coin_devin", "coin_antigravity", "coin_kimi", "coin_opencode"], agentCoins: true, title: "The AI agents you have", text: `${agentsTodayAnd} can be your partner, signed in as you, on the plan or key you already have. ${agentsTasksAnd} takes any task; ${agentsByNameAnd} take tasks only when you ask for them by name. ${agentsSoonAnd} are coming soon.`, href: "/docs/faq#which-ai-agents-does-it-work-with" },
   { art: ["ab_web"], title: "A real browser", text: "Its own Chrome window, apart from yours. Watch it from your phone, and take a turn when a page needs you.", href: "/docs/devices#browsing-the-web" },
   { art: ["ab_computer"], title: "Your Mac's apps", text: "It exports the Keynote deck or answers the mail in your Mac's own apps, in the background, with Stop in reach.", href: "/docs/devices#tasks-in-your-macs-apps" },
   { art: ["ab_phone", "android"], title: "A phone of its own, or yours", text: "An Android phone that runs on your Mac, for things that only happen in an app. Or a task borrows your own Android phone for a while.", href: "/docs/devices#ducters-phone" },
   { art: ["ab_call"], title: "Phone calls", text: "It rings a restaurant, a clinic or a shop for you, only after you tap Call.", href: "/docs/calls" },
   { art: ["wait_mail", "routine_calendar"], title: "Your mail and calendar", text: "Say yes once, and it reads them for you. Sending, changing or answering anything waits for your Go.", href: "/docs/accounts" },
-  { art: ["set_chats"], title: "Your chat apps", text: "Talk to it from iMessage, WeChat, Telegram or Slack. It's the same conversation as in the app.", href: "/docs/chat-apps" },
+  { art: ["set_chats"], title: "Your chat apps", text: "Talk to it from iMessage, WeChat, Feishu / Lark, Telegram or Slack. Feishu and Lark are direct messages only. It's the same conversation as in the app.", href: "/docs/chat-apps" },
   { art: ["nowledge_mem"], title: "One memory, and your other agents", text: "With Nowledge Mem, it shares one memory with your other AI tools, and the agents you open yourself can hand it work.", href: "/docs/settings#talk-with-your-other-agents" },
   { art: ["tablet"], title: "Small apps, from one sentence", text: "Ask for a trip expense tracker or a habit tracker, keep it on every device, and change it by asking.", href: "/docs/apps" },
   { art: ["set_autofill"], title: "Errands, to the checkout", text: "It books and buys with your saved sign-ins and cards, filled in without being seen. Paying is your own tap.", href: "/docs/buying-and-booking" },
@@ -129,7 +129,7 @@ const reach: Reach[] = [
       <li class="card reveal">
         <div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div>
         <h3>It hands it off</h3>
-        <p>Each one becomes a task on Claude Code or Codex, signed in as you, on its own branch, on your Mac or your server. While they work, you hear nothing.</p>
+        <p>Each one becomes a task on an AI agent you already use, such as Claude Code or Codex, signed in as you, on your Mac or your server. Coding tasks get their own branch. While they work, you hear nothing.</p>
       </li>
       <li class="card reveal">
         <div class="card-art"><Art name="ducter_done" alt="" sizes="120px" /></div>
@@ -246,7 +246,16 @@ const reach: Reach[] = [
         {reach.map((r) => (
           <li>
             <a class="reach-card" href={r.href}>
-              <span class={`reach-art${r.art.length > 2 ? " coins" : ""}`}>{r.art.map((n) => <Art name={n} alt="" sizes={r.art.length > 2 ? "40px" : "72px"} />)}</span>
+              <span class={`reach-art${r.art.length > 2 ? " coins" : ""}${r.agentCoins ? " agents" : ""}`}>
+                {r.agentCoins ? (
+                  <>
+                    <span class="coin-row partner">{r.art.slice(0, 4).map((n) => <Art name={n} alt="" sizes="40px" />)}</span>
+                    <span class="coin-row more">{r.art.slice(4).map((n) => <Art name={n} alt="" sizes="26px" />)}</span>
+                  </>
+                ) : (
+                  r.art.map((n) => <Art name={n} alt="" sizes={r.art.length > 2 ? "40px" : "72px"} />)
+                )}
+              </span>
               <b>{r.title}</b>
               <span class="reach-text">{r.text}</span>
             </a>
@@ -321,7 +330,7 @@ const reach: Reach[] = [
       </li>
     </ul>
     <div class="chats reveal">
-      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Telegram</b> or <b>Slack</b>. It's the same conversation, and only you can talk to it there.</p>
+      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Feishu / Lark</b>, <b>Telegram</b> or <b>Slack</b> (Feishu and Lark in direct messages). It's the same conversation, and only you can talk to it there.</p>
       <p class="links"><a href="/docs/chat-apps">Chat apps</a><a href="/docs/imessage">iMessage</a><a href="/docs/phone">Your phone</a></p>
     </div>
   </div>

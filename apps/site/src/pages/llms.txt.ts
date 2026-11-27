@@ -2,7 +2,7 @@
 // docs page by the docs' own groups, each with its one-line description. Built from the same
 // sources as the pages (the home page's words, docs/README.md's sections), so it never drifts.
 import type { APIRoute } from "astro";
-import { agents, agentsTodayAnd } from "../lib/agents";
+import { agentsByNameAnd, agentsSoonAnd, agentsTasksAnd, agentsTodayAnd } from "../lib/agents";
 import { docHref, docLabel, groupDocs, publishedDocs } from "../lib/docs";
 import { homeFaq } from "../lib/faq";
 
@@ -17,7 +17,7 @@ export const GET: APIRoute = async () => {
     "> Hand it ten things. Hear back only what needs you. Ducter is a free, open-source personal AI for builders, on your own computers or servers.",
     "",
     "You talk to one partner, from your phone, your desk or the chat app you already use. It hands the work to the AI agents you already pay for " +
-      `(${agentsTodayAnd}; ${agents.byName.join(" and ")} when asked by name), each a task you can open and steer, side by side on your Mac or a Linux server you own, ` +
+      `(${agentsTodayAnd} can be your partner; ${agentsTasksAnd} takes any task; ${agentsByNameAnd} when asked by name; ${agentsSoonAnd} coming soon), each a task you can open and steer, side by side on your Mac or a Linux server you own, ` +
       "and brings it back with how it was checked. It also minds your mail and calendar, runs errands to the checkout (you pay with your own tap), " +
       "and asks you only when a decision is yours. Nothing to sign up for; the code is Apache 2.0 at https://github.com/wey-gu/ducter.",
     "",

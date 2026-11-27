@@ -107,6 +107,8 @@
   --r-md: 16px;
   --r-lg: 24px;
   --r-xl: 28px;
+  /* space: S1–S7 (design/ui.md), the same scale the app uses */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
   /* depth: one clay language (D76). A card rests on a solid 4px base and never moves; a window
      frame adds a soft fall-off; buttons stand on a ledge (below). */
   --base-card: 0 4px 0 var(--line);
@@ -302,10 +304,43 @@ h3 { font-weight: 800; font-size: var(--t20); line-height: 1.3; letter-spacing: 
 .nav-gh svg { width: 19px; height: 19px; flex: none; }
 .nav-gh:hover { color: var(--ink); background: var(--sunken); }
 .nav .btn { margin-left: 4px; }
-/* Phone widths: the bar keeps the mark, GitHub as its icon and the download button on one row. */
+/* Phone widths: the bar keeps the mark, a menu, and Get started on one row. The menu holds the
+   sections and GitHub, each a 44-tall row, so every page is reachable without a desktop bar. */
 .nav .btn { flex: none; }
-@media (max-width: 459px) { .nav .wrap { gap: 8px; } .nav-gh span { display: none; } .nav-gh { padding: 10px; } }
-@media (max-width: 379px) { .brand { gap: 8px; } .brand picture { width: 30px; } .nav .wrap { gap: 4px; } .nav .btn.md { height: 40px; padding: 0 12px; font-size: var(--t13); border-radius: 12px; } }
+.nav-menu { display: none; position: relative; }
+.nav-menu summary {
+  list-style: none; width: 44px; height: 44px; display: grid; place-items: center;
+  border-radius: 12px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.nav-menu summary::-webkit-details-marker { display: none; }
+.nav-menu summary:hover, .nav-menu[open] summary { background: var(--sunken); }
+.nav-menu-mark { display: grid; gap: 4px; width: 18px; }
+.nav-menu-mark i { display: block; height: 2px; border-radius: 2px; background: var(--ink-2); }
+.nav-sheet {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  width: min(260px, calc(100vw - 32px)); padding: 8px; display: grid; gap: 2px;
+  background: var(--surface); border-radius: 18px; box-shadow: var(--base-window);
+}
+.nav-sheet a {
+  display: flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 12px;
+  text-decoration: none; font-family: var(--display); font-weight: 700; font-size: var(--t15); color: var(--ink-2);
+}
+.nav-sheet a:hover, .nav-sheet a[aria-current="page"] { background: var(--sunken); color: var(--ink); }
+@media (max-width: 899px) {
+  .nav-menu { display: block; margin-left: auto; }
+  .nav-gh { display: none; }
+  .brand { min-height: 44px; }
+  /* The sheet hangs from the bar, not from the menu button: 8 rows and every label stay inside
+     the phone, whatever width the brand and the button leave. */
+  .nav-sheet { position: fixed; left: 16px; right: 16px; top: 72px; width: auto; }
+}
+@media (max-width: 459px) { .nav .wrap { gap: 8px; } }
+@media (max-width: 379px) {
+  .brand { gap: 8px; }
+  .brand picture { width: 30px; }
+  .nav .wrap { gap: 4px; }
+  .nav .btn.md { height: 44px; padding: 0 12px; font-size: var(--t13); border-radius: 12px; }
+}
 @media (min-width: 900px) {
   .nav-links { display: flex; }
   .nav-gh { margin-left: 0; }
@@ -563,8 +598,8 @@ section { position: relative; }
   /* The narrow layout spaces its words for a ~360 px stage; on a smaller phone the words shrink
      with the stage (to a readable floor) so neighbouring tags never run into each other. */
   .isles .tag { padding: 3px clamp(6px, calc(10 * var(--u)), 10px) 4px; }
-  .isles .tag b { font-size: clamp(11px, calc(14.4 * var(--u)), 13px); }
-  .isles .tag small { font-size: clamp(10.5px, calc(13.3 * var(--u)), 12px); }
+  .isles .tag b { font-size: clamp(12px, calc(14.4 * var(--u)), 13px); }
+  .isles .tag small { font-size: 12px; }
   .isles .mini-tag { padding: 1px clamp(4px, calc(6.6 * var(--u)), 6px) 2px; font-size: clamp(10px, calc(13.3 * var(--u)), 12px); }
 }
 
@@ -765,8 +800,9 @@ section { position: relative; }
 .card-art picture { height: 100%; width: auto; }
 .card-art picture img { height: 100%; width: auto; filter: drop-shadow(0 6px 8px rgb(120 72 30 / 0.14)); }
 .card-art.pair picture { height: 84px; }
-.card-art.coins { gap: 6px; flex-wrap: nowrap; }
-.card-art.coins picture { height: min(64px, 15vw); flex: none; }
+.card-art.coins { --coin: min(64px, 15vw); gap: var(--s4); flex-wrap: nowrap; align-items: center; }
+.card-art.coins picture { width: var(--coin); height: var(--coin); flex: none; display: grid; place-items: center; }
+.card-art.coins picture img { width: 100%; height: 100%; object-fit: contain; }
 
 /* devices: where a task runs, in three short points under the stage */
 .points.three { margin-top: clamp(28px, 4vw, 44px); }
@@ -845,6 +881,8 @@ section { position: relative; }
 .final { text-align: center; padding-block: clamp(80px, 12vw, 160px) clamp(56px, 8vw, 96px); }
 .final .mascot { position: relative; inset: auto; width: 168px; margin: 0 auto 14px; }
 .final h2 { font-size: clamp(44px, 8vw, 96px); }
+/* At 360 the promise wraps to three lines, with "today." alone; 40 fits it in two. */
+@media (max-width: 379px) { .final h2 { font-size: 40px; } }
 .final .lede { margin: 18px auto 30px; }
 .final .cta-row { justify-content: center; }
 .btn.gh svg { width: 20px; height: 20px; flex: none; }
@@ -853,6 +891,13 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: cent
 footer nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 footer a { color: var(--ink-2); text-decoration: none; font-weight: 700; }
 footer a:hover { color: var(--ink); text-decoration: underline; }
+@media (max-width: 599px) {
+  footer { padding-block: 26px 32px; }
+  footer .wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; justify-content: stretch; }
+  footer .brand { min-height: 44px; }
+  footer nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+  footer nav a { display: flex; align-items: center; min-height: 44px; padding: 0 2px; }
+}
 
 /* ---------- idle motion: the clay character and scene only (D77) ----------
    The partner breathes and blinks; awake devices float, the cloud machine drifts, a sleeping
@@ -1018,7 +1063,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 .prose ul, .prose ol { padding-left: 1.3em; }
 .prose li { margin: 4px 0; }
 .prose li::marker { color: var(--faint); }
-.prose a { color: var(--ink); text-decoration-color: var(--line-2); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.prose a { color: var(--ink); text-decoration-color: var(--line-2); text-decoration-thickness: 1.5px; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .prose a:hover { text-decoration-color: var(--ink-2); }
 .prose strong { color: var(--ink); }
 .prose :not(pre) > code { background: var(--sunken); padding: 1px 0.3em; border-radius: 6px; color: var(--ink); overflow-wrap: break-word; }
@@ -1158,9 +1203,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   background: var(--code-bg); color: var(--code-ink); font-family: var(--mono); font-weight: 700; font-size: var(--t18);
   box-shadow: 0 3px 0 var(--code-edge);
 }
-.dl-coins { display: flex; flex: none; }
-.dl-coins picture { width: 44px; }
-.dl-coins picture + picture { margin-left: -12px; }
+.dl-coins { display: flex; flex: none; gap: var(--s2); }
+.dl-coins picture { width: 44px; height: 44px; display: grid; place-items: center; }
+.dl-coins picture img { width: 100%; height: 100%; object-fit: contain; }
 .dl-files { display: flex; flex-wrap: wrap; gap: 8px 10px; }
 .dl-files a {
   display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; text-decoration: none;
@@ -1168,12 +1213,12 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 }
 .dl-files a:hover { background: var(--sunken-2); }
 .dl-files a svg { width: 15px; height: 15px; }
-.dl-files small { font-family: var(--body); font-weight: 400; color: var(--muted); font-size: var(--t13); }
+.dl-files small { font-family: var(--body); font-weight: 400; color: var(--muted); font-size: var(--t12); }
 .dl-req { margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: var(--t13); line-height: 1.55; }
 .dl-req dt { font-family: var(--display); font-weight: 800; color: var(--ink); }
 .dl-req dd { margin: 0; color: var(--ink-2); }
-.dl-card code, .dl-need code, .dl-step code, .dl-pick code, .dl-files-wrap .body code, .dl-note code { background: var(--sunken); padding: 1px 5px; border-radius: 6px; color: var(--ink); }
-.dl-card .term code, .dl-pick .term code { background: none; padding: 0; color: inherit; }
+.dl-card code, .dl-need code, .dl-step code, .dl-pick code, .dl-files-wrap .body code, .dl-note code { background: var(--sunken); padding: 1px 5px; border-radius: 6px; color: var(--ink); font-size: var(--t12); }
+.dl-card .term code, .dl-pick .term code { background: none; padding: 0; color: inherit; font-size: inherit; }
 .dl-small { margin: 0; font-size: var(--t13); color: var(--muted); }
 .dl-need { margin: -28px 0 64px; max-width: 44em; color: var(--ink-2); font-size: var(--t15); }
 .dl-files-wrap { display: grid; gap: 28px 56px; }
@@ -1201,6 +1246,21 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 @media (min-width: 820px) { .dl-notes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; } }
 .dl-note h3 { font-size: var(--t18); margin-bottom: 6px; }
 .dl-note p { margin: 0; font-size: var(--t15); color: var(--ink-2); }
+
+/* Phone controls: every standalone tap is 44 tall (D311), and the small type keeps its 12px
+   floor. Inline links in a sentence keep their line; a link that is its own choice gets the box. */
+@media (max-width: 599px) {
+  .btn.sm { height: 44px; padding: 0 16px; border-radius: 14px; }
+  .codebox .copy.btn.sm { height: 44px; padding: 0 14px; }
+  .dl-files a { min-height: 44px; padding-block: 10px; }
+  .dl-rel a, .dl-fileline a, .chats .links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .where-state { align-items: center; row-gap: 4px; }
+  .where-state a { display: inline-flex; align-items: center; min-height: 44px; }
+  .fold-more { display: inline-flex; align-items: center; min-height: 44px; }
+  .cl-self, .cl-anchor { display: inline-flex; align-items: center; min-height: 44px; }
+  .docs-toc summary, .docs-toc a, .onpage a, .prose .onpage-inline summary, .prose .onpage-inline a { display: flex; align-items: center; min-height: 44px; }
+  .isles .p.tok { min-height: 44px; }
+}
 
 /* the ink button brightens on hover on light paper; on dark paper the cream one dims instead */
 @media (prefers-color-scheme: dark) {
@@ -1288,8 +1348,20 @@ h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; lette
 .reach-art { height: 72px; display: flex; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
 .reach-art picture { height: 100%; width: auto; flex: none; }
 .reach-art picture img { height: 100%; width: auto; filter: drop-shadow(0 5px 6px rgb(120 72 30 / 0.14)); }
-.reach-art.coins { height: 72px; align-items: center; gap: 4px; }
+.reach-art.coins { height: 72px; align-items: center; gap: var(--s2); }
 .reach-art.coins picture { height: 40px; }
+/* The agents that work: the four that can be your partner first, the rest smaller under them.
+   Eight 40px coins do not fit a card at any desktop width, and the second row says plainly that
+   Devin, Antigravity, Kimi Code and OpenCode are a different kind of agent. Every coin sits in its
+   own square box, one S4 apart, centred; both rows start on the same left edge. */
+.reach-art.coins.agents { height: 88px; flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--s2); }
+.reach-art.coins.agents .coin-row { display: flex; align-items: center; justify-content: flex-start; gap: var(--s4); }
+.reach-art.coins.agents .coin-row.partner { --coin: 40px; }
+.reach-art.coins.agents .coin-row.more { --coin: 30px; }
+.reach-art.coins.agents .coin-row picture,
+.reach-art.coins.agents .coin-row picture img { width: var(--coin); height: var(--coin); }
+.reach-art.coins.agents .coin-row picture { display: grid; place-items: center; flex: none; }
+.reach-art.coins.agents .coin-row picture img { object-fit: contain; }
 @media (max-width: 599px) {
   .reach-card { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 16px; row-gap: 4px; padding: 16px 18px; }
   .reach-art { grid-row: 1 / 3; height: auto; margin: 0; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 4px; }
@@ -1297,6 +1369,13 @@ h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; lette
   .reach-art picture img { width: 100%; height: auto; max-height: 64px; object-fit: contain; }
   .reach-art:has(picture + picture) picture { width: calc(50% - 2px); }
   .reach-art.coins picture { width: calc(33% - 3px); height: auto; }
+  /* Eight coins in a 64px column were unreadable: this card puts its art above the words, in two
+     rows, so the partner four stay full size and the other four stay a size smaller. */
+  .reach-card:has(.reach-art.coins.agents) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; row-gap: 6px; }
+  .reach-art.coins.agents { grid-row: auto; grid-column: 1 / -1; height: auto; margin-bottom: 6px; }
+  .reach-art.coins.agents .coin-row { width: 100%; }
+  .reach-art.coins.agents .coin-row.partner { --coin: 36px; }
+  .reach-art.coins.agents .coin-row.more { --coin: 28px; }
 }
 
 /* D558: the questions people ask, as folds (the changelog's) */
@@ -1380,7 +1459,7 @@ h1 .line.quiet { margin-top: 0.22em; font-size: 0.56em; line-height: 1.08; lette
 .dl-new { margin: 14px 0 0; font-size: var(--t15); color: var(--ink-2); }
 .dl-new a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
 .dl-fileline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin: 0; }
-.dl-fileline small { color: var(--muted); }
+.dl-fileline small { color: var(--muted); font-size: var(--t12); }
 
 /* ---------- /changelog: what's new (D344) ---------- */
 .cl { max-width: calc(46em + 2 * var(--gutter)); padding-block: clamp(40px, 6vw, 72px) 96px; }

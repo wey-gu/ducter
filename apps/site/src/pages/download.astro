@@ -9,7 +9,7 @@ import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import { siteLinks } from "../lib/links";
 import { formatDate, formatSize, RELEASES_URL, REPO_URL } from "../lib/github";
-import { agentsToday } from "../lib/agents";
+import { agentsTasksAnd, agentsToday } from "../lib/agents";
 
 const { facts, dl, gh } = await siteLinks();
 const a = facts.assets;
@@ -159,7 +159,7 @@ const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-w
       </li>
     </ul>
 
-    <p class="dl-need">Whichever you pick, Ducter does the work through an AI agent on that computer ({agentsToday}), signed in with the plan you already have. If something's missing, Ducter tells you the one thing to fix.</p>
+    <p class="dl-need">Whichever you pick, Ducter does the work through an AI agent on that computer ({agentsToday} can be your partner; {agentsTasksAnd} takes any task), signed in as you with the plan or key you already have. If something's missing, Ducter tells you the one thing to fix.</p>
 
     <div class="dl-step">
       <span class="dl-n" aria-hidden="true">2</span>

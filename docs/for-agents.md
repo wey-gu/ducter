@@ -55,8 +55,8 @@ asks you when it isn't clear:
   Tailscale app on), or **at your own domain** (from anywhere, with ports 80 and 443 open).
 - **Other computers can do tasks** for it. They keep nothing of their own but the work in
   progress.
-- **An AI agent** (Claude Code, Codex, pi or DeepSeek Harness) has to be installed and signed
-  in on each computer that does the work.
+- **An AI agent** has to be installed and signed in on each computer that does the work. Claude
+  Code, Codex, pi or DeepSeek Harness can also be your partner.
 - Ducter only listens on the computer it runs on. On a server, Tailscale answers at the
   server's Tailscale name, or [Caddy](https://caddyserver.com) at your domain, and passes
   requests to it.

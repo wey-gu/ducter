@@ -1,10 +1,10 @@
 {
-  "file": "2026-11-27-haiku-d620-doorbell.md",
+  "file": "2026-11-27-haiku-d624-noboards.md",
   "date": "2026-11-27",
   "harness": "claude-code",
   "model": "haiku",
-  "pass": "283/327",
-  "against": "2026-11-27-haiku-d0192.md",
+  "pass": "272/323",
+  "against": "2026-11-27-haiku-d620-doorbell.md",
   "persona": "b13438d01bb062c1",
-  "tools": "351e3391204785b9"
+  "tools": "e0fded698006e80f"
 }

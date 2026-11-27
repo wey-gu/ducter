@@ -87,7 +87,7 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
 export function plainAsk(d: Bodies["decision"]): boolean {
   if (!d.taskId) return false;
   if (d.pay || d.checkout || d.key || d.copyKey || d.signIn || d.deviceSignIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
-  if (d.routineId || d.forApp || d.loop || d.board || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
+  if (d.routineId || d.forApp || d.loop || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
   if (d.look?.left.length) return false;
   return !destructiveChoice(d.question, d.goLabel);
 }

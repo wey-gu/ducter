@@ -40,8 +40,10 @@ export interface PrSaid {
   failed?: string[];
   /** The checks on the head: how many passed of how many, how many still run. */
   checks?: { passed: number; total: number; pending: number };
-  /** D602: duplicate: it is still a draft (重复草稿). */
+  /** D602: duplicate: it is still a draft (重复草稿); also a PR still in draft whose phase is another one. */
   draft?: true;
+  /** The head commit last read, short (7): the Keep row says it as its own fact. */
+  sha?: string;
 }
 
 const names = (xs: readonly string[] | undefined) => (xs ?? []).filter(Boolean).slice(0, 3);
@@ -52,22 +54,24 @@ export function prSaid(p: Pick<TaskPR, "state" | "standing" | "letGo">): PrSaid 
   if (p.state === "closed") return { phase: "closed" };
   const st = p.standing;
   // D602: let go, it says only that: its CI and its reviews are no longer anyone's to wait on.
-  if (p.letGo) return p.letGo.why === "duplicate" ? { phase: "duplicate", ...(st?.draft ? { draft: true as const } : {}) } : { phase: "let_go" };
+  const head = st?.head ? { sha: st.head.slice(0, 7) } : {};
+  const draft = st?.draft ? { draft: true as const } : {};
+  if (p.letGo) return p.letGo.why === "duplicate" ? { phase: "duplicate", ...draft, ...head } : { phase: "let_go" };
   if (!st) return { phase: "open" };
   const c = st.checks;
   const checks = c && c.total > 0 ? { checks: { passed: c.passed, total: c.total, pending: c.pending.length } } : {};
-  if (st.changes?.length) return { phase: "changes", by: names(st.changes.map((x) => x.by)), ...checks };
-  if (c?.failed.length) return { phase: "failing", failed: names(c.failed), ...checks };
-  if (st.merge === "dirty") return { phase: "conflict", ...checks };
-  if (st.draft) return { phase: "draft", ...checks };
+  if (st.changes?.length) return { phase: "changes", by: names(st.changes.map((x) => x.by)), ...checks, ...draft, ...head };
+  if (c?.failed.length) return { phase: "failing", failed: names(c.failed), ...checks, ...draft, ...head };
+  if (st.merge === "dirty") return { phase: "conflict", ...checks, ...draft, ...head };
+  if (st.draft) return { phase: "draft", ...checks, ...draft, ...head };
   const pending = c?.pending.length ?? 0;
   if (!st.approvedBy?.length) {
     // Checks still running and nobody asked to review yet: CI is what it waits on; else a reviewer.
-    if (pending && !st.awaiting?.length) return { phase: "checks", ...checks };
-    return { phase: "review", ...(st.awaiting?.length ? { by: names(st.awaiting) } : {}), ...checks };
+    if (pending && !st.awaiting?.length) return { phase: "checks", ...checks, ...draft, ...head };
+    return { phase: "review", ...(st.awaiting?.length ? { by: names(st.awaiting) } : {}), ...checks, ...draft, ...head };
   }
-  if (pending) return { phase: "checks", ...checks };
-  return { phase: "ready", by: names(st.approvedBy), ...checks };
+  if (pending) return { phase: "checks", ...checks, ...draft, ...head };
+  return { phase: "ready", by: names(st.approvedBy), ...checks, ...draft, ...head };
 }
 
 /**

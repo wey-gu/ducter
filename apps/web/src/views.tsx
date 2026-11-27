@@ -97,7 +97,7 @@ import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
-import { AppCardView, AppRefGlyph, appNameNow, AppSheet, BoardOfferFacts, openApp, openShelf, ShelfCard } from "./apps.tsx";
+import { AppCardView, AppRefGlyph, appNameNow, AppSheet, openApp, openShelf, ShelfCard } from "./apps.tsx";
 import { closeKeep, K, KeepReceipt } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
@@ -543,7 +543,6 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
       {d.src && <SourceCardBody src={d.src} />}
-      {d.board && <BoardOfferFacts b={d.board} />}
       {/* D157: a where ask says its own lines (what waiting means, what moving does) in place of the default. */}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
       {open ? (
@@ -1263,7 +1262,6 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       {d.cal && <CalFacts c={d.cal} />}
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
       {d.src && <SourceCardBody src={d.src} />}
-      {d.board && <BoardOfferFacts b={d.board} />}
       {/* D437: what another AI still found in what this Go sends. */}
       {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}

@@ -277,19 +277,6 @@ export function StateLine({ m }: { m: AppMeta }) {
   );
 }
 
-/** D407: the board offer's few words: what goes in it (its own card's body, under the question). */
-export function BoardOfferFacts({ b }: { b: NonNullable<Bodies["decision"]["board"]> }) {
-  return (
-    <div class="board-offer">
-      <span class="app-face sm">{APP_GLYPH(18)}</span>
-      <span class="board-offer-words">
-        <span class="dl">{t("board.offer.what", b.title)}</span>
-        {b.kind === "reviews" && <small class="muted">{t("board.offer.reviews")}</small>}
-      </span>
-    </div>
-  );
-}
-
 /** The card under the partner's words: the app's mark, its name, what happened, 打开 / Open. */
 export function AppCardView({ c }: { c: AppCard }) {
   const now = AP.list.find((a) => a.id === c.id);

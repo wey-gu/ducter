@@ -211,13 +211,8 @@ test("a request that arrives between the first look and the final look is in tha
   // Round 298: the first look reports two; the end-of-round look finds the website's request.
   wake("w_298");
   await call(core, "swj3zc4w", { prs: two });
-  expect(ts.pile.rounds("swj3zc4w")).toBe(2);
   const a = await call(core, "swj3zc4w", { prs: [...two, site] });
   expect(a).toContain("replaces this round's earlier review_report");
-  expect(ts.pile.rounds("swj3zc4w")).toBe(2);
-  const board = ts.pile.board("swj3zc4w")!;
-  expect(board.waiting).toBe(3);
-  expect(board.prs.map((p) => p.ref)).toContain("nowledge-co/nowledge-labs-website#551");
   expect(ts.pile.standing("swj3zc4w")).toMatchObject({ waiting: 3 });
   expect(lines()).toEqual(["新来了一个评审请求：[nowledge-labs-website#551](https://github.com/nowledge-co/nowledge-labs-website/pull/551)「Shared H2 at 20 px」。"]);
 
@@ -225,7 +220,7 @@ test("a request that arrives between the first look and the final look is in tha
   await call(core, "swj3zc4w", { prs: [...two, site] });
   wake("w_299");
   await call(core, "swj3zc4w", { prs: [...two, site] });
-  expect(ts.pile.rounds("swj3zc4w")).toBe(3);
+  expect(ts.pile.standing("swj3zc4w")).toMatchObject({ waiting: 3 });
   expect(lines()).toHaveLength(1);
   // Nothing about a line said is internal: the standing has no round bookkeeping in it.
   expect(Object.keys(ts.pile.standing("swj3zc4w")!)).not.toContain("told");

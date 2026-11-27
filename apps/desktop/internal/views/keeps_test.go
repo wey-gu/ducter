@@ -69,3 +69,31 @@ func TestKeepWordsWhole(t *testing.T) {
 		}
 	}
 }
+
+// D624: the Keep's held PR row says its CI, a draft, a conflict or changes
+// requested, and the head commit, each its own element, in the same words On
+// hand uses.
+func TestKeepPRFacts(t *testing.T) {
+	app, _ := pastApp(t, i18n.ZH)
+	checks := &protocol.PRChecksSaid{Passed: 2, Total: 3, Pending: 0}
+	got := app.prFacts(protocol.PRSaid{Phase: "changes", By: []string{"100gle"}, Checks: checks, Draft: true, Sha: "b2c3d4e"})
+	want := []string{"CI 通过 2/3", "草稿", "看的是 b2c3d4e"}
+	if len(got) != len(want) {
+		t.Fatalf("prFacts = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("fact %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+	// A draft's own phase already says it once; the fact is not repeated.
+	got = app.prFacts(protocol.PRSaid{Phase: "draft", Checks: checks, Draft: true, Sha: "a1b2c3d"})
+	for _, f := range got {
+		if f == "草稿" {
+			t.Errorf("the draft phase repeated its word: %q", got)
+		}
+	}
+	if w := app.prPhaseWords(protocol.PRSaid{Phase: "conflict"}, "main"); w != "和 main 有冲突" {
+		t.Errorf("conflict says %q", w)
+	}
+}

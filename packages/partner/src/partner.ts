@@ -2521,7 +2521,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             heavy: { type: "boolean", description: "Heavy on memory (builds, tests, type checks, Playwright, a dev server, evals): goes where [devices] shows room" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
-            reviews: { type: "boolean", description: "Its whole job is reviewing other people's pull requests (a review loop/Keep: it reads the PRs waiting on the user and reports reviews). Set it from the brief once, now. Never for a task that fixes code, opens its own PR, or hands its PR to the Babysitter: those get no review_report and no board" },
+            reviews: { type: "boolean", description: "Its whole job is reviewing other people's pull requests (a review loop/Keep: it reads the PRs waiting on the user and reports reviews). Set it from the brief once, now. Never for a task that fixes code, opens its own PR, or hands its PR to the Babysitter: those get no review_report" },
             phone: { type: "string", enum: ["mine", "ducter", "any"], description: "It works in an app on a phone; which phone. mine: the user's own, with their apps, accounts and messages (用我的手机, 我的微信, their orders, \"on my Pixel\"). ducter: Ducter's own clean phone with none of their accounts (用你的手机 = yours, Ducter's; 在安卓上试我们的 App, install an APK, a fresh phone). any: either does (an app anyone can open, nothing of theirs). Unsure: mine. Set it even when no phone is set up yet: Ducter offers the user the one tap that sets it up. Never tell the user about adb, USB or wireless debugging, a cable or Developer options" },
           },
         },
@@ -3065,7 +3065,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     );
   }
   function registerAppTool(apps: NonNullable<CoreApi["apps"]>) {
-    // D407: the person's Go on Ducter's offer to keep a routine's rounds on a board is their own word too.
+    // A Go on Ducter's own card is the person's own word too.
     const own = (t: TurnState) =>
       t.triggers.some((e) => (e.kind === "user_msg" && !(e.body as Bodies["user_msg"]).app?.ask && !(e.body as Bodies["user_msg"]).forwarded) || (e.kind === "decision_resolved" && e.origin === "user" && (e.body as Bodies["decision_resolved"]).option === "go"));
     const card = (t: TurnState, m: AppMeta, change: AppCard["change"]) => {
@@ -3077,7 +3077,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     tools.register(
       "partner",
       "app",
-      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it, and then at once, with no card (they said it). It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call (never into the file; it reads them with ducter.get), items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch or URLs), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once: what will list there). Nothing known: the k-sum still says what it will show (<span class=\"k-sum-value k-none\">还没记</span>, never a 0; k-sum-sub what shows there); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. Before making one, read [apps]: if one already shows the same thing (same purpose, same task or Keep), change or extend that app instead of making a second. task: a repeating task that fills it each round; keep: a Keep's id from [keeps] whose rounds fill it (a babysitter's work, a review loop); make the app as above (name and html) with task or keep set (only a review task may leave html out: Ducter's own board). snapshot: true when it shows a task's or a Keep's work that is NOT given to it: it says 截至 the time it was read, and your line says plainly it is a snapshot, not kept current.",
+      "Make or change one of the user's own small apps: one HTML file Ducter keeps in their 你的小应用 / Your apps; they reopen it on any device. Only when they ask for an app, tracker, tool or page to keep (a one-off answer stays a table or list). New: name + html + icon + summary. Change: id + edits [{find, replace}] (exact text; read: true first if unsure) or the whole html. data puts values into its storage (a new one, or when they ask you to fill it). remove: only when they say to delete it, and then at once, with no card (they said it). It opens filled: what they just told you and what you know (a trip on their calendar, what you booked or paid for, a task's numbers) goes into data in the same call (never into the file; it reads them with ducter.get), items you knew with from (\"你的预订\"); name it for that (\"北京出差 11/20–21\"); note one short line of what you filled in. Answer first: the k-sum on top holds the one thing they'd open it for (the total, what's left, the streak), k-sum-next the next thing; then their items; adding last, folded: <details class=\"k-add\"><summary>记一笔</summary>…</details>. The file: inline CSS and JS only, nothing from the internet (no CDN, fetch or URLs), no alert/confirm/localStorage. ducter.get(key) / ducter.set(key, value) (JSON, the same on every device), ducter.onChange(fn); ducter.ask(text) returns your answer as a Promise, only on the user's tap; ducter.summary(text) on every change: its shelf line (\"3 笔，合计 ¥1,698\"). Draw with Ducter's kit, never the system's select, number, date or time input: <main class=\"k-app\">, k-sum (k-sum-label, k-sum-value, k-sum-sub), k-h, k-card, k-list > k-row (k-row-main, k-row-sub, k-row-value), k-chips > button.k-chip[aria-pressed] (a longer list: select.k-select), input.k-num inputmode=decimal, k-field > label + input.k-input, k-btn / k-btn primary, k-from, k-empty (once: what will list there). Nothing known: the k-sum still says what it will show (<span class=\"k-sum-value k-none\">还没记</span>, never a 0; k-sum-sub what shows there); each fact its own element, never joined with ·; no delete button on every row (tap a row to change or remove it); colours var(--d-bg|card|sunken|ink|soft|muted|line|accent|good|bad). 360px wide first; the user's language. Before making one, read [apps]: if one already shows the same thing (same purpose, same task or Keep), change or extend that app instead of making a second. task: a repeating task that fills it each round; keep: a Keep's id from [keeps] whose rounds fill it (a babysitter's work, a review loop); make the app as above (name and html) with task or keep set. snapshot: true when it shows a task's or a Keep's work that is NOT given to it: it says 截至 the time it was read, and your line says plainly it is a snapshot, not kept current.",
       {
         type: "object",
         properties: {
@@ -3131,13 +3131,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           card(t, m, "removed");
           return { ok: true, say: "Then one short line that it's deleted with what it kept; its card has Undo. Nothing else." };
         }
-        // D407: an app a repeating task keeps current (its rounds write the data, never the file).
-        // On Go for Ducter's board offer, the app is that task's even when the call leaves task out.
-        const offered = t.triggers
-          .map((e) => (e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).option === "go" ? core.log.read({ stream: "channel", kinds: ["decision"], limit: 300 }).find((x) => (x.body as Bodies["decision"]).decisionId === (e.body as Bodies["decision_resolved"]).decisionId) : undefined))
-          .map((x) => (x?.body as Bodies["decision"] | undefined)?.board)
-          .find((b) => b?.kind === "reports");
-        const taskId = typeof a.task === "string" && a.task.trim() ? a.task.trim() : !m && offered ? offered.taskId : "";
+        // D624: a small app a repeating task keeps current (its rounds write the data, never the file).
+        const taskId = typeof a.task === "string" && a.task.trim() ? a.task.trim() : "";
         const task = taskId ? core.tasks.get(taskId) : undefined;
         if (taskId && !task) return { ok: false, error: `No task ${taskId}: use a task id from [tasks].` };
         if (task && !own(t)) return { ok: false, error: "Only the user's own words give an app to a task." };
@@ -3147,13 +3142,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (keepId && !keep) return { ok: false, error: `No Keep ${keepId}: use an id from [keeps].` };
         if (keep && task) return { ok: false, error: "Give the app to the task or the Keep, not both." };
         if (keep && !own(t)) return { ok: false, error: "Only the user's own words give an app to a Keep." };
-        if (task && !m && html === undefined) {
-          if (!core.boards?.isReview(task.taskId)) return { ok: false, error: "A new app needs name and html: write them now, with task set, and it fills each round (only a review task gets Ducter's review board without html)." };
-          const r = core.boards.makeReviewBoard(task.taskId);
-          if (!r.ok) return { ok: false, error: r.error };
-          card(t, r.app, "made");
-          return { ok: true, id: r.app.id, say: `Ducter's review board, filled from that task's rounds. ${after}` };
-        }
         if (a.read === true) {
           if (!m) return { ok: false, error: "read needs an id." };
           const h = apps.html(m.id) ?? "";
@@ -6618,9 +6606,9 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
     return m < 60 ? `${m}m ago` : m < 48 * 60 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
   };
   const recent = (m: AppMeta) => Math.max(Date.parse(m.updated), m.opened ? Date.parse(m.opened) : 0);
-  // D612: the apps that follow work (a task, a Keep, a reviews board) show first: the partner
-  // judges a duplicate ask from what actually keeps them current.
-  const follows = (m: AppMeta) => Number(!!m.task || !!m.keep || !!m.kind || !!m.tasks?.length);
+  // D612: the apps that follow work (a task or a Keep) show first: the partner judges a duplicate
+  // ask from what actually keeps them current. An app made before boards were retired is an app too.
+  const follows = (m: AppMeta) => Number(!!m.task || !!m.keep || !!m.tasks?.length);
   const shown = [...apps].sort((a, b) => follows(b) - follows(a) || recent(b) - recent(a)).slice(0, APPS_SHOWN);
   const one = (m: AppMeta) => {
     const keys = Object.entries(data(m.id))
@@ -6628,16 +6616,15 @@ export function renderApps(apps: readonly AppMeta[], data: (id: string) => Recor
       .map(([k, v]) => (Array.isArray(v) ? `${k} (${v.length})` : k))
       .join(", ");
     const name = m.name.length > 40 ? m.name.slice(0, 39) + "…" : m.name;
-    // D407/D612: what keeps it current, and what kind it is (so the partner can tell an ask
-    // that duplicates it before making a second; a review board names its task or Keep).
+    // D407/D612: what keeps it current (so the partner can tell an ask that duplicates it
+    // before making a second).
     const ts = appTasks(m);
     const taskBy = ts.length ? `; task ${ts.map((x) => x.id).join(", ")} keeps it current each round` : "";
     const keepBy = m.keep ? `; Keep ${m.keep.id} "${m.keep.title}" fills it each round` : "";
-    const kind = m.kind === "reviews" ? "; kind reviews (Ducter's review board: each PR waiting with its CI, findings and draft; a row's 看草稿 / Read draft opens it)" : "";
     // D422: what is wrong with it now, so "fix it" / "换成新样子" has what it needs.
     const l = m.live;
     const state = `${l?.old ? "; drawn before the kit (asked for the new look: rewrite it whole with the kit, keep its keys, fill it from what you know)" : ""}${l?.broke ? `; its page broke: ${JSON.stringify(l.broke.text.slice(0, 120))}` : ""}${l?.kept?.state === "failed" ? "; its task's last round failed" : ""}${l?.kept?.state === "ended" ? "; it follows work that has ended (已停止更新 / no longer updating): say so, never promise an update" : ""}${l?.snapshot ? `; a snapshot as of ${l.snapshot.at} (it follows nothing: say it is a snapshot, not kept current)` : ""}${l?.inFile ? `; ${l.inFile} of its rows are written into its markup (when you next change it, move them into data and draw them from ducter.get)` : ""}`;
-    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${kind}${taskBy}${keepBy}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
+    return `  ${m.id} "${name}" v${m.version}, changed ${ago(m.updated)}${m.opened ? `, opened ${ago(m.opened)}` : ""}${m.pinned ? ", pinned" : ""}${taskBy}${keepBy}${m.summary ? `; shows "${m.summary}"` : ""}${keys ? `; keeps: ${keys.slice(0, 200)}` : ""}${state}`;
   };
   const more = apps.length - shown.length;
   return [

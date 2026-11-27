@@ -841,8 +841,6 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D385: Ducter's own cards for a hand-over: shown whole to the user with their buttons; never restated.
       if (d.src?.kind === "plan") return `[${t} the plan card for "${clip(d.src.group ?? "", 40)}" (group ${d.src.groupId}): the user sees the plan whole with 照这个做 / 先等等 / 回复… (Go with this / Hold / Reply); a reply goes to the plan itself. Never restate it.]`;
       if (d.src?.kind === "where_rule") return `[${t} Ducter asked once whether to keep "${clip(d.src.quote ?? "", 80)}" as a rule (its own card)]`;
-      // D407: Ducter's one offer to keep a repeating task's rounds on a board (its own card).
-      if (d.board) return `[${t} Ducter offered once, on its own card, to keep task ${d.board.taskId}'s repeating ${d.board.kind === "reviews" ? "review rounds" : "reports"} on a small app (要不要把这些做成一个看板？ / Keep these on a board?). Never restate it.]`;
       // D427: the keeper's one word about a task in rounds that is late or failing (its own card).
       if (d.loop) return `[${t} Ducter said once, on its own card, that task ${d.loop.taskId}'s rounds aren't keeping time: "${clip(d.question, 200)}" (Go runs a round now). Never restate it.]`;
       if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
@@ -851,12 +849,6 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
-      // D407: Go on the board offer: the review board is Ducter's (made, its card is up); other reports: you make it now.
-      if (d?.board && b.option === "go")
-        return d.board.kind === "reviews"
-          ? `[${t} the user said Go on keeping task ${d.board.taskId}'s review rounds on a board: Ducter made the review board (its card is up). Say nothing more.]`
-          : `[${t} the user said Go on keeping task ${d.board.taskId}'s repeating reports ("${clip(d.board.title, 60)}") on a board] Now, in this turn, call the app tool yourself (never a task): name in their words, html that reads those reports' fields from its data with ducter.get and ducter.onChange (one row per round or item, newest first), task: "${d.board.taskId}". Its rounds fill it from now on. Then a few words that it's ready, nothing about its layout.`;
-      if (d?.board) return `[${t} the user said no to the board for task ${d.board.taskId}: nothing changes. Say nothing.]`;
       if (b.by === "ended") return `[${t} question closed: no longer needed (what it asked about ended)]${d ? ` "${clip(d.question, 120)}"` : ""}`;
       // D499: Ducter said Go for them, under what they said.
       if (b.by === "said") return `[${t} went ahead for the user, on their word "${clip(b.said ?? "", 120)}"]${d ? ` "${clip(d.question, 120)}"` : ""}`;

@@ -55,10 +55,20 @@ func SayPR(p protocol.TaskPR) PRSaid {
 		return PRSaid{Phase: PRClosed}
 	}
 	st := p.Standing
+	sha := ""
+	draft := false
+	if st != nil {
+		draft = st.Draft
+		if len(st.Head) > 7 {
+			sha = st.Head[:7]
+		} else {
+			sha = st.Head
+		}
+	}
 	// D602: let go, it says only that: its CI and reviews are no one's to wait on.
 	if p.LetGo != nil {
 		if p.LetGo.Why == "duplicate" {
-			return PRSaid{Phase: PRDuplicate, Draft: st != nil && st.Draft}
+			return PRSaid{Phase: PRDuplicate, Draft: draft, Sha: sha}
 		}
 		return PRSaid{Phase: PRLetGo}
 	}
@@ -75,16 +85,16 @@ func SayPR(p protocol.TaskPR) PRSaid {
 		for _, x := range st.Changes {
 			by = append(by, x.By)
 		}
-		return PRSaid{Phase: PRChanges, By: firstNames(by), Checks: checks}
+		return PRSaid{Phase: PRChanges, By: firstNames(by), Checks: checks, Draft: draft, Sha: sha}
 	}
 	if c != nil && len(c.Failed) > 0 {
-		return PRSaid{Phase: PRFailing, Failed: firstNames(c.Failed), Checks: checks}
+		return PRSaid{Phase: PRFailing, Failed: firstNames(c.Failed), Checks: checks, Draft: draft, Sha: sha}
 	}
 	if st.Merge == "dirty" {
-		return PRSaid{Phase: PRConflict, Checks: checks}
+		return PRSaid{Phase: PRConflict, Checks: checks, Draft: draft, Sha: sha}
 	}
 	if st.Draft {
-		return PRSaid{Phase: PRDraft, Checks: checks}
+		return PRSaid{Phase: PRDraft, Checks: checks, Draft: draft, Sha: sha}
 	}
 	pending := 0
 	if c != nil {
@@ -92,14 +102,14 @@ func SayPR(p protocol.TaskPR) PRSaid {
 	}
 	if len(st.ApprovedBy) == 0 {
 		if pending > 0 && len(st.Awaiting) == 0 {
-			return PRSaid{Phase: PRChecks, Checks: checks}
+			return PRSaid{Phase: PRChecks, Checks: checks, Draft: draft, Sha: sha}
 		}
-		return PRSaid{Phase: PRReview, By: firstNames(st.Awaiting), Checks: checks}
+		return PRSaid{Phase: PRReview, By: firstNames(st.Awaiting), Checks: checks, Draft: draft, Sha: sha}
 	}
 	if pending > 0 {
-		return PRSaid{Phase: PRChecks, Checks: checks}
+		return PRSaid{Phase: PRChecks, Checks: checks, Draft: draft, Sha: sha}
 	}
-	return PRSaid{Phase: PRReady, By: firstNames(st.ApprovedBy), Checks: checks}
+	return PRSaid{Phase: PRReady, By: firstNames(st.ApprovedBy), Checks: checks, Draft: draft, Sha: sha}
 }
 
 // PRStands is where On hand stands a finished task under its PR: ready

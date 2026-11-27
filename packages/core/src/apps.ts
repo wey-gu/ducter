@@ -56,9 +56,7 @@ export interface AppsStore {
   give(id: string, task: AppTask | undefined): boolean;
   /** D612: the Keep whose rounds fill it (undefined: none any more). */
   giveKeep(id: string, keep: AppTask | undefined): boolean;
-  /** D612: a second review task's work joins the one board (never a second board). */
-  addTask(id: string, task: AppTask): boolean;
-  /** D407: the apps a task fills (a board may show several tasks' work). */
+  /** D407: the apps a task fills. */
   byTask(taskId: string): AppMeta[];
   /** D612: the apps a Keep's rounds fill. */
   byKeep(keepId: string): AppMeta[];
@@ -72,9 +70,6 @@ export interface AppsStore {
    * (APP_TASK_WRITES_PER_HOUR an hour per app). Data only: a task never touches the file.
    */
   fill(id: string, taskId: string, set: Record<string, unknown>): { ok: true; keys: string[] } | { ok: false; error: string };
-  /** D407: Ducter offered once to keep this task's rounds on a board (never asked twice). */
-  offered(taskId: string): boolean;
-  markOffered(taskId: string): void;
   /** A new version: the whole file, or edits (each find must match exactly once). */
   change(id: string, c: { html?: string; edits?: { find: string; replace: string }[]; name?: string; note?: string }): { ok: true; app: AppMeta; lifted?: string[] } | { ok: false; error: string };
   /** 改回去: the version before comes back as a new one. */
@@ -133,14 +128,6 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
   const asks = new Map<string, { waiting?: string; since?: number; times: number[] }>();
   const frames = new Map<string, { id: string; dark?: boolean; lang?: string; until: number }>();
   const fills = new Map<string, number[]>();
-  const offersPath = join(o.dataDir, "app-offers.json");
-  let offers: Record<string, string> = {};
-  try {
-    const raw = JSON.parse(readFileSync(offersPath, "utf8"));
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) offers = raw as Record<string, string>;
-  } catch {
-    /* none yet */
-  }
   if (existsSync(root)) {
     for (const id of readdirSync(root)) {
       if (id.startsWith(".")) continue;
@@ -368,18 +355,6 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       emit({ kind: "give", id, ...(m.task ? { task: m.task } : {}), ...(m.keep ? { keep: m.keep } : {}) });
       return true;
     },
-    addTask(id, task) {
-      const m = metas.get(id);
-      if (!m) return false;
-      const t = { id: task.id, title: appName(task.title) || task.id };
-      const all = appTasks(m);
-      if (all.some((x) => x.id === t.id)) return true;
-      m.tasks = [...(m.tasks ?? []), t];
-      saveMeta(m);
-      emit({ kind: "list" });
-      emit({ kind: "give", id, task: t, ...(m.keep ? { keep: m.keep } : {}) });
-      return true;
-    },
     byTask: (taskId) => [...metas.values()].filter((m) => appTasks(m).some((t) => t.id === taskId)),
     byKeep: (keepId) => [...metas.values()].filter((m) => m.keep?.id === keepId),
     taskKeep(fn) {
@@ -417,13 +392,6 @@ export function openApps(o: { dataDir: string; now?: () => Date }): AppsStore {
       write(join(dir(id), "data.json"), JSON.stringify(d));
       for (const [k] of entries) emit({ kind: "data", id, key: k, value: d[k] ?? null, by: "task" });
       return { ok: true, keys: entries.map(([k]) => k) };
-    },
-    offered: (taskId) => !!offers[taskId],
-    markOffered(taskId) {
-      offers[taskId] = now().toISOString();
-      const ks = Object.keys(offers);
-      for (const k of ks.slice(0, Math.max(0, ks.length - 200))) delete offers[k];
-      write(offersPath, JSON.stringify(offers));
     },
     change(id, c) {
       const m = metas.get(id);

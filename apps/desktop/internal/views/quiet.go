@@ -445,7 +445,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })
 		}
 		// D341: a write-back's comment, whole as it goes out, or the to-do's chip.
-		if (d.Src != nil || d.Board != nil) && openAsk(d) { // D407: the board offer's few words too
+		if d.Src != nil && openAsk(d) {
 			ui.Column(c.Key("todo")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 				a.todoAskBody(c, d)
 			})

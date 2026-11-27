@@ -135,7 +135,7 @@ Today one idea, "keep doing this for me until …", is spread over five partial 
 | A task in rounds (a loop) | D394, D427, D429, D481 | one task resting on its own timer, kept by Ducter | On hand › 一直在跑的 (D498), Ongoing tab | event wakes, held items, a page of its own |
 | `until` and waits | D113, D483, D496, D508 | a task's waits on CI, reviews, a PR's standing | 在等, a PR's line under its task | a person's goal across many wakes |
 | Helper (帮手) | D494, D507 | mail at a Bridge address, a task per piece | On hand › 你的帮手, and Settings › Agent 通信 | its own page (it opens Settings), rounds, rules |
-| Board app | D407, D410 | a routine writes a small app each round | Your apps | it is a second picture of the same state |
+| Board app | D407, D410 | a routine writes a small app each round | Your apps | retired (D624): it was a second picture of the same state; its PR facts are on the Keep page, and an app the person already has stays theirs |
 
 The person thinks one thing ("Ducter is minding this for me"); the product shows five, and the one tap that
 should open it lands in Settings.
@@ -197,7 +197,7 @@ only the person or its goal ends it.
 | `rules` | `speaks` (when it speaks: on news the person asked for; asks only when needed; never "nothing new"), `limits` (a round's time, items a day: D494's 10; a month's spend), `where` and `who` (D510's defaults apply), `mayTouch` (D61), standing go's (D413) | defaults from the words; the person by talking | code enforces |
 | `run` | how a round runs: `same` (one task across rounds, D394's fresh-session rule), `fresh` (a task per round, D114), `perItem` (a task per item, D494) | the partner | — |
 | `address` | optional: its Bridge name, so other agents can hand it work (D494). A detail inside the Keep, never its home | made with it | — |
-| `app` | optional: a small app it fills (D407); a second view of `items`, never a second state | the person's Go on the offer | — |
+| `app` | optional: a small app it fills (D407); a second view of `items`, never a second state. No app is offered (D624); an existing one is left as it is | the person asks for one in words | — |
 | `bell` | optional: its doorbell (D620), a secret URL off the home; the token is never on the Keep, only in the home's 0600 file | the person, or the partner asked in words | code (a ring wakes; a wrong token is a 404) |
 | `life` | `on` (with `health`: on time, late, a computer asleep, out of allowance, D427/D429), `paused` (until a time or a resume), `done` (goal met, with evidence), `stopped` (by the person) | — | code, from the person's gesture or the recorded goal |
 
@@ -219,7 +219,7 @@ A Keep with no goal and no news for 30 days gets one offer, never an interruptio
 | Helper (D494, D507) | a Keep with `wakes: arrives (its address) + changes (its PRs)`, `run: perItem`; the helper's name is the Keep's title | `helpers.json`'s address and Mem identity, now `address` on the Keep |
 | A babysit said in words ("盯到 #10932 能合并") | a Keep with one item and its until | D483/D496 looks |
 | A task's own `until` and waits (D113, D483) | **unchanged**: inside one task, not standing work. A task with one PR open stays D508's row | — |
-| Board app (D407) | a view of the Keep's items, offered as before | `app_data` writes from the same model |
+| Board app (D407) | **no longer offered** (D624): the Keep page carries its PR facts; an app the person already has is left as it is | `app_data` writes from the same model, for an app the person asked for |
 | On hand's **一直在跑的** (D498) and **你的帮手** (D507) | one section, **看守中 / Looking after** | the rows' facts and lines |
 | Past tasks › Ongoing tab (D285) | the same list, with ended Keeps under **已结束 / Ended** | its gestures |
 | Settings › Agent 通信 › 你的帮手 (D494) | only the address row, a link back to the Keep's page | the connection |
@@ -297,8 +297,9 @@ the side column after the rounds.
 4. A picture only when the Keep has one number that moves toward its goal (the fare: one point a morning and
    the goal as a dashed line). Never a progress bar for work that has no measure (D498).
 5. **手上的 / What it holds** (D519: a Keep in rounds holds the PRs its task keeps open, each named by its own title;
-   the loop's task is never an item): each item with its standing (a PR: its line, its checks as small squares, who
-   approved; D508's words), **打开 PR ›**, and its task one tap away. D602: an item is released when its task
+   the loop's task is never an item): each item with its standing (a PR: its phase, its CI, a draft when
+   another phase won, the problems it names — a conflict, changes requested — and the head commit it was
+   last read at, each its own element; D508's words), **打开 PR ›**, and its task one tap away. D602: an item is released when its task
    ends (done with no PR going on, or dropped) or when its task lets the PR go (`let_go`: a duplicate, not needed;
    or the person's 结束任务); while its task still works, a let-go PR reads **重复草稿，可关** or **不再跟了，可关**,
    never the CI it no longer waits on. Each item has **不用跟了 / Stop following** (on this page, asked in place; from a

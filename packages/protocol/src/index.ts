@@ -2509,9 +2509,11 @@ export interface DeviceHarness {
  *    安装 updates that copy with its own updater;
  *  - broken: its command line is there but doesn't answer (a damaged file); 安装 puts a fresh one there;
  *  - app_only: only its desktop app (`app`) is there, which carries no command line (or only a
- *    link an older app left, pointing at nothing); 安装 puts the command line beside it.
+ *    link an older app left, pointing at nothing); 安装 puts the command line beside it;
+ *  - coming (D625): this Ducter build cannot run it yet (Dim needs an @botiverse/oar release
+ *    that exports createDimRuntime); said as 即将支持 / Coming soon, never a crash.
  */
-export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string } | { kind: "root" };
+export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string } | { kind: "root" } | { kind: "coming" };
 
 /** D363: what an agent_setup asks of a device. */
 export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look" | "logout";

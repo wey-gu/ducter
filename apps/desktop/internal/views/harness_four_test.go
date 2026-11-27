@@ -15,8 +15,9 @@ func TestHarnessFourNamesAndLogin(t *testing.T) {
 		"devin":    "Devin CLI",
 		"kimi":     "Kimi Code CLI",
 		"opencode": "OpenCode",
+		"dim":      "Dim",
 	}
-	badges := map[string]string{"cursor": "cu", "devin": "dv", "kimi": "km", "opencode": "oc"}
+	badges := map[string]string{"cursor": "cu", "devin": "dv", "kimi": "km", "opencode": "oc", "dim": "dm"}
 	for h, want := range names {
 		if got := harnessName(h); got != want {
 			t.Errorf("harnessName(%q) = %q, want %q", h, got, want)
@@ -30,12 +31,12 @@ func TestHarnessFourNamesAndLogin(t *testing.T) {
 	if open, code := loginSteps("kimi"); open != "ag.login.kimi.1" || code != "ag.login.kimi.2" {
 		t.Errorf("Kimi's steps: %s, %s", open, code)
 	}
-	for h, want := range map[string]string{"devin": "ag.login.devin", "opencode": "ag.login.opencode", "cursor": "ag.login.cursor", "pi": "ag.login.pi"} {
+	for h, want := range map[string]string{"devin": "ag.login.devin", "opencode": "ag.login.opencode", "cursor": "ag.login.cursor", "dim": "ag.login.dim", "pi": "ag.login.pi"} {
 		if got := terminalKey(h); got != want {
 			t.Errorf("terminalKey(%q) = %q, want %q", h, got, want)
 		}
 	}
-	for h, want := range map[string]string{"devin": "ag.devin.where", "kimi": "ag.kimi.where", "cursor": "ag.cursor.where", "opencode": ""} {
+	for h, want := range map[string]string{"devin": "ag.devin.where", "kimi": "ag.kimi.where", "cursor": "ag.cursor.where", "dim": "ag.dim.where", "opencode": ""} {
 		if got := manualWhereKey(h); got != want {
 			t.Errorf("manualWhereKey(%q) = %q, want %q", h, got, want)
 		}
@@ -57,18 +58,18 @@ func TestHarnessFourNamesAndLogin(t *testing.T) {
 	}
 	// The words are in both languages, and the offerable order lists all four after the old agents.
 	for _, l := range []i18n.Lang{i18n.ZH, i18n.EN} {
-		for _, k := range []string{"ag.login.devin", "ag.login.opencode", "ag.login.cursor"} {
+		for _, k := range []string{"ag.login.devin", "ag.login.opencode", "ag.login.cursor", "ag.login.dim"} {
 			if got := i18n.New(l).T(k, "nas"); got == k || got == "" {
 				t.Errorf("%s: missing %q", l, k)
 			}
 		}
-		for _, k := range []string{"ag.login.kimi.1", "ag.login.kimi.2", "ag.kimi.where", "ag.kimi.terms", "ag.devin.where", "ag.devin.terms", "ag.opencode.where", "ag.opencode.terms", "ag.cursor.where", "ag.cursor.terms"} {
+		for _, k := range []string{"ag.login.kimi.1", "ag.login.kimi.2", "ag.kimi.where", "ag.kimi.terms", "ag.devin.where", "ag.devin.terms", "ag.opencode.where", "ag.opencode.terms", "ag.cursor.where", "ag.cursor.terms", "ag.dim.where", "ag.dim.coming", "ag.coming"} {
 			if got := i18n.New(l).T(k); got == k || got == "" {
 				t.Errorf("%s: missing %q", l, k)
 			}
 		}
 	}
-	wantOrder := []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"}
+	wantOrder := []string{"codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor", "dim"}
 	if len(installOrder) != len(wantOrder) {
 		t.Fatalf("installOrder = %v", installOrder)
 	}
@@ -98,5 +99,15 @@ func TestHarnessFourCoins(t *testing.T) {
 		if got := coinArt(h, true); got != art+"_off" {
 			t.Errorf("coinArt(%q, off) = %q, want %q", h, got, art+"_off")
 		}
+	}
+}
+
+// D625: Dim has no coin of its own yet, so the picker draws the generic token.
+func TestDimCoinIsGeneric(t *testing.T) {
+	if coinKnown("dim") {
+		t.Errorf("dim has a coin art that doesn't exist")
+	}
+	if got := coinArt("dim", false); got != "token_ink" {
+		t.Errorf("coinArt(dim) = %q", got)
 	}
 }

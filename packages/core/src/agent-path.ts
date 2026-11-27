@@ -175,7 +175,7 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
       }
     });
   // D600: the four new commands too (agent is Cursor's CLI, not what Ducter runs; its SDK is its own).
-  const cmds = ["claude", "codex", "pi", "dsh", "agy", "agent", "devin", "kimi", "kimi-code", "opencode", "node"].map((c) => {
+  const cmds = ["claude", "codex", "pi", "dsh", "agy", "agent", "devin", "kimi", "kimi-code", "opencode", "dima", "dim-nightly", "dimn", "node"].map((c) => {
     const p = o.which(c);
     return `${c}=${p ?? ""}@${p ? (mtime(p) ?? "") : ""}`;
   });
@@ -196,6 +196,9 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     join(home, ".cursor", "sdk", "auth.json"),
     join(env.XDG_DATA_HOME || join(home, ".local", "share"), "opencode", "auth.json"),
     join(env.KIMI_CODE_HOME || join(home, ".kimi-code"), "credentials", "kimi-code.json"),
+    // D625: Dim's default home (its sign-in and provider catalog live in one SQLite there).
+    // The folder's mtime is watched, never its contents; --home elsewhere is not watched.
+    join(home, ".dimcode-alpha"),
     join(o.dataDir, "keys.env"),
   ].map((f) => `${f}@${mtime(f) ?? ""}`);
   return [...cmds, ...files].join("|");

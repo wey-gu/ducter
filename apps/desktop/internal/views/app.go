@@ -1452,6 +1452,8 @@ func harnessName(h string) string {
 		return "Kimi Code CLI"
 	case "opencode":
 		return "OpenCode"
+	case "dim":
+		return "Dim"
 	}
 	return h
 }
@@ -1474,6 +1476,8 @@ func harnessBadge(h string) string {
 		return "km"
 	case "opencode":
 		return "oc"
+	case "dim":
+		return "dm"
 	}
 	if len(h) >= 2 {
 		return h[:2]

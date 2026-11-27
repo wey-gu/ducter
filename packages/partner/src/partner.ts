@@ -53,7 +53,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import type { AliveSource } from "../../protocol/src/alive.ts";
-import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL, pickTag, HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type DayAfter, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
+import { ASKS_MAX, SAME_CAUSE_WHYS, type AskLine, callWakes, STANDING_ACTIONS, type StandingAction, FREE_TIERS, fileView, harnessName, HARNESSES, MEM_AUTO_SESSION, MEM_BRIDGE_SKILL, pickTag, HARNESS_IDS, PARTNER_NAMED_HARNESS_IDS, isHarnessId, relaysBridge, isImage, isWorkKind, WORK_KINDS, type WorkKind, MEDIA_LIMITS, viewText, type MediaRef, type ActivityStep, type Bodies, type BodyWhy, type Brain, type CalEvent, type CalGlance, type DayAfter, type EventKind, type HarnessId, type LogEvent, type Place, type TaskBound, type TaskCard, type TaskGroupFrame, type TaskGroupView, type TaskNeeds } from "../../protocol/src/index.ts";
 import { boundWords } from "../../protocol/src/where.ts";
 import { roomFor } from "../../protocol/src/resources.ts";
 import type { DeviceResources } from "../../protocol/src/index.ts";
@@ -2536,8 +2536,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
         harness: {
           type: "string",
-          enum: [...HARNESS_IDS],
-          description: `Which AI runs the task (${HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it (now, or earlier in the conversation: \"别用 X\" means name another), or a [devices] line shows the device has only that one signed in.`,
+          enum: [...PARTNER_NAMED_HARNESS_IDS],
+          description: `Which AI runs the task (${PARTNER_NAMED_HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it (now, or earlier in the conversation: \"别用 X\" means name another), or a [devices] line shows the device has only that one signed in.`,
         },
         model: { type: "string", description: "Only with harness, and only when the user names a model; written the way that harness names its models." },
         brief: { type: "string", description: "Last, after title and place: the user's verbatim words, decisions, done-criteria, out of scope, place" },
@@ -3469,7 +3469,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         properties: {
           taskId: { type: "string" },
           step: { type: "number" },
-          harness: { type: "string", enum: [...HARNESS_IDS] },
+          harness: { type: "string", enum: [...PARTNER_NAMED_HARNESS_IDS] },
           model: { type: "string" },
           words: { type: "string", description: "New words for that step, if they give any" },
         },

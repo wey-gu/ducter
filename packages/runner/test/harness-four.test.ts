@@ -57,13 +57,14 @@ test("Devin: no prompt channel, no tool denial and no clean setup; Ducter's MCP 
   expect(target).toEqual({ url: ducterMcp.url, headers: ducterMcp.headers });
 });
 
-test("Kimi: a first-message brief, no denial, HTTP MCP with headers as its own transport takes them", () => {
+test("Kimi: the system prompt takes the first message; appended instructions are native (OAR 0.137); HTTP MCP with headers", () => {
   const refused = kimiRuntime.refusedSessionOptions as Record<string, string>;
-  for (const k of ["systemPrompt", "appendSystemPrompt", "disallowedTools", "userConfiguration"]) expect(k in refused).toBe(true);
+  // OAR 0.130's KAP adapter kept the system prompt refused and gained a native append channel.
+  for (const k of ["systemPrompt", "disallowedTools", "userConfiguration"]) expect(k in refused).toBe(true);
   const a = adaptSpec(spec("kimi", { systemPrompt: "You are Ducter.", disallowedTools: ["WebFetch"] }), { dataDir: dir, refused });
   expect(a.options.systemPrompt).toBeUndefined();
-  expect(a.options.appendSystemPrompt).toBeUndefined();
-  expect(a.preamble).toBe("You are Ducter.\n\nBrief: fix the flaky test.");
+  expect(a.options.appendSystemPrompt).toBe("Brief: fix the flaky test.");
+  expect(a.preamble).toBe("You are Ducter.");
   expect(a.options.disallowedTools).toBeUndefined();
   expect(a.options.mcpServers).toEqual([{ name: "ducter", type: "http", url: ducterMcp.url, headers: ducterMcp.headers }]);
 });

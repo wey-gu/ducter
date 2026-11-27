@@ -12,7 +12,7 @@
 import { detect, words } from "./lang.ts";
 
 /** The tools a person's agent may say it runs as, longest first (so "Claude Code" beats "Claude"). */
-const TOOLS = ["Claude Code", "Gemini CLI", "Copilot CLI", "Grok Build", "Antigravity", "OpenCode", "Codex", "Cursor", "Gemini", "Copilot", "Grok", "Claude", "pi"];
+const TOOLS = ["Claude Code", "Gemini CLI", "Copilot CLI", "Grok Build", "Antigravity", "OpenCode", "Codex", "Cursor", "Gemini", "Copilot", "Grok", "Claude", "pi", "Dim"];
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toolIn = (s: string): { tool: string; at: number; len: number } | undefined => {

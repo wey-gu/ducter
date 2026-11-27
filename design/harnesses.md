@@ -6,7 +6,7 @@
 > installed version is outside the verified range. Tags: VERIFIED (how, date, version),
 > DOCUMENTED (source), INFERRED.
 
-## Verified versions (2026-11-09; widened 2026-11-10, D175 (2), D177; D600)
+## Verified versions (2026-11-09; widened 2026-11-10, D175 (2), D177; D600; D625)
 
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
@@ -19,6 +19,7 @@
 | Devin CLI | 3000.12.57–3000.14.30821 (D600; not run by Ducter) | none: no window reported | none: Devin's own | n/a |
 | Kimi Code CLI | 2.3.3–2.6.3 (D600; not run by Ducter) | none: the model's own (`usage_update.size`) | none: Kimi's own | n/a |
 | OpenCode | 2.2.7–2.3.0 (D600; not run by Ducter) | none: `usage_update.used` / `.size` | none per session: its config `compaction.buffer`; about 85% of the window by default | n/a |
+| Dim | `dimcode 0.1.0-alpha.29` (D625; OAR's community runtime, not run by Ducter) | none: `usage_update.size` | none: Dim's own | n/a |
 
 ## Claude Code 2.1.319–2.1.322
 
@@ -97,6 +98,7 @@ unless the agent's own turn comes first.
 | Devin CLI | subagents; no task mapping | unknown | INFERRED, OAR 0.124 source |
 | Kimi Code | main turn only (ACP) | unknown | INFERRED, OAR 0.124 source |
 | OpenCode | v2 subagents as OAR tasks | unknown | DOCUMENTED, OAR 0.124 source |
+| Dim | none: the gateway serves the root session only (`attribution: "opaque"`) | unknown | DOCUMENTED, OAR commit c8792876 |
 
 A Codex folder task runs under `workspace-write` (D142), where Codex 0.172 refuses every MCP call
 not marked read-only ("approval policy is never"); the person's servers in `config.toml` get
@@ -195,6 +197,53 @@ Their entries and every fact live in `packages/protocol/src/{harnesses,harness-f
 Each is in the probe, `agent-path`'s fingerprint, the setup cards and the pickers. No live task
 or sign-in has run on any of them yet; `todo.md` carries the checks.
 
+## Dim (D625, OAR's community runtime): `docs/runtimes/dim.md`
+
+Dim (DimAgent) is a Rust coding agent; its command is `dima` from the npm package `dimcode-alpha`
+(the `dim`/`dimcode` commands of the earlier package are a different CLI and are not candidates;
+OAR also accepts the nightly's `dim-nightly`/`dimn`). OAR added it as a **community** runtime:
+`createDimRuntime` is exported from `@botiverse/oar/community`, not `defaultRuntimes`, and it is
+not in any published release yet (it landed in OAR commit c8792876, after 0.137.0). Ducter loads
+that entry dynamically and feature-detects the export; until a release carries it the setup card
+says **即将支持 / Coming soon** and no start is attempted. No `dima` was run and no home was read:
+the facts below are OAR's adapter and docs, read-only.
+
+- **One home, one App Server.** State lives in a home (`--home`, default `~/.dimcode-alpha` for
+  the alpha). Every client of a home shares one `dimcode-server` daemon started by whichever
+  client connects first; OAR starts it with `dima runtime list` before `dima acp`, so it outlives
+  the session. Ducter never passes a home unless the person set one (`launchArgs` `--home`,
+  `--server`, `--model-config`); otherwise Dim's default is used, and OAR adds nothing to it.
+- **The session** is `dima acp` over stdio, one ACP prompt per turn. `Session.id` is Dim's
+  session id; resume is ACP `session/resume` in the same cwd (another cwd is refused natively);
+  `dispose()` detaches (`detachOnDispose`) so the saved session stays resumable, and `session/close`
+  is never sent.
+- **Capabilities.** Pictures follow the gateway's advertised prompt capabilities (accepted in
+  alpha.29). There is **no steer** and **no task stop**; a prompt while one runs is refused
+  (`session_busy`), so OAR holds input for the next turn with a **non-durable queue**
+  (`queue.durable: false`). Attribution is **opaque**: the gateway serves the root only, so
+  subagent frames never reach Ducter. **Context** comes from Dim's `usage_update` (estimated input
+  tokens and the window) after each prompt; there is no window or compaction knob, no compaction
+  event, and no structured completion for its `/compact`.
+- **Model and effort** exist only on a home whose model comes from the provider catalog: `model`
+  through the `model` config option, `effort` through `thought_level` (only for a catalog model
+  that declares reasoning). A `--model-config` file has neither, so Ducter leaves both to the file.
+  `listModels` is unsupported: no picker list comes from Dim.
+- **MCP.** Credential-free stdio and HTTP entries; an entry with `env` or `headers` is refused, so
+  Ducter's endpoint goes through its stdio bridge. Dim names each tool `mcp_temporary_<id>`.
+- **Full access.** OAR sets `full-access` with `session/set_mode` after open (D16's bypass).
+- **Sign-in and auth failures.** OAR has no login, account usage or sign-out for Dim: sign in with
+  `dima` itself (`/login`, or `/connect` in the TUI for an API key; a `--model-config` home names
+  its provider and an `apiKeyEnv`). A turn its credential stops fails as `auth` with
+  `credential: "missing"` or `"rejected"`. Ducter grants Dim no static key (`HARNESS_KEYS.dim` is
+  empty). The probe can read that it is installed but not whether it is signed in, so its row is
+  ready on presence and a missing or rejected credential surfaces on the first turn.
+- **Install.** `npm install -g dimcode-alpha` is the documented install; Ducter does not run it
+  yet, so the card gives the line. There is no update check, no session listing, and OAR never
+  stops an App Server (`dima daemon stop --home` ends it).
+
+Dim's entry and every fact live in `packages/protocol/src/{harnesses,harness-facts}.ts`; the
+runner's loader and `adaptSpec` are in `packages/runner/src/oar.ts`.
+
 ## Tool schemas, per model family (D479, research/207)
 
 Each agent names the model families it sends Ducter's tools to (`toolSchema` in
@@ -213,6 +262,7 @@ Ducter's tools are written inside all of them at once, never translated per agen
 | Devin CLI | anthropic, openai, gemini | INFERRED |
 | Kimi Code CLI | openai | DOCUMENTED |
 | OpenCode | anthropic, openai, gemini | INFERRED |
+| Dim | anthropic, openai, gemini | INFERRED (a catalog home can hold managed-vendor and OpenAI-compatible providers) |
 
 | Family | What a schema must be |
 |---|---|

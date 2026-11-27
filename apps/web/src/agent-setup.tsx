@@ -130,12 +130,12 @@ export function loginSteps(harness: string): { open: string; code: string } {
 
 /** D600: the line a terminal-only sign-in says on that computer (pi, Devin, OpenCode, Cursor). */
 export function terminalKey(harness: string): string {
-  return harness === "devin" ? "ag.login.devin" : harness === "opencode" ? "ag.login.opencode" : harness === "cursor" ? "ag.login.cursor" : "ag.login.pi";
+  return harness === "devin" ? "ag.login.devin" : harness === "opencode" ? "ag.login.opencode" : harness === "cursor" ? "ag.login.cursor" : harness === "dim" ? "ag.login.dim" : "ag.login.pi";
 }
 
 /** D600: what the card says where an agent isn't there yet and Ducter can't install it (its own installer). */
 export function manualWhereKey(harness: string): string | undefined {
-  return harness === "cursor" ? "ag.cursor.where" : harness === "devin" ? "ag.devin.where" : harness === "kimi" ? "ag.kimi.where" : undefined;
+  return harness === "cursor" ? "ag.cursor.where" : harness === "devin" ? "ag.devin.where" : harness === "kimi" ? "ag.kimi.where" : harness === "dim" ? "ag.dim.where" : undefined;
 }
 
 /** D600: the terms line said before the person signs in with their own account or key. */
@@ -225,6 +225,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
     : look === "queued" ? t("ag.queued")
     : look === "failed" ? t(`ag.failed.${h.setup?.reason ?? "failed"}`, dv.name)
     : look === "cant" ? t("ag.trouble.root")
+    : look === "coming" ? t("ag.coming")
     : tr ? t(tr.word, ...tr.args)
     : t("ag.missing");
   const installLabel = tr?.button === "update" ? t("ag.update") : tr?.button === "reinstall" ? t("ag.reinstall") : t("ag.install");
@@ -254,6 +255,8 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
       {look === "failed" && h.setup?.detail && <div class="ag-detail">{h.setup.detail}</div>}
       {/* D549: why it won't run there, and what fixes it, in plain words; no button pretends otherwise. */}
       {look === "cant" && <div class="ag-detail">{t("ag.trouble.root.why", name)}</div>}
+      {/* D625: Dim before the OAR release that exports createDimRuntime: said, never a button. */}
+      {look === "coming" && <div class="ag-detail">{t("ag.dim.coming")}</div>}
       {/* D371: its command line is big; say so before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
       {/* D416: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}

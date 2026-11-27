@@ -103,6 +103,13 @@ export interface HarnessFacts {
    * the agent's own terminal, never offered. A command that can't reach the agent is not listed.
    */
   nativeCommands: Fact<NativeCommands>;
+  /**
+   * D625: what OAR's session declares for this runtime beyond the names in `HARNESSES`: mid-turn
+   * input (steer), stopping one background task, whether queued input survives a restart, and
+   * whether child agents are attributed separately. Filled where the runtime's own capabilities
+   * were read; absent means the entry's other facts say nothing about it.
+   */
+  session?: Fact<{ steer: boolean; stopTask: boolean; queue: "durable" | "volatile"; attribution: "opaque" | "per-task" }>;
   /** D156: where it's installed from and how each copy updates (research/42). */
   channels: Fact<AgentChannels>;
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
@@ -958,6 +965,51 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/opencode/{install,upgrade}.js; https://opencode.ai/docs/cli/ (research/242 §4.3): the v2 script and `opencode upgrade`, with the npm package pinned instead" },
     },
   },
+  // D625: Dim (DimAgent) through its ACP gateway, OAR's community runtime (createDimRuntime
+  // from @botiverse/oar/community; docs/runtimes/dim.md, commit c8792876). Every fact below is read
+  // from OAR's adapter and docs, not run: no `dima` was started and no home was touched. Baseline
+  // dimcode 0.1.0-alpha.29 (the npm package `dimcode-alpha`); OAR calls the versions evidence
+  // baselines, not a support range. The root-only consequence is that context comes from
+  // usage_update, there is no steer or task stop, attribution is opaque and the queue is not
+  // durable (design/harnesses.md).
+  dim: {
+    harness: "dim",
+    root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "Dim's docs and OAR's adapter have no root check; nothing refuses uid 0 (OAR commit c8792876)" } },
+    toolSchema: { value: ["anthropic", "openai", "gemini"], evidence: { kind: "INFERRED", why: "Dim's home can hold managed-vendor and OpenAI-compatible providers; OAR passes Ducter's tools through as the provider's own shape (dim.md Models, Session MCP servers)" } },
+    version: { command: ["dima", "--version"], pattern: /^\s*dimcode\s+(\d+\.\d+\.\d+(?:-[\dA-Za-z.-]+)?)\s*$/m },
+    verified: { from: "0.1.0-alpha.29", to: "0.1.0-alpha.29" },
+    models: { value: {}, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 docs/runtimes/dim.md: listModels is unsupported; a model comes from the home's catalog config option, or a --model-config file" } },
+    windowKnob: { value: { via: "none", key: "", note: "the model's own window; OAR reads it from Dim's usage_update.size" }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/session.ts: usageUpdateAfterPrompt, capabilities.contextUsage {tokens, contextWindow}; docs/runtimes/dim.md Context usage" } },
+    compactAtKnob: { value: { via: "none", key: "", note: "Dim compacts by itself; its /compact has no structured completion OAR can read" }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/index.ts: manualCompaction unsupported" } },
+    defaultCompactAt: { value: "Dim's own", evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/index.ts: no compaction setting or events" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim: no hook channel" } },
+    compactionEvents: { value: { started: false, ended: false }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/index.ts: manualCompaction unsupported, no compaction profile" } },
+    contextReport: { value: "usage_update.used / .size after each prompt (OAR contextUsage)", evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/session.ts: usageUpdateAfterPrompt; docs/runtimes/dim.md Context usage" } },
+    toolSearch: { value: "Ducter's MCP through its stdio bridge (Dim refuses entries carrying env or headers); Dim names each tool mcp_temporary_<id>, without the server's name", evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/options.ts mcpServerCredentials, session.ts checkMcpServerNames; docs/runtimes/dim.md Session MCP servers" } },
+    resume: { value: { supported: true, how: "ACP session/resume by id; Dim refuses another cwd; dispose detaches (detachOnDispose), so the session stays resumable" }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/session.ts: isResumeNotFound -32002, detachOnDispose; docs/runtimes/dim.md Open, resume and dispose" } },
+    browser: { value: "none Ducter drives; OAR maps no browser for Dim", evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim: no browser mapping" } },
+    nativeCommands: {
+      value: { discover: [], fixed: ["model", "effort"], hidden: [], how: "OAR has no Dim command or skill inventory; /model and /effort exist only on a catalog home, and its /compact has no completion OAR can read, so Ducter doesn't offer it" },
+      evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/{model,session}.ts; docs/runtimes/dim.md Models and effort" },
+    },
+    background: { value: { ownTurn: "unknown", how: "the gateway serves the root session only, so subagent frames never arrive; OAR declares no task mapping" }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/session.ts capabilities.attribution \"opaque\", taskEventTypes []" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "OAR c8792876 community/dim/options.ts: disallowedTools refused; it is never a one-shot" } },
+    noWeb: { value: { how: "not offered: tool denial is refused, so it is never the partner", deny: [], args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/options.ts: disallowedTools refused before launch" } },
+    webLook: { value: { supported: false, how: "not offered: no session can be held to its web tools alone", args: [], rows: [] }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/options.ts: disallowedTools and userConfiguration refused" } },
+    readOnly: { value: { how: "not possible: tool denial and leaving the person's home out are refused, so it never carries the partner", tools: [] }, evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/options.ts: disallowedTools, userConfiguration" } },
+    effort: {
+      value: { levels: ["provider-default", "none", "low", "high", "max"], how: "the model's `thought_level` config option (id effort), only on a catalog model that declares reasoning; a --model-config file never has it", perModel: true, defaultListed: true },
+      evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/model.ts; docs/runtimes/dim.md Models and effort (DeepSeek catalog levels)" },
+    },
+    session: {
+      value: { steer: false, stopTask: false, queue: "volatile", attribution: "opaque" },
+      evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/session.ts: capabilities { queue: { durable: false }, attribution: \"opaque\" }, sessionCapabilities { steer: false, stopTask: false }; docs/runtimes/dim.md Capability details" },
+    },
+    channels: {
+      value: { npm: "dimcode-alpha" },
+      evidence: { kind: "DOCUMENTED", source: "OAR c8792876 community/dim/install.ts: the npm package `dimcode-alpha` (its latest dist-tag is the alpha, its only bin `dima`); docs/runtimes/dim.md Installation" },
+    },
+  },
 };
 
 // ---------- the small-window settings (D135) ----------
@@ -1257,4 +1309,7 @@ export const MCP_CALL_WAIT: Record<HarnessId, Fact<number>> = {
   // D600: Kimi documents a configurable toolTimeoutMs with no default (research/241 §4).
   kimi: { value: 25_000, evidence: { kind: "INFERRED", why: "Kimi documents toolTimeoutMs but no default; kept below the other agents' 50 s bound" } },
   opencode: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
+  // D625: no documented MCP call limit; OAR's 30 s ACP request timeout is the protocol's, not
+  // a tool call's, so the same 50 s bound as the other agents.
+  dim: { value: 50_000, evidence: { kind: "INFERRED", why: "no documented MCP call limit; kept under the shortest known (Codex's 60 s)" } },
 };

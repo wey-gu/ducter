@@ -43,6 +43,8 @@ func TestAgentRowLook(t *testing.T) {
 		// D549: signed in or not, it won't run as root where Ducter runs as root.
 		{protocol.DeviceHarness{Installed: true, LoggedIn: true, Trouble: &protocol.AgentTrouble{Kind: "root"}}, "cant"},
 		{protocol.DeviceHarness{Installed: true, Trouble: &protocol.AgentTrouble{Kind: "root"}}, "cant"},
+		// D625: this build can't run it yet (Dim before the next OAR release).
+		{protocol.DeviceHarness{Trouble: &protocol.AgentTrouble{Kind: "coming"}}, "coming"},
 		{protocol.DeviceHarness{}, "missing"},
 	}
 	for _, c := range cases {
@@ -176,6 +178,12 @@ func TestAgentSetupShots(t *testing.T) {
 		protocol.DeviceHarness{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
 		protocol.DeviceHarness{Harness: "pi", Installable: true},
 	)
+	// D625: Dim on a device while this build carries no createDimRuntime.
+	dimComing := haswell(
+		protocol.DeviceHarness{Harness: "claude-code", Installed: true, Version: "2.1.322", How: "npm"},
+		protocol.DeviceHarness{Harness: "codex", Installed: true, LoggedIn: true, Version: "0.169.1", How: "npm", CanBePartner: true},
+		protocol.DeviceHarness{Harness: "dim", Trouble: &protocol.AgentTrouble{Kind: "coming"}},
+	)
 	for _, dark := range []bool{false, true} {
 		mode := "light"
 		if dark {
@@ -209,6 +217,9 @@ func TestAgentSetupShots(t *testing.T) {
 			save(tt, p+"05-card-install.png")
 			app.devState().card.sheet.coin = coinKey("hw1", "claude-code")
 			save(tt, p+"06-card-signin.png")
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{entryHome(), dimComing}})
+			app.devState().card.sheet.coin = coinKey("hw1", "+")
+			save(tt, p+"07-card-dim-coming.png")
 		}
 	}
 }

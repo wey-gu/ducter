@@ -64,6 +64,8 @@ func agentAppName(harness string) string {
 		return "Kimi Code CLI"
 	case "opencode":
 		return "OpenCode"
+	case "dim":
+		return "Dim"
 	}
 	return "Codex"
 }

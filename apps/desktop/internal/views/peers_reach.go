@@ -21,7 +21,7 @@ import (
 var (
 	bridgeTools   = []string{"claude-code", "codex", "antigravity", "pi"}
 	noBridgeTools = []string{}
-	toolNames     = map[string]string{"claude-code": "Claude Code", "codex": "Codex", "pi": "pi", "antigravity": "Antigravity", "cursor": "Cursor", "devin": "Devin CLI", "kimi": "Kimi Code CLI", "opencode": "OpenCode"}
+	toolNames     = map[string]string{"claude-code": "Claude Code", "codex": "Codex", "pi": "pi", "antigravity": "Antigravity", "cursor": "Cursor", "devin": "Devin CLI", "kimi": "Kimi Code CLI", "opencode": "OpenCode", "dim": "Dim"}
 )
 
 // reachRow is one tool: Can is yes (its plugin carries Bridge and is in),

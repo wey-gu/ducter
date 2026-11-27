@@ -359,7 +359,7 @@ function LendAgents({ dv, done, setDone }: { dv: DeviceView; done: boolean; setD
   );
 }
 
-const INSTALL_ORDER = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"] as const;
+const INSTALL_ORDER = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor", "dim"] as const;
 
 /** The sheet, pushed inside 你的设备; its back row goes one step back (to 你的设备 from the first). */
 export function LendSheet() {

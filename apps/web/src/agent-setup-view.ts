@@ -11,9 +11,12 @@ export type AgentRowLook =
   | "failed" // the last install didn't: one line, 再试一次
   | "install" // not there, Ducter can put it there: 安装
   | "missing" // not there, and Ducter can't (an older Ducter there, an agent it doesn't install)
-  | "cant"; // D549: there, but it won't run here (it refuses root, and Ducter runs as root there): why, no button
+  | "cant" // D549: there, but it won't run here (it refuses root, and Ducter runs as root there): why, no button
+  | "coming"; // D625: this Ducter build can't run it yet (Dim before the next OAR release)
 
 export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "installable" | "setup" | "login" | "trouble">): AgentRowLook {
+  // D625: said before installed/installable: nothing to install, no sign-in Ducter can keep.
+  if (h.trouble?.kind === "coming") return "coming";
   if (h.setup?.phase === "installing") return "installing";
   if (h.setup?.phase === "queued") return "queued";
   // D416: a sign-out running (or one that didn't take) opens the panel on a signed-in row.
@@ -38,12 +41,13 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
   if (tr.kind === "too_old") return { word: "ag.trouble.too_old", args: [h.version ?? "?", tr.need], button: "update" };
   if (tr.kind === "broken") return { word: "ag.trouble.broken", args: [], button: "reinstall" };
   if (tr.kind === "root") return undefined; // D549: its own look ("cant"), not an install
+  if (tr.kind === "coming") return undefined; // D625: its own look ("coming"), nothing to install
   return { word: "ag.trouble.app_only", args: [tr.app], button: "install" };
 }
 
 /** The agents the lend sheet offers to install, and which start checked (Codex and Claude Code; D371: DeepSeek Harness offered, not checked; D416: Antigravity last, not checked). */
 export function offerable(hs: readonly DeviceHarness[]): { harness: string; checked: boolean }[] {
-  const order = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor"];
+  const order = ["codex", "claude-code", "deepseek-harness", "pi", "antigravity", "opencode", "devin", "kimi", "cursor", "dim"];
   return order
     .map((id) => hs.find((h) => h.harness === id))
     .filter((h): h is DeviceHarness => !!h && !h.installed && !!h.installable)

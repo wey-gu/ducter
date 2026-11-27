@@ -768,6 +768,34 @@ fact wrong.
   has a coin; take shots of a device card and the New task picker with each installed and signed
   in, zh and en, both themes, before calling the visible change done.
 
+## Dim, live (D625)
+
+Dim is wired through OAR's community runtime, but no published OAR has it yet (it landed in
+commit c8792876, after 0.137.0), so this build says **即将支持 / Coming soon** and starts nothing.
+
+- [ ] **Bump `@botiverse/oar` when a release exports `createDimRuntime`.** The runner's loader
+  feature-detects the export from `@botiverse/oar/community`; no code change should be needed. Run
+  the runner, cli, core, partner and protocol suites on the bump, and check that a device card's
+  Dim row leaves **即将支持** without another edit. The check for the export lives in
+  `packages/core/src/harness-probe.ts` (`dimRuntimeAvailable`) and `packages/runner/src/oar.ts`
+  (`dimRuntimeFrom`).
+- [ ] **One live task on a real `dima` home.** With `dima` (dimcode 0.1.0-alpha.29 or later) and a
+  signed-in provider on a scratch home: open a task, run a turn, read `usage_update`'s context, give
+  input during the turn (held, not steered), abort, resume in the same folder, and have Dim reach
+  Ducter's MCP through the stdio bridge. Confirm the home flag: none gives `~/.dimcode-alpha`, a
+  person's `--home` is the one used, and a `--model-config` home takes no model or effort.
+- [ ] **Dim in the partner's named-agent lists.** `PARTNER_NAMED_HARNESS_IDS`
+  (`packages/protocol/src/harnesses.ts`) leaves `dim` out of `task_open`, `task_switch`,
+  `task_fork`, `rule_save` and `new_tasks` so the partner's tools/list JSON is unchanged and no
+  D175 eval is owed. Lifting the filter is the whole code change; run
+  `bun run eval:partner --model haiku --against latest` with it (D175) and commit the result.
+- [ ] **Auth failures and the App Server.** A missing and a rejected key end the turn as `auth`
+  with `credential: missing`/`rejected`, with no key in the message; the App Server started by
+  `dima runtime list` outlives the session, and `dima daemon stop --home` is the only stop.
+- [ ] **Dim's coin** (D625). No image renderer was available in this pass, so Dim shows the
+  existing generic clay token. Sculpt its mark through `tools/art/coins.py` with the same recipe
+  as the other agents (light/dark/off, 20–96 sizes) and add it to `coin.tsx` / `coins.go`.
+
 ## Antigravity, live (D416, research/171)
 
 - [ ] **The Mac, live.** Its card shows **只有 Antigravity 的桌面 app，没有它的命令行** (the app and the

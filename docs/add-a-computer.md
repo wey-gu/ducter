@@ -90,7 +90,8 @@ themselves, never run on a schedule, and Ducter never checks their quota. OpenCo
 provider's subscription sign-in; don't use a Claude subscription sign-in there, because Anthropic
 doesn't allow other apps to use plan credentials that way. If you're unsure, use an API key.
 **Cursor** is coming soon: it needs its SDK bundled with Ducter first, so its card says so and
-doesn't offer a sign-in.
+doesn't offer a sign-in. **Dim** is coming soon too: this version of Ducter can't run it yet, so
+its card says that and offers no install or sign-in.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem

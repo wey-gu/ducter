@@ -2950,14 +2950,14 @@ export function startCore(opts: CoreOptions = {}): Core {
   mcp.registerWhen(
     "task",
     "open_pr",
-    "The user let your verified work go to a PR without asking (What you may do without asking). Only once it is verified to their standard: the tests and checks the work needs ran and passed (a build, a device or browser check where it touches one); list them in checks. Ducter pushes your branch and opens the PR, ready for review. Then hand the PR to the helper they named, with its link. Not verified yet: don't call it; keep working, or report what is left. Never merge.",
+    "The user let your verified work go to a PR without asking (What you may do without asking). Once it is verified to their standard: the tests and checks the work needs ran and passed (a build, a device or browser check where it touches one); list them in checks. Ducter pushes your branch and opens the PR for review. Then hand the PR to the helper or person they named, with its link. Not verified yet: don't call it; keep working, or report what is left. Never merge.",
     {
       type: "object",
       properties: {
         title: { type: "string", description: "The PR's title, in the repo's language" },
         body: { type: "string", description: "What changed and how it was verified" },
         checks: { type: "array", items: { type: "string" }, description: "What you ran that verified it, each with its result" },
-        hand_to: { type: "string", description: "Who it goes to next, as the user named them (their PR babysitter)" },
+        hand_to: { type: "string", description: "Who it goes to next, as the user named them (a helper or person)" },
       },
       required: ["title", "checks"],
     },
@@ -2995,7 +2995,7 @@ export function startCore(opts: CoreOptions = {}): Core {
           ? `${r.message} It is in Done for you with the user's words, and ${keep!.title} has taken it. Report done with the PR in evidence. Never merge it.`
           : hand.handed
             ? `${r.message} It is in Done for you with the user's words. Ducter handed it to ${keep!.title} on this home: it is handed, not taken, until ${keep!.title}'s answer comes here saying one of its tasks took it; if nothing takes it in ten minutes the user hears so once, with the offer to do it directly. Don't message it again and never say it is taken over before. Report done with the PR in evidence (say it is handed over and waiting to be taken). Never merge it.`
-            : `${r.message} It is in Done for you with the user's words. Now hand it to ${handTo || "the helper the user named"} with its link and what it is (agent_message, or your own Bridge tool): it goes without a card. Don't say it is handed over until it answers. Then report done with the PR in evidence. Never merge it.`,
+            : `${r.message} It is in Done for you with the user's words. Now hand it to ${handTo || "the helper or person the user named"} with its link and what it is (agent_message, or your own Bridge tool): it goes without a card. Don't say it is handed over until it answers. Then report done with the PR in evidence. Never merge it.`,
       };
     },
     (ctx) => !!ctx.taskId && tasks.get(ctx.taskId)?.place.kind === "repo" && !!prOpenGo(ctx.taskId),

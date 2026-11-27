@@ -24,7 +24,7 @@
  * D596: the dev flow the person described once (「做好了 PR，研究实现设计验证好之后，交给 PR baby sitter」):
  *   pr_open: on work they asked for, once it is verified, Ducter pushes the task's own branch, opens
  *     its PR (the same write as the opened task's Open PR, `open_pr`) and the task hands the PR to
- *     the helper they named (their PR babysitter): never a merge, never the default or base branch,
+ *     the helper or person they named: never a merge, never the default or base branch,
  *     never a force-push, never someone else's branch. It covers branch_push for that task too.
  * Never here: merging, paying, passwords and sign-ins, deleting, anything an untrusted source asked.
  */
@@ -42,7 +42,7 @@ export const STEP_WORDS: Record<StandingAction, string> = {
   ci_rerun: "rerunning its PR's checks (a /test-style comment, gh run rerun)",
   pr_comment: "commenting on the PR it opened or works on",
   branch_push: "pushing its own branch (never the base or a protected branch, never a delete or a merge)",
-  pr_open: "once its work is verified, pushing its own branch, opening its PR and handing the PR to the helper the user named (never a merge, never the base branch, never a force-push)",
+  pr_open: "once its work is verified, pushing its branch, opening its PR and handing the PR to the helper or person named (never a merge, never the base branch, never a force-push)",
 };
 
 export interface StandingView {

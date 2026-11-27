@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
@@ -527,6 +528,48 @@ func (a *App) sayAs(key, text, wear string) {
 	w := a.settings.said[key]
 	w.wear = wear
 	a.settings.said[key] = w
+}
+
+// sayAfter keeps the partner's word until the home's next settings frame proves the change landed
+// (D296): a trust change is never confirmed on the tap alone. want reads the state the home just sent.
+func (a *App) sayAfter(key, text string, want func(*protocol.Settings) bool) {
+	a.settings.saidPending = append(a.settings.saidPending, saidPendingWord{key: key, text: text, want: want, at: a.Now()})
+}
+
+// flushSaidAfter says the owed words once, and drops words whose answer never came: a silent change
+// over something else is worse than saying nothing (D296).
+func (a *App) flushSaidAfter() {
+	if len(a.settings.saidPending) == 0 {
+		return
+	}
+	st := a.S.Settings
+	rest := a.settings.saidPending[:0]
+	for _, p := range a.settings.saidPending {
+		if a.Now().Sub(p.at) > 15*time.Second {
+			continue
+		}
+		if p.want != nil && (st == nil || !p.want(st)) {
+			rest = append(rest, p)
+			continue
+		}
+		a.say(p.key, p.text)
+	}
+	a.settings.saidPending = rest
+}
+
+// flushRuleRemove says a removed rule's word once the home's rules frame no longer has it (D296).
+func (a *App) flushRuleRemove() {
+	q := a.settings.ruleAsked
+	if q == nil {
+		return
+	}
+	for _, r := range a.S.Rules {
+		if r.ID == q.id {
+			return // the home still has it: the removal didn't land, so nothing is said
+		}
+	}
+	a.settings.ruleAsked = nil
+	a.say("tasks-rule", a.L.T("loadout.rule.removed", q.words))
 }
 
 // saidLine is the partner's one word after a change you made (D296): a

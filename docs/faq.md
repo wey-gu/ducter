@@ -304,10 +304,12 @@ Ducter cloned are yours, and the list it shows before removing anything says so.
 
 Yes. Open **Settings › Where it runs** and tap **Ducter folder** on the computer whose folder you
 want to move. It shows the real path. On a Mac, if the folder is still the old lowercase
-`~/ducter`, the first choice is **Change it to ~/Ducter**. Otherwise choose **Choose a location…**
-(another computer asks for a path). Ducter moves `projects` and `worktrees` together, tells git
+`~/ducter`, the first choice is **Change it to ~/Ducter**; it asks first, then moves. Otherwise
+choose **Choose a location…** (another computer asks for a path). Ducter moves `projects` and
+`worktrees` together, tells git
 where the working copies are now, and leaves one line saying how many projects and working copies
-moved. It won't move while a task is still working in the folder: it lists those tasks and offers
+moved; your partner also says what will now happen: the work lives in the new path. It won't move
+while a task is still working in the folder: it lists those tasks and offers
 to try again once they are done. If `DUCTER_FOLDER` is set on that computer, the row says **Set by
 DUCTER_FOLDER** and can't be changed there. A folder that is someone else's is never touched.
 

@@ -104,7 +104,8 @@ At the top is your partner, its name and one line: where it lives and what it th
   only one, the line says every task goes to it.
 - **Your rules.** Say a rule in the conversation, like "backend work on Codex", and your
   partner repeats it back and keeps it. Your rules are listed under Who does the tasks;
-  **Remove** drops one. A rule can also say what not to use ("don't use Claude Code for hotels and
+  **Remove** asks once, then drops one, and your partner says what will now happen: it won't go by
+  that rule any more. A rule can also say what not to use ("don't use Claude Code for hotels and
   flights"): that AI agent then never takes that kind of work unless you ask for it on one task.
   Said in passing counts too: the moment you say it, it's one of your rules, in your own words,
   and the very next task goes by it, even one you ask for in the same message. The task then
@@ -555,6 +556,11 @@ that does tasks for it, a phone you reach it from) and what it is doing now when
   you wake it.
 - **Connect to a Ducter on another computer** connects with a one-time pairing code; **Use the
   Ducter on this Mac again** goes back.
+- **The Ducter folder:** each computer's folder is one row with its real path. On a Mac whose folder
+  is still the old lowercase `~/ducter`, **Change it to ~/Ducter** asks first
+  (**Move the Ducter folder to ~/Ducter?**), then moves it; a finished move says how many projects
+  and working copies went with it, and your partner says what will now happen: the work lives in the
+  new path. It won't move while a task is working there: it lists those tasks and offers to try again.
 - **Data and logs:** opens Ducter's data folder or its log. **Run checks** runs the same
   check-up as the first run, with a plain line for each tool.
 - **Your devices and AI accounts** opens Devices.

@@ -99,3 +99,60 @@ func TestD372WhoLine(t *testing.T) {
 		}
 	}
 }
+
+// D289/D296: a rule's removal asks in place first, then its word is what will now happen, said only
+// once the home's rules frame no longer has the rule.
+func TestD296RuleRemoval(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		L := i18n.New(lang)
+		var two d322Case
+		for _, k := range d322Cases() {
+			if k.name == "two-agents" {
+				two = k
+			}
+		}
+		app, sent := d322App(t, lang, two)
+		app.Receive(protocol.ServerFrame{T: "rules", Rules: []protocol.RuleView{{ID: "r1", Harness: "codex", Text: map[i18n.Lang]string{i18n.ZH: "后端的事 → Codex", i18n.EN: "Backend work → Codex"}[lang]}}})
+		words := app.ruleWords(app.S.Rules[0].Text)
+		tt := ui.NewTesterWith(app.View, 1280, 2600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		tt.Frame()
+		remove := L.T("loadout.rule.remove")
+		about := remove + "，" + words
+		if lang == i18n.EN {
+			about = remove + ", " + words
+		}
+		if err := tt.Click(about); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		tt.Frame()
+		saidShot(t, tt, "rule-ask-"+string(lang))
+		if !hasText(tt, L.T("loadout.rule.remove.ask", words)) {
+			t.Errorf("%s: removing a rule doesn't ask in place: %q", lang, tt.Texts())
+		}
+		if app.S.Rules[0].ID != "r1" {
+			t.Fatalf("%s: the rule left before the answer", lang)
+		}
+		if _, ok := lastFrame[protocol.RuleRemove](sent); ok {
+			t.Fatalf("%s: rule_remove went before it was confirmed", lang)
+		}
+		if err := tt.Click(about); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		if f, ok := lastFrame[protocol.RuleRemove](sent); !ok || f.ID != "r1" {
+			t.Fatalf("%s: rule_remove %+v", lang, f)
+		}
+		if w := app.settings.said["tasks-rule"].text; w != "" {
+			t.Errorf("%s: the removal's word came before the home answered: %q", lang, w)
+		}
+		app.Receive(protocol.ServerFrame{T: "rules", Rules: []protocol.RuleView{}})
+		tt.Frame()
+		if w, want := app.settings.said["tasks-rule"].text, L.T("loadout.rule.removed", words); w != want {
+			t.Errorf("%s: the removal's word is %q, want %q", lang, w, want)
+		}
+		saidShot(t, tt, "rule-said-"+string(lang))
+		if !hasText(tt, L.T("loadout.rule.removed", words)) {
+			t.Errorf("%s: the removal's word isn't drawn: %q", lang, tt.Texts())
+		}
+	}
+}

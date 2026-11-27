@@ -11,7 +11,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandMark, BrandTile } from "./brand.tsx";
 import { AddRow, Btn, Chev, DangerButton, Facts, Seg } from "./controls.tsx";
-import { SecHead, Tag, Waiting } from "./set-grid.tsx";
+import { GBlock, GFoot, Said, say, SecHead, Waiting } from "./set-grid.tsx";
 import { GhSignIn } from "./gh-signin.tsx";
 import { onPileFrame, openRead, ReadLine } from "./pile.tsx";
 import { onHandFrame } from "./handover.tsx";
@@ -22,7 +22,16 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 type Frame = Extract<SourcesServerFrame, { t: "sources" }>;
 
 /** What this page knows; the home's frames keep it current. */
-export const TS: { frame?: Frame; items?: SourceItem[]; itemsFor?: string; busy: Record<string, boolean>; said?: string } = { busy: {} };
+export const TS: {
+  frame?: Frame;
+  items?: SourceItem[];
+  itemsFor?: string;
+  busy: Record<string, boolean>;
+  /** A refusal about the add group, in the person's words. */
+  said?: string;
+  /** A choice or a removal on its way to the home: its word waits for the answer, never the tap. */
+  pending?: { id: string; name: string; kind: string; patch?: { whenNew?: WhenNew; whenDone?: WhenDone }; remove?: boolean };
+} = { busy: {} };
 
 /**
  * D357: On hand's fold of the person's to-dos: open or not, what narrows it, and the pages read so
@@ -297,12 +306,28 @@ A.onSourcesFrame = (f) => {
     }
   } else if (f.t === "source_result") {
     TS.busy = {};
-    TS.said = f.ok ? undefined : f.reason === "missing" ? t("todos.add.missing", A.homeName ?? "") : f.reason === "exists" ? t("todos.add.exists") : f.reason ? t(`todos.state.${f.reason === "unknown" ? "error" : f.reason}`, A.homeName ?? "") : undefined;
+    const p = TS.pending;
+    TS.pending = undefined;
+    if (f.op === "add") {
+      TS.said = f.ok ? undefined : f.reason === "missing" ? t("todos.add.missing", A.homeName ?? "") : f.reason === "exists" ? t("todos.add.exists") : f.reason ? t(`todos.state.${f.reason === "unknown" ? "error" : f.reason}`, A.homeName ?? "") : undefined;
+    } else if (p && f.op === "set" && p.id === f.id) {
+      TS.said = f.ok ? undefined : t("todos.set.failed");
+      if (f.ok && p.patch && (p.patch.whenNew || p.patch.whenDone)) say(`todos:${p.id}`, todoSetSaid(p.patch, p.kind));
+    } else if (p && f.op === "remove" && p.id === f.id) {
+      TS.said = f.ok ? undefined : t("todos.remove.failed");
+      if (f.ok) say("todos-remove", t("said.todos.remove", p.name));
+    }
   }
   A.changed();
 };
 
 const appOf = (kind: string) => (kind === "github" ? "GitHub" : kind === "obsidian" ? "Obsidian" : "Jira");
+
+/** D296: what a source's 新的来了 / 做完以后 choice will now do, in the partner's voice. */
+export function todoSetSaid(patch: { whenNew?: WhenNew; whenDone?: WhenDone }, kind: string): string {
+  if (patch.whenNew) return t(`said.todos.new.${patch.whenNew}`);
+  return t(`said.todos.done.${patch.whenDone}${kind === "obsidian" && patch.whenDone === "ask" ? ".obsidian" : ""}`);
+}
 
 /** The source's own sub line: whose issues, or which part of the vault. */
 function subOf(v: SourceView): string {
@@ -374,6 +399,7 @@ export function TodoSourcesSettings() {
       {f.sources.map((v) => (
         <SourceCard key={v.id} v={v} />
       ))}
+      <Said k="todos-remove" />
       {/* D589: 还能加上 ("can also add") over nothing added read as if some were. */}
       <SecHead title={t(f.sources.length ? "todos.add.title" : "todos.add.first")} />
       {/* D365: with nothing added, the add group says so under its heading (never a card holding one line). */}
@@ -410,14 +436,8 @@ export function TodoSourcesSettings() {
           </div>
         ))}
         <VaultPath />
-        <div class="chat-head">
-          <BrandTile name="jira" faded />
-          <span class="grow">
-            <b>Jira</b>
-            <small>{t("todos.jira.sub")}</small>
-          </span>
-          <Tag text={t("todos.soon")} />
-        </div>
+        {/* D296: Jira is one whole line, not a row with a mark and nothing to do. */}
+        <GFoot note={t("todos.jira.line")} />
       </section>
       {TS.said && <p class="small tone-bad">{TS.said}</p>}
     </>
@@ -447,11 +467,16 @@ function VaultPath() {
 
 function SourceCard({ v }: { v: SourceView }) {
   const [asking, setAsking] = useState(false);
+  const [errOpen, setErrOpen] = useState(false);
   const bad = problem(v);
   const count = countOf(v);
-  const set =(patch: { whenNew?: WhenNew; whenDone?: WhenDone }) => A.send({ t: "source_set", id: v.id, ...patch });
-  const done = (WHEN_DONE as Record<string, readonly WhenDone[]>)[v.kind] ?? [];
   const name = v.kind === "github" ? "GitHub" : v.name;
+  const set = (patch: { whenNew?: WhenNew; whenDone?: WhenDone }) => {
+    // D296: only a choice has a word; the filters save quietly.
+    if (patch.whenNew || patch.whenDone) TS.pending = { id: v.id, name, kind: v.kind, patch };
+    A.send({ t: "source_set", id: v.id, ...patch });
+  };
+  const done = (WHEN_DONE as Record<string, readonly WhenDone[]>)[v.kind] ?? [];
   return (
     <section class="set-card chat-app todo-src" aria-label={name}>
       <div class="chat-head">
@@ -464,9 +489,16 @@ function SourceCard({ v }: { v: SourceView }) {
       {count === "looking" && <small class="muted todo-counts">{t("todos.looking")}</small>}
       {v.state === "error" && (
         <div class="chat-row todo-failed">
-          <small class="muted grow">{v.error}</small>
+          {/* D296's rule for a fault: the person's sentence first, the app's own words behind 详情. */}
+          <small class="muted grow">{t("todos.error.line")}</small>
+          {v.error && <Btn kind="text" size="sm" chev expanded={errOpen} label={t("todos.details")} about={name} onClick={() => setErrOpen(!errOpen)} />}
           {v.looking || TS.busy[`look:${v.id}`] ? <small class="muted">{t("todos.looking")}</small> : <Btn kind="secondary" size="sm" label={t("todos.retry")} about={name} onClick={() => retry(v)} />}
         </div>
+      )}
+      {errOpen && !!v.error && (
+        <GBlock>
+          <small class="mono todo-error-text">{v.error}</small>
+        </GBlock>
       )}
       {v.kind === "github" && bad && A.ghTodo && <GhSignIn which="todos" inline />}
       {count === "counted" && <CountLinks v={v} />}
@@ -500,12 +532,21 @@ function SourceCard({ v }: { v: SourceView }) {
           <span class="ask-in-place">
             <small>{t("todos.remove.ask", name)}</small>
             <Btn kind="text" size="sm" label={t("todos.remove.no")} onClick={() => setAsking(false)} />
-            <DangerButton label={t("todos.remove.yes")} about={name} onClick={() => (A.send({ t: "source_remove", id: v.id }), setAsking(false))} />
+            <DangerButton
+              label={t("todos.remove.yes")}
+              about={name}
+              onClick={() => {
+                TS.pending = { id: v.id, name, kind: v.kind, remove: true };
+                A.send({ t: "source_remove", id: v.id });
+                setAsking(false);
+              }}
+            />
           </span>
         ) : (
           <DangerButton quiet label={t("todos.remove")} about={name} onClick={() => setAsking(true)} />
         )}
       </div>
+      <Said k={`todos:${v.id}`} />
     </section>
   );
 }
@@ -517,7 +558,10 @@ export function reposOf(text: string): string[] {
 
 /** D348: which part a source reads, set here: GitHub's repositories; a vault's folder and tag. Saved on Return or leaving the field. */
 export function SourceFilters({ v }: { v: SourceView }) {
-  const save = (patch: { folder?: string; label?: string; repos?: string[] }) => A.send({ t: "source_set", id: v.id, ...patch });
+  const save = (patch: { folder?: string; label?: string; repos?: string[] }) => {
+    TS.pending = undefined; // a filter says nothing (D296)
+    A.send({ t: "source_set", id: v.id, ...patch });
+  };
   const name = v.kind === "github" ? "GitHub" : v.name;
   if (v.kind === "github")
     return (

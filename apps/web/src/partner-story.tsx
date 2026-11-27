@@ -12,7 +12,7 @@ import { AddRow, Btn, DangerButton, Seg, Switch } from "./controls.tsx";
 import { Select } from "./menu.tsx";
 import { KeyCard } from "./first-words.tsx";
 import { harnessName, modelName, padEnd, stamp, when } from "./format.ts";
-import { GBlock, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
+import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 /** D500: a rule as the partner wrote it ("后端的事 → Codex") with its arrow said in words: 后端的事：Codex. */
 export const ruleWords = (text: string) => text.split("→").map((s) => s.trim()).join(t("loadout.rule.arrow"));
@@ -198,6 +198,8 @@ export function TasksSection() {
   const title = t("loadout.tasks.title");
   const b = brainNow();
   const rules = A.rules ?? [];
+  // D289/D296: a rule's removal asks in place, and its word waits for the home's rules frame.
+  const [removing, setRemoving] = useState("");
   // D372: the built-in default per kind of work, in literal words (errands, then the rest).
   // A rule about errands (to an agent, or never one) speaks for them: its default row steps aside.
   // D510: New tasks start naming an agent speaks for the built-in default (shown in its own group).
@@ -248,11 +250,29 @@ export function TasksSection() {
         })}
         {(ready.length > 1 || rules.length > 0 || defaults.length > 0) && (
           <>
-            {rules.map((r) => (
-              <GRow key={r.id} cls="one-line" tile={r.harness ? <AgentTile harness={r.harness} off={!!r.never} /> : undefined} title={ruleWords(r.text)} line={t(r.never ? "loadout.rule.line.never" : "loadout.rule.line")}>
-                <DangerButton quiet label={t("loadout.rule.remove")} about={ruleWords(r.text)} onClick={() => (A.send({ t: "rule_remove", id: r.id }), say("tasks", t("loadout.rule.removed", ruleWords(r.text))))} />
-              </GRow>
-            ))}
+            {rules.map((r) =>
+              removing === r.id ? (
+                <GConfirm
+                  key={r.id}
+                  ask={t("loadout.rule.remove.ask", ruleWords(r.text))}
+                  keep={t("loadout.rule.remove.keep")}
+                  go={t("loadout.rule.remove")}
+                  about={ruleWords(r.text)}
+                  onKeep={() => setRemoving("")}
+                  onGo={() => {
+                    setRemoving("");
+                    A.send({ t: "rule_remove", id: r.id });
+                    // D296: what will now happen, once the home's rules no longer have it.
+                    A.sayAfter("tasks-rule", t("loadout.rule.removed", ruleWords(r.text)), () => !(A.rules ?? []).some((x) => x.id === r.id));
+                  }}
+                />
+              ) : (
+                <GRow key={r.id} cls="one-line" tile={r.harness ? <AgentTile harness={r.harness} off={!!r.never} /> : undefined} title={ruleWords(r.text)} line={t(r.never ? "loadout.rule.line.never" : "loadout.rule.line")}>
+                  <DangerButton quiet label={t("loadout.rule.remove")} about={ruleWords(r.text)} onClick={() => setRemoving(r.id)} />
+                </GRow>
+              ),
+            )}
+            <Said k="tasks-rule" />
             {defaults.map((d) =>
               d.work === "errand" ? (
                 <GRow key="default:errand" tile={<AgentTile harness={d.harness} />} title={t("loadout.default.errand", nameOf(d))} line={t("loadout.default.errand.line", rest ? padEnd(A.L, nameOf(rest)) : "")} />

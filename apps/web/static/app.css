@@ -16222,6 +16222,14 @@ svg .wave.w2.on {
   color: var(--failed-ink);
   white-space: normal;
 }
+/* D296: the source's own words behind 详情, on the group's text column. */
+.todo-error-text {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
 .todo-card .todo-foot .btn,
 .todo-row-card .tacts .btn {
   min-height: 44px;

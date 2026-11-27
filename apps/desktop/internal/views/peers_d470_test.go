@@ -4,6 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/ui"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -100,5 +103,75 @@ func TestD470Spoken(t *testing.T) {
 	}
 	if h, _ := spokenPeers(es, func(id string) bool { return id == "h" }); len(h) != 0 {
 		t.Fatal("a card keeps the line")
+	}
+}
+
+// D296: 改成先问你, 不再听它的 and 恢复 each keep the partner's one word, and each says it only after
+// the home's settings frame shows the change (never on the tap).
+func TestD296PeersTrustSaid(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent := iaApp(t, lang)
+		app.Status = 2
+		f := settingsFrame()
+		f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{"Codex"}, Muted: []string{}}
+		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter"}
+		app.Receive(f)
+		es := d470Feed()
+		for _, e := range es {
+			if e.Peer != nil && e.Peer.Agent == "Claude Code" {
+				e.Peer.Mine = false
+			}
+		}
+		app.S.Channel = es
+		app.openTab(TabPeers)
+		tt := ui.NewTesterWith(app.View, 1280, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		tt.Frame()
+		L := app.L
+		// 改成先问你: a trusted agent's work now waits for the person.
+		if err := tt.Click(spoken(L, L.T("peers.trust.ask"), "Codex")); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		if _, ok := lastFrame[protocol.SettingsSet](sent); !ok {
+			t.Fatalf("%s: the trust change didn't go", lang)
+		}
+		if w := app.settings.said["peer-trust:Codex"].text; w != "" {
+			t.Errorf("%s: the word came before the home answered: %q", lang, w)
+		}
+		f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
+		app.Receive(f)
+		tt.Frame()
+		if w, want := app.settings.said["peer-trust:Codex"].text, L.T("said.peers.trust.ask", "Codex"); w != want {
+			t.Errorf("%s: 改成先问你 said %q, want %q", lang, w, want)
+		}
+		saidShot(t, tt, "peers-ask-"+string(lang))
+		if !hasText(tt, L.T("said.peers.trust.ask", "Codex")) {
+			t.Errorf("%s: 改成先问你's word isn't drawn: %q", lang, tt.Texts())
+		}
+		// 不再听它的: a teammate's agent stops being heard.
+		if err := tt.Click(spoken(L, L.T("peers.trust.mute"), "Claude Code")); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{"Claude Code"}}
+		app.Receive(f)
+		tt.Frame()
+		if w, want := app.settings.said["peer-trust:Claude Code"].text, L.T("said.peers.trust.mute", "Claude Code"); w != want {
+			t.Errorf("%s: 不再听它的 said %q, want %q", lang, w, want)
+		}
+		saidShot(t, tt, "peers-mute-"+string(lang))
+		// 恢复: it may reach the partner again.
+		if err := tt.Click(spoken(L, L.T("peers.muted.undo"), "Claude Code")); err != nil {
+			t.Fatalf("%s: %v in %q", lang, err, tt.Texts())
+		}
+		f.Settings.Peers = &protocol.Peers{Reach: "own", Trusted: []string{}, Muted: []string{}}
+		app.Receive(f)
+		tt.Frame()
+		if w, want := app.settings.said["peer-undo"].text, L.T("said.peers.trust.undo", "Claude Code"); w != want {
+			t.Errorf("%s: 恢复 said %q, want %q", lang, w, want)
+		}
+		saidShot(t, tt, "peers-undo-"+string(lang))
+		if !hasText(tt, L.T("said.peers.trust.undo", "Claude Code")) {
+			t.Errorf("%s: 恢复's word isn't drawn: %q", lang, tt.Texts())
+		}
 	}
 }

@@ -706,6 +706,20 @@ func (a *App) tasksGroup(c *ui.Context) {
 		}
 		for _, r := range a.S.Rules {
 			r := r
+			words := a.ruleWords(r.Text)
+			// D289/D296: removing a rule asks in place; its word waits for the home's rules frame.
+			if a.settings.ruleRemove == r.ID {
+				keep, rm := a.confirmRow(c, "rule-remove:"+r.ID, a.L.T("loadout.rule.remove.ask", words), a.L.T("loadout.rule.remove.keep"), a.L.T("loadout.rule.remove"), words)
+				if keep {
+					a.settings.ruleRemove = ""
+				}
+				if rm {
+					a.settings.ruleRemove = ""
+					a.settings.ruleAsked = &ruleAsked{id: r.ID, words: words}
+					a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
+				}
+				continue
+			}
 			line := a.L.T("loadout.rule.line")
 			if r.Never {
 				line = a.L.T("loadout.rule.line.never") // D372
@@ -715,14 +729,13 @@ func (a *App) tasksGroup(c *ui.Context) {
 			if r.Harness != "" {
 				tile = a.agentTile(c, r.Harness, r.Never)
 			}
-			words := a.ruleWords(r.Text)
 			a.tileRow(c, "rule:"+r.ID, tile, words, line, func() {
 				if a.quietDanger(c, "rule:"+r.ID, a.L.T("loadout.rule.remove"), words) {
-					a.send(protocol.RuleRemove{T: "rule_remove", ID: r.ID})
-					a.say("tasks", a.L.T("loadout.rule.removed", words))
+					a.settings.ruleRemove = r.ID
 				}
 			})
 		}
+		a.saidLineIn(c, "tasks-rule") // D296: the rule's word, under the rules it left
 		// D372: the built-in default per kind of work, in literal words.
 		rest := ""
 		for _, d := range a.S.RuleDefaults {

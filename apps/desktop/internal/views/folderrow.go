@@ -20,6 +20,7 @@ import (
 
 type folderRowState struct {
 	open  bool
+	ask   bool
 	busy  bool
 	cid   string
 	err   string
@@ -65,7 +66,7 @@ func (a *App) drainFolder() {
 		return
 	}
 	a.S.FolderChange = nil
-	for _, st := range a.settings.folders {
+	for device, st := range a.settings.folders {
 		if st.cid == "" || st.cid != f.ClientID {
 			continue
 		}
@@ -86,6 +87,8 @@ func (a *App) drainFolder() {
 		if f.Path != "" {
 			st.done = a.L.T("settings.folder.done", tildePath(f.Path), f.Projects, f.Worktrees)
 			st.typed = f.Path
+			// D296: what will now happen, said on the home's own answer (the row keeps the counts).
+			a.say("folder:"+device, a.L.T("said.folder.moved", tildePath(f.Path)))
 		}
 		st.open = false
 		return
@@ -157,6 +160,7 @@ func (a *App) folderRuleRow(c *ui.Context, dv *protocol.DeviceView, last bool) {
 		onSave:      func() { a.folderMove(dv.ID, st.typed) },
 		onOpen: func() {
 			st.open = true
+			st.ask = false
 			st.err, st.tasks = "", nil
 			st.typed = dv.Folder.Path
 			st.focus = true
@@ -164,12 +168,17 @@ func (a *App) folderRuleRow(c *ui.Context, dv *protocol.DeviceView, last bool) {
 		onCancel: func() {
 			if !st.busy {
 				st.open = false
+				st.ask = false
 				st.err, st.tasks = "", nil
 			}
 		},
 		editor: func() { a.folderEditor(c, dv, st) },
 	}
+	if st.ask {
+		o.foot = func() {} // the confirm under the row is its one action; no second 搬过去
+	}
 	a.editRow(c, o)
+	a.saidLineIn(c, "folder:"+dv.ID)
 }
 
 // folderEditor is the open row's choices.
@@ -193,18 +202,29 @@ func (a *App) folderEditor(c *ui.Context, dv *protocol.DeviceView, st *folderRow
 	if st.err != "" {
 		uiText(c.Key("fd-err"), st.err).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.45)).Role(ui.RoleStatus)
 	}
-	ui.Row(c.Key("fd-choices")).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
-		if base := path.Base(strings.TrimRight(dv.Folder.Path, "/")); isMacComputer(dv) && strings.EqualFold(base, "ducter") && base != "Ducter" {
-			if a.quietLink(c, "fd-to-mac:"+dv.ID, a.L.T("settings.folder.toMac"), a.L.T("settings.folder.toMac")) {
-				a.folderMove(dv.ID, "~/Ducter")
-			}
+	if st.ask {
+		keep, move := a.confirmLine(c, "fd-to-mac:"+dv.ID, a.L.T("settings.folder.toMac.ask"), a.L.T("settings.folder.toMac.keep"), a.L.T("settings.folder.toMac.go"), a.L.T("settings.folder.toMac"))
+		if keep {
+			st.ask = false
 		}
-		if a.canPickFolder(dv) {
-			if a.quietLink(c, "fd-pick:"+dv.ID, a.L.T("settings.folder.choose"), a.L.T("settings.folder.choose")) {
-				a.pickFolderFor(dv.ID)
-			}
+		if move {
+			st.ask = false
+			a.folderMove(dv.ID, "~/Ducter")
 		}
-	})
+	} else {
+		ui.Row(c.Key("fd-choices")).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
+			if base := path.Base(strings.TrimRight(dv.Folder.Path, "/")); isMacComputer(dv) && strings.EqualFold(base, "ducter") && base != "Ducter" {
+				if a.quietLink(c, "fd-to-mac:"+dv.ID, a.L.T("settings.folder.toMac"), a.L.T("settings.folder.toMac")) {
+					st.ask = true
+				}
+			}
+			if a.canPickFolder(dv) {
+				if a.quietLink(c, "fd-pick:"+dv.ID, a.L.T("settings.folder.choose"), a.L.T("settings.folder.choose")) {
+					a.pickFolderFor(dv.ID)
+				}
+			}
+		})
+	}
 	if !a.canPickFolder(dv) {
 		ui.Column(c.Key("fd-path-box")).Gap(t.S1).Margin(t.S2, 0, 0, 0).Children(func() {
 			uiText(c.Key("fd-path-label"), a.L.T("settings.folder.path")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)

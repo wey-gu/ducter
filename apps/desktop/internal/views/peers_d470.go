@@ -660,6 +660,10 @@ func (a *App) peersThread(c *ui.Context, th exThread, title string, p *protocol.
 					next := *p
 					next.Trusted = without(p.Trusted, th.Agent)
 					a.SetSettings(protocol.SettingsPatch{Peers: &next})
+					// D296: what will now happen, once the home's settings no longer have it trusted.
+					a.sayAfter("peer-trust:"+th.Agent, a.L.T("said.peers.trust.ask", th.Agent), func(st *protocol.Settings) bool {
+						return st.Peers != nil && !contains(st.Peers.Trusted, th.Agent)
+					})
 				}
 			}
 		case "team":
@@ -669,10 +673,14 @@ func (a *App) peersThread(c *ui.Context, th exThread, title string, p *protocol.
 					next.Muted = append(append([]string(nil), p.Muted...), th.Agent)
 					next.Allowed = append([]string{}, without(p.Allowed, th.Agent)...)
 					a.SetSettings(protocol.SettingsPatch{Peers: &next})
+					a.sayAfter("peer-trust:"+th.Agent, a.L.T("said.peers.trust.mute", th.Agent), func(st *protocol.Settings) bool {
+						return st.Peers != nil && contains(st.Peers.Muted, th.Agent)
+					})
 				}
 			}
 		}
 		a.headRow(c, "thread:"+th.Key, a.peerTile(c, th.Agent, th.Host), who, line, sideMuted, control)
+		a.saidLineIn(c, "peer-trust:"+th.Agent)
 		for _, x := range th.Items {
 			x := x
 			a.exRow(c, x)
@@ -749,10 +757,14 @@ func (a *App) peersRules(c *ui.Context, p *protocol.Peers) {
 					next := *p
 					next.Muted = without(p.Muted, agent)
 					a.SetSettings(protocol.SettingsPatch{Peers: &next})
+					a.sayAfter("peer-undo", a.L.T("said.peers.trust.undo", agent), func(st *protocol.Settings) bool {
+						return st.Peers != nil && !contains(st.Peers.Muted, agent)
+					})
 				}
 			})
 		}
 	})
+	a.saidLine(c, "peer-undo")
 }
 
 // peerOriginLine is where the partner's words came from (D470): its coin and the agent, one quiet

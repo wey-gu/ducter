@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.98 - 2026-11-27
+
+<!-- whats-new
+zh: 合并的 PR 自己收尾；Dim 能用了；折叠屏能铺满；网页更整齐
+en: Merged PRs close their own loose ends; Dim runs; foldables fill the screen
+-->
+
+**Closing the loop**
+- When a pull request or issue Ducter holds merges or closes, everything about it settles by
+  itself: the task is done, the hand-off ends, the item leaves its Keep and its waits stop, even
+  for pull requests Ducter never watched. Ducter reads their real state on start and hourly, and
+  your partner says it once in one line. Finished tasks stuck in 在做 or 等结果 are put right once.
+
+**Agents**
+- Dim takes tasks. Add it from a computer's card, and your partner can name it when it starts one.
+- A helper is any standing address for one kind of work: issues, mail, pull requests.
+
+**Phones and tablets**
+- On a foldable unfolded flat, Tasks can take the whole screen again, with the same arrows and ⌘2.
+- A task's header beside the conversation has one way back, one ⋯ for its actions and one fill,
+  every button at least 44 points.
+
+**Look**
+- To-do sources keep their action inside the card, task titles end at a whole phrase, terminal
+  output draws progress bars as one line, and an app's card shows once instead of after every fill.
+
 ## 0.1.97 - 2026-11-27
 
 <!-- whats-new

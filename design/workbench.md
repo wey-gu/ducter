@@ -13,7 +13,8 @@ with while an agent works, hidden until asked for.
   beside the agent: the diff, the files, the page it is building. Before, the task showed counts
   and an inline diff per edit (D210) but not the whole change, nothing to open or fix by hand, and
   no way to see the site the agent runs, least of all when it runs on a server abroad. After, one
-  key (⌥⌘B) or one button puts the work beside the conversation; they fix a line themselves, the
+  key (⌥⌘B) or one button puts the work beside the conversation (on the web and mobile that button
+  is a row in the task's ⋯ menu; the Mac keeps its header mark, D635); they fix a line themselves, the
   page reloads, and the agent is told. They feel in control without leaving Ducter.
 - **The consumer user** never meets it unless they look for it: the button is a small drawn
   panel mark in the task's header, and it appears only when the task has something to show (a

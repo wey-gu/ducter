@@ -231,7 +231,7 @@ export function InfoContent({ task, onClose }: { task: Task; onClose: () => void
 /** Wide: a popover under the header's button. A phone never opens it: there the rows are in the
  *  ⋯ sheet (D484), whose frame fits the screen (the bare `.sheet` it used to be, without
  *  research/123's frame, drew as a sliver in the header under a grey scrim). */
-function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
+export function TaskInfo({ task, onClose }: { task: Task; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), onClose());

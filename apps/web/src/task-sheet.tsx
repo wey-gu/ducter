@@ -65,25 +65,28 @@ const ShareMark = () => (
   </svg>
 );
 
-/** 分享 / Share in the opened task's header (every width). */
+/** The share itself: the system's own sheet on a phone, else Ducter's sheet. Shared by the
+ *  header's Share button and the task's one ⋯ menu (D635). */
+export async function startShare(task: Task, state: string, open: () => void) {
+  const s = shareOf(task, state);
+  // A phone: the system's own sheet, with the words and the link.
+  if (canOsShare() && matchMedia("(pointer: coarse)").matches) {
+    try {
+      await navigator.share({ title: s.title, text: s.text, url: s.url });
+      return;
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+    }
+  }
+  open();
+}
+
+/** 分享 / Share in the opened task's header on a phone (D484), and in its ⋯ menu (D635). */
 export function ShareButton({ task, state }: { task: Task; state: string }) {
   const [open, setOpen] = useState(false);
-  const go = async () => {
-    const s = shareOf(task, state);
-    // A phone: the system's own sheet, with the words and the link.
-    if (canOsShare() && matchMedia("(pointer: coarse)").matches) {
-      try {
-        await navigator.share({ title: s.title, text: s.text, url: s.url });
-        return;
-      } catch (e) {
-        if ((e as Error)?.name === "AbortError") return;
-      }
-    }
-    setOpen(true);
-  };
   return (
     <>
-      <button class="tv-act share-btn" aria-label={t("share.button")} title={t("share.about")} aria-haspopup="dialog" onClick={() => void go()}>
+      <button class="tv-act share-btn" aria-label={t("share.button")} title={t("share.about")} aria-haspopup="dialog" onClick={() => void startShare(task, state, () => setOpen(true))}>
         <ShareMark />
       </button>
       {open && createPortal(<ShareSheet task={task} state={state} onClose={() => setOpen(false)} />, document.body)}
@@ -91,7 +94,7 @@ export function ShareButton({ task, state }: { task: Task; state: string }) {
   );
 }
 
-function ShareSheet({ task, state, onClose }: { task: Task; state: string; onClose: () => void }) {
+export function ShareSheet({ task, state, onClose }: { task: Task; state: string; onClose: () => void }) {
   const { sheet, body, scrim, close } = useSheetMotion(onClose);
   const s = shareOf(task, state);
   const all = `${s.text}\n${s.url}`;

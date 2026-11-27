@@ -695,6 +695,7 @@ a.task-link {
 .top {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 12px;
   padding: calc(var(--safe-top) + var(--s2)) 16px var(--s2);
   background: var(--bg);
@@ -6503,8 +6504,10 @@ button.dev-name {
   font-weight: 600;
   color: var(--ink-muted);
   min-height: 44px;
+  min-width: 44px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex: none;
 }
 .top.crumbs .slash {
@@ -25592,4 +25595,37 @@ button.fd-link,
   max-width: 100%;
   text-align: left;
   overflow-wrap: anywhere;
+}
+
+/* ---------- D635: the two-column / mobile header ----------
+   A task beside the conversation, or at the whole screen, keeps one leading way up, one ⋯ menu
+   for its own actions (task-menu.tsx) and one fill; every action in a bar is a 44-point target.
+   The places are one button on a touch screen or under 1000 (views.tsx), and the partner rail's
+   toggle belongs to the bar it controls. The Mac app draws its own headers and is unchanged. */
+.top .task-menu [role^="menuitem"] {
+  min-height: 44px;
+}
+.top .task-more .more-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: var(--lg);
+  line-height: 1;
+}
+.top .btn.sm.nav {
+  height: 44px;
+}
+.top .btn.nav.update {
+  min-width: 44px;
+}
+.top .rail-toggle .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+.top .who-face {
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
 }

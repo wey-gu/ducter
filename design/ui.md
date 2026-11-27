@@ -1086,10 +1086,18 @@ the 720 measure under the crumbs **对话 / 任务 / {task}**; **暂停 / 取消
 340px)`, D244), and all three (rail, task, workbench) from 1560; narrower with the workbench open,
 the workbench takes the rail's place (task | workbench, Lody's two-slot rule). The move between
 them is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion). On
-a book fold On hand never takes the whole screen (the book is conversation | On hand); a task
-opened at the whole screen stands in the second half with the rail in the first, nothing across
-the fold (D244, D252); a tabletop offers neither. Screens:
-`.shots/onhand-wide/` (D184), `.shots/onhand-redesign/` (D216), `.shots/onhand-rail/` (D244).
+a book fold held half-open On hand never takes the whole screen (the book is conversation | On
+hand); unfolded flat with no hinge it is plain wide, so On hand fills and comes back with the same
+arrows (D635); a task opened at the whole screen stands in the second half with the rail in
+the first on a half-open fold, and follows the ordinary wide rule when flat (D244, D252); a
+tabletop offers neither. On a phone-class bar (a fold's half, an iPad in Split View, a large phone
+across), an opened task keeps one leading way up, one ⋯ menu for its own actions (the walk, the
+working copy, the workbench, Share, end) and one fill; the tasks' bar keeps back/level, 新建 and
+fill, and the places are one button on a touch screen or under 1000. The partner rail's toggle is
+only in a bar with a list beside it; a phone or fold gets the partners' back. Every action in a
+bar is 44×44 and the bar never wraps (D635). Screens:
+`.shots/onhand-wide/` (D184), `.shots/onhand-redesign/` (D216), `.shots/onhand-rail/` (D244),
+`.shots/two-col-header/` (D635).
 
 **On hand beside the opened task (D244), on the Mac and the web.** The rail is not web-only (D216
 built it for the web alone; the Mac's opened task used to replace the window). The Mac
@@ -1280,7 +1288,8 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    The header's title (D270): the task's name as the last crumb at the bar's one size (14/600, ink)
    on one line, its full title on hover; no line under it (who, state and where are in the head). Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
-   **工作台 / Workbench** (D214, `design/workbench.md`): a drawn panel mark in the header (⌥⌘B),
+   **工作台 / Workbench** (D214, `design/workbench.md`): on the Mac a drawn panel mark in the
+   header; on the web and mobile a row in the task's ⋯ menu (D635; ⌥⌘B on both),
    only when the task has something to show; wide, a column at the right (`--bench-w`, 42%,
    380–760 px, resizable) on `--bg-deep` with a hairline, its strip of pages on the sunken track
    with the one shown raised (the Seg look); on a phone a sheet over the task whose pages swipe.

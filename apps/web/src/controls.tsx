@@ -96,7 +96,7 @@ export function PlacesMenu(p: { segs: { key: string; label: string; glyph: Compo
   const label = A.L.t("nav.places");
   return (
     <span class="places-menu" ref={at}>
-      <button type="button" class={`places-btn${open ? " open" : ""}`} aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button type="button" class={`places-btn${open ? " open" : ""}`} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <svg class="nav-g" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
           {[4, 9, 14].flatMap((y) => [4, 9, 14].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.5" fill="currentColor" />))}
         </svg>
@@ -319,7 +319,7 @@ export function DangerButton(p: { label: string; about?: string; quiet?: boolean
 /** The one ⋯: it opens more in place, never a floating menu. */
 export function MoreButton(p: { label: string; open: boolean; onClick: () => void }) {
   return (
-    <button class={`more-btn${p.open ? " open" : ""}`} aria-label={p.label} aria-expanded={p.open} onClick={p.onClick}>
+    <button class={`more-btn${p.open ? " open" : ""}`} aria-label={p.label} title={p.label} aria-expanded={p.open} onClick={p.onClick}>
       ⋯
     </button>
   );

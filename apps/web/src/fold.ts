@@ -18,7 +18,9 @@ export interface Fold {
   end: number;
 }
 
-export type Split = { kind: "book" | "table"; a: number; gap: number };
+/** D635: `flat` marks a book unfolded flat (not standing at an angle): a plain wide screen
+ *  with a seam, where either level may still take the whole screen. */
+export type Split = { kind: "book" | "table"; a: number; gap: number; flat?: boolean };
 
 /** Each side of a book holds a phone-width pane; the top of a tabletop a short reading pane. */
 export const BOOK_MIN = 320;
@@ -46,7 +48,7 @@ export function readFold(): Fold | undefined {
 export function splitFor(f: Fold | undefined, width: number, height: number): Split | undefined {
   if (!f) return;
   const gap = Math.max(0, f.end - f.start);
-  if (f.axis === "vertical") return Math.min(f.start, width - f.end) >= BOOK_MIN ? { kind: "book", a: f.start, gap } : undefined;
+  if (f.axis === "vertical") return Math.min(f.start, width - f.end) >= BOOK_MIN ? { kind: "book", a: f.start, gap, flat: f.state === "flat" } : undefined;
   if (f.state !== "half") return;
   return Math.min(f.start, height - f.end) >= TABLE_MIN ? { kind: "table", a: f.start, gap } : undefined;
 }
@@ -93,10 +95,15 @@ export const wideNow = (): boolean => (typeof matchMedia === "function" && match
  * takes the whole screen there (a one-column list would lie across the crease); an opened task
  * can, and then stands in the second half with On hand as a rail in the first (D244). On a
  * tabletop, neither: each half is a short screen, and a whole-screen page would lie across it.
+ *
+ * D635: a book unfolded flat is not standing at an angle; it is a plain wide screen with a
+ * seam, so the same rule as no fold holds and both levels may fill. A real hinge (a gap between
+ * two screens) still keeps D252, and a book half-open still never lays On hand across it.
  */
 export function canFill(level: "onhand" | "task", wide: boolean, split?: Split): boolean {
   if (!wide) return false;
   if (!split) return true;
+  if (split.kind === "book" && split.flat && split.gap === 0) return true;
   return split.kind === "book" && level === "task";
 }
 

@@ -225,8 +225,8 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   what you were typing is still there if you close the app before sending.
 - **Tasks** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
-- **Work beside it.** In a task that changes files or runs a web page, the **Workbench** button
-  in its header (or ⌥⌘B) opens a side column (a sheet on the phone): **Changes** with each file's
+- **Work beside it.** In a task that changes files or runs a web page, **Workbench** in the task's
+  **⋯** menu (or ⌥⌘B; the Mac app keeps its header button) opens a side column (a sheet on the phone): **Changes** with each file's
   diff and **Undo** for one file, **Files** to read any file and edit it yourself, **Preview** to
   see the page it is building, **Browser** while it uses Ducter's browser, and **Phone** while it
   uses Ducter's phone or, on a Mac, an iPhone simulator it builds for: you see the simulator live

@@ -3,7 +3,7 @@
 // back control (the one-column layout), and the rail beside an opened task must keep its own head
 // even when there is no project lens to name: without it the sidebar had no rule and no way back
 // (the author's iPad). This draws the real components, as main.tsx branches them at each width.
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import type { ServerFrame } from "@ducter/protocol";
 
 // ---- a small DOM, just enough for Preact to draw into ----
@@ -177,9 +177,12 @@ const doc = {
   hasFocus: () => true,
 };
 const g = globalThis as Record<string, unknown>;
-const had = { document: g.document, matchMedia: g.matchMedia, requestAnimationFrame: g.requestAnimationFrame, addEventListener: g.addEventListener, removeEventListener: g.removeEventListener, location: g.location, history: g.history, localStorage: g.localStorage };
+const had = { document: g.document, matchMedia: g.matchMedia, requestAnimationFrame: g.requestAnimationFrame, addEventListener: g.addEventListener, removeEventListener: g.removeEventListener, location: g.location, history: g.history, localStorage: g.localStorage, innerWidth: g.innerWidth, innerHeight: g.innerHeight, ducterFold: g.ducterFold, viewport: g.viewport };
 let viewportWidth = 1180;
+// D635: the app is a phone/iPad client here; the places are one button on a touch screen.
+let coarse = true;
 const media = (q: string) => {
+  if (q.includes("any-pointer: coarse")) return coarse;
   const min = /min-width:\s*(\d+)px/.exec(q);
   const max = /max-width:\s*(\d+)px/.exec(q);
   return min ? viewportWidth >= Number(min[1]) : max ? viewportWidth <= Number(max[1]) : false;
@@ -200,6 +203,15 @@ g.getComputedStyle ??= () => ({ getPropertyValue: () => "", fontSize: "16px", li
 g.scrollTo ??= () => {};
 g.location = { hash: "", pathname: "/app", href: "http://127.0.0.1/app", search: "" };
 g.history = { length: 2, state: null, replaceState() {}, pushState() {}, back() {} };
+// Every test starts from a plain iPad-like wide screen; a fold test sets its own before it draws.
+beforeEach(() => {
+  viewportWidth = 1180;
+  coarse = true;
+  g.innerWidth = 1180;
+  g.innerHeight = 900;
+  delete g.ducterFold;
+});
+
 const mem = new Map<string, string>();
 g.localStorage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, String(v)), removeItem: (k: string) => void mem.delete(k), key: (i: number) => [...mem.keys()][i] ?? null, get length() { return mem.size; } };
 
@@ -311,6 +323,62 @@ function shown(e: El) {
 
 const WIDTHS = [768, 1024, 1180, 1366];
 
+/** The device's own size and (for a foldable) the fold the app reports (fold.ts reads both). */
+function setViewport(w: number, h: number, fold?: { axis: "vertical" | "horizontal"; state: "flat" | "half"; start: number; end: number }) {
+  viewportWidth = w;
+  g.innerWidth = w;
+  g.innerHeight = h;
+  if (fold) g.ducterFold = fold;
+  else delete g.ducterFold;
+}
+
+/** The side pane as main.tsx draws it: On hand beside the conversation, its own header. */
+async function drawSide(width: number) {
+  const A = await rig("onhand", width);
+  A.route = { name: "onhand" };
+  const { render, h } = await import("preact");
+  const { OnHand } = await import("../src/views.tsx");
+  const root = new El("div");
+  render(h(OnHand, {}), root as never);
+  await new Promise((r) => setTimeout(r, 10));
+  return { A, root, done: () => render(null, root as never) };
+}
+const fillButton = (root: El) => root.all().find((e) => e.localName === "button" && has(e, "fill"));
+
+/** A task with a working copy, as the demo's opened task is: its card from one task_open event. */
+function seedTask(A: Awaited<ReturnType<typeof rig>>) {
+  A.receive({
+    t: "events",
+    events: [
+      {
+        seq: 1,
+        ts: now,
+        persona: "default",
+        stream: "task:t1",
+        origin: "partner",
+        kind: "task_open",
+        body: { taskId: "t1", title: "Fix the flaky test", project: "mem", place: { kind: "repo", device: "MacBook", repoPath: "~/dev/hawdb", branch: "ducter/compaction-fix", baseBranch: "main" }, harness: "claude-code", model: "opus", brief: "Fix it." },
+      },
+    ],
+  } as unknown as ServerFrame);
+}
+
+/** The opened task in the side pane (not full) or at the whole screen (full). */
+async function drawTask(width: number, full: boolean, fold?: { axis: "vertical" | "horizontal"; state: "flat" | "half"; start: number; end: number }) {
+  const A = await rig("task", width);
+  seedTask(A);
+  setViewport(width, 900, fold);
+  A.route = { name: "task", id: "t1", full };
+  const { render, h } = await import("preact");
+  const { TaskView } = await import("../src/views.tsx");
+  const root = new El("div");
+  render(h(TaskView, { id: "t1", full }), root as never);
+  await new Promise((r) => setTimeout(r, 10));
+  return { A, root, done: () => render(null, root as never) };
+}
+const clsOf = (e: El) => (e.attrs.class ?? "").split(" ").filter(Boolean);
+const hasAny = (root: El, names: string[]) => root.all().filter((e) => names.some((n) => clsOf(e).includes(n)));
+
 describe("every screen opened from full-screen Tasks keeps its bar", () => {
   for (const width of WIDTHS) {
     test(`${width}: Tasks, a task, a Keep, and a held task each draw a bar with a way back`, async () => {
@@ -335,6 +403,110 @@ describe("every screen opened from full-screen Tasks keeps its bar", () => {
       }
     });
   }
+});
+
+// D635 (amends D252 (2)): the author's foldable, unfolded flat, was a plain wide screen in
+// every way except the rule that hid this button. Same width, same panes: no fold showed the
+// button, a flat fold did not. The iPad never had the fault; it is here as the comparison.
+describe("Tasks beside the conversation can take the whole screen where canFill allows", () => {
+  const sizes = [
+    { name: "iPad 1180×820", w: 1180, h: 820, fill: true },
+    { name: "iPad mini 1133×744", w: 1133, h: 744, fill: true },
+    { name: "iPad 820×1180 (one column)", w: 820, h: 1180, fill: false },
+    { name: "Pixel Fold 701×841 unfolded flat", w: 701, h: 841, fold: { axis: "vertical", state: "flat", start: 350, end: 350 }, fill: true },
+    { name: "Pixel Fold 701×841 half-open", w: 701, h: 841, fold: { axis: "vertical", state: "half", start: 350, end: 350 }, fill: false },
+    { name: "Galaxy Z Fold 1007×1209 unfolded flat", w: 1007, h: 1209, fold: { axis: "vertical", state: "flat", start: 503, end: 503 }, fill: true },
+    { name: "Galaxy Z Fold 1007×1209 half-open", w: 1007, h: 1209, fold: { axis: "vertical", state: "half", start: 503, end: 503 }, fill: false },
+    { name: "a hinge with width, flat", w: 1114, h: 720, fold: { axis: "vertical", state: "flat", start: 540, end: 574 }, fill: false },
+  ] as const;
+
+  for (const size of sizes) {
+    test(`${size.name}: ${size.fill ? "the fill button is in Tasks' header" : "no fill button"}`, async () => {
+      setViewport(size.w, size.h, size.fold);
+      const { root, done } = await drawSide(size.w);
+      expect(!!fillButton(root), `${size.name}: fill button ${size.fill ? "missing" : "should not be there"}`).toBe(size.fill);
+      done();
+    });
+  }
+
+  test("⌘2 fills Tasks where the button shows, and opens it beside where it cannot", async () => {
+    const A = await rig("onhand", 1180);
+    // The iPad: to the whole screen, and again back to the two panes.
+    setViewport(1180, 820);
+    A.route = { name: "onhand" };
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "onhand", full: true });
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "conv" });
+    // The same on the Fold unfolded flat: plain wide, even though its width alone is under 1000.
+    setViewport(1007, 1209, { axis: "vertical", state: "flat", start: 503, end: 503 });
+    A.route = { name: "onhand" };
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "onhand", full: true });
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "conv" });
+    setViewport(701, 841, { axis: "vertical", state: "flat", start: 350, end: 350 });
+    A.route = { name: "onhand" };
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "onhand", full: true });
+    // Half-open like a book: D252 holds; ⌘2 opens Tasks beside the conversation.
+    setViewport(1007, 1209, { axis: "vertical", state: "half", start: 503, end: 503 });
+    A.route = { name: "onhand" };
+    A.command("onhand");
+    expect(A.route).toEqual({ name: "onhand" });
+  });
+});
+
+// D635: the task's header is one leading way up, one ⋯ menu and one fill. The old row of
+// icons (walk arrows, working copy, workbench, share, ⋯) is gone; a phone's one-column task keeps
+// Share and its D484 sheet. Every compact case would have failed on the old header.
+describe("an opened task's header is one back, one ⋯ and one fill", () => {
+  const cases = [
+    { name: "iPad 1180 beside", w: 1180, full: false, compact: true },
+    { name: "iPad 1024 beside", w: 1024, full: false, compact: true },
+    { name: "iPad 981 one column", w: 981, full: false, compact: true },
+    { name: "Fold 678 beside", w: 678, full: false, fold: { axis: "vertical" as const, state: "flat" as const, start: 339, end: 339 }, compact: true },
+    { name: "phone 678 one column", w: 678, full: false, compact: false },
+    { name: "iPad 1180 full", w: 1180, full: true, compact: true },
+    { name: "iPad 981 full", w: 981, full: true, compact: true },
+  ];
+  for (const c of cases) {
+    test(`${c.name}: ${c.compact ? "one ⋯ and one fill" : "Share + 这个任务"}`, async () => {
+      const { root, done } = await drawTask(c.w, c.full, c.fold);
+      const header = root.all().find((e) => e.localName === "header" && has(e, "top"));
+      expect(header, `${c.name}: no header`).toBeDefined();
+      // The old row of icons never comes back.
+      expect(hasAny(root, ["tv-nav", "tv-step", "info-btn", "bench-toggle"]).length, `${c.name}: an old icon`).toBe(0);
+      const fill = root.all().filter((e) => e.localName === "button" && has(e, "plus") && has(e, "fill"));
+      const wide = c.w >= 1000 || !!c.fold;
+      if (c.compact) {
+        expect(root.all().filter((e) => has(e, "task-more")).length, `${c.name}: task menus`).toBe(1);
+        expect(hasAny(root, ["share-btn", "tv-act"]).length, `${c.name}: a phone action in the compact bar`).toBe(0);
+        expect(fill.length, `${c.name}: fill`).toBe(wide ? 1 : 0);
+      } else {
+        expect(root.all().filter((e) => has(e, "task-more")).length, `${c.name}: no compact menu`).toBe(0);
+        expect(hasAny(root, ["share-btn"]).length, `${c.name}: Share`).toBe(1);
+        expect(root.all().filter((e) => e.localName === "button" && has(e, "more-btn")).length, `${c.name}: the one more`).toBe(1);
+        expect(fill.length, `${c.name}: no fill on a phone column`).toBe(0);
+      }
+      // Places: on a side pane only a one-column, non-phone task has them; the whole screen always
+      // does. They are one button on this touch client, never a row of marks.
+      const places = root.all().filter((e) => has(e, "places-btn")).length;
+      expect(places, `${c.name}: the places button`).toBe(c.full ? 1 : !wide && c.compact ? 1 : 0);
+      expect(hasAny(root, ["places"]).filter((e) => e.localName === "nav").length, `${c.name}: the place marks`).toBe(0);
+      done();
+    });
+  }
+
+  test("the one ⋯ menu carries the task's secondary actions, labelled", async () => {
+    const { root, done } = await drawTask(1180, false);
+    const menu = root.all().find((e) => has(e, "task-menu"));
+    // Closed, so the rows are not drawn; the trigger is the one control with its own label.
+    const trigger = root.all().find((e) => e.localName === "button" && has(e, "more-btn"));
+    expect(trigger?.attrs["aria-label"]).toBe("More");
+    expect(menu).toBeUndefined();
+    done();
+  });
 });
 
 describe("the keyboard and the iPad's edge both go up from a full-screen level", () => {
@@ -406,6 +578,58 @@ async function drawMain(_A: Awaited<ReturnType<typeof mainRig>>) {
   await new Promise((r) => setTimeout(r, 10));
   return { root, redraw, done: () => render(null, root as never) };
 }
+
+// D635: the sidebar's toggle belongs only to a bar that has a sidebar beside it. A phone or
+// a fold gets the partners' back instead; one partner gets neither; and with the rail hidden at a
+// wide width the toggle is the one way back (the partners' back no longer duplicates it).
+describe("the conversation's bar names the sidebar only where there is one", () => {
+  test("1180, two partners: one rail toggle and one places button, no partners' back, no marks", async () => {
+    const A = await mainRig();
+    setViewport(1180, 820);
+    const { root, done } = await drawMain(A);
+    expect(hasAny(root, ["rail-toggle"]).length).toBe(1);
+    expect(hasAny(root, ["partners-back"]).length).toBe(0);
+    expect(root.all().filter((e) => has(e, "places-btn")).length).toBe(1);
+    expect(hasAny(root, ["places"]).filter((e) => e.localName === "nav").length).toBe(0);
+    done();
+  });
+  test("678: the partners' back, no rail toggle, one places button", async () => {
+    const A = await mainRig();
+    setViewport(678, 900);
+    const { root, done } = await drawMain(A);
+    expect(hasAny(root, ["rail-toggle"]).length).toBe(0);
+    expect(hasAny(root, ["partners-back"]).length).toBe(1);
+    expect(root.all().filter((e) => has(e, "places-btn")).length).toBe(1);
+    done();
+  });
+  test("678 at a fold: the partners' back, no rail toggle", async () => {
+    const A = await mainRig();
+    setViewport(678, 900, { axis: "vertical", state: "flat", start: 339, end: 339 });
+    const { root, done } = await drawMain(A);
+    expect(hasAny(root, ["rail-toggle"]).length).toBe(0);
+    expect(hasAny(root, ["partners-back"]).length).toBe(1);
+    done();
+  });
+  test("one partner: neither a rail toggle nor a partners' back", async () => {
+    const A = await mainRig();
+    A.partners = [people[0]!];
+    setViewport(1180, 820);
+    const { root, done } = await drawMain(A);
+    expect(hasAny(root, ["rail-toggle"]).length).toBe(0);
+    expect(hasAny(root, ["partners-back"]).length).toBe(0);
+    done();
+  });
+  test("the rail hidden at 1180: the toggle is the one way back, not a second partners' back", async () => {
+    const A = await mainRig();
+    A.setRail("hidden");
+    setViewport(1180, 820);
+    const { root, done } = await drawMain(A);
+    expect(hasAny(root, ["rail-toggle"]).length).toBe(1);
+    expect(hasAny(root, ["partners-back"]).length).toBe(0);
+    A.setRail("");
+    done();
+  });
+});
 
 describe("resuming paints the last bar and partner list, then re-syncs", () => {
   test("a hidden page's state, painted on return, is never an empty bar or sidebar", async () => {

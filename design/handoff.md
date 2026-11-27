@@ -61,7 +61,9 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
 
 - **One key per item.** A second hand-off of the same item to the same receiver merges into the
   open one, adding what's new. It is never a second record. The sender can't spam, and
-  retrying is safe.
+  retrying is safe. GitHub's numbers are shared by issues and pull requests, so the key is
+  `repo#n` whichever door named it (D645, research/245 §3.7); an older home's `issue:`/`pr:`
+  pair for one number is one record when read, never rewritten in the Log.
 - **Taken is a fact.** It is true only when one of the receiver's tasks claims the hand-off by
   id. Until then:
   - the partner, the sender and the UI say 「交给了，等它接手」;

@@ -501,6 +501,8 @@ type TaskState struct {
 	Reason    string    `json:"reason,omitempty"`
 	// Cant (D395): why it couldn't start where it was to work.
 	Cant *CantStart `json:"cant,omitempty"`
+	// WaitsFor (D645, research/245 §3.7, B4): the question the person owes it.
+	WaitsFor string `json:"waitsFor,omitempty"`
 }
 
 type ToolCall struct {
@@ -1124,6 +1126,12 @@ type TaskCard struct {
 	// TurnAt (D498, D210): while it works, when this turn began, so a card
 	// says how long this turn has run, never since the task was opened.
 	TurnAt string `json:"turnAt,omitempty"`
+	// WaitsFor (D645, research/245 §3.7, B4): the question it waits on
+	// when the person owes it an answer.
+	WaitsFor string `json:"waitsFor,omitempty"`
+	// GitHubBlind (D645, research/245 §3.7, B1): no computer could read
+	// GitHub for it (no gh, signed out), since when, and where it should read.
+	GitHubBlind *GitHubBlind `json:"githubBlind,omitempty"`
 	// Rounds (D498, D427): a task in rounds Ducter keeps; On hand stands it
 	// under 一直在跑 / Ongoing and says its rhythm.
 	Rounds *TaskRounds `json:"rounds,omitempty"`
@@ -1140,6 +1148,15 @@ type TaskCard struct {
 	// Background (D521): the work its agent runs beside its turn, every one
 	// still running and the newest finished, folded from its Log by core.
 	Background *TaskBackground `json:"background,omitempty"`
+}
+
+// GitHubBlind (D645, research/245 §3.7, B1) is a task whose GitHub
+// reads no computer could run: since when, and the computer that can't and
+// the home it could be read on.
+type GitHubBlind struct {
+	Since  string `json:"since"`
+	Device string `json:"device,omitempty"`
+	Home   string `json:"home,omitempty"`
 }
 
 // Mending is a repair under way: its class, what it does and where.

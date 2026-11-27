@@ -31,6 +31,11 @@ Its pose tells you the same at a glance: a little flag when something needs you,
 work is under way, resting on its bench while everything waits, smiling when the day's work came
 back done.
 
+A task is under **Working** only while it is really working. When it has asked you something, or
+was told to wait for your answer, it is under **Needs you** with the question, until your answer
+reaches the task. One that stopped with nothing still running is a stopped task (below), never
+**Working**.
+
 What needs you comes first. A question is answered right there. A task that has stopped (it
 waits, but nothing will bring it back by itself) or didn't work out says why in plain words, with
 the way to fix it right beside it:
@@ -71,6 +76,9 @@ Below that, the rest:
   once that pull request is merged (see below). A wait that didn't happen is listed there too with its
   own words, but isn't counted. Tasks that finished yesterday fold under one line, **1 more done
   yesterday**.
+
+When no computer can read GitHub for a task (no `gh` there, or it is signed out), its row says so
+after half an hour, with the fix: install `gh` on that computer, or read it on your home.
 
 Each section is one card, and every task in it is one row. On the left, a small mark says where it stands:
 a flag when it needs you, a dot that gives a small beat each time the task takes a step while it works, a ring that fills up toward when a wait

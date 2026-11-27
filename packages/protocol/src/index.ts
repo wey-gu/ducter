@@ -45,6 +45,7 @@ export * from "./peer-self.ts";
 export * from "./did-glyphs.ts";
 export * from "./computer-name.ts";
 export * from "./done-today.ts";
+export * from "./turn-end.ts";
 export * from "./tidy.ts";
 export * from "./rich.ts";
 export * from "./pins.ts";
@@ -600,7 +601,7 @@ export interface Bodies {
     // one that failed is set aside as superseded by this one.
     replaces?: string;
   };
-  task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart };
+  task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart; /** D645 (research/245 §3.7): what it waits for when it waits on the person, in one line. */ waitsFor?: string };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
   // mid-turn): the whole queue as it is now, in order. Ducter holds them, not the agent, so each
   // can be changed, taken back or said now; at the turn's end they go as the next turn. [] = none.
@@ -1182,6 +1183,12 @@ export interface TaskCard {
   /** D498 (D210): while it works, when this turn began (its last start to work), so a card says how
    *  long this turn has run, never how long ago the task was opened. */
   turnAt?: string;
+  /** D645 (research/245 §3.7, B4): the question it waits on when it is `needs_you` because it
+   *  was told to wait for the person. Absent: it asked in its report, or waits on something else. */
+  waitsFor?: string;
+  /** D645 (research/245 §3.7, B1): no computer could read GitHub for it at this time (no gh,
+   *  signed out). The row says so with its fix after 30 minutes; cleared by a read that worked. */
+  githubBlind?: { since: string; device?: string; home?: string };
   /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
    *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
   rounds?: import("./past.ts").TaskRounds;

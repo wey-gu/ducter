@@ -11,6 +11,7 @@ import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
 import { restAttention, workFinished } from "./attention.ts";
+import { turnEndAttention } from "@ducter/protocol/src/turn-end.ts";
 import type { CoreRegistry } from "./registry.ts";
 import type { Loops } from "./loops.ts";
 import type { Waiters } from "./waiters.ts";
@@ -72,15 +73,21 @@ export function createCloseLoopRepair(o: {
       const staleWait = c.attention === "blocked" && (timersOnly || armed.length === 0);
       const finished = workFinished(c) && prsCarried(c.prs).length === 0;
       let to: ReturnType<typeof restAttention> | undefined;
+      let waitsFor: string | undefined;
       if ((idle || staleWait) && finished) to = "done";
-      else if (idle) to = restAttention(c, o.loops?.get(c.taskId)?.state === "ended" ? o.loops.get(c.taskId)!.before : undefined);
+      else if (idle) {
+        // D645 (research/245 §3.7, B4): the same rule every live turn end uses.
+        const end = turnEndAttention(c);
+        if (end) (to = end.attention), (waitsFor = end.waitsFor);
+        else to = restAttention(c, o.loops?.get(c.taskId)?.state === "ended" ? o.loops.get(c.taskId)!.before : undefined);
+      }
       if (!to) continue;
       if (to === "done") {
         const loop = o.loops?.get(c.taskId);
         if (loop?.state === "on") o.loops!.end(c.taskId, "condition");
         for (const w of armed) o.waiters.cancel(w.waiterId, { by: "system" });
       }
-      o.tasks.setState(c.taskId, to, "parked");
+      o.tasks.setState(c.taskId, to, "parked", undefined, undefined, waitsFor);
       fixed.push(c.taskId);
       const w = words(W, (detect(c.title)?.lang ?? "en") as LangTag);
       const text = to !== "done" ? (to === "needs_you" ? w.needs : w.other) : staleWait ? w.waited : w.done;

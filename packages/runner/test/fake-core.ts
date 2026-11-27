@@ -27,7 +27,14 @@ export function createFakeCore(dataDir: string): FakeCore {
     } else if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       const c = cards.get(b.taskId);
-      if (c) Object.assign(c, { attention: b.attention, residency: b.residency, reason: b.reason, updatedAt: e.ts });
+      if (c) Object.assign(c, { attention: b.attention, residency: b.residency, reason: b.reason, waitsFor: b.waitsFor, updatedAt: e.ts });
+    } else if (e.kind === "decision") {
+      const b = e.body as Bodies["decision"];
+      const c = b.taskId ? cards.get(b.taskId) : undefined;
+      if (c) (c.pendingDecisionId = b.decisionId), (c.pendingDecision = { ...b, askedAt: e.ts });
+    } else if (e.kind === "decision_resolved") {
+      const b = e.body as Bodies["decision_resolved"];
+      for (const c of cards.values()) if (c.pendingDecisionId === b.decisionId) { delete c.pendingDecisionId; delete c.pendingDecision; }
     } else if (e.kind === "report") {
       const b = e.body as Bodies["report"];
       const c = cards.get(b.taskId);
@@ -65,8 +72,8 @@ export function createFakeCore(dataDir: string): FakeCore {
       get: (id) => cards.get(id),
       list: () => [...cards.values()],
       onHand: (): OnHand => ({ tasks: [...cards.values()], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 } }),
-      setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: Bodies["task_state"]["cant"]) {
-        log.append({ persona: cards.get(taskId)?.persona, stream: `task:${taskId}`, origin: "system", kind: "task_state", body: { taskId, attention, residency, reason, ...(cant ? { cant } : {}) } });
+      setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: Bodies["task_state"]["cant"], waitsFor?: string) {
+        log.append({ persona: cards.get(taskId)?.persona, stream: `task:${taskId}`, origin: "system", kind: "task_state", body: { taskId, attention, residency, reason, ...(cant ? { cant } : {}), ...(waitsFor ? { waitsFor } : {}) } });
       },
     },
     mcp: {

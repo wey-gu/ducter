@@ -180,10 +180,15 @@ export function handoffItem(a: { text?: string; refs?: readonly { uri?: string; 
   return { kind: "text", ref: `text:${reading || "work"}`, ...(title ? { title: clean(title) } : {}) };
 }
 
-/** The one key per item: sender + receiver + the item's ref. */
+/**
+ * The one key per item: sender + receiver + the item's ref. D645 (research/245 §3.7, B7):
+ * GitHub's numbers are shared by issues and pull requests, so `repo#n` is one item whichever door
+ * called it an issue or a PR; the kind stays on the record (`item.kind`) but not in the key.
+ */
 export function handoffKey(from: HandoffFrom, to: HandoffTo, item: HandoffItem): string {
   const who = from.task ? `task:${from.task}` : from.agent ? `agent:${from.agent}${from.space ? `@${from.space}` : ""}` : "you";
-  return `${who}|helper:${to.helper}|${item.kind}:${item.ref}`;
+  const ref = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+$/.test(item.ref) ? item.ref.toLowerCase() : `${item.kind}:${item.ref}`;
+  return `${who}|helper:${to.helper}|${ref}`;
 }
 
 /** The helper's own questions, read from our outbox: a message one of its tasks sent. A reply to

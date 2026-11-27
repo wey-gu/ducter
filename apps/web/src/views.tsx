@@ -496,7 +496,19 @@ function DraftAskBody({ d, about, open }: { d: DecisionState; about: string; ope
   );
 }
 
-export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string }) {
+/** D640 (#254): what the task showed with its question, on the card itself, before the
+ *  person answers: the conversation's own pictures and file rows (D206), and its viewer. */
+function AskFiles({ d, inTask }: { d: DecisionState; inTask?: boolean }) {
+  if (!d.media?.length) return null;
+  const id = d.taskId;
+  return (
+    <div class="ask-files">
+      <MediaBlock media={d.media} side="partner" ctx={inTask && id ? { kind: "task", taskId: id } : { kind: "conv" }} />
+    </div>
+  );
+}
+
+export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?: string; inTask?: boolean }) {
   useTick(1000);
   const open = !d.resolved && !d.pending;
   const about = (() => {
@@ -531,6 +543,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     return (
       <>
         <div class="q">{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question}</div>
+        <AskFiles d={d} inTask={inTask} />
         <LaterAway d={d} about={about} />
       </>
     );
@@ -539,6 +552,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       {open && <LaterBack d={d} />}
       {/* D599: a task's own words keep their links and codes real (AskText); the card's own words are plain. */}
       <div class="q">{wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={d.question} />}</div>
+      <AskFiles d={d} inTask={inTask} />
       {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts c={d.cal} />}
@@ -599,7 +613,7 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
           <Chev />
         </button>
       )}
-      <DecisionBody d={d} taskId={taskId} />
+      <DecisionBody d={d} taskId={taskId} inTask={inTask} />
     </div>
   );
 }
@@ -1134,7 +1148,7 @@ const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Inf
 
 /** One ask in the partner's words (D104): the question as it speaks, its default in one muted
  *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
-function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?: string; buttons?: boolean; rk?: string; seq?: number }) {
+export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?: string; buttons?: boolean; rk?: string; seq?: number }) {
   useTick(1000);
   const ref = useRef<HTMLDivElement>(null);
   const flash = A.flash === d.decisionId;
@@ -1258,6 +1272,8 @@ function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?
       <div class="bubble" dir="auto">
         <AskText text={d.said || d.question} />
       </div>
+      {/* D640 (#254): what the task showed with its question, on the card under its words. */}
+      <AskFiles d={d} />
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
       {d.cal && <CalFacts c={d.cal} />}
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}

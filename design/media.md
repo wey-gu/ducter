@@ -1,6 +1,6 @@
 # Pictures and Files (media)
 
-> Design note for D206, D239, D242, D259, D286 and D537 · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`, `.shots/d286/`
+> Design note for D206, D239, D242, D259, D286, D537 and D640 (#254) · Principles 5, 6, 7 · Evidence: `research/56`, `research/75` · Screens: `.shots/media/`, `.shots/d286/`, `.shots/ask-files/`
 > (D75: never in git)
 
 The author: "要优雅一些，极度顺滑方便用户浏览查看，体验拉满". A partner you message has to see what
@@ -150,6 +150,16 @@ long (`MEDIA_KEY`).
 - **The partner relays** them: the media of the reports that woke a turn go under the partner's
   first words in that turn (`ai_msg.media`), once. It also sees them (up to 4), so it can name
   what they are; the persona says to, in a few words, never a path or "see below".
+- **A question that comes with files (D640, #254).** The rule, user first: these questions
+  are usually "look at this file, then decide", so **a question that comes with files shows them
+  with the question, before the person answers, wherever the question is shown.** A report that
+  becomes a question's card copies its `media` onto the decision (`decision.media`), and both
+  clients draw them on that card with the pieces a message uses (the pictures' grid, the file
+  cards, the shared viewer), in the conversation and in 任务 / Tasks, On hand. They are not shown
+  again under the relaying line: the turn's `shows` carry only the reports that did not become a
+  card, so a turn whose other lines carry shows keeps D206. A done report's files still go under
+  the partner's message about it. `render.ts` tells the partner the truth, "they are on the
+  question's card", instead of promising "under your message".
 
 ## Drawing
 

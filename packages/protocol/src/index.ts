@@ -458,6 +458,10 @@ export interface Bodies {
     decisionId: string;
     taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)
     question: string;
+    // D640 (#254): what the task showed with this question (`report.media`): the pictures
+    // and files stand on the card itself, so they are there before the person answers, wherever
+    // the card is shown (the conversation, On hand). Never repeated under the relaying line.
+    media?: MediaRef[];
     goLabel: string; // e.g. "Rebase"; the UI shows "好，<goLabel>" / "Go: <goLabel>"
     defaultOption: "go" | "hold";
     defaultAt?: string; // ISO time the default applies (only if reversible)

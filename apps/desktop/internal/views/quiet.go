@@ -440,6 +440,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
 		a.partnerAskWords(c, d.DecisionID, words) // D599: its links and codes real
+		a.askFiles(c, d, "conv")                  // D640 (#254): what came with the question
 		// D437: what another AI still found in what this Go sends.
 		if d.Look != nil && openAsk(d) {
 			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })

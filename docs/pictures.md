@@ -9,7 +9,8 @@ order: 5.7
 Your partner sees the pictures you send, the way a friend would in a messaging app. Ask about a
 screenshot, send a photo of a whiteboard to work from, hand it a report, a log or a spreadsheet,
 or ask it to draw something. When a task makes something worth seeing (a screenshot that shows it
-works, a picture, a file), it shows up in the conversation.
+works, a picture, a file), it shows up in the conversation. And when a task asks you something with
+files, they are on the question itself, so you can look before you answer.
 
 ## Send a picture
 

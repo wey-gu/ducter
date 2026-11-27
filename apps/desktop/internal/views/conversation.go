@@ -957,6 +957,13 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	}
 	question := a.questionOf(d)
 	a.askWords(c, d, question, 0)
+	// D640 (#254): what came with the question, on the card. In an opened task the
+	// viewer is that task's (D210's smaller pictures); elsewhere the conversation's.
+	scope := "conv"
+	if id := firstNonEmpty(taskID, d.TaskID); id != "" && a.Route == RouteTask && a.TaskID == id {
+		scope = "task:" + id
+	}
+	a.askFiles(c, d, scope)
 	if d.Look != nil && d.Resolved == nil {
 		a.lookLine(c, "card:"+d.DecisionID, d.Look.Left) // D437
 	}

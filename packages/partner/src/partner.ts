@@ -75,7 +75,7 @@ import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { ducterDataRefusal, isDucterData } from "../../protocol/src/ducter-folder.ts";
-import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, setRenderZone, type RenderCtx } from "./render.ts";
+import { FILE_INLINE_CHARS, refsLine, renderHistoryLine, renderProjection, renderPromises, renderTime, renderTrigger, reportMakesCard, setRenderZone, type RenderCtx } from "./render.ts";
 import { namesAgent, relayAnswer, relayHead, relayLocal, relayNotSent, relayQuestion, relayWaiting, whoForTask } from "./bridge-relay.ts";
 import { inTongue } from "../../protocol/src/say.ts";
 import { destructiveChoice } from "../../protocol/src/destructive.ts";
@@ -1155,8 +1155,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (decisionId) {
       body.decisionId = decisionId;
       if (turn) turn.relayed = true;
-    } else if (turn?.shows?.length) {
-      // D206: what a task showed goes under the partner's first words about it, once.
+    }
+    if (turn?.shows?.length) {
+      // D206: what a task showed goes under the partner's first words about it, once. A
+      // question's own files are on its card (D640, #254), so turn.shows holds only the
+      // shows of reports that did not become a card.
       body.media = turn.shows;
       turn.shows = undefined;
     }
@@ -2118,7 +2121,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, results, recalls: 0, noted: [], early: [] };
     const day = [...batch].reverse().find((e) => e.kind === "day_after");
     if (day) turn.dayAfter = { items: (day.body as Bodies["day_after"]).items };
-    const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : []));
+    // D640 (#254): a report that becomes a question's card carries its files on that card
+    // (decision.media); they are not shown again under the relaying line. Shows from any other
+    // report in the turn keep D206: under the partner's first words about them, once.
+    const onCard = new Set(
+      batch.flatMap((e) =>
+        e.kind === "report" && reportMakesCard(e.body as Bodies["report"]) ? ((e.body as Bodies["report"]).media ?? []).map((m) => m.id) : [],
+      ),
+    );
+    const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : [])).filter((m) => !onCard.has(m.id));
     if (shows.length) turn.shows = shows;
     if (redo) turn.carried = redo;
     // D462: the correction after a line that promised work: that line is this turn's, still unsaid.

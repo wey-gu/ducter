@@ -515,7 +515,8 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			a.askQuestion(c, keepTail(autospace(q))).MaxLines(4).Tooltip(q)
 		}
 		if d != nil {
-			a.todoAskBody(c, d) // D341: the comment as it goes out, or the to-do's chip
+			a.askFiles(c, d, "conv") // D640 (#254): what came with the question
+			a.todoAskBody(c, d)      // D341: the comment as it goes out, or the to-do's chip
 			a.whereLines(c, d)
 			// D493: the question 16 above the row (the card's gap of 12 and 4 more).
 			ui.Column(c).Padding(t.S4-t.S3, 0, 0, 0).Children(func() {
@@ -814,6 +815,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			})
 		}
 		a.askWords(c, d, a.questionOf(d), 4)
+		a.askFiles(c, d, "conv") // D640 (#254): what came with the question
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}

@@ -215,13 +215,16 @@ type LivingItem struct {
 }
 
 type Decision struct {
-	DecisionID    string `json:"decisionId"`
-	TaskID        string `json:"taskId,omitempty"` // "" = a partner-level decision
-	Question      string `json:"question"`
-	GoLabel       string `json:"goLabel"`
-	DefaultOption string `json:"defaultOption"` // go | hold
-	DefaultAt     string `json:"defaultAt,omitempty"`
-	Reversible    bool   `json:"reversible"`
+	DecisionID string `json:"decisionId"`
+	TaskID     string `json:"taskId,omitempty"` // "" = a partner-level decision
+	Question   string `json:"question"`
+	// Media (D640, #254) is what the task showed with this question: the pictures and
+	// files stand on the card itself, before the person answers, wherever it is shown.
+	Media         []MediaRef `json:"media,omitempty"`
+	GoLabel       string     `json:"goLabel"`
+	DefaultOption string     `json:"defaultOption"` // go | hold
+	DefaultAt     string     `json:"defaultAt,omitempty"`
+	Reversible    bool       `json:"reversible"`
 	// Later and BackAt (D382) come on a task card's pendingDecision: put
 	// off until Later (晚点再问我 / Ask me later), or back since BackAt.
 	Later  string `json:"later,omitempty"`

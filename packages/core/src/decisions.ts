@@ -285,6 +285,9 @@ export function createDecisions(opts: {
           decisionId: newId(),
           taskId: r.taskId,
           question: q.text,
+          // D640 (#254): what the task showed with this question stands on the card
+          // itself, not under the partner's relay (a quiet turn has no other line to carry it).
+          ...(r.media?.length ? { media: r.media } : {}),
           goLabel: named ? q.default!.trim() : words(GO_PLAIN, langOf(r.taskId, q.text)),
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,

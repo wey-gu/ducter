@@ -904,6 +904,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       if (!set) throw new Error("handSet: no set seeded");
       const r = await core.taskSources.handover!.hand({ refs: set.ticked, setId: set.setId, bySubject: true, ...(s.handSet.note ? { note: s.handSet.note } : {}), ...(s.handSet.subject ? { subject: s.handSet.subject } : {}) });
       if (!r.ok) throw new Error(`handSet: ${r.error}`);
+      // D638: the hand-over answers at once and opens its first task after; the seed waits for it, so a step sees only what it did.
+      await core.taskSources.handover!.idle?.();
     } else if ("loop" in s) {
       // D427: the seeded task runs in rounds: two of its own timers, the first fired; Ducter keeps it as a loop.
       const taskId = idOf.get(s.loop.task)!;

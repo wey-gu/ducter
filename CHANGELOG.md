@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.1.100 - 2026-11-28
+
+<!-- whats-new
+zh: 每条消息自己说清是哪件事；日历卡片重画；微信能换伙伴
+en: Each line names its work; new calendar cards; switch partners in WeChat
+-->
+
+**Truthful lines**
+- Your partner says a task is working only while a turn is really running, never twice about the
+  same pull request, and "Fixed in" only for that item's own merged pull request.
+- When a watched repository cannot be read on this computer, Ducter reads it on one that has gh,
+  and says so plainly when none can.
+- A stalled job no longer asks a bare "stop?": your partner wakes with the facts and says what it
+  is and what changed.
+
+**Chat apps**
+- In WeChat, Telegram or Slack you can ask for another partner by name and the chat stays with
+  them. With several partners, each reply shows who is speaking.
+
+**Cards**
+- Calendar cards show the date as a leaf with the time and place on their own lines; a cancelled
+  event is struck through. Sending a file, a call and the other common cards each have their mark.
+- A question that needs a file shows the file on the card (#254).
+
+**Settings**
+- After you change a setting your partner says it once in one line; removing something asks first.
+- The panes are tidier, and on a narrow window Settings opens full height.
+- Nowledge Mem shows one clear state: connected, signed out, or not set up, with the one step to fix it.
+
+**Brand**
+- Square-cornered favicon, a new README and a sharper share image.
+
 ## 0.1.99 - 2026-11-27
 
 <!-- whats-new

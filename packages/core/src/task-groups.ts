@@ -68,6 +68,8 @@ export interface TaskGroupsDeps {
   newId?: () => string;
   /** D385: a held part opened as this task (bind it to its to-dos). */
   opened?: (taskId: string, bind: SourceItemRef[], group: TaskGroupView) => void;
+  /** D638: a held part could not open (no agent, the computer away): said where the person looks. */
+  heldFailed?: (groupId: string, key: string, error: string, bind?: SourceItemRef[]) => void;
   /** D426: a held member opened as this task (its lines under the message go with it). */
   heldOpened?: (key: string, taskId: string) => void;
 }
@@ -211,6 +213,7 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
               d.heldOpened?.(m.key, opened.taskId);
             } catch (err) {
               console.warn(`[groups] couldn't open "${m.title}" in "${g.name}":`, (err as Error).message);
+              d.heldFailed?.(g.id, m.key, (err as Error).message, m.bind);
               break;
             }
           }
@@ -260,7 +263,8 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
   }
 
   const api: TaskGroups = {
-    list: () => groups.filter((g) => g.members.length >= 2 || (g.hand && g.members.length >= 1)).map(view),
+    // D638: a failed hand-over (nothing opened) keeps its card too, so the failure is said.
+    list: () => groups.filter((g) => g.members.length >= 2 || (g.hand && (g.members.length >= 1 || !!g.hand.error))).map(view),
     create(persona, name, o) {
       const g = make(persona, name, "you");
       g.order = o.order;
@@ -306,7 +310,7 @@ export function createTaskGroups(d: TaskGroupsDeps): TaskGroups {
     onSubject(persona, subject) {
       const k = subject.toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "");
       if (!k) return undefined;
-      const g = groups.find((x) => live(x) && x.hand && x.persona === persona && x.hand.review !== "sent" && (x.hand.subject ?? x.name).toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "") === k);
+      const g = groups.find((x) => live(x) && x.hand && !x.hand.error && x.persona === persona && x.hand.review !== "sent" && (x.hand.subject ?? x.name).toLocaleLowerCase().replace(/[\s\u00b7\u30fb_-]+/g, "") === k);
       return g ? view(g) : undefined;
     },
     of: (taskId) => ((g) => (g ? view(g) : undefined))(groupOf(taskId)),

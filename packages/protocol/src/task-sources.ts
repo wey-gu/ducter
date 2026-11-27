@@ -386,6 +386,8 @@ export type SourcesClientFrame =
       subject?: string;
       bySubject?: boolean;
       setId?: string;
+      /** D638: this Go came from the hand-over sheet (answered at once, even for one to-do). */
+      sheet?: boolean;
     }
   // D385: find across the pile by words and by meaning (找… / Find…), a 讲的是 chip's subject, or a
   // set card's refs: every sort group, each item with how it was found.
@@ -428,7 +430,7 @@ export type SourcesServerFrame =
   | { t: "source_result"; op: "add" | "set" | "remove"; ok: boolean; id?: string; reason?: "no_tool" | "signed_out" | "missing" | "exists" | "unknown" }
   | { t: "pile_items_result"; clientId?: string; group: PileGroup; items: PileItem[] }
   // D359: what a pile action did: handed (into the queue), closed (done, failed), a review sent, a pre-read made.
-  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review" | "subject"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string; name?: string; asked?: string }
+  | { t: "pile_result"; clientId?: string; op: "hand" | "close" | "review" | "pre_read" | "plan" | "group_review" | "subject"; ok: boolean; done?: number; failed?: number; read?: PreRead; error?: string; groupId?: string; name?: string; asked?: string; planning?: boolean }
   // D385: a find's answer (the sheet's find field, a chip, a set card), and the sheet's how.
   | { t: "pile_find_result"; clientId?: string; query?: string; subject?: string; found: import("./handover.ts").FindSummary; items: import("./handover.ts").FoundItem[]; ticked: string[]; setId?: string; said?: import("./handover.ts").FindSaid; suggest?: string[]; handedOver?: import("./handover.ts").HandedItem[] }
   | { t: "pile_how_result"; clientId?: string; how: import("./handover.ts").HandHow }

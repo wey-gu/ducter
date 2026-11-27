@@ -253,6 +253,8 @@ type GroupHandView struct {
 	Review  string              `json:"review,omitempty"`
 	Cap     int                 `json:"cap,omitempty"`
 	Parts   map[string][]string `json:"parts,omitempty"`
+	// D638: Go was answered and opening failed: the card says why; the to-dos are back.
+	Error string `json:"error,omitempty"`
 }
 
 // ReviewChecks is a PR's checks: passed | failed (Failed of them) | running.
@@ -319,6 +321,8 @@ type PileHandReq struct {
 	Subject   string            `json:"subject,omitempty"`
 	BySubject bool              `json:"bySubject,omitempty"`
 	SetID     string            `json:"setId,omitempty"`
+	// D638: this Go came from the sheet: core answers at once, even for one to-do.
+	Sheet bool `json:"sheet,omitempty"`
 }
 
 // PileFindReq finds across the pile by words and meaning (Query), a 讲的是

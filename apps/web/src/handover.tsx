@@ -88,6 +88,8 @@ export const HS: {
 
 let findTimer: ReturnType<typeof setTimeout> | undefined;
 let howTimer: ReturnType<typeof setTimeout> | undefined;
+/** D638: Go was answered at once; this says it is still going if no answer came back. */
+let slowHandTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** The conversation's set cards: the ticks each one holds (until it is handed over). */
 const SETT = new Map<string, Set<string>>();
@@ -313,22 +315,27 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
     openHand({ door: "subject", subject: now });
     return true;
   }
-  if (f.t === "pile_result" && f.clientId && f.clientId === HS.cid && f.op === "hand") {
+  // D638: Go leaves the sheet at once; its answer settles the outbox even when the page that
+  // sent it is gone (a reload through a drop), and a failure is still said, never silent.
+  if (f.t === "pile_result" && f.op === "hand" && f.clientId) {
+    A.settleHand(f.clientId);
+    if (f.clientId !== HS.cid) {
+      if (!f.ok) A.toast(t("ho.hand.failed", f.error ?? t("newtask.err.failed")), undefined, 5200);
+      return true;
+    }
     HS.sending = false;
+    clearTimeout(slowHandTimer);
+    // The sheet is already closed: an answer only settles the toast, it never reopens anything.
+    if (A.sheet?.kind === "hand") closeHand();
     if (f.ok && f.asked) {
-      closeHand();
       A.toast(t("ho.handed.asked"), undefined, 4200);
       return true;
     }
     if (f.ok) {
-      const plan = HS.how && (HS.shape ?? suggestedShape(HS.how)) === "plan" && ticked().size > 1;
-      closeHand();
-      A.toast(plan ? t("ho.handed.plan", name()) : t("ho.handed", name()), undefined, 3600);
       if (HS.setId) SETT.delete(HS.setId);
       return true;
     }
-    HS.said = f.error ?? t("newtask.err.failed");
-    A.changed();
+    A.toast(t("ho.hand.failed", f.error ?? t("newtask.err.failed")), undefined, 5200);
     return true;
   }
   if (f.t === "group_review_result" && f.clientId && f.clientId === HR.cid) {
@@ -369,7 +376,8 @@ function subjectDo(op: SubjectOp, name: string, o: { refs?: string[]; to?: strin
 }
 const ownSubjects = () => (TS.frame?.pile?.subjects ?? []).map((s) => s.name);
 
-function go() {
+/** D638: Go (exported for its test): answers at once, so the sheet closes now. */
+export function go() {
   const refs = [...ticked()];
   if (HS.make !== undefined) return subjectDo("put", HS.make, { refs });
   if (!refs.length || HS.sending) return;
@@ -379,10 +387,12 @@ function go() {
   HS.said = undefined;
   // The per-to-do notes of the ticked ones only.
   const notes = Object.fromEntries(Object.entries(HS.notes).filter(([k, v]) => ticked().has(k) && v.trim()));
-  A.send({
+  const step = shape === "plan" && refs.length > 1;
+  A.sendHand({
     t: "pile_hand",
     refs,
     clientId: HS.cid,
+    sheet: true,
     ...(HS.note.trim() ? { note: HS.note.trim() } : {}),
     ...(Object.keys(notes).length ? { notes } : {}),
     ...(shape === "add" && how?.addTo ? { group: how.addTo.groupId } : shape && shape !== "add" && refs.length > 1 ? { shape: shape as HandShape } : {}),
@@ -392,7 +402,14 @@ function go() {
     ...(HS.bySubject ? { bySubject: true } : {}),
     ...(HS.setId ? { setId: HS.setId } : {}),
   });
-  A.changed();
+  // D638: the answer is a moment away (core makes the group and replies); the sheet closes
+  // now, so a slow read never holds the person. A dropped link keeps the Go in the outbox.
+  clearTimeout(slowHandTimer);
+  slowHandTimer = setTimeout(() => {
+    if (HS.sending) A.toast(t("ho.handed.slow", name()), undefined, 5200);
+  }, 4000);
+  closeHand();
+  A.toast(step ? t("ho.handed.plan", name()) : t("ho.handed", name()), undefined, 3600);
 }
 
 // ---------- drawn marks ----------
@@ -548,7 +565,7 @@ function ItemRow({ p, i }: { p: FoundItem; i: number }) {
             class="ho-itemnote"
             rows={2}
             value={HS.notes[p.item.ref] ?? ""}
-            placeholder={t("ho.item.note")}
+            placeholder={t("ho.item.note.ph")}
             aria-label={t("ho.item.note.label", p.item.title)}
             ref={(el) => void (el && HS.noteOpen.has(p.item.ref) && !HS.notes[p.item.ref] && document.activeElement !== el && el.focus())}
             onInput={(e) => (grow(e.target as HTMLTextAreaElement), (HS.notes[p.item.ref] = (e.target as HTMLTextAreaElement).value), A.changed())}
@@ -931,12 +948,12 @@ function GoButton({ wide }: { wide?: boolean }) {
   if (HS.make !== undefined)
     return (
       <div class="ho-go">
-        <Btn kind="primary" grow={wide} label={HS.make.trim() ? t("ho.make.go", HS.make.trim()) : t("ho.make.title")} disabled={!n || !HS.make.trim() || HS.sending} onClick={go} />
+        <Btn kind="primary" grow={wide} busy={HS.sending} label={HS.make.trim() ? t("ho.make.go", HS.make.trim()) : t("ho.make.title")} disabled={!n || !HS.make.trim()} onClick={go} />
       </div>
     );
   return (
     <div class="ho-go">
-      <Btn kind="primary" grow={wide} label={n > 1 ? t("ho.go", name(), n) : n === 1 ? t("ho.go.one", name()) : t("ho.title", name())} disabled={!n || HS.sending} onClick={go} />
+      <Btn kind="primary" grow={wide} busy={HS.sending} label={n > 1 ? t("ho.go", name(), n) : n === 1 ? t("ho.go.one", name()) : t("ho.title", name())} disabled={!n} onClick={go} />
       {n > 1 && shape && <span class="ho-go-sub">{shapeTitle(shape, how)}</span>}
     </div>
   );
@@ -1266,7 +1283,7 @@ function PartNote({ groupId, partId, live, slot }: { groupId: string; partId: st
       class="ho-itemnote"
       rows={2}
       value={v}
-      placeholder={t("ho.item.note")}
+      placeholder={t("ho.item.note.ph")}
       ref={(el) => void (el && PN.noteOpen.has(k) && !v && document.activeElement !== el && el.focus())}
       onInput={(e) => (grow(e.target as HTMLTextAreaElement), PN.notes.set(groupId, { ...notes, [partId]: (e.target as HTMLTextAreaElement).value }), A.changed())}
       onBlur={() => (PN.noteOpen.delete(k), A.changed())}
@@ -1491,8 +1508,18 @@ export function HandBlock({ g }: { g: TaskGroupView }) {
       )}
       {s === "failed" && (
         <div class="ho-making failed">
-          <b>{t("ho.plan.failed")}</b>
-          <span>{t("ho.plan.failed.line")}</span>
+          {h.error ? (
+            <>
+              <b>{t("ho.hand.error")}</b>
+              <span dir="auto">{h.error}</span>
+              <span class="muted">{t("ho.hand.error.back")}</span>
+            </>
+          ) : (
+            <>
+              <b>{t("ho.plan.failed")}</b>
+              <span>{t("ho.plan.failed.line")}</span>
+            </>
+          )}
         </div>
       )}
       {s === "review" && (

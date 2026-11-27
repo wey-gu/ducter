@@ -254,6 +254,7 @@ test("D396 find by words: the subject by code, the note beside it; the model's s
   expect(none.suggest.length).toBeGreaterThan(0);
   // A subject handed over leads the suggestions next time.
   const h = await b.ho.hand({ refs: ["acme/web#1001", "acme/web#1003"], subject: "错字", bySubject: true });
+  await b.ho.idle();
   expect(h).toMatchObject({ ok: true });
   expect((await b.ho.find({})).suggest[0]).toBe("错字");
 });
@@ -280,13 +281,15 @@ test("one to-do with a note: one task, the note quoted at the top of its brief, 
   const b = boot();
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398"], note: "验证去 haswell 上跑" });
+  await b.ho.idle();
   expect(r).toMatchObject({ ok: true, handed: 1 });
   const o = b.opened[0]!;
   expect(o.brief.startsWith("The person's note")).toBe(true);
   expect(o.brief).toContain("<person-note>\n验证去 haswell 上跑\n</person-note>");
   expect(o.brief).toContain('Fixes acme/mem#398');
   expect(o.place).toMatchObject({ kind: "repo", device: "w-haswell", repoPath: "/home/lin/mem" });
-  expect(b.ts.taskOf("acme/mem#398")?.taskId).toBe(r.taskId!);
+  // D638: Go answers before the task opens; the binding lands when it does.
+  expect(b.ts.taskOf("acme/mem#398")?.taskId).toBe("t1");
   expect(b.ts.pile.all().some((p) => p.item.ref === "acme/mem#398")).toBe(false);
   // Not lasting ("去", no "都"): no rule is asked.
   expect(decisions(b).some((d) => d.src?.kind === "where_rule")).toBe(false);
@@ -298,6 +301,7 @@ test("plan first: a read-only lead part; its typed plan becomes a card (no defau
   const found = await b.ho.find({ query: "distill" });
   const refs = [...found.ticked, "acme/mem#405"];
   const r = await b.ho.hand({ refs, note: "先别动数据库迁移。验证都去 haswell 上跑。", bySubject: true, shape: "plan", subject: "记忆提炼" });
+  await b.ho.idle();
   expect(r).toMatchObject({ ok: true, shape: "plan" });
   const g = () => b.core.taskGroups.get(r.groupId!)!;
   expect(g().name).toBe("记忆提炼");
@@ -362,6 +366,7 @@ test("plan first: Hold keeps it waiting; a reply goes to the plan's own task, wh
   await sorted(b);
   const found = await b.ho.find({ query: "distill" });
   const r = await b.ho.hand({ refs: found.ticked, bySubject: true });
+  await b.ho.idle();
   expect(r.shape).toBe("plan");
   await b.core.mcp.call({ role: "task", taskId: "t1" } as never, "plan_report", { side: [{ refs: found.ticked }] });
   report(b, "t1", "done", "好了");
@@ -383,6 +388,7 @@ test("side by side: three at a time, each bound to its own to-do; the next opens
   const h = await b.ho.how({ refs: small });
   expect(h.shape).toBe("side_by_side");
   const r = await b.ho.hand({ refs: small, shape: "side_by_side" });
+  await b.ho.idle();
   expect(r.ok).toBe(true);
   await until(() => b.opened.length === 3);
   await new Promise((res) => setTimeout(res, 30));
@@ -396,6 +402,7 @@ test("as one task: one task bound to all, its brief says Fixes each; the group s
   const b = boot();
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", note: "一个 PR" });
+  await b.ho.idle();
   expect(r.ok).toBe(true);
   expect(b.opened.length).toBe(1);
   expect(b.opened[0]!.brief).toContain('"Fixes acme/mem#398", "Fixes acme/mem#412"');
@@ -412,6 +419,7 @@ test("the conversation's set: a card under the partner's line with the do ones t
   const ev = b.core.log.read({ stream: "channel", kinds: ["todo_set"], limit: 5 });
   expect(ev.length).toBe(1);
   const r = await b.ho.hand({ refs: s.ticked, setId: s.setId, bySubject: true });
+  await b.ho.idle();
   expect(r.ok).toBe(true);
   const after = b.core.log.read({ stream: "channel", kinds: ["todo_set"], limit: 5 }).map((e) => e.body as Bodies["todo_set"]);
   expect(after.at(-1)!.groupId).toBe(r.groupId!);
@@ -422,9 +430,11 @@ test("adding later: into a live group still planning, the to-do goes to the plan
   await sorted(b);
   const found = await b.ho.find({ query: "distill" });
   const r = await b.ho.hand({ refs: found.ticked.slice(0, 4), bySubject: true, subject: "记忆提炼" });
+  await b.ho.idle();
   const h = await b.ho.how({ refs: [found.ticked[4]!], subject: "记忆提炼" });
   expect(h.addTo).toMatchObject({ groupId: r.groupId, name: "记忆提炼", planning: true });
   const add = await b.ho.hand({ refs: [found.ticked[4]!], group: r.groupId! });
+  await b.ho.idle();
   expect(add.ok).toBe(true);
   expect(b.told.at(-1)![0]).toBe("t1");
   expect(b.core.taskGroups.get(r.groupId!)!.hand!.items.length).toBe(5);
@@ -439,6 +449,7 @@ test("D395: the sheet's Where is the computer with the clone, never a server hom
   expect(h.where).toMatchObject({ device: "w-mac", name: "MacBook", why: "repo", hasRepo: true });
   expect(h.wheres.find((w) => w.device === "local")?.hasRepo).toBeFalsy();
   const r = await b.ho.hand({ refs: ["acme/mem#398"] });
+  await b.ho.idle();
   expect(r).toMatchObject({ ok: true, handed: 1 });
   expect(b.opened[0]!.place).toMatchObject({ kind: "repo", device: "w-mac", repoPath: "/Users/lin/dev/mem" });
 });
@@ -450,6 +461,7 @@ test("D395: no computer has it: the sheet's Where says it is cloned on the compu
   expect(h.where).toMatchObject({ device: "w-mac", name: "MacBook", clone: true });
   expect(h.where.hasRepo).toBeFalsy();
   await b.ho.hand({ refs: ["acme/mem#398"] });
+  await b.ho.idle();
   expect(b.opened[0]!.place).toMatchObject({ kind: "repo", device: "w-mac", clone: "acme/mem" });
 });
 
@@ -459,6 +471,7 @@ test("D415: as one task: titled by its own to-dos (the first, and how many more)
   const b = boot();
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", subject: "通用设置", bySubject: true });
+  await b.ho.idle();
   expect(r.ok).toBe(true);
   expect(b.opened[0]!.title).toBe("Automatic distillation: the error says nothing… 等 1 个");
   expect(b.opened[0]!.title).not.toContain("通用设置");
@@ -470,6 +483,7 @@ test("D415: as one task: titled by its own to-dos (the first, and how many more)
   expect(g.hand!.subject).toBe("通用设置");
   // One to-do: its own title and its own number on the branch.
   await b.ho.hand({ refs: ["acme/mem#377"] });
+  await b.ho.idle();
   expect(b.opened[1]!).toMatchObject({ title: "Distillation gets slow on very long threads", todo: "377" });
 });
 
@@ -479,6 +493,7 @@ test("D415: a note that asks to comment first: one card, nothing starts; Go comm
   const b = boot();
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398", "acme/mem#412"], shape: "one", note: NOTE });
+  await b.ho.idle();
   expect(r).toMatchObject({ ok: true, handed: 0 });
   expect(r.asked).toBeTruthy();
   expect(b.opened.length).toBe(0);
@@ -502,6 +517,7 @@ test("D415: 只开始，不留言 starts without a comment; inside a standing pe
   const b = boot();
   await sorted(b);
   const r = await b.ho.hand({ refs: ["acme/mem#398"], note: "先在 issue 里留言说一声再开始" });
+  await b.ho.idle();
   expect(decisions(b).find((d) => d.decisionId === r.asked)!.question).toBe("先在 acme/mem#398 下留一句，再开始？");
   b.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: r.asked!, option: "hold", by: "user" } });
   await until(() => b.opened.length === 1);
@@ -515,6 +531,7 @@ test("D415: 只开始，不留言 starts without a comment; inside a standing pe
   expect(b.core.standing.list().find((s) => s.action === "issue_comment")!.orgs).toEqual(["acme"]);
   const n = decisions(b).length;
   const r2 = await b.ho.hand({ refs: ["acme/mem#377"], note: "comment on the issue first saying my agent is on it" });
+  await b.ho.idle();
   expect(r2).toMatchObject({ ok: true, handed: 1 });
   expect(decisions(b).length).toBe(n);
   expect(b.gh.comments.map((c) => c.number)).toEqual([377]);
@@ -559,6 +576,7 @@ test("D415: own subjects: put, find by membership, take out, rename, merge, remo
   // Handed over as a set: the group carries the person's subject.
   const set = await b.ho.find({ subject: "通用设置" });
   const r = await b.ho.hand({ refs: set.ticked.slice(0, 2), subject: "通用设置", bySubject: true, shape: "side_by_side" });
+  await b.ho.idle();
   expect(b.core.taskGroups.get(r.groupId!)!.name).toBe("通用设置");
 });
 

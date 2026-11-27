@@ -3569,6 +3569,22 @@ class AppState {
     this.send(f);
   }
 
+  /**
+   * D638: the hand-over sheet's Go. Core answers it in a moment (the group is made, the tasks
+   * open after), so it is kept on this device like a message: a phone that dropped the link sends
+   * the same Go after the next welcome, and core answers one clientId once (never a second group).
+   */
+  sendHand(f: Extract<ClientFrame, { t: "pile_hand" }>) {
+    const device = this.glanceDevice || "local";
+    if (f.clientId) this.outbox.put({ kind: "hand", device, clientId: f.clientId, frame: f, at: Date.now() });
+    this.send(f);
+  }
+
+  /** D638: this Go reached the home (its answer came): it leaves the outbox. */
+  settleHand(clientId: string) {
+    this.outbox.drop((i) => i.kind === "hand" && i.clientId === clientId);
+  }
+
   /** D543: a card's answer that is safe to apply late (the home still checks the card is open). */
   private safeLate(d: DecisionState | undefined, option: "go" | "hold" | "reply"): boolean {
     // D340: a Go that deletes something is never sent late: the person looks again.
@@ -3613,6 +3629,10 @@ class AppState {
         continue;
       }
       if (sent.has(i.clientId)) continue;
+      if (i.kind === "hand") {
+        this.send(frameOf(i));
+        continue;
+      }
       if (i.kind === "send" && i.persona !== persona) continue; // another partner's: when its conversation is shown
       this.send(frameOf(i));
     }
@@ -3665,10 +3685,11 @@ class AppState {
         if (i.media?.length) sd.media = i.media;
         if (i.mode) sd.mode = i.mode;
         if (i.refs?.length) sd.refs = i.refs;
-      } else {
+      } else if (i.kind === "decide") {
         const d = this.S.decisions.get(i.decisionId);
         if (d && !d.resolved && !d.pending) d.pending = i.option;
       }
+      // A kept Go (kind "hand") has no row: its sheet is gone; it goes on the next welcome.
     }
   }
 

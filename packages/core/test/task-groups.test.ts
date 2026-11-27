@@ -215,3 +215,22 @@ test("groups and what is held survive a restart, and the line moves after it", a
   await again.pump();
   expect(r.opened.map((x) => x.title)).toEqual(["a", "b"]);
 });
+
+test("a held part that couldn't open is reported, never left waiting in silence (D638)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ducter-groups-"));
+  dirs.push(dir);
+  const failed: string[] = [];
+  const g = createTaskGroups({
+    dataDir: dir,
+    tasks: { get: () => undefined, list: () => [], onHand: () => ({ tasks: [], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 }, waiters: [] }), setState() {} } as never,
+    runner: () => ({ openTask: async () => { throw new Error("现在没有 AI agent 能接这个任务。"); } }) as never,
+    now: () => 1_700_000_000_000,
+    heldFailed: (_groupId, _key, error) => failed.push(error),
+  });
+  const grp = g.create("p", "记忆提炼", { order: "side_by_side", hand: { shape: "side_by_side", items: [], cap: 3 } });
+  g.hold(grp.id, [{ open: { persona: "p", title: "换表单", brief: "do it" } }]);
+  for (let i = 0; i < 200 && !failed.length; i++) await new Promise((r) => setTimeout(r, 10));
+  expect(failed).toEqual(["现在没有 AI agent 能接这个任务。"]);
+  // It stays held (and its line stopped by pump's break), but never silently: the card is told.
+  expect(g.get(grp.id)!.members.length).toBe(1);
+});

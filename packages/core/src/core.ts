@@ -939,7 +939,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D360: groups of tasks that are one piece of work; the later members of a line are held here.
   // D426: the lines one message asked for; a held part that opens takes its lines with it.
   let asksRef: Asks | undefined;
-  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group), heldOpened: (key, taskId) => asksRef?.heldOpened(key, taskId) });
+  const taskGroups = createTaskGroups({ dataDir, tasks, runner: () => runner, now: () => clock.now(), changed: () => onHandChanged(), opened: (taskId, bind, group) => taskSourcesRef?.handover?.opened(taskId, bind, group), heldOpened: (key, taskId) => asksRef?.heldOpened(key, taskId), heldFailed: (groupId, key, error, bind) => taskSourcesRef?.handover?.heldFailed(groupId, key, error, bind) });
   log.subscribe((e) => taskGroups.onEvent(e));
   // D454: 移走 / Remove: finished cards and groups the person took off On hand.
   const onHandAway = createOnHandAway({ dataDir, now: () => clock.now(), groupOf: (id) => taskGroups.of(id)?.id, changed: () => onHandChanged() });
@@ -2816,6 +2816,9 @@ export function startCore(opts: CoreOptions = {}): Core {
         if (!runner) throw new Error("Tasks can't run right now.");
         return runner.openTask(input);
       },
+      // D638: the New task composer's early open (D120): the card stands at once (queued,
+      // provisioning) and its brief reaches the agent when the to-dos have been read.
+      ...(runner?.openTaskEarly ? { openEarly: (input, brief) => runner!.openTaskEarly!(input, brief) } : {}),
       tell: (taskId, text) => void runner?.send(taskId, text, undefined, "ducter").catch((e) => console.warn(`[core] couldn't tell ${taskId} about its hand-over:`, (e as Error).message)),
     },
     ...(srcTesting ? { ghRun: async () => ({ code: 127, out: "", err: "", missing: true as const }), home: join(dataDir, "no-home") } : {}),

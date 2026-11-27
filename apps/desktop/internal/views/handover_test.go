@@ -169,14 +169,40 @@ func TestHandSheetHandsOverWithNoteAndShape(t *testing.T) {
 	if !ok {
 		t.Fatalf("no pile_hand: %+v", *sent)
 	}
-	if len(r.Refs) != 7 || r.Shape != "plan" || r.Note != memNote(i18n.ZH) || r.Notes["acme/mem#405"] == "" || !r.BySubject || r.Subject != "记忆提炼" || r.Device != "" {
+	if len(r.Refs) != 7 || r.Shape != "plan" || r.Note != memNote(i18n.ZH) || r.Notes["acme/mem#405"] == "" || !r.BySubject || r.Subject != "记忆提炼" || r.Device != "" || !r.Sheet {
 		t.Fatalf("pile_hand: %+v", r)
 	}
-	// The home took it: the sheet goes.
+	// D638: core answers at once: the sheet leaves the screen on Go, and the answer only
+	// settles the toast (it never reopens the sheet).
+	if app.ho.open {
+		t.Fatal("the sheet waited on the slow part")
+	}
+	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "交给小鸭了：先出个方案") {
+		t.Fatalf("the Go's toast: %s", all)
+	}
 	app.Receive(protocol.ServerFrame{T: "pile_result", Sources: &protocol.SourcesFrame{ClientID: r.ClientID, PileOp: "hand", OK: true, Done: 7, GroupID: "g1"}})
 	tt.Frame()
 	if app.ho.open {
-		t.Fatal("the sheet stayed open after the hand-over")
+		t.Fatal("the sheet reopened after the answer")
+	}
+}
+
+// A failure after the answer is said, never silent, and opens nothing again (D638).
+func TestHandSheetLateFailureSaysWhy(t *testing.T) {
+	app, sent, tt := handApp(t, i18n.ZH, 1400, 1000, "")
+	app.handGo()
+	tt.Frame()
+	r, ok := lastSent[protocol.PileHandReq](*sent)
+	if !ok {
+		t.Fatalf("no pile_hand: %+v", *sent)
+	}
+	app.Receive(protocol.ServerFrame{T: "pile_result", Sources: &protocol.SourcesFrame{ClientID: r.ClientID, PileOp: "hand", OK: false, Error: "现在没有 AI agent 能接这个任务。"}})
+	tt.Frame()
+	if app.ho.open {
+		t.Fatal("a late failure reopened the sheet")
+	}
+	if all := strings.Join(tt.Texts(), " | "); !strings.Contains(all, "没交出去：现在没有 AI agent 能接这个任务。") {
+		t.Fatalf("the failure's toast: %s", all)
 	}
 }
 

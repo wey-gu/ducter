@@ -264,7 +264,7 @@ func (a *App) handPlanCard(c *ui.Context, d *store.DecisionState, inGroup bool) 
 					}
 					n := notes[part]
 					if a.planNoteOpen(d.DecisionID, part) || n != "" {
-						ta := ui.TextArea(c.Key("nt-in"), &n).Lines(1, 3).MinHeight(0).Placeholder(a.L.T("hand.itemnote")).Label(a.L.T("hand.itemnote.label")).
+						ta := ui.TextArea(c.Key("nt-in"), &n).Lines(1, 3).MinHeight(0).Placeholder(a.L.T("hand.itemnote.ph")).Label(a.L.T("hand.itemnote.label")).
 							Background(t.Surface).Radius(10).Padding(t.S1+2, t.S2+2).FontSize(t.SM)
 						if ta.Changed() {
 							notes[part] = n
@@ -414,6 +414,8 @@ func (a *App) handGroupFacts(c *ui.Context, g *protocol.TaskGroup, held int) {
 	hv := g.Hand
 	state, ink := "", t.InkMuted
 	switch {
+	case hv.Error != "":
+		state, ink = a.L.T("hand.hand.error"), t.Failed.Ink
 	case hv.Review == "sent":
 		state, ink = a.L.T("hand.g.sent"), t.Done.Ink
 	case hv.Review == "ready":
@@ -440,6 +442,12 @@ func (a *App) handGroupFacts(c *ui.Context, g *protocol.TaskGroup, held int) {
 			uiText(c.Key("who"), harnessName(hv.Harness)).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
+	if hv.Error != "" {
+		ui.Column(c.Key("error")).Gap(2).Padding(0, 0, t.S1, 0).Children(func() {
+			uiText(c.Key("why"), hv.Error).FontSize(t.XS).TextColor(t.Failed.Ink).Wrap()
+			uiText(c.Key("back"), a.L.T("hand.hand.error.back")).FontSize(t.XS).TextColor(t.InkMuted).Wrap()
+		})
+	}
 	// The plan itself lives in the conversation; here, Go stays in reach and 看方案 takes you to it.
 	if d := a.planDecision(g); d != nil && (hv.Plan.State == "ready" || hv.Plan.State == "held") && d.Pending == "" {
 		ui.Row(c.Key("plan-acts")).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {

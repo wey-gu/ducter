@@ -33,7 +33,8 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
   const out: BoardGroup[] = [];
   for (const g of groups ?? []) {
     // D385: a hand-over's group stands with one part too (its plan, or as one task).
-    if (g.members.length < 2 && !(g.hand && g.members.length)) continue;
+    // D638: a hand-over that failed before its first part opened says so on its card (0 rows).
+    if (g.members.length < 2 && !(g.hand && (g.members.length || g.hand.error))) continue;
     if (persona && g.persona && g.persona !== persona) continue;
     // D385: plan first's own part is the plan, said by the card's plan block, never a numbered part.
     const plan = g.hand?.plan?.taskId;
@@ -50,7 +51,8 @@ export function boardGroups(groups: TaskGroupView[] | undefined, laneOf: (taskId
     // fixture): its plan or review waiting is 等你, its tasks on the board set its lane, parts held in
     // line alone stand in 在做 (each saying where it waits), nothing on the board and nothing in line
     // is not listed.
-    const stand = g.hand ? handGroupStand(g.hand, lanes.length, rows.filter((r) => r.kind === "held").length) : lanes.length ? "board" : "none";
+    // D638: a failed hand-over stands in 等你, where the person will look, even with no part yet.
+    const stand = g.hand?.error ? "needs" : g.hand ? handGroupStand(g.hand, lanes.length, rows.filter((r) => r.kind === "held").length) : lanes.length ? "board" : "none";
     if (stand === "none") continue;
     const ids = new Set(all.filter((id) => laneOf(id) >= 0));
     const done = rows.filter((r) => markOf(r) === "done").length;
@@ -118,6 +120,9 @@ export function markOf(r: MemberRow): "done" | "working" | "needs" | "waiting" |
  * Undefined while any part works, needs the person or waits.
  */
 export function finishedGroup(b: BoardGroup): { name: string; groupId: string; taskIds: string[]; failedIds: string[]; openId?: string } | undefined {
+  // D638: a hand-over that failed with nothing opened can still be taken off On hand (its to-dos
+  // are back on the pile already).
+  if (!b.rows.length) return b.g.hand?.error ? { name: b.g.name, groupId: b.g.id, taskIds: [], failedIds: [] } : undefined;
   const marks = b.rows.map(markOf);
   if (marks.some((m) => m === "working" || m === "needs" || m === "waiting")) return undefined;
   if (marks.includes("held") && !b.stopped) return undefined;

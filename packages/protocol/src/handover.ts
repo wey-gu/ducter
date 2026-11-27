@@ -287,6 +287,11 @@ export interface GroupHandView {
   parts?: Record<string, string[]>;
   /** D415: the comment the note asked for went on these first (each part's brief says so). */
   commented?: { refs: string[]; text: string };
+  /**
+   * D638: Go was answered, then opening failed (no agent, the computer away, a clone that
+   * couldn't be made). The card says why; the to-dos are back on the pile to hand over again.
+   */
+  error?: string;
 }
 
 // ---------- review together ----------

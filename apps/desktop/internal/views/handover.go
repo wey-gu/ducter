@@ -68,7 +68,10 @@ type handState struct {
 	step                   int    // narrow: 0 what, 1 note and how
 	sending                bool
 	said                   string
-	focusFind              bool
+	// D638: when Go was sent (the sheet closes at once; after a few
+	// seconds the toast says it is still being handed over).
+	goAt      time.Time
+	focusFind bool
 	// seeded: the ticks came with the door (a set card's) and the first answer keeps them.
 	seeded bool
 	// D415: the person's own subjects. making: + 新的分类 (makeName over the
@@ -210,9 +213,15 @@ func (a *App) takeHand() {
 		}
 	}
 	a.takeSubject()
+}
+
+// takeHandGo reads Go's answer, also after the sheet closed at once (D638): the toast said
+// it was handed over; a later failure is said, never left silent, and the to-dos are back.
+func (a *App) takeHandGo() {
+	h := &a.ho
 	if r := a.S.SourceItems[h.goCid]; r != nil && h.goCid != "" {
 		delete(a.S.SourceItems, h.goCid)
-		h.sending = false
+		h.sending, h.goAt = false, time.Time{}
 		if r.OK {
 			h.open = false
 			// D415: the note asked to comment first: a card asks; nothing started yet.
@@ -220,9 +229,16 @@ func (a *App) takeHand() {
 				a.toast(a.L.T("hand.asked.comment"))
 			}
 		} else {
-			h.said = r.Error
-			if h.said == "" {
-				h.said = a.L.T("newtask.err.failed.bare")
+			msg := r.Error
+			if msg == "" {
+				msg = a.L.T("newtask.err.failed.bare")
+			}
+			// The sheet is gone (Go closed it): the failure is the toast; the card, where there is one,
+			// says it too. It never reopens.
+			if h.open {
+				h.said = msg
+			} else {
+				a.toast(a.L.T("hand.hand.failed", msg))
 			}
 		}
 	}
@@ -341,9 +357,18 @@ func (a *App) handGo() {
 	}
 	a.nextClient++
 	h.goCid = fmt.Sprintf("handgo%d", a.nextClient)
-	req.ClientID = h.goCid
-	h.sending, h.said = true, ""
+	req.ClientID, req.Sheet = h.goCid, true
+	plan := len(refs) > 1 && h.handShape() == "plan"
+	h.sending, h.said, h.goAt = true, "", a.Now()
 	a.send(req)
+	// D638: core makes the group and answers in a moment; the sheet closes now, so a slow
+	// read never holds the person. The answer only settles the toast.
+	h.open = false
+	if plan {
+		a.toast(a.L.T("hand.handed.plan", a.personaName()))
+	} else {
+		a.toast(a.L.T("hand.handed", a.personaName()))
+	}
 }
 
 // sheetTop is how far a sheet keeps from the window's top: below the top
@@ -372,6 +397,15 @@ func sheetBack(c *ui.Context, back ui.Element, wh float32) float32 {
 // handSheet is the sheet over the window.
 func (a *App) handSheet(c *ui.Context) {
 	h := &a.ho
+	a.takeHandGo()
+	if h.sending && !h.goAt.IsZero() {
+		if wait := 4*time.Second - a.Now().Sub(h.goAt); wait > 0 {
+			c.After(wait + 10*time.Millisecond)
+		} else {
+			h.goAt = time.Time{}
+			a.toast(a.L.T("hand.handed.slow", a.personaName()))
+		}
+	}
 	if !h.open {
 		return
 	}
@@ -999,7 +1033,7 @@ func (a *App) handItem(c *ui.Context, it protocol.FoundItem) {
 			ui.Column(c.Key("note")).Padding(0, 14, 10, 50).Children(func() {
 				if h.noteOpen[ref] || h.notes[ref] != "" {
 					n := h.notes[ref]
-					ta := ui.TextArea(c.Key("note-in"), &n).Lines(1, 4).MinHeight(0).Placeholder(a.L.T("hand.itemnote")).Label(a.L.T("hand.itemnote.label")).
+					ta := ui.TextArea(c.Key("note-in"), &n).Lines(1, 4).MinHeight(0).Placeholder(a.L.T("hand.itemnote.ph")).Label(a.L.T("hand.itemnote.label")).
 						Background(t.SurfaceSunken).Radius(12).Padding(t.S2, t.S3).FontSize(t.SM).LineHeight(a.leading(1.45))
 					if ta.Changed() {
 						h.notes[ref] = n

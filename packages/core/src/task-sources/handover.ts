@@ -58,6 +58,7 @@ const W = {
     commentHold: "只开始，不留言",
     commentDefault: "我的 Ducter agent 开始做这个了。",
     commented: "按你说的，先在 {labels} 下留了言：「{text}」，然后开始做。",
+    failed: "没交出去：{error}。待办回到列表了，可以再交一次。",
   },
   en: {
     groupOf: "{n} handed to {name}",
@@ -81,6 +82,7 @@ const W = {
     commentHold: "Start without commenting",
     commentDefault: "My Ducter agent is starting on this.",
     commented: "As you said, I commented on {labels} first (\u201c{text}\u201d), then started.",
+    failed: "Couldn't hand it over: {error}. The to-dos are back on your list; hand them over again.",
   },
 };
 const fill = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ""));
@@ -115,6 +117,13 @@ export interface HandoverDeps {
   addRule?: (r: { text: string; harness: string; match: string[]; device?: string; kinds?: string[] }) => void;
   /** Opens a task now (the runner's openTask). */
   open: (input: HeldOpen) => Promise<TaskCard>;
+  /**
+   * D638: opens a task now while its brief is still being written (the New task composer's
+   * early open, D120: runner.openTaskEarly). The card is real from this moment (queued,
+   * provisioning) and the brief arrives to the agent when it is ready. Absent: open() with the
+   * brief already written (a host without an early open).
+   */
+  openEarly?: (input: HeldOpen, brief: Promise<string>) => Promise<TaskCard>;
   /** Tells a task something in Ducter's words (runner.send). */
   tell: (taskId: string, text: string) => void;
   /** Binds a task to its to-dos (the first is its chip; all are its own). */
@@ -391,7 +400,7 @@ export interface Handover {
    * D415: commented: the comment the note asked for already went (or was declined: refs empty), so
    * it isn't asked again; asked: the hand-over waits on that card (nothing started yet).
    */
-  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string }>;
+  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string; planning?: boolean }>;
   /** D415: 先在这几个下面留一句，再开始？ answered. */
   answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void>;
   /** The conversation's find: a set card under the partner's line. */
@@ -412,6 +421,10 @@ export interface Handover {
   answerRule(card: Bodies["decision"], r: Bodies["decision_resolved"]): void;
   /** A held part of a hand-over group opened as this task: bound to its to-dos. */
   opened(taskId: string, bind: SourceItemRef[], group: TaskGroupView): void;
+  /** D638: the slow parts Go started after its answer are done (tests; a clean stop). */
+  idle(): Promise<void>;
+  /** D638: a held part of a group could not open: the card says it and the to-dos go back. */
+  heldFailed(groupId: string, key: string, error: string, bind?: SourceItemRef[]): void;
 }
 
 export function createHandover(d: HandoverDeps): Handover {
@@ -432,6 +445,31 @@ export function createHandover(d: HandoverDeps): Handover {
   const newId = (p: string) => `${p}${randomBytes(5).toString("hex")}`;
   const iso = () => new Date(d.now()).toISOString();
   const handled = new Set<string>();
+  /** D638: the slow parts Go started after its reply (idle waits them; nothing else does). */
+  const running = new Set<Promise<void>>();
+
+  /**
+   * D638: what the sheet's pile_how already answered for the same refs and note. Go reuses it
+   * instead of reading New task's places and the repository's folders again; the sheet asks its how
+   * a moment before Go, so the reuse is the normal path, never a second slow read. Kept in memory:
+   * a home restart simply computes it again (after Go's reply).
+   */
+  type PreparedHow = { how: HandHow; places: PlaceChoice[]; placesMs: number; at: number };
+  const PREP_TTL_MS = 10 * 60_000;
+  const prepared = new Map<string, PreparedHow>();
+  const prepKey = (o: { refs: string[]; note?: string; bySubject?: boolean; subject?: string }) => `${[...o.refs].sort().join(",")}|${(o.note ?? "").trim()}|${o.bySubject ? "s" : ""}|${o.subject ?? ""}`;
+  function keepPrepared(key: string, how: HandHow, places: PlaceChoice[], placesMs: number) {
+    prepared.set(key, { how, places, placesMs, at: Date.now() });
+    while (prepared.size > 32) prepared.delete(prepared.keys().next().value!);
+  }
+  const preparedFor = (key: string) => {
+    const had = prepared.get(key);
+    return had && Date.now() - had.at < PREP_TTL_MS ? had : undefined;
+  };
+
+  /** D638: real elapsed time for the per-step line the lead reads (console.debug, never the Log). */
+  const nowMs = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const took = (from: number) => Math.round(nowMs() - from);
 
   const byRef = (ref: string) => d.pile.all().find((p) => p.item.ref === ref);
   async function full(ref: string): Promise<SourceItem | undefined> {
@@ -661,14 +699,17 @@ export function createHandover(d: HandoverDeps): Handover {
 
   // ---------- how ----------
 
-  async function how(o: { refs: string[]; note?: string; bySubject?: boolean; subject?: string }): Promise<HandHow> {
-    const items = (await Promise.all(o.refs.slice(0, HAND_MAX).map(async (r) => byRef(r)?.item ?? (await full(r))))).filter((i): i is SourceItem => !!i);
+  async function how(o: { refs: string[]; note?: string; bySubject?: boolean; subject?: string; items?: SourceItem[]; subjects?: Map<string, PileItem | undefined> }): Promise<HandHow> {
+    const t0 = nowMs();
+    const items = o.items?.slice(0, HAND_MAX) ?? (await Promise.all(o.refs.slice(0, HAND_MAX).map(async (r) => byRef(r)?.item ?? (await full(r))))).filter((i): i is SourceItem => !!i);
     const facts = { items: items.map((i) => ({ kind: i.kind, ...(i.where ? { where: i.where } : {}) })), ...(o.bySubject ? { bySubject: true } : {}) };
     const shape = defaultShape(facts);
     const shapes: HandShape[] = items.length < 2 ? [] : (["plan", ...(canBeOne(facts.items) ? (["one"] as const) : []), "one_by_one", "side_by_side"] as HandShape[]);
     const repos = [...new Set(items.filter((i) => i.kind === "github").map((i) => i.where ?? ""))].filter(Boolean);
     const repo = repos.length === 1 && items.every((i) => i.kind === "github") ? repos[0] : undefined;
+    const tPlaces = nowMs();
     const { places, harnesses } = await d.places().catch(() => ({ places: [] as PlaceChoice[], harnesses: [] as string[] }));
+    const placesMs = took(tPlaces);
     const comps = d.computers();
     const homeOf = comps[0] ?? { device: "local", name: "" };
     const onDevice = (dev: string) => places.filter((p) => (p.place.kind === "repo" ? p.place.device || "local" : "") === dev);
@@ -713,14 +754,18 @@ export function createHandover(d: HandoverDeps): Handover {
     const who: HandWho = rule && !rule.notice ? { harness: rule.harness, why: "rule", said: rule.text } : nt?.agent ? { harness: nt.agent, why: "default" } : { why: "usual" };
     let addTo: HandHow["addTo"];
     const subj = o.subject ?? (() => {
-      const ss = new Set(o.refs.map((r) => byRef(r)?.subject).filter(Boolean).map((s) => subjectKey(s!)));
-      return ss.size === 1 ? byRef(o.refs[0]!)?.subject : undefined;
+      const of = (i: SourceItem) => o.subjects?.get(i.ref)?.subject ?? byRef(i.ref)?.subject;
+      const ss = new Set(items.map(of).filter(Boolean).map((s) => subjectKey(s!)));
+      return ss.size === 1 ? of(items[0]!) : undefined;
     })();
     if (subj) {
       const g = groups()?.onSubject(d.persona(), subj);
       if (g) addTo = { groupId: g.id, name: g.name, n: g.members.length, planning: !!g.hand?.plan && g.hand.plan.state !== "going" };
     }
-    return { ...(shape ? { shape } : {}), shapes, ...(repo ? { repo } : {}), ...(addTo ? { addTo } : {}), where, wheres, who, whos: [...new Set(harnesses)], cap: HAND_CAP, ...(said && o.note && lastingWhere(o.note) ? { lasting: true } : {}) };
+    const out: HandHow = { ...(shape ? { shape } : {}), shapes, ...(repo ? { repo } : {}), ...(addTo ? { addTo } : {}), where, wheres, who, whos: [...new Set(harnesses)], cap: HAND_CAP, ...(said && o.note && lastingWhere(o.note) ? { lasting: true } : {}) };
+    keepPrepared(prepKey(o), out, places, placesMs);
+    console.debug(`[handover] how ${o.refs.length} refs: ${took(t0)}ms (places ${placesMs}ms, ${places.length} places, ${repos.length} repos)`);
+    return out;
   }
 
   // ---------- hand ----------
@@ -797,154 +842,329 @@ export function createHandover(d: HandoverDeps): Handover {
   }
 
   async function hand(o: HandArgs): ReturnType<Handover["hand"]> {
+    const tReply = nowMs();
+    const lang = d.lang();
+    const all = d.pile.all();
+    const known = new Map(all.map((p) => [p.item.ref, p.item]));
+    // Cheap validation, from what core already holds: refs not taken, not closed, at most HAND_MAX.
     const refs = [...new Set(o.refs)].slice(0, HAND_MAX).filter((r) => !d.pile.taken(r));
-    const items = (await Promise.all(refs.map(full))).filter((i): i is SourceItem => !!i && i.state !== "closed");
+    const items = refs.map((r) => known.get(r)).filter((i): i is SourceItem => !!i && i.state !== "closed");
     if (!items.length) return { ok: false, handed: 0, error: "Those are taken already, or closed." };
     const note = o.note?.trim().slice(0, HAND_NOTE_MAX) || undefined;
-    // D415: the note asks to tell the issues first: inside a standing permission (D413) it goes now,
+    // D415: the note asks to tell the issues first: inside a standing permission (D413) it goes first,
     // else one card asks (留言并开始 / 只开始，不留言) and nothing starts until it is answered.
     const ask = o.commented === undefined ? commentFirst(note) : undefined;
     const targets = ask ? items.filter(commentable) : [];
+    let standing: { text: string; covered: { id: string; text: string }[] } | undefined;
     if (ask && targets.length) {
       const lang0 = d.lang();
       const text = (ask.text ?? W[lang0].commentDefault).slice(0, 300);
       const covered = d.commentAllowed ? targets.map((i) => d.commentAllowed!(i.ref)) : [];
-      if (covered.length === targets.length && covered.every(Boolean)) {
-        const went = await commentOn(targets, text, { by: "rule", standing: covered[0]! });
-        return hand({ ...o, commented: went });
+      if (covered.length === targets.length && covered.every(Boolean)) standing = { text, covered: covered as { id: string; text: string }[] };
+      else {
+        const decisionId = newId("d_");
+        const w = W[lang0];
+        st.waiting = { ...(st.waiting ?? {}), [decisionId]: { ...o, text } };
+        d.pile.hold(items.map((i) => i.ref));
+        save();
+        d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: targets.length === 1 ? fill(w.commentQ1, { label: `${targets[0]!.where ?? ""}${targets[0]!.label}` }) : fill(w.commentQ, { n: targets.length }), goLabel: w.commentGo, holdLabel: w.commentHold, defaultOption: "hold", reversible: false, src: { kind: "hand_comment", item: refOfItem(targets[0]!), items: targets.map((i) => ({ item: refOfItem(i), text })), text, ...(note ? { quote: note.slice(0, 200) } : {}) } } });
+        console.debug(`[handover] hand reply ${took(tReply)}ms: ${items.length} to-dos, asks about the comment first`);
+        return { ok: true, handed: 0, asked: decisionId };
       }
-      const decisionId = newId("d_");
-      const w = W[lang0];
-      st.waiting = { ...(st.waiting ?? {}), [decisionId]: { ...o, text } };
-      d.pile.hold(items.map((i) => i.ref));
-      save();
-      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: targets.length === 1 ? fill(w.commentQ1, { label: `${targets[0]!.where ?? ""}${targets[0]!.label}` }) : fill(w.commentQ, { n: targets.length }), goLabel: w.commentGo, holdLabel: w.commentHold, defaultOption: "hold", reversible: false, src: { kind: "hand_comment", item: refOfItem(targets[0]!), items: targets.map((i) => ({ item: refOfItem(i), text })), text, ...(note ? { quote: note.slice(0, 200) } : {}) } } });
-      return { ok: true, handed: 0, asked: decisionId };
     }
     const notes: Record<string, string> = {};
     for (const [k, v] of Object.entries(o.notes ?? {})) if (typeof v === "string" && v.trim()) notes[k] = v.trim().slice(0, HAND_ITEM_NOTE_MAX);
-    const h = await how({ refs: items.map((i) => i.ref), ...(note ? { note } : {}), ...(o.bySubject ? { bySubject: true } : {}), ...(o.subject ? { subject: o.subject } : {}) });
-    // D396: a subject handed over comes first among the words field's suggestions next time (saved with the hand-over's own state below).
+    // D396: a subject handed over comes first among the words field's suggestions next time.
     if (o.subject?.trim()) st.recent = [o.subject.trim().slice(0, 40), ...(st.recent ?? []).filter((s) => subjectKey(s) !== subjectKey(o.subject!))].slice(0, SUGGEST_MAX);
-    const device = o.device && d.computers().some((c) => c.device === o.device) ? o.device : h.where.device;
-    const devName = d.computers().find((c) => c.device === device)?.name ?? device;
+    const liveRefs = items.map((i) => i.ref);
+    // The verdicts and subject are read before anything is held (the pile hides held to-dos from all()).
+    const verdicts = new Map(liveRefs.map((r) => [r, byRef(r)]));
+    const subjects = new Set(items.map((i) => verdicts.get(i.ref)?.subject).filter(Boolean).map((s) => subjectKey(s!)));
+    const subject = o.subject?.trim() || (subjects.size === 1 ? verdicts.get(items[0]!.ref)?.subject : undefined);
+    const comps = d.computers();
+    // The shape is code's table, not a model's: cheap from the refs alone.
+    const facts = { items: items.map((i) => ({ kind: i.kind, ...(i.where ? { where: i.where } : {}) })), ...(o.bySubject ? { bySubject: true } : {}) };
+    const defShape = defaultShape(facts);
+    const offered: HandShape[] = items.length < 2 ? [] : ["plan", ...(canBeOne(facts.items) ? (["one"] as const) : []), "one_by_one", "side_by_side"];
+    const shape: HandShape | undefined = items.length < 2 ? undefined : o.shape && offered.includes(o.shape) ? o.shape : (defShape ?? "side_by_side");
+    // The how the sheet already asked for (same refs and note): no second read of places and where.
+    const key = prepKey({ refs: liveRefs, ...(note ? { note } : {}), ...(o.bySubject ? { bySubject: true } : {}), ...(o.subject ? { subject: o.subject } : {}) });
+    const prep = preparedFor(key);
+    const device = o.device && comps.some((c) => c.device === o.device) ? o.device : prep?.how.where.device;
+    const devName = device ? (prep?.how.wheres.find((x) => x.device === device)?.name ?? comps.find((c) => c.device === device)?.name ?? device) : undefined;
     // D510: New tasks start's agent is never a pin: each task's pick honours it where it can run.
-    const harness = o.harness || (h.who.why === "default" ? undefined : h.who.harness);
-    const { places } = await d.places().catch(() => ({ places: [] as PlaceChoice[] }));
-    const lang = d.lang();
+    const harness = o.harness || (prep?.how.who.why === "default" ? prep.how.who.harness : undefined);
     const persona = d.persona();
-    const verdict = (i: SourceItem) => byRef(i.ref);
-    const found = await foundOn(items, device);
-    const input = (its: SourceItem[], o2: { itemNote?: string; title?: string; brief?: string }): HeldOpen => {
-      const place = placeOn(its[0]!, device, places, found);
-      return {
-        ...todoOf(place, its),
-        persona,
-        // D415: a task is titled by its own to-do (several: the first and how many more), never the subject.
-        title: titleOf(o2.title || oneTitle(its, lang)),
-        brief: o2.brief ?? partBrief(its, { ...(note ? { note } : {}), ...(o2.itemNote ? { itemNote: o2.itemNote } : {}), verdicts: its.map(verdict), ...(o.commented ? { commented: o.commented } : {}) }),
-        ...(place ? { place } : {}),
-        project: projectOf(place, places),
-        ...(harness ? { harness } : {}),
-        language: lang,
-        origin: "you",
-      };
-    };
-    const askRule = (used?: string) => {
-      if (!h.lasting || h.where.why !== "note" || device !== h.where.device || !note) return;
-      const key = `${device}|${note.slice(0, 80)}`;
-      if (st.asked.includes(key)) return;
-      st.asked.push(key);
-      if (st.asked.length > 50) st.asked.shift();
-      const decisionId = newId("d_");
-      const w = W[lang];
-      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.whereQ, { computer: devName }), goLabel: w.whereGo, holdLabel: w.whereHold, defaultOption: "hold", reversible: false, src: { kind: "where_rule", item: refOfItem(items[0]!), device, deviceName: devName, quote: note.slice(0, 200), ...(harness || used ? { harness: harness || used } : {}) } } });
-    };
-    const markSet = (groupId?: string, taskId?: string) => {
-      if (!o.setId) return;
-      const s = st.sets.find((x) => x.setId === o.setId);
-      if (!s) return;
-      s.groupId = groupId ?? taskId ?? "task";
-      d.log.append({ stream: "channel", origin: "partner", kind: "todo_set", body: s });
+    const job: Job = { kind: "single", items, ...(note ? { note } : {}), notes, ...(standing ? { standing, targets } : {}), ...(o.commented ? { commented: o.commented } : {}), ...(o.setId ? { setId: o.setId } : {}), ...(o.bySubject ? { bySubject: true } : {}), ...(o.subject ? { subject: o.subject } : {}), ...(device ? { device } : {}), ...(harness ? { harness } : {}), ...(shape ? { shape } : {}), ...(subject ? { subject } : {}), verdicts, tReply, times: {} };
+    const settle = (what: Job) => {
+      const p = finish(what)
+        .catch((err) => console.warn("[handover] the hand-over's slow part failed:", (err as Error).message))
+        .finally(() => running.delete(p));
+      running.add(p);
     };
 
     // Into a live group (加进「{group}」): its plan reads them, or they join its line.
     if (o.group) {
       const g = groups()?.get(o.group);
-      if (!g?.hand) return { ok: false, handed: 0, error: "That group isn't there any more." };
-      const its = items.map(refOfItem);
-      groups()!.setHand(g.id, { items: [...g.hand.items, ...its] });
-      if (g.hand.plan && g.hand.plan.state !== "going") {
-        d.pile.hold(items.map((i) => i.ref));
-        d.tell(g.hand.plan.taskId, `The person added ${items.length} more to this hand-over. Read them too and plan again (plan_report, then report_to_main done):\n${items.map((i) => `- ${i.kind === "github" ? `${i.where}${i.label}` : i.ref}: "${i.title}"`).join("\n")}${note ? `\n${noteBlock(note, undefined)}` : ""}`);
-        groups()!.setHand(g.id, { plan: { ...g.hand.plan, state: "planning" } });
-      } else {
-        d.pile.hold(items.map((i) => i.ref));
-        groups()!.hold(g.id, items.map((i) => ({ open: input([i], { ...(notes[i.ref] ? { itemNote: notes[i.ref] } : {}) }), bind: [refOfItem(i)] })));
-      }
-      markSet(g.id);
+      if (!g?.hand || g.hand.error) return { ok: false, handed: 0, error: "That group isn't there any more." };
+      groups()!.setHand(g.id, { items: [...g.hand.items, ...items.map(refOfItem)] });
+      d.pile.hold(liveRefs);
       save();
-      return { ok: true, groupId: g.id, handed: items.length };
+      settle({ ...job, kind: "add", g });
+      console.debug(`[handover] hand reply ${took(tReply)}ms: ${items.length} added to "${g.name}"${prep ? ", how cached" : ", how after the reply"}`);
+      return { ok: true, handed: items.length, groupId: g.id };
     }
 
-    // One to-do: one task, as before, with the note and where.
+    // One to-do: one task, with the note and where (its card opens as soon as it can).
     if (items.length === 1) {
-      const i = items[0]!;
-      try {
-        const c = await d.open(input([i], { ...(notes[i.ref] ? { itemNote: notes[i.ref] } : {}) }));
-        d.bind(c.taskId, [refOfItem(i)]);
-        d.pile.handed(i.ref, c.taskId);
-        askRule(c.harness);
-        markSet(undefined, c.taskId);
-        save();
-        return { ok: true, taskId: c.taskId, handed: 1 };
-      } catch (err) {
-        return { ok: false, handed: 0, error: (err as Error).message };
-      }
+      d.pile.hold(liveRefs);
+      save();
+      settle(job);
+      console.debug(`[handover] hand reply ${took(tReply)}ms: 1 to-do${prep ? ", how cached" : ", how after the reply"}`);
+      return { ok: true, handed: 1, planning: false };
     }
 
     const g0 = groups();
     if (!g0) return { ok: false, handed: 0, error: "Tasks can't run right now." };
-    const shape = o.shape && h.shapes.includes(o.shape) ? o.shape : (h.shape ?? "side_by_side");
-    const subjects = new Set(items.map((i) => verdict(i)?.subject).filter(Boolean).map((s) => subjectKey(s!)));
-    const subject = o.subject?.trim() || (subjects.size === 1 ? verdict(items[0]!)?.subject : undefined);
     const name = (subject || fill(W[lang].groupOf, { n: items.length, name: d.name() })).slice(0, GROUP_NAME_MAX);
     const hv: GroupHandView = {
-      shape,
+      shape: shape!,
       items: items.map(refOfItem),
       ...(note ? { note } : {}),
       ...(subject ? { subject } : {}),
-      where: { device, name: devName },
+      ...(device && devName ? { where: { device, name: devName } } : {}),
       ...(harness ? { harness } : {}),
       cap: HAND_CAP,
       ...(o.commented?.refs.length ? { commented: o.commented } : {}),
     };
     const g = g0.create(persona, name, { order: shape === "side_by_side" ? "side_by_side" : "one_by_one", hand: hv });
-    try {
-      if (shape === "plan") {
-        const repo = h.repo;
-        const place = repo ? placeOn(items[0]!, device, places, found) : device === "local" ? { kind: "none" as const } : { kind: "none" as const, device };
-        const c = await d.open({ persona, title: titleOf(fill(W[lang].planQ, { group: name })), brief: planBrief(items, { ...(note ? { note } : {}), ...(subject ? { subject } : {}), lang, ...(repo ? { repo } : {}), ...(o.commented ? { commented: o.commented } : {}) }), ...(place ? { place } : {}), project: projectOf(place, places), ...(harness ? { harness } : {}), language: lang, origin: "you" });
-        g0.attach(g.id, c.taskId, true);
-        g0.setHand(g.id, { plan: { taskId: c.taskId, state: "planning" } });
-        d.pile.hold(items.map((i) => i.ref));
-      } else if (shape === "one") {
-        const c = await d.open(input(items, {}));
-        g0.attach(g.id, c.taskId);
-        d.bind(c.taskId, items.map(refOfItem));
-        for (const i of items) d.pile.handed(i.ref, c.taskId);
-        g0.setHand(g.id, { parts: { [c.taskId]: items.map((i) => i.ref) } });
-      } else {
-        d.pile.hold(items.map((i) => i.ref));
-        g0.hold(g.id, items.map((i) => ({ open: input([i], { ...(notes[i.ref] ? { itemNote: notes[i.ref] } : {}) }), bind: [refOfItem(i)] })));
-      }
-    } catch (err) {
-      return { ok: false, groupId: g.id, handed: 0, error: (err as Error).message };
-    }
-    askRule(groups()?.get(g.id)?.members.map((m) => (isHeld(m) ? undefined : d.tasks.get(m.taskId)?.harness)).find(Boolean));
-    markSet(g.id);
+    d.pile.hold(liveRefs);
     save();
-    return { ok: true, groupId: g.id, handed: items.length, shape };
+    settle({ ...job, kind: "group", g });
+    console.debug(`[handover] hand reply ${took(tReply)}ms: ${items.length} to-dos, ${shape}, "${name}"${prep ? ", how cached" : ", how after the reply"}`);
+    return { ok: true, handed: items.length, groupId: g.id, shape: shape!, planning: shape === "plan" };
+  }
+
+  /** D638: what Go creates first (its reply already sent) and finishes after it. */
+  type Job = {
+    kind: "single" | "group" | "add";
+    g?: TaskGroupView;
+    items: SourceItem[];
+    note?: string;
+    notes: Record<string, string>;
+    commented?: { refs: string[]; text: string };
+    standing?: { text: string; covered: { id: string; text: string }[] };
+    targets?: SourceItem[];
+    setId?: string;
+    bySubject?: boolean;
+    subject?: string;
+    device?: string;
+    harness?: string;
+    shape?: HandShape;
+    verdicts: Map<string, PileItem | undefined>;
+    tReply: number;
+    /** Per-step times for the line the lead reads. */
+    times: { items?: number; how?: number; places?: number; where?: number; open?: number; comment?: number };
+  };
+
+  /**
+   * D638: the slow work after Go's answer. The group is already there (or the to-do is held);
+   * this reads the full to-dos and the how, makes each task's place, and opens the task or holds the
+   * parts. A failure here is never silent: the card says it, one partner line says it, and the
+   * to-dos go back on the pile. Per-step times are logged with console.debug for the lead.
+   */
+  async function finish(job: Job): Promise<void> {
+    const t0 = nowMs();
+    const lang = d.lang();
+    const refs = job.items.map((i) => i.ref);
+    const itemMs: number[] = [];
+    try {
+      let commented = job.commented;
+      if (job.standing && job.targets) {
+        const t = nowMs();
+        commented = await commentOn(job.targets, job.standing.text, { by: "rule", standing: job.standing.covered[0]! });
+        job.times.comment = took(t);
+      }
+      // The full to-dos and the how are read side by side; neither has to finish before the other.
+      const tReads = nowMs();
+      const fullP = Promise.all(refs.map(async (r) => {
+        const t = nowMs();
+        const got = await full(r);
+        itemMs.push(took(t));
+        return got;
+      }));
+      const howKey = () => prepKey({ refs, ...(job.note ? { note: job.note } : {}), ...(job.bySubject ? { bySubject: true } : {}), ...(job.subject ? { subject: job.subject } : {}) });
+      let prep = preparedFor(howKey());
+      if (!prep) {
+        const t = nowMs();
+        await how({ refs, ...(job.note ? { note: job.note } : {}), ...(job.bySubject ? { bySubject: true } : {}), ...(job.subject ? { subject: job.subject } : {}), items: job.items, subjects: job.verdicts });
+        job.times.how = took(t);
+        prep = preparedFor(howKey());
+      }
+      if (!prep) throw new Error("couldn't read where it should run");
+      const h = prep.how;
+      const places = prep.places;
+      job.times.places = prep.placesMs;
+      const device = job.device ?? h.where.device;
+      const tWhere = nowMs();
+      const found = await foundOn(job.items, device);
+      job.times.where = took(tWhere);
+      const harness = job.harness || (h.who.why === "default" ? h.who.harness : undefined);
+      const devName = h.wheres.find((x) => x.device === device)?.name ?? d.computers().find((c) => c.device === device)?.name ?? device;
+      // The sheet's first guess (from the cached how) is confirmed here; a plan made after a restart
+      // finds its where too.
+      if (job.g) groups()!.setHand(job.g.id, { where: { device, name: devName }, ...(harness ? { harness } : {}) });
+      const placeOf = (i: SourceItemRef) => placeOn(i, device, places, found);
+      const inputOf = (its: SourceItemRef[], o2: { itemNote?: string; title?: string }): HeldOpen => {
+        const place = placeOf(its[0]!);
+        return {
+          ...todoOf(place, its),
+          persona: d.persona(),
+          title: titleOf(o2.title || oneTitle(its, lang)),
+          brief: "",
+          ...(place ? { place } : {}),
+          project: projectOf(place, places),
+          ...(harness ? { harness } : {}),
+          language: lang,
+          origin: "you",
+        };
+      };
+      const briefFor = (its: SourceItemRef[], o2: { itemNote?: string } = {}) =>
+        partBrief(its, { ...(job.note ? { note: job.note } : {}), ...(o2.itemNote ? { itemNote: o2.itemNote } : {}), verdicts: its.map((i) => job.verdicts.get(i.ref)), ...(commented ? { commented } : {}) });
+      const askRule = (used?: string) => {
+        if (!h.lasting || h.where.why !== "note" || device !== h.where.device || !job.note) return;
+        const key = `${device}|${job.note.slice(0, 80)}`;
+        if (st.asked.includes(key)) return;
+        st.asked.push(key);
+        if (st.asked.length > 50) st.asked.shift();
+        const decisionId = newId("d_");
+        const w = W[lang];
+        d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.whereQ, { computer: devName }), goLabel: w.whereGo, holdLabel: w.whereHold, defaultOption: "hold", reversible: false, src: { kind: "where_rule", item: refOfItem(job.items[0]!), device, deviceName: devName, quote: job.note.slice(0, 200), ...(harness || used ? { harness: harness || used } : {}) } } });
+      };
+      const markSet = (groupId?: string, taskId?: string) => {
+        if (!job.setId) return;
+        const s = st.sets.find((x) => x.setId === job.setId);
+        if (!s) return;
+        s.groupId = groupId ?? taskId ?? "task";
+        d.log.append({ stream: "channel", origin: "partner", kind: "todo_set", body: s });
+      };
+
+      // Into a live group: its plan reads them, or they join its line.
+      if (job.kind === "add") {
+        const g = groups()!.get(job.g!.id)!;
+        if (g.hand?.plan && g.hand.plan.state !== "going") {
+          d.tell(g.hand.plan.taskId, `The person added ${job.items.length} more to this hand-over. Read them too and plan again (plan_report, then report_to_main done):\n${job.items.map((i) => `- ${i.kind === "github" ? `${i.where}${i.label}` : i.ref}: "${i.title}"`).join("\n")}${job.note ? `\n${noteBlock(job.note, undefined)}` : ""}`);
+          groups()!.setHand(g.id, { plan: { ...g.hand.plan, state: "planning" } });
+        } else {
+          const t = nowMs();
+          groups()!.hold(g.id, job.items.map((i) => ({ open: { ...inputOf([i], { ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}) }), brief: briefFor([i], { ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}) }) }, bind: [refOfItem(i)] })));
+          job.times.open = took(t);
+        }
+        askRule();
+        markSet(g.id);
+        save();
+        logged(job, t0, itemMs);
+        return;
+      }
+
+      if (job.kind === "single") {
+        const i = job.items[0]!;
+        const input = inputOf([i], { ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}) });
+        const brief = Promise.resolve().then(() => briefFor([i], { ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}) }));
+        const t = nowMs();
+        const c = d.openEarly ? await d.openEarly(input, brief) : await d.open({ ...input, brief: await brief });
+        job.times.open = took(t);
+        d.bind(c.taskId, [refOfItem(i)]);
+        d.pile.handed(i.ref, c.taskId);
+        askRule(c.harness);
+        markSet(undefined, c.taskId);
+        save();
+        await fullP.catch(() => undefined); // the per-step line reads the whole of the work
+        logged(job, t0, itemMs);
+        return;
+      }
+
+      const g = groups()!.get(job.g!.id)!;
+      if (job.shape === "plan") {
+        const repo = h.repo;
+        const its = job.items.map(refOfItem);
+        const place = repo ? placeOf(its[0]!) : device === "local" ? { kind: "none" as const } : { kind: "none" as const, device };
+        const input: HeldOpen = { persona: d.persona(), title: titleOf(fill(W[lang].planQ, { group: g.name })), brief: "", ...(place ? { place } : {}), project: projectOf(place, places), ...(harness ? { harness } : {}), language: lang, origin: "you" };
+        const brief = Promise.resolve().then(() => planBrief(job.items, { ...(job.note ? { note: job.note } : {}), ...(job.subject ? { subject: job.subject } : {}), lang, ...(repo ? { repo } : {}), ...(commented ? { commented } : {}) }));
+        const t = nowMs();
+        const c = d.openEarly ? await d.openEarly(input, brief) : await d.open({ ...input, brief: await brief });
+        job.times.open = took(t);
+        groups()!.attach(g.id, c.taskId, true);
+        groups()!.setHand(g.id, { plan: { taskId: c.taskId, state: "planning" } });
+        askRule(c.harness);
+        markSet(g.id);
+        save();
+        await fullP.catch(() => undefined);
+        logged(job, t0, itemMs);
+        return;
+      }
+      // The full to-dos, for a brief with the words its writer wrote (one body, not the finder's excerpt).
+      const reads = await fullP;
+      job.times.items = took(tReads);
+      const live = job.items.map((i, k) => [i, reads[k]] as const).filter(([i, f]) => (f ?? i).state !== "closed");
+      const gone = job.items.filter((i) => !live.some(([x]) => x.ref === i.ref));
+      if (gone.length) {
+        d.pile.release(gone.map((i) => i.ref));
+        groups()!.setHand(g.id, { items: g.hand!.items.filter((x) => !gone.some((i) => i.ref === x.ref)) });
+      }
+      if (!live.length) throw new Error("Those are closed now.");
+      if (job.shape === "one") {
+        const its = live.map(([i, f]) => f ?? i);
+        const input = inputOf(its, {});
+        const brief = Promise.resolve().then(() => partBrief(its, { ...(job.note ? { note: job.note } : {}), verdicts: its.map((i) => job.verdicts.get(i.ref)), ...(commented ? { commented } : {}) }));
+        const t = nowMs();
+        const c = d.openEarly ? await d.openEarly(input, brief) : await d.open({ ...input, brief: await brief });
+        job.times.open = took(t);
+        groups()!.attach(g.id, c.taskId);
+        d.bind(c.taskId, its.map(refOfItem));
+        for (const i of its) d.pile.handed(i.ref, c.taskId);
+        groups()!.setHand(g.id, { parts: { [c.taskId]: its.map((i) => i.ref) } });
+        askRule(c.harness);
+        markSet(g.id);
+        save();
+        await fullP.catch(() => undefined);
+        logged(job, t0, itemMs);
+        return;
+      }
+      const parts = live.map(([i, f]) => ({ open: { ...inputOf([i], { ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}) }), brief: partBrief([f ?? i], { ...(job.note ? { note: job.note } : {}), ...(job.notes[i.ref] ? { itemNote: job.notes[i.ref] } : {}), verdicts: [job.verdicts.get(i.ref)], ...(commented ? { commented } : {}) }) }, bind: [refOfItem(i)] }));
+      const t = nowMs();
+      groups()!.hold(g.id, parts);
+      job.times.open = took(t);
+      askRule();
+      markSet(g.id);
+      save();
+      logged(job, t0, itemMs);
+    } catch (err) {
+      const msg = (err as Error).message || "unknown error";
+      d.pile.release(refs);
+      if (job.g) {
+        const pv = job.g.hand?.plan;
+        groups()?.setHand(job.g.id, { error: msg, ...(pv ? { plan: { ...pv, state: "failed" } } : {}) });
+      }
+      // The set card no longer says handed: the to-dos are on the pile again.
+      if (job.setId) {
+        const s = st.sets.find((x) => x.setId === job.setId);
+        if (s) {
+          s.groupId = undefined;
+          d.log.append({ stream: "channel", origin: "partner", kind: "todo_set", body: s });
+        }
+      }
+      d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(W[lang].failed, { error: msg }) } });
+      save();
+      console.warn(`[handover] the hand-over failed after the reply, ${took(job.tReply)}ms in: ${msg}`);
+      logged(job, t0, itemMs);
+    }
+  }
+
+  function logged(job: Job, t0: number, itemMs: number[]) {
+    const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+    const t = job.times;
+    console.debug(`[handover] hand ready ${took(t0)}ms (${took(job.tReply)}ms after Go): items ${itemMs.length} reads ${sum(itemMs)}ms, how ${t.how ?? 0}ms, places ${t.places ?? 0}ms, where ${t.where ?? 0}ms, open/hold ${t.open ?? 0}ms${t.comment ? `, comment ${t.comment}ms` : ""}`);
   }
 
   // ---------- plan first ----------
@@ -1172,6 +1392,18 @@ export function createHandover(d: HandoverDeps): Handover {
       d.bind(taskId, bind);
       for (const i of bind) d.pile.handed(i.ref, taskId);
       if (group.hand) groups()?.setHand(group.id, { parts: { ...(group.hand.parts ?? {}), [taskId]: bind.map((i) => i.ref) } });
+    },
+    async idle() {
+      while (running.size) await Promise.all([...running]);
+    },
+    heldFailed(groupId, _key, error, bind) {
+      const g = groups()?.get(groupId);
+      if (!g) return;
+      const refs = (bind ?? []).map((b) => b.ref);
+      d.pile.release(refs);
+      groups()?.setHand(groupId, { error, ...(refs.length ? { items: (g.hand?.items ?? []).filter((x) => !refs.includes(x.ref)) } : {}) });
+      d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(W[d.lang()].failed, { error }) } });
+      save();
     },
     answerRule(card, r) {
       const src = card.src;

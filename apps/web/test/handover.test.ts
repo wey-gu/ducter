@@ -101,3 +101,20 @@ test("review together sends every to-do of the rows not left out; the set card c
   expect([...setTicks("s1", ["a", "b"], own)]).toEqual(["b"]);
 });
 
+test("the note placeholders fit one short line at 320 in both languages (D638)", () => {
+  const han = (s: string) => [...s].filter((c) => /[\u3400-\u9fff]/.test(c)).length;
+  for (const lang of ["zh", "en"] as const) {
+    for (const key of ["ho.ask.ph", "ho.note.ph", "ho.item.note.ph"]) {
+      const s = handoverWords[lang][key]!;
+      // One line at 320 px: zh at most ~14 Han (and its punctuation), en at most 32 letters.
+      expect(s).not.toContain("\n");
+      expect(han(s)).toBeLessThanOrEqual(14);
+      expect(s.length).toBeLessThanOrEqual(32);
+      // No author's own world: no hard-coded computer, subject or product the person may not have.
+      expect(s).not.toMatch(/haswell|memory distill|nowledge/i);
+    }
+  }
+  // The link's words are still a link (the placeholder is its own key, never the link's).
+  expect(handoverWords.zh["ho.item.note"]).toBe("给这个的话…");
+  expect(handoverWords.en["ho.item.note"]).toBe("A note for this one…");
+});

@@ -166,7 +166,7 @@ func TestHandCommentCardAndAskedToast(t *testing.T) {
 	app.openHandDo()
 	app.ho.goCid = "g1"
 	app.Receive(protocol.ServerFrame{T: "pile_result", Sources: &protocol.SourcesFrame{ClientID: "g1", PileOp: "hand", OK: true, Asked: "d_c"}})
-	app.takeHand()
+	app.takeHandGo()
 	if app.ho.open || app.fileToast != "先问你留不留言，回答了再开始" {
 		t.Fatalf("asked: open=%v toast=%q", app.ho.open, app.fileToast)
 	}

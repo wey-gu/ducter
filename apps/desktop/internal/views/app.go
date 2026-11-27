@@ -511,7 +511,9 @@ func (a *App) send(frame any) {
 	switch frame.(type) {
 	case protocol.Send, protocol.TaskSend:
 		msg = true
-	case protocol.Decide, protocol.TaskAction:
+	case protocol.Decide, protocol.TaskAction, protocol.PileHandReq:
+		// D638: a Go belongs to the person's tap too: a dropped link sends it after welcome
+		// (core answers one clientId once).
 		keep = true
 	}
 	if !a.S.Welcomed || a.Status != client.Connected {

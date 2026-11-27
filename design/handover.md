@@ -95,7 +95,11 @@ anywhere it clones on the computer that can read it. Who follows rules by kind. 
 
 **Go:** **交给{name}这 n 个 / Hand these n to {name}**, its shape as its own line beneath (never
 joined with a dot, D291). On the phone the sheet is two screens: what (foot: **勾了 n 个** and
-**下一步：怎么做 / Next: how**), then the note and how (foot: Go). On the phone (the author on
+**下一步：怎么做 / Next: how**), then the note and how (foot: Go). **Go is answered at once
+(D638, §14):** core makes the group (or starts the one task's card) and replies before it reads
+the to-dos or opens anything; the sheet closes on the press with the existing toast, and the slow
+work shows its own state on the cards. If the link is gone, the Go waits in the phone's outbox and
+one line after a few seconds says it is still going. On the phone (the author on
 0.1.18, a layout fix): the words field and every note grow with all their text, the
 placeholder included, and never scroll inside themselves; the sheet scrolls instead. Where the browser
 cannot size a field to its text (an older iOS Safari) the page measures it after every draw, so words
@@ -196,7 +200,9 @@ with the shapes in `packages/protocol/src/handover.ts`.
   one task bound to all, "Fixes" each. One after another and side by side: held parts that open by
   the group's line (a hand-over group with no folder still keeps one line) and its cap
   (`HAND_CAP` 3). A lasting where is asked once as a rule (`where_rule`, Go keeps it, the default
-  holds). The old `refs`-only `pile_hand` still queues as D359's did.
+  holds). The old `refs`-only `pile_hand` still queues as D359's did. D638 (§14): the sheet's
+  Go takes the same path but is answered first; the group is made from the held refs, and the full
+  reads, places, where and the opening follow.
 - **Plan first.** The lead part is a task whose brief asks it to read every to-do (comments, linked
   PRs), the code and the note, change nothing, and call `plan_report` (a task tool only that task
   sees) with `fixed`, `one`, `line`, `side`, `later`, `limits`; read strictly (unknown refs dropped,
@@ -436,3 +442,79 @@ Eval (`packages/core/eval/find`): five sentences added word for word, with check
 the guess and the note (`author-3`, `author-3-handed`, `author-4`, `author-typo`, `author-note`). Shots
 `.shots/tasks-454/{before,after}/` (web 1400 and 390, zh and en, `apps/web/demo-handover-find.ts` with
 `DEMO_HANDED=1`).
+
+## 14. Go is answered at once (D638)
+
+The author on 0.1.98, phone web: he went 待办来源 → GitHub, ticked several issues, pressed **交给小鸭这
+n 个**, and the sheet froze — the button grey, nothing tappable — for a long time. He gave up, came back
+later, and the tasks had been made. **Who:** anyone handing to-dos over, on a phone most of all.
+**Felt before:** 卡住 and 不放心 (did it go? must this page stay open?). **After:** 顺滑 and 放心: the
+press is answered in a moment and the person can do anything else; the new cards say their real state
+while they get ready.
+
+**The rule.**
+
+1. **Answered in a moment.** Core validates cheaply from what it already holds (refs not taken and not
+   closed, the shape allowed by its own table), makes what the person will see (the D360 group, or a
+   single to-do's task card through the New task composer's early open, `runner.openTaskEarly`, D120),
+   and replies `pile_result` ok. Only then does it read each to-do in full, New task's places, the
+   repository's folders (`repoWhere`) and open the task or hold the parts. The cards carry the states
+   Ducter already has (a held part says it waits; an early task is `queued`/`provisioning`), never a new
+   word.
+2. **A failure after the answer is never silent.** `GroupHandView.error` puts the reason on the group's
+   card in 等你 (`handState` → failed, with **没交出去 / Couldn't hand it over** and **待办回到列表了，可以再交一次。 /
+   The to-dos are back on your list; hand them over again.**), one partner `ai_msg` says the same line,
+   and the to-dos are released to the pile. A held part that pump could not open comes back through
+   `TaskGroups.heldFailed`. A failure with no part opened still leaves a card the person can take off
+   (移走), so the error is never unreachable. Nothing reopens the sheet.
+3. **No repeated work.** `how()` records its answer by the refs and the note (`PreparedHow`: the how,
+   the places and their time; kept ten minutes); `hand()` reuses it instead of asking New task's places
+   again. A hand-over reads `newTask.options()` once. The full to-dos are read once, after the answer.
+4. **The sheet never locks.** Web and Mac close the sheet on Go with the existing toast (**交给{name}了**
+   or **交给{name}了：先出个方案，你点头再做**). If no answer comes in 4 s, one toast says **还在交给{name}…连上就交出去，不用再按 /
+   Still handing them to {name}. It goes when the link is back; no need to tap again.** The Go is kept in
+   D543's device outbox (`kind: "hand"`) and goes after the next welcome; core answers one clientId once
+   (`HAND_REPLIES` in `ws.ts`), so a copy that did arrive is never a second group. A late error is a
+   toast and the card; the sheet stays shut. The Go button uses the shared `Btn busy` state (D161).
+5. **The Mac has the same behaviour.** `handGo` sets `req.sheet`, closes the sheet, toasts, keeps the Go
+   through a drop (`protocol.PileHandReq` in the Mac's outbox), reads the answer even when the sheet is
+   closed (`takeHandGo`), and toasts a late failure. A held part's failure shows on its group card
+   (`hand.error`).
+6. **Placeholders that belong to the person.** One short line that fits at 320 px: zh ≤ ~14 Han, en ≤ 32
+   letters; no author's world (no "memory distill", no "haswell"):
+   - the words field: **说一类事，或一个号码 / A kind of thing, or a number** (`ho.ask.ph`, `hand.ask.ph`);
+   - the note: **想交代的话，可不写 / Anything to tell it (optional)** (`ho.note.ph`, `hand.note.ph`);
+   - one to-do's note: **给这个的话，可不写 / Anything for this one (optional)** (a new `.ph` key; the
+     link's own **给这个的话… / A note for this one…** stays).
+   A short landscape phone (844×390) keeps the note field at 64 pt (`@media (max-height: 520px)`), so
+   the field and the foot do not crowd each other; `field-sizing` still grows it with its text.
+
+**What was measured.** `packages/core/test/handover-fast.test.ts` slows every step with fakes: each
+full read 250 ms, `places` 800 ms, `repoWhere` 500 ms, `open` 1200 ms. On the sheet's path (its `how`
+already asked) the reply came back in **1 ms** with **no task opened**, and the work finished
+**1.7 s after** it: 3 reads 753 ms, places 801 ms (already paid before Go, not read again), where
+501 ms, open 1201 ms. The old series would have been ≈ 4.5 s before any answer (reads 0.75 + how 1.3 +
+places again 0.8 + where 0.5 + open 1.2). The same test without a cached how: reply 0 ms, ready 3.0 s
+(how 1.3 s includes places, where 0.5, open 1.2). These are a chosen fake profile, not the author's
+network; the shape is what it shows: the answer no longer waits on any of them. The lines are
+`console.debug` (`[handover] hand reply …`, `[handover] hand ready …`), never the Log.
+
+**Tests.** `handover-fast.test.ts` (the answer before any open, places once, failure after the answer,
+held-part failure); `task-groups.test.ts` (a held part that couldn't open is reported); the updated
+`handover.test.ts` (23 pass, `idle()` for the slow part); `apps/web/test/handover-go.test.ts` (the sheet
+closes at once, the toast, the outbox, a late failure, a failed card stands in 等你 and can be removed,
+a Go from an earlier page settles); `apps/web/test/handover.test.ts` (the placeholder lengths); the
+updated Go `handover_test.go` and `subjects_test.go`, `go test ./internal/views -run Hand`. Typecheck
+and `bun run build:web`.
+
+**Files.** `packages/core/src/task-sources/handover.ts` (the two phases, `PreparedHow`, `idle`,
+`heldFailed`, the timings), `task-groups.ts` (`heldFailed`, a failed hand-over with no part kept),
+`core.ts` (`openEarly` from `runner.openTaskEarly`, `heldFailed`), `task-sources/index.ts`,
+`ws.ts` (`sheet`, `planning`, `HAND_REPLIES`), `packages/protocol/src/{handover,task-sources}.ts`,
+`apps/web/src/{handover.tsx,handover-view.ts,groups-view.ts,outbox.ts,conn.ts,app.ts,i18n-handover.ts}`,
+`apps/web/static/app.css`, `apps/desktop/internal/{views/{handover,handover_cards,groups,away,app}.go,
+protocol/{handover,handgroup}.go, i18n/handover.go}`, tests above.
+
+**Shots.** `.shots/hand-go/{before,after}/`: the sheet at 390×844 and 320×640, zh and en, light and
+dark, the field empty and filled; the moment after Go; 2× crops of the field. Borrowed before from
+main's build on the same demo (`apps/web/demo-handover.ts`).

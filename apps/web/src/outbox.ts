@@ -21,17 +21,21 @@ const MAX_ITEMS = 200;
 export type OutItem =
   | { kind: "send"; device: string; persona: string; clientId: string; text: string; media?: string[]; reply?: ReplyWant; quote?: { from: "you" | "partner"; quote: string; seq: number }; refs?: Ref[]; at: number }
   | { kind: "task_send"; device: string; taskId: string; clientId: string; text: string; media?: string[]; mode?: "steer" | "queue"; refs?: Ref[]; at: number }
-  | { kind: "decide"; device: string; decisionId: string; option: "go" | "hold" | "reply"; text?: string; at: number };
+  | { kind: "decide"; device: string; decisionId: string; option: "go" | "hold" | "reply"; text?: string; at: number }
+  // D638: the hand-over sheet's Go. Core answers it in a moment and answers one clientId once,
+  // so it is safe to send late: a phone that lost the answer sends the same Go again.
+  | { kind: "hand"; device: string; clientId: string; frame: Extract<ClientFrame, { t: "pile_hand" }>; at: number };
 
 export type OutStore = { get(): Promise<OutItem[] | undefined>; set(v: OutItem[]): Promise<void> };
 export const idbStore: OutStore = { get: () => kvGet<OutItem[]>(OUTBOX_KEY), set: (v) => kvSet(OUTBOX_KEY, v.length ? v : undefined) };
 
-const idOf = (i: OutItem) => (i.kind === "decide" ? `d:${i.decisionId}` : `m:${i.clientId}`);
+const idOf = (i: OutItem) => (i.kind === "decide" ? `d:${i.decisionId}` : i.kind === "hand" ? `h:${i.clientId}` : `m:${i.clientId}`);
 
 /** The frame an item sends. */
 export function frameOf(i: OutItem): ClientFrame {
   if (i.kind === "send") return { t: "send", text: i.text, clientId: i.clientId, ...(i.media?.length ? { media: i.media } : {}), ...(i.reply ? { reply: i.reply } : {}), ...(i.refs?.length ? { refs: i.refs } : {}) };
   if (i.kind === "task_send") return { t: "task_send", taskId: i.taskId, text: i.text, clientId: i.clientId, ...(i.media?.length ? { media: i.media } : {}), ...(i.mode ? { mode: i.mode } : {}), ...(i.refs?.length ? { refs: i.refs } : {}) };
+  if (i.kind === "hand") return i.frame;
   return { t: "decide", decisionId: i.decisionId, option: i.option, ...(i.text ? { text: i.text } : {}) };
 }
 
@@ -72,7 +76,7 @@ export class Outbox {
   }
   dropClient(ids: Iterable<string>) {
     const s = new Set(ids);
-    return s.size ? this.drop((i) => i.kind !== "decide" && s.has(i.clientId)) : false;
+    return s.size ? this.drop((i) => (i.kind === "send" || i.kind === "task_send") && s.has(i.clientId)) : false;
   }
   dropAnswer(decisionIds: Iterable<string>) {
     const s = new Set(decisionIds);

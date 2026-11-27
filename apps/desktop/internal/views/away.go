@@ -72,6 +72,13 @@ func finishedOf(task *store.Task) *finishedCard {
 // behind a stopped part (it is dropped with it).
 func finishedGroup(bg boardGroup) *finishedCard {
 	f := &finishedCard{name: bg.g.Name, groupID: bg.g.ID}
+	// D638: a hand-over that failed with nothing opened can still be taken off On hand.
+	if len(bg.rows) == 0 {
+		if bg.g.Hand != nil && bg.g.Hand.Error != "" {
+			return f
+		}
+		return nil
+	}
 	var last string
 	for _, r := range bg.rows {
 		switch groupMark(r) {

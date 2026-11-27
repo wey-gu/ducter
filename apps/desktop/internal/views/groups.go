@@ -91,8 +91,9 @@ func (a *App) boardGroups(b store.Board) []boardGroup {
 		if a.S.AwayNow[g.ID] { // D454: removed here, before the home's next On hand says so
 			continue
 		}
-		// D385: a hand-over's group stands with one part (its plan, or as one task).
-		if len(g.Members) < 2 && (g.Hand == nil || len(g.Members) == 0) {
+		// D385: a hand-over's group stands with one part (its plan, or as one task). D638: also
+		// with none when opening failed, so the failure is on the card.
+		if len(g.Members) < 2 && (g.Hand == nil || (len(g.Members) == 0 && g.Hand.Error == "")) {
 			continue
 		}
 		bg := boardGroup{g: g, lane: 9, ids: map[string]bool{}}

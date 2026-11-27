@@ -33,6 +33,9 @@ func HandStand(hand *GroupHandView, onBoard, queued int) HandGroupStand {
 		plan = hand.Plan.State
 	}
 	switch {
+	// D638: a hand-over that failed after Go was answered asks for the person (its card says why).
+	case hand.Error != "":
+		return HandNeeds
 	case plan == "ready" || plan == "held" || plan == "failed" || hand.Review == "ready":
 		return HandNeeds
 	case onBoard > 0:

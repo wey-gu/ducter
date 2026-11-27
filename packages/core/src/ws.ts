@@ -280,6 +280,14 @@ export function channelPage(log: Pick<LogStore, "read">, stream: string, beforeS
   return { events, more };
 }
 
+/**
+ * D638: pile_hand is answered at once and may be sent twice (the phone's outbox after a drop
+ * whose answer was lost). One clientId is one hand-over: a second copy gets the first answer back,
+ * never a second group.
+ */
+const HAND_REPLIES = new Map<string, ServerFrame>();
+const HAND_REPLIES_MAX = 100;
+
 export function createWsHandler(deps: WsDeps) {
   const { core, decisions } = deps;
   const noRunnerLine = () => wordsIn(NO_RUNNER, talkLang(deps.settings, core.log));
@@ -2303,14 +2311,28 @@ export function createWsHandler(deps: WsDeps) {
           const r = await ho.reviewSend(f.groupId, refs(f.keep));
           return send(ws, { t: "pile_result", ...cid, op: "group_review", ok: r.ok, done: r.done, failed: r.failed, groupId: f.groupId, ...(r.error ? { error: r.error } : {}) });
         }
-        if (f.t === "pile_hand" && ho && (f.shape || f.note || f.notes || f.group || f.device || f.harness || f.setId || f.subject)) {
-          const shape = (["plan", "one", "one_by_one", "side_by_side"] as const).find((s) => s === f.shape);
-          const r = await ho.hand({ refs: refs(f.refs), ...(str(f.note, 2000) ? { note: str(f.note, 2000)! } : {}), ...(notesOf(f.notes) ? { notes: notesOf(f.notes)! } : {}), ...(shape ? { shape } : {}), ...(str(f.group, 64) ? { group: str(f.group, 64)! } : {}), ...(str(f.device, 64) ? { device: str(f.device, 64)! } : {}), ...(str(f.harness, 40) ? { harness: str(f.harness, 40)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(f.bySubject === true ? { bySubject: true } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
-          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.ok, done: r.handed, ...(r.groupId ? { groupId: r.groupId } : {}), ...(r.asked ? { asked: r.asked } : {}), ...(r.error ? { error: r.error } : {}) });
-        }
         if (f.t === "pile_hand") {
-          const r = await pile.hand(refs(f.refs));
-          return send(ws, { t: "pile_result", ...cid, op: "hand", ok: r.queued > 0 && !r.error, done: r.queued, ...(r.error ? { error: r.error } : {}) });
+          // D638: the same Go sent twice (a phone's outbox after a lost answer) is answered
+          // once, with the first answer.
+          const handCid = typeof id0 === "string" ? id0.slice(0, 64) : "";
+          // One device's page, one Go: two phones may pick the same millisecond-made clientId.
+          const handKey = handCid ? `${ws.data.device?.id ?? "local"}\u0000${handCid}` : "";
+          const had = handKey ? HAND_REPLIES.get(handKey) : undefined;
+          if (had) return send(ws, had);
+          let out: ServerFrame;
+          if (ho && (f.sheet === true || f.shape || f.note || f.notes || f.group || f.device || f.harness || f.setId || f.subject)) {
+            const shape = (["plan", "one", "one_by_one", "side_by_side"] as const).find((s) => s === f.shape);
+            const r = await ho.hand({ refs: refs(f.refs), ...(str(f.note, 2000) ? { note: str(f.note, 2000)! } : {}), ...(notesOf(f.notes) ? { notes: notesOf(f.notes)! } : {}), ...(shape ? { shape } : {}), ...(str(f.group, 64) ? { group: str(f.group, 64)! } : {}), ...(str(f.device, 64) ? { device: str(f.device, 64)! } : {}), ...(str(f.harness, 40) ? { harness: str(f.harness, 40)! } : {}), ...(str(f.subject, 60) ? { subject: str(f.subject, 60)! } : {}), ...(f.bySubject === true ? { bySubject: true } : {}), ...(str(f.setId, 64) ? { setId: str(f.setId, 64)! } : {}) });
+            out = { t: "pile_result", ...cid, op: "hand", ok: r.ok, done: r.handed, ...(r.groupId ? { groupId: r.groupId } : {}), ...(r.asked ? { asked: r.asked } : {}), ...(r.planning ? { planning: true } : {}), ...(r.error ? { error: r.error } : {}) };
+          } else {
+            const r = await pile.hand(refs(f.refs));
+            out = { t: "pile_result", ...cid, op: "hand", ok: r.queued > 0 && !r.error, done: r.queued, ...(r.error ? { error: r.error } : {}) };
+          }
+          if (handKey) {
+            HAND_REPLIES.set(handKey, out);
+            while (HAND_REPLIES.size > HAND_REPLIES_MAX) HAND_REPLIES.delete(HAND_REPLIES.keys().next().value!);
+          }
+          return send(ws, out);
         }
         if (f.t === "pile_choose") {
           if (typeof f.ref !== "string" || !["hand", "close", "later", "keep"].includes(f.pick)) return;

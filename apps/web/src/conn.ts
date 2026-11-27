@@ -150,7 +150,7 @@ export class Api {
 export type ConnStatus = "connecting" | "connected" | "offline";
 
 const KEEP = new Set(["task_action"]);
-const MSG = new Set(["send", "task_send", "decide"]);
+const MSG = new Set(["send", "task_send", "decide", "pile_hand"]);
 /** D532 (the Mac's D520): quick at first, at most 5 s apart, 15 s once down for a minute; ±20%
  *  jitter, so devices behind one proxy don't all knock at once when their home comes back. */
 const BACKOFF = [500, 1000, 2000, 4000, 5000];

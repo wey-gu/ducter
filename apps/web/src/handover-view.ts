@@ -93,6 +93,8 @@ export const planTasks = (p: HandPlan) => p.one.length + p.line.length + p.side.
 export type HandState = "planning" | "ready" | "held" | "failed" | "going" | "review" | "sent";
 export function handState(h: GroupHandView | undefined): HandState | undefined {
   if (!h) return undefined;
+  // D638: opening failed after Go was answered: the card says why, where the person looks.
+  if (h.error) return "failed";
   if (h.review === "sent") return "sent";
   if (h.review === "ready") return "review";
   const p = h.plan;

@@ -37,7 +37,7 @@ export const delightWords: { zh: Record<string, string>; en: Record<string, stri
     "settings.preview.user": "Remind me about the PR tomorrow morning",
     "settings.preview.reply": "Sure, I'll ping you at 9:00 tomorrow.",
     "settings.preview.noted": "Noted: PR reminder, tomorrow 9:00",
-    "todos.what.new.tell": "A word in the conversation.",
+    "todos.what.new.tell": "I say a word in the conversation.",
     "todos.what.new.take": "They start by themselves, up to 5 a day.",
     "todos.what.new.quiet": "Looked at when you ask.",
     "todos.what.done.ask": "I ask before commenting on the issue.",

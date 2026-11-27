@@ -89,7 +89,7 @@ describe("Notifications' preview follows 发现了就说 (D475)", () => {
 
 describe("the phone and the tiles (D475)", () => {
   test("a choice under its words takes the card's whole width on a phone", () => {
-    expect(css).toMatch(/@media \(max-width: 520px\) \{\s*\.chat-row:not\(\.tiled\) > \.seg,\s*\.set-page\.pushed \.set-card > div\.chat-row:not\(\.tiled\) > \.seg \{ flex: 1 1 calc\(100% \+ var\(--chat-col\)\); margin-left: calc\(-1 \* var\(--chat-col\)\); \}/);
+    expect(css).toMatch(/@media \(max-width: 520px\)[\s\S]*?\.chat-row:not\(\.tiled\) > \.seg,\s*\.set-page\.pushed \.set-card > div\.chat-row:not\(\.tiled\) > \.seg \{[^}]*flex: 1 1 calc\(100% \+ var\(--chat-col\)\);[^}]*margin-left: calc\(-1 \* var\(--chat-col\)\);[^}]*max-width: calc\(100% \+ var\(--chat-col\) \+ var\(--set-in, var\(--s4\)\)\);[^}]*\}/);
   });
   test("a saved card keeps the 40 tile column", () => {
     expect(css).toContain(".set-row .af-card { width: 40px; height: 28px;");

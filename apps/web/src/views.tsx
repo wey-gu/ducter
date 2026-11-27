@@ -3722,7 +3722,7 @@ export function SettingsSheet() {
   return (
     <Sheet label={t("settings.title")}>
       {!sec ? (
-        <div class={`set-page${popped ? " popped" : ""}`} key="list">
+        <div class={`set-page${popped ? " popped" : ""}`} key="list" data-page="overview">
           <h2>{t("settings.title")}</h2>
           {/* D469: the partner's brief on its own world, then where things live; the pages after. */}
           <SetBrief go={go} />
@@ -3730,7 +3730,7 @@ export function SettingsSheet() {
           <div class="set-card set-list">
             {/* D469: the brief replaced the partner's hero, so the partner is a row of the list again. */}
             {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
-              <button class="set-row" key={x.page} onClick={() => go(x.page)}>
+              <button class="set-row" key={x.page} data-page={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">
                   <b>{t(x.page === "peers" ? "settings.short.peers" : x.title)}</b>
@@ -3742,7 +3742,7 @@ export function SettingsSheet() {
           </div>
         </div>
       ) : (
-        <div class="set-page pushed" key={page}>
+        <div class="set-page pushed" key={page} data-page={page}>
           {!devPushed && (
             <>
               <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>

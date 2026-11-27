@@ -1073,3 +1073,37 @@ nothing but a direct message.
   the first handshake, the ack under load, the text edit's 20 times, the applink on desktop and
   phone, Lark's English labels). Owed: group @-mentions, threads, pictures/files, card buttons, a
   per-partner app. See `channels.md` §14 and `todo.md`.
+
+## The web pass (D644, 2026-11-27)
+
+Every pane again on the web/phone client at 390 × 844 and 1180 × 820, zh and en, light and dark,
+filled with `demo-settings-real.ts` (`DEMO_PARTNERS=1`), plus `demo-first.ts DEMO_STAGE=nobrain`
+(empty) and `DEMO_NEEDS=1` (a source down, a Mem plugin waiting): `.shots/settings-polish/{before,after}`,
+`states/{before,after}-{empty,needs}`, `after/320`, 2× crops in `after/crops`. The pane table is
+`.shots/settings-polish/README.md`; the decision is D644.
+
+- **A bare switch is bare in a pushed page.** `.set-page.pushed .switch` had been padding and
+  sizing it as a 56-tall row, so a 320 agent row's 40 coin sat at x = −44 and its title lost its
+  first letters. The bare box is 44 × 26 again (the finger's 44 square under coarse), and a switch
+  row is start-aligned with 10rem of words at ≤ 360.
+- **A choice of a few is one track before it is a stack.** `Seg` first takes the words' own widths
+  (`sized`); an English "Follow the system / Light / Dark" and "Ask you first / Comment / Comment and
+  close" fit one line again. A line that still spills folds; a fold has a hairline between its rows
+  and never runs past the card (the full-width phone track is capped).
+- **A head's state stays at the right edge**, the words wrapping beside it: Tuwa's **No calls today**
+  is no longer a second line under **Ready to call** in en.
+- **Copy, in both languages**: empty **能看的**'s full stop; the Partner notes and **Picked by Who
+  does the tasks**; Memory's en head and step 2's real sign-in path (both clients, with the home);
+  Notifications' **I send a notification to your devices**; Accounts'
+  **I turned these off for you on Tuwa**; To-do sources' **I say a word in the conversation**; Chat
+  apps' **You can also reach me…** and **I never message anyone as you**; the details as **Wey Gu**,
+  the email and phone as separate facts, and a key's **kept** as a readable `g-state`; This phone's
+  **Folded keeps the conversation…** and its voice help.
+- **Held**: Devices (64 rows, 40 clay, hairlines, versions, the night switch), Agent messaging (the
+  picture names Ducter among an agent's words, D501's exception), the 640 form sheet at 1180.
+- **Proposed, not built**: one shared Mem setup group for Memory and Agent messaging; per-computer
+  version rows on the web; a Settings find/jump; a live-step Mem setup checklist; a live D296 flow
+  walk of every said line and ask.
+- **Checked**: `bun run build:web`, both `tsc` gates, `bun test apps/web/test` 1286 / 0, the new
+  `settings-polish-geometry.test.ts` (3 / 0: no control under 44 on touch or 36 on a desktop, no
+  overflow at 320–1180), the settings suites 178 / 0, and the Mac's Mem-step test.

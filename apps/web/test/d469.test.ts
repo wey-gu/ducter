@@ -66,7 +66,7 @@ describe("Settings' brief (D469)", () => {
     A.connections = undefined;
     expect(h.homeLines().map((l) => l.key)).toEqual(["lives", "thinks", "mem"]);
     A.connections = [] as any;
-    expect(h.homeLines().find((l) => l.key === "reads")?.text).toBe("还没有。连上邮箱和日历，我替你留意");
+    expect(h.homeLines().find((l) => l.key === "reads")?.text).toBe("还没有。连上邮箱和日历，我替你留意。");
   });
 
   test("needs in the Mac's order, each to the page with its fix", async () => {

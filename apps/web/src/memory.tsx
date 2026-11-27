@@ -693,7 +693,7 @@ export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign
           {/* D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account. */}
           {!busySign && (
             <>
-              <small>{t("mem.step.account")}</small>
+              <small>{t("mem.step.account", homeOf(b))}</small>
               <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.step.account.go")} />
             </>
           )}

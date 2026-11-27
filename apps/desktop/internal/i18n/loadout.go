@@ -340,7 +340,7 @@ var enLoadout = Table{
 	"newtasks.auto":                  "Automatic",
 	"newtasks.where.auto":            "Picked each time by what the task needs and where its code is.",
 	"newtasks.where.on":              "On %s whenever it can. When it can't be reached, or the task needs what only another computer has (your Chrome, an app), another one takes it.",
-	"newtasks.who.auto":              "Picked as under Who does the tasks.",
+	"newtasks.who.auto":              "Picked by Who does the tasks.",
 	"newtasks.who.on":                "%s whenever it can. A rule you set for a kind of work comes first.",
 	"newtasks.foot":                  "Saying it in the conversation works too, like \u201cuse Codex for new tasks from now on\u201d.",
 	"said.newtasks.where":            "New tasks now start on %s",

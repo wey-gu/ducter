@@ -32,7 +32,7 @@ var enDelight = Table{
 	"notify.pv.quiet":              "Silent from %s to %s; you hear it all after.",
 	"notify.pv.anytime":            "It can ring any time.",
 	"notify.pv.off":                "No pop-up: it waits for you in Tasks.",
-	"todos.what.new.tell":          "A word in the conversation.",
+	"todos.what.new.tell":          "I say a word in the conversation.",
 	"todos.what.new.take":          "They start by themselves, up to 5 a day.",
 	"todos.what.new.quiet":         "Looked at when you ask.",
 	"todos.what.done.ask":          "I ask before commenting on the issue.",

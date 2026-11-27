@@ -81,25 +81,25 @@ func TestCalCardStructure(t *testing.T) {
 			if n != 1 {
 				t.Fatalf("the title appears %d times, want once: %q", n, texts)
 			}
-			if !tt.HasText(map[i18n.Lang]string{i18n.ZH: "加到日历？", i18n.EN: "Add to your calendar?"}[lang]) {
+			if !hasText(tt, map[i18n.Lang]string{i18n.ZH: "加到日历？", i18n.EN: "Add to your calendar?"}[lang]) {
 				t.Errorf("the short ask is missing: %q", texts)
 			}
 			if !hasCalText(tt, map[i18n.Lang]string{i18n.ZH: "新加坡时间 周六 14:00", i18n.EN: "14:00 Sat, Singapore time"}[lang]) {
 				t.Errorf("the other side's place is missing: %q", texts)
 			}
-			if !tt.HasText(map[i18n.Lang]string{i18n.ZH: "Kong Office，12 楼东侧会议室", i18n.EN: "Kong Office, 12th floor east room"}[lang]) {
+			if !hasText(tt, map[i18n.Lang]string{i18n.ZH: "Kong Office，12 楼东侧会议室", i18n.EN: "Kong Office, 12th floor east room"}[lang]) {
 				t.Errorf("where is missing: %q", texts)
 			}
-			if !tt.HasText("weyl.gu") || !tt.HasText(map[i18n.Lang]string{i18n.ZH: "主日历", i18n.EN: "Main calendar"}[lang]) {
+			if !hasText(tt, "weyl.gu") || !hasText(tt, map[i18n.Lang]string{i18n.ZH: "主日历", i18n.EN: "Main calendar"}[lang]) {
 				t.Errorf("the calendar or its account is missing: %q", texts)
 			}
-			if tt.HasText("那边") || tt.HasText("for them") {
+			if hasText(tt, "那边") || hasText(tt, "for them") {
 				t.Errorf("the card says 对方 / for them with no other party: %q", texts)
 			}
-			if !tt.HasText("12 月") && !tt.HasText("DEC") {
+			if !hasText(tt, "12 月") && !hasText(tt, "DEC") {
 				t.Errorf("the date leaf's month is missing: %q", texts)
 			}
-			if !tt.HasText("12") || !tt.HasText(map[i18n.Lang]string{i18n.ZH: "周六", i18n.EN: "Sat"}[lang]) {
+			if !hasText(tt, "12") || !hasText(tt, map[i18n.Lang]string{i18n.ZH: "周六", i18n.EN: "Sat"}[lang]) {
 				t.Errorf("the date leaf's day or weekday is missing: %q", texts)
 			}
 		})
@@ -133,13 +133,13 @@ func TestCalCardNotificationOnlyWhenSomeoneHears(t *testing.T) {
 	quiet := calCardChange(i18n.EN, "create")
 	quiet.Notify = nil
 	_, tt := drawCalCard(t, i18n.EN, calCardDecision(i18n.EN, "quiet", quiet))
-	if tt.HasText("Nobody is notified") || tt.HasText("gets an invitation") {
+	if hasText(tt, "Nobody is notified") || hasText(tt, "gets an invitation") {
 		t.Errorf("a quiet event of one's own says who hears: %q", tt.Texts())
 	}
 	answer := calCardChange(i18n.EN, "respond")
 	answer.Response, answer.Organizer, answer.Notify = "declined", "", nil
 	_, tt = drawCalCard(t, i18n.EN, calCardDecision(i18n.EN, "answer", answer))
-	if !tt.HasText("Nobody is notified") {
+	if !hasText(tt, "Nobody is notified") {
 		t.Errorf("an answer with no organizer should say nobody hears: %q", tt.Texts())
 	}
 }
@@ -202,13 +202,13 @@ func TestCalCardSettles(t *testing.T) {
 			}
 			tt := ui.NewTesterWith(app.View, 1150, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 			tt.Frame()
-			if !tt.HasText(tc.want) {
+			if !hasText(tt, tc.want) {
 				t.Errorf("missing %q: %q", tc.want, tt.Texts())
 			}
-			if tc.link && !tt.HasText("在日历中打开") {
+			if tc.link && !hasText(tt, "在日历中打开") {
 				t.Errorf("the card does not offer the calendar: %q", tt.Texts())
 			}
-			if tc.why != "" && !tt.HasText(tc.why) {
+			if tc.why != "" && !hasText(tt, tc.why) {
 				t.Errorf("the reason is missing: %q", tt.Texts())
 			}
 		})

@@ -18,7 +18,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { useSheetMotion } from "./sheetmotion.ts";
 import { outsideSentence } from "./outward.ts";
 import { SheetFrame } from "./sheet-frame.tsx";
-import { KeysSheet, TaskNav } from "./keymap.tsx";
+import { KeysSheet } from "./keymap.tsx";
 import { last as lastMove } from "./nav.ts";
 import type { JSX } from "preact";
 import { AmbientLine } from "./ambient.tsx";
@@ -60,9 +60,9 @@ import { AddFolderSheet } from "./addfolder.tsx";
 import { MemoryPage, Notebook, PeersInvite, PeersPage, peersPageShown } from "./memory.tsx";
 import { homeThinks, PaneSays, PlacesMap, SetBrief, speakerThinks } from "./settings-home.tsx";
 import { memBadge, memUpdate, peerCalled } from "./mem-view.ts";
-import { benchable, BenchToggle, openBenchAt } from "./workbench.tsx";
-import { TaskInfoButton } from "./task-info.tsx";
+import { benchable, openBenchAt } from "./workbench.tsx";
 import { PhoneMore, ShareButton, taskPr } from "./task-sheet.tsx";
+import { TaskMenu } from "./task-menu.tsx";
 import { NARROW, usePhone, useRoomy } from "./wide.ts";
 import { prNumber } from "./task-words.ts";
 
@@ -109,7 +109,7 @@ import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
-import { EndAsk, HandoffNote, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TaskMore, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
+import { EndAsk, HandoffNote, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   browsing,
@@ -1753,9 +1753,12 @@ export function Places({ here, onHand = true }: { here?: "devices" | "onhand" | 
   const ua = A.updateAll;
   const running = !!ua?.plan && !ua.plan.finishedAt;
   const n = ua?.offer.length ?? 0;
-  // D548: a narrow phone has one button for the places (the bar's middle keeps its one line).
+  // D548, D635: a narrow phone, a phone-class width, or a touch screen gets one button for
+  // the places (the marks stay on a pointer's wide bar).
   const narrow = useRoomy(NARROW);
-  if (narrow) {
+  const small = useRoomy("(max-width: 999px)");
+  const touch = useRoomy("(any-pointer: coarse)");
+  if (narrow || small || touch) {
     const update = n > 0 || running ? [{ key: "update", label: running ? t("nav.updating") : n > 1 ? t("nav.update.n", n) : t("nav.update"), glyph: <UpdatePebble />, on: false, go: () => A.openSettings("devices") }] : [];
     return (
       <PlacesMenu
@@ -1850,7 +1853,7 @@ export function Top({ back, plus, level, extra, own, up }: { back?: string; plus
       {/* D513: on a phone with more than one partner, ‹ goes up to the list of them, with what waits elsewhere. */}
       {/* D545: beside the list (not a phone, not a fold), its toggle: narrower, hidden, back. */}
       {!phoneBar && !fold && <RailToggle />}
-      {((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}
+      {((!wide && phoneBar) || fold) && <PartnersBack />}
       <div class="who">
         {/* D497: with more than one partner, the figure is in its partner's own clay. D548: on a narrow
             phone with others beside, none (their stack holds the left; the composer says who); with one
@@ -2790,6 +2793,10 @@ function FolderChangesView({ task }: { task: Task }) {
 export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const task = A.S.tasks.get(id);
   const phone = usePhone();
+  // D635: a task beside the conversation (a wide pane or a fold split) has the compact bar
+  // even on a phone-width screen; only a phone's one-column task keeps the D484 row.
+  const wideNow = useWide();
+  const compact = !phone || wideNow;
   const scroller = useRef<HTMLDivElement>(null);
   // D210: it opens at its latest while it works or waits on you, at its head once finished (the
   // outcome is there). While it works, a reader at the end follows the newest step; one who
@@ -2869,34 +2876,25 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
     <>
       {full ? (
         // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
-        // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
+        // task are in the foot, D210, D213); D635: its own actions, the workbench included, are
+        // in the one ⋯ menu.
         <FullTop task={task}>
-          <TaskNav id={id} />
-          <TaskInfoButton task={task} />
-          <BenchToggle task={task} />
-          <ShareButton task={task} state={stateSentence} />
-          <TaskMore task={task} />
+          <TaskMenu task={task} state={stateSentence} />
         </FullTop>
       ) : (
         <Top
           back={t("nav.back")}
           own={phone}
           extra={
-            phone ? (
-              // D484: a phone's bar holds the task's own actions, each 44 points: Share, the
-              // workbench when it has something, and ⋯ (这个任务: the working copy, Switch, Cancel).
-              <>
-                <ShareButton task={task} state={stateSentence} />
-                <BenchToggle task={task} />
-                <PhoneMore task={task} canSwitch={canSwitch} />
-              </>
+            compact ? (
+              // D635: beside the conversation (and on every width from 700 up) the task has
+              // one ⋯ menu for its secondary actions, never a row of icons.
+              <TaskMenu task={task} state={stateSentence} />
             ) : (
+              // D484: a phone's one-column bar keeps Share and 这个任务, each a 44-point target.
               <>
-                <TaskNav id={id} />
-                <TaskInfoButton task={task} />
-                <BenchToggle task={task} />
                 <ShareButton task={task} state={stateSentence} />
-                <TaskMore task={task} />
+                <PhoneMore task={task} canSwitch={canSwitch} />
               </>
             )
           }

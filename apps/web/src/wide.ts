@@ -61,7 +61,7 @@ export function useSplit(): Split | undefined {
     const on = () => {
       const s = currentSplit();
       markSplit(s);
-      setSplit((p) => (p?.kind === s?.kind && p?.a === s?.a && p?.gap === s?.gap ? p : s));
+      setSplit((p) => (p?.kind === s?.kind && p?.a === s?.a && p?.gap === s?.gap && p?.flat === s?.flat ? p : s));
     };
     on();
     return onFoldChange(on);

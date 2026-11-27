@@ -108,8 +108,8 @@ build with) and for Safari to turn on viewport segments, which the page already 
 | Posture | Fold | Layout |
 |---|---|---|
 | Folded (cover screen) | none | one column, as on any phone |
-| Open flat, held upright | vertical | **book:** conversation left of the fold, On hand / the task right |
-| Half-open like a book | vertical, half | book, the same |
+| Open flat, held upright | vertical, flat | **book:** conversation left of the fold, On hand / the task right; Tasks can take the whole screen (its arrows, ⌘2) |
+| Half-open like a book | vertical, half | book, the same; Tasks stays beside (D252) |
 | Half-open standing (tabletop) | horizontal, half | conversation above, On hand below |
 | Open flat, turned sideways | horizontal, flat | one column (one tall screen) |
 
@@ -122,9 +122,13 @@ posture and again whenever the web view's size or place changes (D252). Unfoldin
 fold before the web view has grown from the cover screen, so a fold read only then is none, and the
 page stayed one column across the crease.
 
-On a book, On hand never takes the whole screen (the book already is On hand beside the
-conversation); an opened task can, and stands in the second half with On hand as a rail in the first
-(D244, D252).
+On a book held half-open, On hand never takes the whole screen (the book already is On hand beside
+the conversation); an opened task can, and stands in the second half with On hand as a rail in the
+first (D244, D252). Unfolded flat with no hinge gap the screen is plain wide, so Tasks can take the
+whole screen with the same arrows (⌘2 too) and come back beside the conversation (D635). In a
+fold's half an opened task's bar is one leading ‹ Tasks, one ⋯ for its actions (the walk, the
+working copy, the workbench, Share, end) and one fill; the workbench is no longer a separate
+sidebar icon there (D635).
 
 ## Sharing into Ducter (D537)
 

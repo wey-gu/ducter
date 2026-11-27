@@ -94,8 +94,12 @@ function App() {
   // D244: from 1120 the rail; all three from 1560, and under it an open workbench takes the rail's
   // place (two slots). On a book fold, a task opened from the whole-screen On hand stands in the
   // second half with the rail in the first, nothing across the fold.
-  const book = split?.kind === "book";
-  const rail = r.name === "task" && (book ? fill : !split && (benched ? roomyBench : roomy));
+  // D635: a book unfolded flat (no hinge gap) is a plain wide screen: the book's half-and-half
+  // rules apply only while the fold stands (half-open) or a real hinge parts the two screens.
+  const bookFold = split?.kind === "book";
+  const book = bookFold && !(split.flat && split.gap === 0);
+  const plainWide = !split || (split.kind === "book" && !!split.flat && split.gap === 0);
+  const rail = r.name === "task" && (book ? fill : plainWide && (benched ? roomyBench : roomy));
   // D244: a task open on this device is seen, whatever it says now (seen.ts: 新结果 / New result).
   if (benchTask) markSeen(benchTask.id, benchTask.card?.updatedAt);
   // D262: a first open settles on the calm ground (at most 1.5 s) instead of flashing the system's
@@ -104,7 +108,7 @@ function App() {
   return (
     <>
       {fill ? (
-        <div class={`${split ? `full ${split.kind}` : "full"}${benched && !book ? " benched" : ""}`}>
+        <div class={`${book ? `full ${split!.kind}` : "full"}${benched && !bookFold ? " benched" : ""}`}>
           {r.name === "task" ? (
             rail ? (
               <div class="with-rail">
@@ -119,7 +123,7 @@ function App() {
           ) : (
             <Board />
           )}
-          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet={book} />}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet={bookFold} />}
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>

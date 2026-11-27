@@ -178,7 +178,11 @@ Connect it the same way, with its own code.
   next task is one tap away. The same arrows, ⌘2 again, or **Conversation** at the top
   bring you back to the two sides. On a foldable opened like a book, the two sides already are
   the conversation and Tasks; a task you open to fill the screen stands on one side of the
-  fold, with the list on the other.
+  fold, with the list on the other. Unfolded flat, the same arrows still fill the screen and
+  bring it back beside the conversation.
+- **A task's own actions** live in one **⋯** at the top right: the previous or next task, its
+  working copy, the Workbench, Share, and ending it. The leading **‹** goes back to Tasks (or the
+  conversation on a phone), and the arrows at the far right fill the screen when there is room.
 - **Upright, or side by side with another app** in Split View or Stage Manager, Ducter is one
   column, as on a phone. Turning the iPad or resizing the window keeps what you were reading and
   typing.
@@ -226,9 +230,11 @@ other place to download from yet, so try another connection. Close the card and 
 offered again the next time you open Ducter.
 
 **On a foldable.** Open it like a book and the conversation sits on one side of the fold and
-**Tasks**, or the task you open, on the other. Stand it half-open on a table and the
-conversation is above the fold, Tasks below. Folded, it is one column as on any phone. Folding,
-unfolding and turning keep what you were reading and typing.
+**Tasks**, or the task you open, on the other. An opened task's own actions are in its **⋯** (the
+previous or next task, its working copy, the Workbench, Share, end), beside one leading ‹ Tasks
+and the fill. Unfolded flat, **Tasks** can still take the whole screen with the arrows at its top.
+Stand it half-open on a table and the conversation is above the fold, Tasks below. Folded, it is one column as on any phone. Folding, unfolding and turning
+keep what you were reading and typing.
 
 Notifications from your Ducter in the Android app are coming soon; until then, Ducter in Chrome
 notifies you as above. The app's notifications today are about **Use this phone**, below.

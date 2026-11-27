@@ -10,16 +10,24 @@ import { upFrom } from "../src/wide.ts";
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
 const src = (f: string) => readFileSync(join(import.meta.dir, "../src", f), "utf8");
 const book: Split = { kind: "book", a: 421, gap: 0 };
+const flat: Split = { kind: "book", a: 421, gap: 0, flat: true };
+const hinge: Split = { kind: "book", a: 540, gap: 34, flat: true };
 const table: Split = { kind: "table", a: 350, gap: 0 };
 
 describe("taking the whole screen", () => {
-  test("only wide; on a book fold an opened task only (the book is conversation | On hand); on a tabletop neither", () => {
+  test("wide without a fold both fill; on a half-open book only an opened task; flat and seamless both (D635); a hinge never; a tabletop neither", () => {
     expect(canFill("onhand", false)).toBe(false);
     expect(canFill("task", false)).toBe(false);
     expect(canFill("onhand", true)).toBe(true);
     expect(canFill("task", true)).toBe(true);
     expect(canFill("onhand", true, book)).toBe(false); // D252: a one-column list would lie across the crease
     expect(canFill("task", true, book)).toBe(true); // D244: the rail in the first half, the task in the second
+    // D635: unfolded flat is a plain wide screen (no angle, no hinge), so the same button shows.
+    expect(canFill("onhand", true, flat)).toBe(true);
+    expect(canFill("task", true, flat)).toBe(true);
+    // A real hinge (a gap between two screens) still keeps D252.
+    expect(canFill("onhand", true, hinge)).toBe(false);
+    expect(canFill("task", true, hinge)).toBe(true);
     expect(canFill("onhand", true, table)).toBe(false);
     expect(canFill("task", true, table)).toBe(false);
   });

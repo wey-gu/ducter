@@ -78,7 +78,7 @@ describe("D513: the list of partners", () => {
     expect(main).toMatch(/A\.partnersOpen && A\.manyPartners\(\) \? <PartnerList at="home"/);
     // The phone's edge swipe from a conversation goes up to the list.
     expect(main).toContain('if (A.route.name === "conv") return A.railMode === "hidden" && !phoneNow() ? A.setRail("") : A.showPartners();');
-    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}');
+    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold) && <PartnersBack />}');
     expect(src("app.ts")).toContain('hash === "#partners"');
   });
   test("D545: the list beside the conversation narrows, hides and comes back, by the bar's toggle; remembered here", async () => {
@@ -95,8 +95,9 @@ describe("D513: the list of partners", () => {
     const main = src("main.tsx");
     expect(main).toContain('{!split && A.railMode !== "hidden" && <PartnerList at="side" thin={A.railMode === "thin"} />}');
     expect(main).toContain('A.manyPartners() && !phone && A.railMode !== "hidden" ? (');
-    // Hidden: the others' faces are the way back (and carry what waits in them), on any width.
-    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold || (A.railMode === "hidden" && A.manyPartners())) && <PartnersBack />}');
+    // Hidden on a phone or a fold: the others' faces are the way back; at a wide width the toggle
+    // is the one way back, so the partners' back is not drawn twice (D635).
+    expect(src("views.tsx")).toContain('{((!wide && phoneBar) || fold) && <PartnersBack />}');
     expect(src("views.tsx")).toContain("{!phoneBar && !fold && <RailToggle />}");
     expect(fn("RailToggle")).toContain("<IconBtn label={label} onClick={() => A.setRail(next)}>");
     expect(css).toContain(".pane.partners.thin { flex-basis: 56px; }");

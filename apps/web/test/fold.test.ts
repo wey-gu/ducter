@@ -12,12 +12,12 @@ const book = (start: number, end = start, state: Fold["state"] = "half"): Fold =
 describe("the fold splits the panes", () => {
   test("held open like a book: the conversation left of the fold, On hand right of it", () => {
     // A Pixel Fold's inner screen: 841 × 701 CSS px, a seamless fold at 421.
-    expect(splitFor(book(421), 841, 701)).toEqual({ kind: "book", a: 421, gap: 0 });
+    expect(splitFor(book(421), 841, 701)).toEqual({ kind: "book", a: 421, gap: 0, flat: false });
     // Flat, the fold is still there: a column laid across it would put the crease under the words.
-    expect(splitFor(book(421, 421, "flat"), 841, 701)).toEqual({ kind: "book", a: 421, gap: 0 });
+    expect(splitFor(book(421, 421, "flat"), 841, 701)).toEqual({ kind: "book", a: 421, gap: 0, flat: true });
   });
   test("a hinge with width: the panes leave it empty", () => {
-    expect(splitFor(book(540, 574, "flat"), 1114, 720)).toEqual({ kind: "book", a: 540, gap: 34 });
+    expect(splitFor(book(540, 574, "flat"), 1114, 720)).toEqual({ kind: "book", a: 540, gap: 34, flat: true });
   });
   test("too narrow on a side for a pane: no split", () => {
     expect(splitFor(book(BOOK_MIN - 1), 700, 800)).toBeUndefined();
@@ -45,9 +45,14 @@ describe("the postures of a foldable", () => {
   test("folded (the cover screen): one column, as on any phone", () => {
     expect(posture(undefined, 412, 797)).toEqual({ split: undefined, onhandFills: false, taskFills: false });
   });
-  test("open flat or half-open like a book: conversation | On hand; a task may stand beside its rail", () => {
-    for (const state of ["flat", "half"] as const)
-      expect(posture({ axis: "vertical", state, start: 421, end: 421 })).toEqual({ split: "book", onhandFills: false, taskFills: true });
+  test("unfolded flat: a plain wide screen, so On hand and a task both fill (D635; amends D252)", () => {
+    expect(posture({ axis: "vertical", state: "flat", start: 421, end: 421 })).toEqual({ split: "book", onhandFills: true, taskFills: true });
+  });
+  test("half-open like a book: conversation | On hand; only a task may stand beside its rail (D252)", () => {
+    expect(posture({ axis: "vertical", state: "half", start: 421, end: 421 })).toEqual({ split: "book", onhandFills: false, taskFills: true });
+  });
+  test("a hinge with width parts two screens, flat too: nothing fills across it", () => {
+    expect(posture({ axis: "vertical", state: "flat", start: 540, end: 574 }, 1114, 720)).toEqual({ split: "book", onhandFills: false, taskFills: true });
   });
   test("half-open standing (tabletop): conversation above, On hand below, nothing fills", () => {
     expect(posture({ axis: "horizontal", state: "half", start: 350, end: 350 })).toEqual({ split: "table", onhandFills: false, taskFills: false });

@@ -96,6 +96,9 @@ clock is set with a time zone override so the note says a morning time.
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them
 when the screens they show change, then redraw the share image (below).
 
+`shots/onhand-2x.png` (2880 × 2000 PNG, 348 KB) is not a page image: it is the 2x source for the
+share card, captured the same way from `DEMO_STATE=one` and never resized or re-encoded.
+
 ## Owed
 
 - **README screenshots.** Resolved 2026-11-27: the README now shows the site's own real shots
@@ -107,7 +110,7 @@ when the screens they show change, then redraw the share image (below).
   goes bilingual, with `/download`'s mainland-China note (D78's type is already in the CSS).
 - **A mirror for mainland China.** Releases come only from GitHub; `install.sh` has no mirror. If
   one is set up, `install.sh` and `/download` say so together.
-- **The share image with D558's promise** was redrawn (`og.png?v=7`, layout A, no overlap) but not
+- **The share image with D558's promise** was redrawn (`og.png?v=8`, layout A, no overlap) but not
   re-rated: the thumbnail test of 2026-11-18 should be run again on the new composition.
 - **Docs search.** Twenty-odd pages, no search; Pagefind at build time is the cheap option.
 - **From the real Mac app** (D326): the hero in the Mac window, and a Devices picture to replace the
@@ -192,23 +195,26 @@ page had their elements), which still held joined strings.
 
 ## The share image (D346)
 
-`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=7` so X and Slack fetch it
+`public/og.png` (1200 × 630, also twitter:image, linked as `og.png?v=8` so X and Slack fetch it
 again) is what WeChat, X, Slack and iMessage show when someone shares ducter.ai: for many people the
 first thing they ever see of Ducter. `apps/site/scripts/og.mjs` (`bun run og` in `apps/site`) draws
 it from an HTML template in headless Chrome, with the site's Bricolage, palette and clay art and the
-real hero shot (`public/shots/hero-light.webp`), and squeezes it to a palette PNG under 400 KB (71 KB
-now). It reads the tagline from the home page's `<h1>`; `test/copy.test.ts` fails if the alt in
+real hero shot (`public/shots/hero-light.webp`). It renders at deviceScaleFactor 2 (2400 x 1260),
+downsamples to 1200 x 630 with Lanczos, and saves a full-colour PNG with no palette step (277 KB
+now; under 400 KB). It reads the tagline from the home page's `<h1>`; `test/copy.test.ts` fails if the alt in
 `Head.astro` doesn't carry that line, so a new line means running it again. Retaken shots mean the
 same. `--layout b|c --out <file>` draws the two that lost.
 
-**The composition, redrawn 2026-11-27.** The line sits on the left, the real screen on the right
-fully inside the card, and the character on its own ground above `ducter.ai` at the lower left.
-Nothing overlaps the screen's edge (the old layout A had the character peeking over it). The same
-pipeline draws GitHub's new social preview at 1280 × 640: `--layout social` reads the Line from
-[positioning.md](positioning.md), crops On hand (`public/shots/many-light.webp`) to the part that
-shows the 6 things that need you, and writes `.shots/brand/social-preview.png`; at 400 px wide the
-line still reads and the card reads as a real app. The 1200 × 630 `og.png` uses the home page's
-promise instead, in the same composition. Neither was re-rated with the five naive raters.
+**The composition, redrawn 2026-11-27 and revised 2026-11-28.** The headline sits on the left with
+its second line, the real screen on the right fully inside the card, and a small character beside
+`ducter.ai` in a signature row at the lower left. The screen keeps its own top padding and shares
+the headline's cap line and the signature row's baseline; nothing overlaps. The same
+pipeline draws GitHub's social preview at 2560 × 1280 (1280 × 640 CSS at 2x): `--layout social` reads
+the Line from [positioning.md](positioning.md), takes one real screen of On hand from the fresh 2x
+capture `public/shots/onhand-2x.png`, and writes `.shots/brand/social-preview.png` as a full-colour
+PNG (266 KB). At 400 px wide the line still reads and the card reads as a real app. The site's
+1200 × 630 `og.png` keeps its earlier composition and hero screen, with the home page's promise;
+only the 2x, full-colour pipeline is shared. Neither was re-rated with the five naive raters.
 
 **Three layouts, rated** (`.shots/og/cand-{a,b,c}.png`, the 300-px thumbnails beside them; the winner
 `.shots/og/winner-a.png`). Five naive LLM raters (Haiku), the same five as research/113: a developer
@@ -326,6 +332,8 @@ hand after the author approves.
   screen of On hand and `ducter.ai`, with at least 40 px of air at the edges. `og.png` was redrawn in the
   same composition and `Head.astro`'s alt and `?v=7` follow. The 400 px thumbnail
   (`.shots/brand/social-preview-400.png`) still reads the line; the screen is proof, not body copy.
+  **Superseded 2026-11-28: the card is now a 2560 × 1280 full-colour PNG and `og.png` is
+  `?v=8`; see the last section.**
 - **The description and topics.** The proposal is `.shots/brand/description.txt`: the Line (116
   characters) instead of the 334-character paragraph, and 20 topics (the old 15 plus `deepseek`,
   `self-hosted-ai`, `open-source`, `privacy` and `homelab`; nothing dropped). positioning.md's
@@ -337,3 +345,57 @@ hand after the author approves.
   self-hosting*, *Docs*, *Contributing* and *License*. Stale claims and names are gone: no
   `OAR`, no `Log`, no harness vocabulary, no `.github/readme` images, no HawDB in the words, and
   the agent list follows `apps/site/src/lib/agents.ts`. `bun scripts/check-links.ts` passes.
+
+## 2026-11-28: the social card at 2x, full colour, no squeeze (D641; D641's card revised; D53, D75, D346, D414)
+
+The author looked at `.shots/brand/social-preview.png`: 「这个图设计不够优雅，细节压缩失真」. The causes
+were in the pipeline, not only the screen: `og.mjs` rendered at deviceScaleFactor 1, then squeezed the
+PNG to a palette under 400 KB, and the screen was a crop of a *downscaled* WebP (`many-light.webp`).
+The fix is at each cause. The lead's review of the first crisp A then fixed the remaining details:
+the screen crop keeps ~29 px at 1x above the app's head line (so the head line and its character are
+whole, as in the app); the second line is Instrument Sans 400 in `--ink-2`, 0.45× the headline at 1.4
+line-height; the left character is 80 px tall beside `ducter.ai` in a signature row; the headline cap
+and the screen top share one line while the signature baseline shares the screen bottom; the frame top
+is cropped below the app header's hairline, and its bottom has the same ~29 px below the last row.
+
+- **Render at 2x, keep full colour.** `og.mjs` now always renders at deviceScaleFactor 2. The social
+  card is saved at **2560 × 1280** (1280 × 640 CSS at 2x) as a full-colour PNG, no palette and no
+  lossy step: **266 KB**, so no JPEG fallback was needed. The site's `og.png` is rendered at
+  **2400 × 1260**, downsampled to 1200 × 630 with Lanczos, and saved full colour: **277 KB**, under
+  the 400 KB test and the 1 MB GitHub cap. It is linked as `og.png?v=8` so X and Slack fetch it
+  again.
+- **One real 2x screen, not a WebP crop.** `apps/site/public/shots/onhand-2x.png` is a fresh
+  2880 × 2000 PNG (348 KB) of the web client, captured with `DEMO_STATE=one DUCTER_PORT=7993
+  DUCTER_DATA_DIR=<scratch> DEMO_LANG=en bun apps/web/demo-onhand.ts`, then headless Chrome at
+  1440 × 1000 with `--force-device-scale-factor=2` and a fresh profile. It shows one thing that
+  needs you, two at work and one done: the promise, calm. The social layouts crop the main column
+  (no project rail, no task-detail panel, no empty header strip) at native resolution; the screen
+  is never upscaled. The character comes from its 1024 px master
+  (`design/art/assets/alpha/ducter_done.png`), trimmed at render time; the text is live HTML in
+  Bricolage and Instrument Sans, never a screenshot.
+- **Three compositions, one chosen.** All at 1280 × 640 CSS / 2560 × 1280 PNG, the 96 px outer grid, one
+  flat warm ground, one clay screen with the site's radius and shadow, and no overlap:
+  - **A** (chosen, `.shots/brand/social-candidates/a.png`, 266 KB): the headline and its second
+    line on the left, a small character beside `ducter.ai` in a signature row at the bottom, the
+    screen on the right. The second line is Instrument Sans 400 in `--ink-2`, 0.45× the headline at
+    1.4 line-height; the screen keeps ~29 px at 1x above its head line and ~29 px below its last
+    row, and shares the headline's cap line at the top and the signature row's baseline at the bottom. Message first, proof second;
+    two columns on one 96 px outer grid.
+  - **B** (`.shots/brand/social-candidates/b.png`, 330 KB): the mirror, screen left and line right.
+    The detailed UI leads, then the words; the eye starts on the busiest object.
+  - **C** (`.shots/brand/social-candidates/c.png`, 291 KB): a diagonal with a large character top
+    right and a wide screen below. The huge mascot pulls attention away from the line and the screen
+    is smaller; the least calm of the three.
+  At 400 px (`a-400.png`, `b-400.png`, `c-400.png`) A reads the line first and keeps the screen as a
+  quiet second; B still reads but asks the eye to parse the UI first; C's screen text disappears and
+  the mascot dominates. A also wins the UI bar: one alignment grid, one accent (the orange clay and
+  the one needs-you card), no gradients or glows, nothing touching, and the screen's shadow is the
+  only decoration. The chosen card is `.shots/brand/social-preview.png` (266 KB, 2560 × 1280 PNG);
+  the 400 px check is `.shots/brand/social-preview-400.png`.
+- **The site's og.png.** The same pipeline faults were fixed: it is now 2x-rendered and
+  full-colour, and the existing composition and `hero-light.webp` are unchanged. The 1:1 crops
+  (`a-crop-type.png`, `a-crop-screen.png`, `a-crop-top.png`, `a-crop-bottom.png`) show the UI text, the
+clean frame top and the bottom padding at native pixels, with
+  no halo or palette banding.
+- **Not applied to GitHub.** The description, topics and upload remain the lead's by hand after the
+  author approves. The old og is kept as `.shots/brand/og-before.png` for comparison.

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.99 - 2026-11-27
+
+<!-- whats-new
+zh: 交给任务一按就走，不再卡住；手机上的提示更短；网站更整齐
+en: Handing to-dos over answers at once; shorter hints on a phone; a tidier website
+-->
+
+**Handing work over**
+- Go in the hand-over sheet answers at once: the sheet closes, the group appears in Tasks, and the
+  slow work (reading the issues, finding the folder, opening the tasks) carries on behind it. If
+  something fails afterwards, the group's card says why and the to-dos go back on your list. With
+  no connection, the hand-over waits on the device and goes when it is back. On the Mac too.
+- The fields' hints are short enough for a phone and no longer name someone else's computer.
+
+**Website**
+- The chat apps are a card of their own beside the devices, each with its mark; the phone picture
+  no longer cuts a line in half; con is in the footer.
+
 ## 0.1.98 - 2026-11-27
 
 <!-- whats-new

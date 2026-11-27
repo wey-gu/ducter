@@ -1018,6 +1018,10 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] Codex's Update on the Agent messaging row (D560, D576). Mem's `plugins check` doesn't list Codex, so an older
       Codex plugin shows no button; pi's gap was closed with its known Bridge version as the floor. Trigger: Mem lists
       Codex, or the author wants MEM_AUTO_SESSION's 0.1.50 laid the same way.
+- [ ] The partner's own Bridge Space, chosen in place (D646, research/243 Brief B). D560 removed D480's
+      picker, no list of Spaces reaches the clients for the partner's own identity, and `bridge_connect` takes no
+      Space: `no_space` says to make a personal Space in Mem and **再看一次** for now. Trigger: core carries a
+      `bridge.connect --space-id` path for the partner (not only an agent's mailbox) and the frame a Space list.
 - [ ] Antigravity's plugin and its version per computer (Mem's `plugins inspect` lists no Antigravity, so its row
       says "Mem hasn't said" until it writes). Read its manifest (`~/.gemini/config/plugins/...`, research/172) on the
       home and through a worker op, or take Mem's host once `plugins inspect` lists it (private ask item 2).

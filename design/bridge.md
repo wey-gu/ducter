@@ -270,6 +270,46 @@ Bridge assumption and setting; make it smooth and reasonable; no needless option
 - **Not changed:** the partner's tools (D333's own branch), the conversation's lines and cards, D324's one-home rule. The
   card's Space line (D333) is for other agents to read, never on the pane; D338 keeps it naming only the Spaces read.
 
+## Mem's states, one table (D646)
+
+D646: one table in `apps/web/src/mem-view.ts` (`memStateView`, the Mac's twin `memStateOf` in
+`views/memory.go`) says every Mem state the same on Overview, Memory and Agent messaging, in both
+clients: the Overview line, the pane line and at most one action. No state ends in a red sentence
+with nothing to do, and no line names the persona's identity or Mem's "workspace admin": that name,
+and who to tell in Mem, is behind **详情** (`bridge.refused.detail`), as "Simple, by who" requires.
+
+| Mem's state | Pane title and line (zh) | Overview (记得 / needs) | The one action |
+|---|---|---|---|
+| signed out | **Nowledge Mem 的登录失效了** · 你之前跟我说的我这会儿翻不到；点「登录」，把 Nowledge Mem 的连接提示贴进来就好。 | 这会儿记不进 Nowledge Mem · need to sign in | **登录** (the link field in place; the same name as the first sign-in's) |
+| closed | **Nowledge Mem 没开着** · {home} 上的应用关着，记忆先放着，打开就接上。 | **Nowledge Mem 没开着** · need | **打开 Nowledge Mem** when the home can; else none, and the line says which computer |
+| out of reach | **{home} 现在连不上 Nowledge Mem** · {home} 这会儿没应答。记着的都还在；等它回来，或者点「再看一次」。 | 这会儿记不进 Nowledge Mem · need | **再看一次** |
+| too old, Ducter can run it | **Nowledge Mem 太旧了** · 它说不出自己好不好。点「更新」，照它当初装的方式更新；登录和记忆都不动。 | **Nowledge Mem 太旧了** · need | **更新** (D225's own path) |
+| too old, only its computer can | **Nowledge Mem 太旧了** · 在 {home} 上更新 Nowledge Mem，才能知道它好不好；登录和记忆都不动。 | **Nowledge Mem 太旧了** · need | none, and the line says which computer |
+| local Mem | **这台上的 Nowledge Mem 帮不了你的 agent** · {home} 上的这份只记它自己的；更新它，或者用云端工作区登录，再点「再试一次」。 | 这台上的 Nowledge Mem 不跟你的 agent 连 · need | **再试一次** |
+| no Space | **还没有只有你能看到的地方** · Nowledge Mem 里没有一处只有你能看到的地方。在 Mem 里建一个，再点「再看一次」。 | 还没给这里留一个只有你能看到的地方 · need | **再看一次** |
+| a refusal | see below | 你的 agent 还找不到我 · need | **再试一次**, except `lifetime_inactive` and `conflict` (none: the way through is in Mem) |
+| failed | **没连上** · the home's own reason (`timed out`, `nmem 没能启动`) | 你的 agent 还找不到我 · need | **再试一次** |
+| unconfirmed | **连上了，还没确认** · 连上了，但 Nowledge Mem 没确认是我，所以还没打开。 | 连上了，还没确认 · need | **再试一次** |
+
+- **Refusals, in the person's words.** Each `bridge.refused.*` is a title and a line, not one red
+  sentence: `authority_missing` **这个登录还不能替我做事** · 「在 Nowledge Mem 里把这个登录和我的名字对上…」
+  (the alternatives `control_denied`, `revoked`, `attachment_mismatch`, `custody_birth_missing`,
+  `unavailable`, `unknown` follow the same shape). The words say what the person can do in Mem and
+  come back to tap; none says "identity", "key" or "workspace admin" in the line.
+- **`no_space` no longer stops.** D480's in-place Space choice was removed by D560, and no list of
+  Spaces reaches the clients: `bridge_connect` takes no Space. So the one way through is **再看一次**
+  after the person makes a personal Space in Mem; the line says exactly that, in Chinese, with no
+  "Only me" in English. (A real picker needs a `bridge.connect --space-id` path in core; it is not
+  in this change.)
+- **A newer Mem does not add a second button.** A failed, refused or unconfirmed connection with a
+  newer Mem out keeps D257's hint as one quiet clause after the line; the update itself is Memory's
+  one action, so the problem row never carries two.
+- **Overview is never calm while a pane is red.** The 记得 line says closed/old/out of reach, and
+  Settings' needs carry every state above with the pane that holds its fix; a Mem plugin's update
+  has its own need and is not Mem itself. Mem closed is never **还没连上**.
+- **Nothing cached.** With Mem out of reach or signed out and no glance, Memory's "what I know about
+  you" says Mem's own line (D590), never **我还不太了解你**: an empty page must not read as forgetting.
+
 ## Chosen scenarios (dogfood, 2026-11-09)
 
 From 14 scored candidates (research/37 §2), four are chosen. The J-numbered details below still hold:

@@ -73,7 +73,9 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("mem.app.kept.local", "hel")} },
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"local-peers", TabPeers, protocol.BridgeView{State: "local_mem", Identity: "ducter", Home: "hel"},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.local", "hel")} },
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.mem.local.title"), L.T("bridge.mem.local", "hel"), L.T("bridge.retry")}
+			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		// D229: hel's pip copy past the mark: a quiet move in Memory; moving; done; a failed move kept the old copy.
 		{"upkeep-move", TabMemory, protocol.BridgeView{State: "ready", Identity: "ducter", Space: space, Home: "hel", Upkeep: &protocol.BridgeUpkeep{Kind: "move"}},
@@ -112,20 +114,23 @@ func TestBridgeRow(t *testing.T) {
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), "%!("} }},
 		{"no-space", TabPeers, protocol.BridgeView{State: "no_space", Identity: "ducter"},
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.no_space")} },
-			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.retry")} }},
+			func(L *i18n.Strings) []string {
+				return []string{L.T("bridge.no_space.title"), L.T("bridge.no_space"), L.T("mem.health.again")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect"), L.T("bridge.retry"), "Only me"} }},
 		{"failed", TabPeers, protocol.BridgeView{State: "failed", Identity: "ducter", Space: space, Detail: "timed out"},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.failed", "timed out"), L.T("bridge.retry")}
+				return []string{L.T("bridge.failed.title"), L.T("bridge.failed.why", "timed out"), L.T("bridge.retry")}
 			}, nil},
 		// D257: it doesn't connect and Mem says a newer one is out: that's the first thing to try.
 		{"failed-newer", TabPeers, protocol.BridgeView{State: "failed", Identity: "ducter", Space: space, Detail: "timed out", Newer: ptr("0.10.121")},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("peers.mem.newer"), L.T("peers.mem.go"), L.T("bridge.retry")}
-			}, nil},
+				return []string{L.T("peers.mem.newer"), L.T("bridge.retry")}
+			},
+			func(L *i18n.Strings) []string { return []string{L.T("peers.mem.go")} }},
 		{"unconfirmed", TabPeers, protocol.BridgeView{State: "unconfirmed", Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.unconfirmed", "ducter"), L.T("bridge.retry")}
+				return []string{L.T("bridge.unconfirmed.title"), L.T("bridge.unconfirmed"), L.T("bridge.retry")}
 			}, nil},
 		// D324: another home answers the partner's mailbox: where, and 改由这台收 (no plain Connect).
 		{"elsewhere", TabPeers, protocol.BridgeView{State: "elsewhere", Identity: "ducter", Space: space, Others: []protocol.BridgeOther{{Label: "ducter-on-hel-1a2b3c", Home: "hel"}}},
@@ -148,7 +153,11 @@ func TestBridgeRow(t *testing.T) {
 		r := r
 		states = append(states, tc{"refused-" + r, TabPeers, protocol.BridgeView{State: "refused", Reason: r, Identity: "ducter", Space: space},
 			func(L *i18n.Strings) []string {
-				return []string{L.TFamily("bridge.refused."+r, "ducter"), L.T("bridge.retry")}
+				want := []string{L.T("bridge.refused." + r + ".title"), L.T("bridge.refused." + r + ".line")}
+				if r != "lifetime_inactive" && r != "conflict" {
+					want = append(want, L.T("bridge.retry"))
+				}
+				return want
 			}, nil})
 	}
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {

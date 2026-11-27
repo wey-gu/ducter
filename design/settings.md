@@ -548,8 +548,15 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   labelled lines in its voice, each opening its pane: **待你处理** (each need with the button to where its fix is),
   **运行在**, **想事情用**, **能看的**, **记得**, **也能找我**.
 - **What needs you, everywhere it is** (`setNeeds`, the web's twin): no agent to think with (Partner), a source
-  that can't be reached (Accounts), a Mem plugin behind that can be updated from here (D466, D569) (Memory),
-  updates (About on the Mac, Devices on the web). Mem's own questions (D465) never are (D569). The brief names each with its button; the pane's head names its own.
+  that can't be reached (Accounts), Mem's own states and any Agent messaging problem that stops the partner
+  hearing from the person's agents (D646), a Mem plugin behind that can be updated from here (D466, D569)
+  (Memory), updates (About on the Mac, Devices on the web). Mem's own questions (D465) never are (D569). The
+  brief names each with its button; the pane's head names its own.
+- **Mem's line is Mem's state, the same on Overview and the pane (D646).** **记得** says **Nowledge Mem
+  没开着** when the app is closed (never **还没连上**), too old when it is, and the same out-of-reach line the
+  pane uses; Settings' needs carry those states with the pane that holds their one action. A plugin's update
+  is its own need, not Mem itself. The states, their lines and their one action are one table
+  (`bridge.md` "Mem's states, one table").
 - **你的电脑 / Your computers:** each computer one clay card of one width, its clay in its state, its name and what
   it is to the partner (D551: **我在这台上运行**, **这会儿连不上**; D556: **帮你做事**, true with one partner or four); the home's card carries what
   lives there: the partner's face, Mem's notebook while memory is on, the read accounts' marks (four, then +n).
@@ -559,7 +566,7 @@ with its fix. Candidates, rubric and diagnosis are D469's; what it leaves, on bo
   says where and that closing the window doesn't stop it; Memory by its state), then that pane's needs in the
   needs-you ink with the partner's flag. A pane with nothing computed says its old lede in the first person.
   D563: on Memory, a need that is Mem's own trouble (signed out, out of reach, too old) has its fix right under
-  it: the Nowledge Mem group with 重新登录 / 再看一次 / 更新 comes first, never a page below.
+  it: the Nowledge Mem group with 登录 / 再看一次 / 更新 comes first, never a page below.
 - **Said once:** a row under a head that says the same is dropped or speaks only when it differs (Where it runs'
   computer row; Memory's first-run hero).
 

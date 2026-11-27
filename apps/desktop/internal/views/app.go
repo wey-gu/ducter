@@ -150,6 +150,8 @@ type App struct {
 	// shows the raw facts behind 详情.
 	memAsk     int64
 	memDetails bool
+	// D646: a refusal's identity and who to ask in Mem, behind 详情 on Agent messaging.
+	peersFact bool
 	// peersAsked (D332): 和你的其他 agent 通信 was opened from the Partner page's
 	// one line, so the rail lists it for now.
 	peersAsked bool

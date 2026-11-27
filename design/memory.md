@@ -662,12 +662,19 @@ on every computer, without owning it (D17):
   hands on (`task_open` `replaces`: the mend after a start failure, D549) stays the setup, and the
   check runs when it ends. Then the line says **已更新到 0.7.38，重开 {agent} 就用上了** until the
   next check, and the Overview's notice is gone. Notices on more than one computer name theirs.
+- **Every Mem state has its line and one way through (D646, `bridge.md` "Mem's states, one table").**
+  Memory, Agent messaging and Overview read one table: signed out (the sign-in field in place), the
+  app closed (**Nowledge Mem 没开着**, **打开 Nowledge Mem** when the home can, else which computer),
+  out of reach (**再看一次** and the reason the home knows), too old (**更新** when Ducter can run it,
+  else which computer; never **命令行**), a local Mem or no Space, and each Bridge refusal as a title
+  and a line with the name and Mem's administrator behind **详情**. With nothing cached, Memory's
+  "what I know about you" says Mem is out of reach (D590), never **我还不太了解你**.
 - **Mem down (D552).** Memory on and Mem signed out or out of reach is a need on Settings'
   Overview, not only the Memory head. A save Mem refused because it isn't signed in is said once
   by the partner when the person asked to keep it; one that only waits (Mem down) stays unsaid.
 - **Why it wasn't kept, as it is (D563).** memory_add's refusal carries Mem's own reason (`why`:
   `missing`, `signed_out`, `off`), never inferred from a word the partner reads. Signed out: D552's one
-  plain line, **这条这次没记住：Nowledge Mem 的登录失效了，去 设置 › 记忆 重新登录一下就好。** Switched off
+  plain line, **这条这次没记住：Nowledge Mem 的登录失效了，去 设置 › 记忆 登录一下就好。** Switched off
   (the person's own choice): **记忆现在关着，这条只在我们这段对话里；想一直记着，去 设置 › 记忆 打开就好。**
   No Mem on the home (most fresh users): the conversation itself holds their words, so the partner simply
   acknowledges (**好，记着了。**), never "not signed in" and never a word about Nowledge Mem (D169). Asked
@@ -675,7 +682,7 @@ on every computer, without owning it (D17):
   设置 › 记忆; never unasked. Evals: `mem-remember-signed-out-zh` (now really signed out),
   `mem-remember-no-mem-zh`, `mem-remember-off-en`, `mem-how-to-connect-zh`.
 - **The fix under the line that says it (D563).** With Mem signed out, out of reach or too old (Mem's
-  doctor, D375), the Nowledge Mem group, with 重新登录 / 再看一次 / 更新, is the page's first group, right
+  doctor, D375), the Nowledge Mem group, with 登录 / 再看一次 / 更新, is the page's first group, right
   under the need (both clients, `memTrouble`); all well, it is the last as before.
 - **Ducter recommends it once** per computer and agent, ever, wherever the check finds a
   signed-in agent without it: one card, Go 装上 suggested, no timer (it changes the agent's
@@ -754,7 +761,7 @@ the consumer whose sign-in expired. The fresh user never meets it (no Mem, nothi
   glance; again after a sign-in, an update or Mem's own `connect`; `MemView.health`. The head says
   **已连上** until the first answer, then **已连上，一切正常**, or the one thing wrong in the failed ink
   with its one action: 更新 (when Ducter can run it, and not twice with the update row), 再看一次
-  (`mem_health`), 重新登录 (the link field in place under its own line: regenerate the connect prompt in Mem's Settings › Connectors).
+  (`mem_health`), 登录 (the link field in place under its own line: regenerate the connect prompt in Mem's settings).
   D554: plugin is not Mem in trouble: the head reads all well, and under it one quiet row,
   **{agents} 还没接上 Nowledge Mem** with what it gives and **接上** (D169's install for each agent, so
   Mem's own command; the busy button **接上中…** while it runs).

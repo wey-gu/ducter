@@ -19,7 +19,7 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
 import { ago, harnessName, keepClauses, receiptWords, spoken } from "./format.ts";
-import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
+import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memStateView, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type MemStateView, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
 import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
@@ -250,6 +250,9 @@ function MemAbout() {
   const asItems = (ns: Noted[]): MemItem[] => ns.filter((n) => n.memoryId).map((n) => ({ id: n.memoryId!, title: n.title, kind: "other", by: "said", at: n.at }));
   const items = g ? g.about : asItems(noted);
   const groups = aboutGroups(items);
+  // D646: only a state where Mem can't be read is said here; a setup step keeps its own steps.
+  const sv = memStateView(A.mem, A.bridge, homeOf(A.bridge), failedWhy(A.bridge?.detail));
+  const down = sv && (sv.state === "unreachable" || sv.state === "signed_out") ? sv : undefined;
   return (
     <section class="set mem-sec">
       <h3>{t("mem.about.title")}</h3>
@@ -275,7 +278,9 @@ function MemAbout() {
         </Group>
       ) : !groups.length ? (
         <Group class="mem-g" label={t("mem.about.title")}>
-          <GRow tile={<PebbleTile />} title={t("mem.about.empty")} line={t("mem.hero.empty.body")} />
+          {/* D646: with Mem out of reach or signed out and nothing cached, the head says Mem is out of
+              reach (D590's line), never 「我还不太了解你」: an empty page must not read as forgetting. */}
+          {down ? <GRow tile={<PebbleTile />} title={t(down.title.key, ...down.title.args)} line={t(down.line.key, ...down.line.args)} /> : <GRow tile={<PebbleTile />} title={t("mem.about.empty")} line={t("mem.hero.empty.body")} />}
         </Group>
       ) : (
         // D582: a kind is titled above its card, as every group (and the Mac); never a caption inside it.
@@ -541,20 +546,17 @@ function MemHealthHead({ b }: { b: BridgeView | undefined }) {
   const homeDv = A.devices?.find((d) => d.home);
   const h = memHealthLook(A.mem?.health, b, homeDv?.harnesses ?? []);
   const home = homeOf(b);
+  // D646: a state says the same line here as on Agent messaging and Overview, with its one action.
+  const sv = memStateView(A.mem, b, home, failedWhy(b?.detail));
   let line = t("mem.app.on");
   let tone: "done" | "bad" | undefined = "done";
   let act: ComponentChildren = null;
-  if (h.look === "ok") line = t("mem.health.ok");
-  else if (h.look === "old") {
-    (line = t("mem.health.old")), (tone = "bad");
-    if (h.canUpdate) act = <Btn kind="secondary" size="sm" label={t("mem.health.old.go")} about="Nowledge Mem" onClick={() => A.installBridgeMem()} />;
-  } else if (h.look === "unreachable") {
-    (line = t("mem.health.unreachable", home)), (tone = "bad");
-    act = <Btn kind="secondary" size="sm" label={t("mem.health.again")} about="Nowledge Mem" onClick={() => A.checkMemHealth()} />;
-  } else if (h.look === "signed_out") {
-    (line = t("mem.health.signed_out")), (tone = "bad");
-    if (!signing) act = <Btn kind="primary" size="sm" label={t("mem.health.signin")} about="Nowledge Mem" onClick={() => setSigning(true)} />;
-  }
+  if (sv && (sv.state === "signed_out" || sv.state === "unreachable" || sv.state === "old" || sv.state === "old_elsewhere")) {
+    (line = t(sv.line.key, ...sv.line.args)), (tone = sv.tone === "muted" ? undefined : "bad");
+    if (sv.action === "sign_in" && !signing) act = <Btn kind="primary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => setSigning(true)} />;
+    else if (sv.action === "check_again") act = <Btn kind="secondary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => A.checkMemHealth()} />;
+    else if (sv.action === "update") act = <Btn kind="secondary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => A.installBridgeMem()} />;
+  } else if (h.look === "ok") line = t("mem.health.ok");
   // D554: an agent without Mem's plugin is an offer under the head, never Mem itself in the failed ink.
   const p = h.look === "ok" ? h.plugin : undefined;
   const who = p ? agentWords(p.agents) : "";
@@ -737,14 +739,17 @@ function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "close
 }
 
 /** D329: what the closed app means, and the one way to open it, under the head (never squeezed beside it on a phone). */
-function MemClosedWords({ b }: { b: BridgeView }) {
+export function MemClosedWords({ b }: { b: BridgeView }) {
   const home = homeOf(b);
+  // D646: one state table: the same title, line and action on Memory and Agent messaging.
+  const sv = memStateView(A.mem, b, home);
+  const line = sv ? t(sv.line.key, ...sv.line.args) : t("bridge.mem.closed.there", home);
   return (
     <GBlock>
-      <small class="mem-closed-line">{b.canOpen ? t("bridge.mem.closed.open", home) : t("bridge.mem.closed.there", home)}</small>
-      {b.canOpen && (
+      <small class="mem-closed-line">{line}</small>
+      {sv?.action === "open_mem" && (
         <span class="mem-closed-act">
-          <Btn kind="primary" size="sm" label={t("bridge.mem.open")} about={home} onClick={() => A.openBridgeMem()} />
+          <Btn kind="primary" size="sm" label={t(sv.act)} about={home} onClick={() => A.openBridgeMem()} />
         </span>
       )}
     </GBlock>
@@ -773,8 +778,9 @@ export function MemoryPage() {
   if (phase === "closed")
     return (
       <>
-        <MemHead />
+        {/* D646: the fix sits under the line that says it, never a card below. */}
         {b && <MemClosed b={b} />}
+        <MemHead />
       </>
     );
   if (phase !== "on") return <MemFirst phase={phase} b={b} />;
@@ -1272,7 +1278,6 @@ function PeersRules({ p }: { p: PeersSettings }) {
  * Undefined when nothing is wrong.
  */
 function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
-  const toMemory = <Btn kind="secondary" size="sm" label={t("peers.mem.go")} onClick={() => A.openSettings("memory")} />;
   if (b.state === "connected") {
     if (b.pinned || !b.others?.length) return null;
     const where = otherWhere(b);
@@ -1294,29 +1299,69 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
       </GRow>
     );
   }
-  if (b.state === "local_mem") return <GRow tile={<CoinsTile faded />} title={t("bridge.mem.local", homeOf(b))} />;
-  // D329: the Nowledge Mem app on the home is closed: the agents can't reach it until it's open.
-  if (b.state === "mem_closed")
-    return (
-      <>
-        <GRow tile={<CoinsTile faded />} title={t("bridge.mem.closed")} />
-        <MemClosedWords b={b} />
-      </>
-    );
-  if (b.state === "no_space") return <GRow tile={<CoinsTile faded />} title={t("bridge.no_space")} />;
-  const note = b.state === "refused" ? t(`bridge.refused.${b.reason ?? "control_denied"}`, b.identity) : b.state === "unconfirmed" ? t("bridge.unconfirmed", b.identity) : failedLine(b.detail);
-  const tryNewer = b.newer !== undefined;
+  const sv = memStateView(A.mem, b, homeOf(b), failedWhy(b.detail));
+  return sv ? <MemProblemRow sv={sv} b={b} name={name} /> : null;
+}
+
+/** D646: a refusal's name and who to ask in Mem, behind the shared 详情 disclosure (never a
+ * browser's own summary triangle). */
+function MemStateFact({ text }: { text: string }) {
+  const [more, setMore] = useState(false);
   return (
-    <GRow cls="act-under" tile={<CoinsTile faded />} title={tryNewer ? `${note}\n${t("peers.mem.newer")}` : note}>
-      {tryNewer && toMemory}
-      <Btn kind="secondary" size="sm" label={t("bridge.retry")} about={b.identity} onClick={() => A.connectBridge()} />
-    </GRow>
+    <>
+      <GFoot note="">
+        <Btn kind="text" size="sm" chev expanded={more} label={t("mem.details")} about="Nowledge Mem" onClick={() => setMore(!more)} />
+      </GFoot>
+      {more && (
+        <GBlock>
+          <small class="mem-why">{text}</small>
+        </GBlock>
+      )}
+    </>
+  );
+}
+
+/**
+ * D646: one Mem problem on Agent messaging, from the shared state table: a title, one line, and
+ * at most one action. The identity and who to tell in Mem stay behind 详情, so a refusal asks the
+ * person to do something they can picture. The newer-Mem hint stays one quiet clause, never a second
+ * button: the update itself is Memory's one action.
+ */
+function MemProblemRow({ sv, b, name }: { sv: MemStateView; b: BridgeView; name: string }) {
+  const press = () => {
+    switch (sv.action) {
+      case "open_mem":
+        A.openBridgeMem();
+        break;
+      case "sign_in":
+        A.openSettings("memory");
+        break;
+      case "update":
+        A.installBridgeMem();
+        break;
+      case "check_again":
+      case "retry":
+        A.connectBridge();
+        break;
+    }
+  };
+  const newer = b.newer !== undefined && (sv.state === "failed" || sv.state === "refused" || sv.state === "unconfirmed");
+  const line = [t(sv.line.key, ...sv.line.args), newer ? t("peers.mem.newer") : ""].filter(Boolean).join(" ");
+  return (
+    <>
+      <GRow cls="act-under" tile={<CoinsTile faded />} title={t(sv.title.key, ...sv.title.args)} line={line}>
+        {sv.action !== "none" && <Btn kind="secondary" size="sm" label={t(sv.act)} about={name} onClick={press} />}
+      </GRow>
+      {sv.fact && <MemStateFact text={t(sv.fact.key, ...sv.fact.args)} />}
+    </>
   );
 }
 
 /** D404: the home's own words for a failed connect (bridge-link.ts), said in the person's language, never raw. */
 export const FAILED_DETAILS: Record<string, string> = { "Mem answered with another identity or place": "bridge.failed.identity", "nmem didn't start": "bridge.failed.nostart" };
-export const failedLine = (d?: string): string => (d && FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : t("bridge.failed", d ?? ""));
+export const failedLine = (d?: string): string => (!d ? "" : FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : t("bridge.failed", d));
+/** D646: a failed connect's reason alone, for the state table's line (the title already says 没连上). */
+export const failedWhy = (d?: string): string => (!d ? "" : FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : d);
 
 /** Whether 和你的其他 agent 通信 has anything to show yet (D332: by who; J6). */
 export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));

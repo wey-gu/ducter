@@ -81,7 +81,20 @@ var zhSetHome = Table{
 	"say.todos":             "你在 GitHub、Obsidian 里的待办，我能接过来做；做完替你留言或勾掉。",
 	"say.chats":             "在你常用的聊天软件里也能找我，还是同一段对话。",
 	"say.autofill":          "我把这些填进自己的浏览器，自己看不见；付款都先问你。",
-	"say.peers":             "你的其他 agent 能和我互相发消息。",
+	// D646: the one Mem state table (the web's apps/web/src/mem-view.ts).
+	"home.mem.closed":      "Nowledge Mem 没开着",
+	"home.mem.old":         "Nowledge Mem 太旧了",
+	"home.mem.local":       "这台上的 Nowledge Mem 不跟你的 agent 连",
+	"home.mem.no_space":    "还没给这里留一个只有你能看到的地方",
+	"home.mem.refused":     "你的 agent 还找不到我",
+	"home.mem.unconfirmed": "连上了，还没确认",
+	"need.mem.closed":      "Nowledge Mem 没开着：记忆先放着，打开就接上。",
+	"need.mem.old":         "%s 上的 Nowledge Mem 太旧了：我读不了它，得更新一下。",
+	"need.mem.local":       "%s 上的 Nowledge Mem 不跟你的 agent 连：只能记它自己的。",
+	"need.mem.no_space":    "你的 agent 还找不到我：Nowledge Mem 里还没有只有你能看到的地方。",
+	"need.mem.refused":     "你的 agent 还找不到我：跟 Nowledge Mem 的连接要处理一下。",
+	"need.mem.unconfirmed": "连上了，但还没确认是我：你的 agent 现在可能找不到我。",
+	"say.peers":            "你的其他 agent 能和我互相发消息。",
 }
 
 var enSetHome = Table{
@@ -161,7 +174,20 @@ var enSetHome = Table{
 	"say.todos":             "Your to-dos in GitHub and Obsidian: I can take them on, and comment or tick them off when done.",
 	"say.chats":             "Reach me from the chat apps you already use. It's still one conversation.",
 	"say.autofill":          "I fill these into my own browser without seeing them; every payment asks you first.",
-	"say.peers":             "Your other agents and I can message each other.",
+	// D646: the one Mem state table (the web's apps/web/src/mem-view.ts).
+	"home.mem.closed":      "Nowledge Mem isn't open",
+	"home.mem.old":         "Nowledge Mem is too old",
+	"home.mem.local":       "Nowledge Mem here doesn't reach your agents",
+	"home.mem.no_space":    "No place only you can see yet",
+	"home.mem.refused":     "Your agents can't find me yet",
+	"home.mem.unconfirmed": "Connected, not confirmed yet",
+	"need.mem.closed":      "Nowledge Mem isn't open: memories wait, and opening it brings them back.",
+	"need.mem.old":         "Nowledge Mem on %s is too old: I can't read it, so it needs an update.",
+	"need.mem.local":       "Nowledge Mem on %s doesn't reach your agents: it keeps its own memory only.",
+	"need.mem.no_space":    "Your agents can't find me yet: Nowledge Mem has no place only you can see.",
+	"need.mem.refused":     "Your agents can't find me yet: the Nowledge Mem connection needs sorting out.",
+	"need.mem.unconfirmed": "Connected, but not confirmed as me: your agents may not find me yet.",
+	"say.peers":            "Your other agents and I can message each other.",
 }
 
 func init() {

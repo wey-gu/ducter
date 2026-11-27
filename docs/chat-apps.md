@@ -1,20 +1,21 @@
 ---
 title: Chat apps
-description: Talk to your partner from Telegram, Slack or WeChat, in the same conversation, through a contact of your own that nobody else can use.
+description: Talk to your partner from Telegram, Slack, Feishu / Lark or WeChat, in the same conversation, through a contact of your own that nobody else can use.
 order: 7.5
 ---
 
 # Chat apps
 
-You can talk to your partner from **Telegram**, **Slack** and **WeChat** too. It isn't a second chat: it's
-the same conversation you have in the Ducter app, seen from another window. Ask from Telegram on
-the bus, and the answer comes back in Telegram; the Ducter app shows all of it as well.
+You can talk to your partner from **Telegram**, **Slack**, **Feishu / Lark** and **WeChat** too. It
+isn't a second chat: it's the same conversation you have in the Ducter app, seen from another
+window. Ask from Telegram on the bus, and the answer comes back in Telegram; the Ducter app shows
+all of it as well.
 
-Your partner speaks there as itself, through a bot of your own: your own Telegram bot, your own
-Slack app. It never writes as you, and nobody else can talk to it.
+Your partner speaks there as itself, through a bot or app of your own: your own Telegram bot, your
+own Slack app, your own Feishu / Lark app. It never writes as you, and nobody else can talk to it.
 
 > **Early preview.** Chat apps are new. They were tested carefully, but not yet with every
-> kind of Telegram or Slack account; tell us if something looks off.
+> kind of Telegram, Slack or Feishu / Lark account; tell us if something looks off.
 
 ## Connect Telegram
 
@@ -85,6 +86,38 @@ with what you copied, choose **Save Changes**, then **Reinstall** when Slack ask
 keeps working in the meantime; until then a reply in its thread only reaches it with an @, and it
 can't read the thread you @ it in.
 
+## Connect Feishu / Lark
+
+Feishu (飞书) in China and Lark elsewhere are the same product. Ducter uses an app you create in
+your own workspace — a **Custom App** (企业自建应用) — and receives its events over a long
+connection, so your computer needs no public address. Choose the console your team uses: **Feishu
+(China)** for feishu.cn, or **Lark (global)** for larksuite.com.
+
+1. Open **Settings › Chat apps** and press **Set up** on **Feishu / Lark**. Choose **Feishu
+   (China)** or **Lark (global)** first; the one link under it opens that console.
+2. Press that link and create a **Custom App** (企业自建应用). Under **App Features**
+   (应用能力), add **Bot** (机器人).
+3. Under **Development › Permissions** (开发配置 › 权限管理), add these three permissions:
+   - `im:message.p2p_msg:readonly`
+   - `im:message:send_as_bot`
+   - `im:message:update`
+4. Under **Events & Callbacks › Event Configuration** (事件与回调 › 事件配置), choose **Receive
+   events through a long connection** (使用长连接接收事件), then add this event:
+   - `im.message.receive_v1`
+5. Under **Version Management & Release** (版本管理与发布), create a version and publish it. Add
+   yourself to its **availability** (可用范围).
+6. Under **Credentials & Basic Info** (凭证与基础信息), copy the **App ID** and **App Secret** into
+   Settings and press **Connect**.
+7. Press **Get a code**, then **Open in Feishu** (or **Open in Lark**), and send the app the code.
+
+Your partner says **Linked. Talk to me here any time.** If Settings says **The app isn't set up
+yet**, check that all three permissions, the event and the published version are there; the
+steps stay open.
+
+Feishu answers your **direct messages** with the app; anyone else who writes to it gets no reply,
+and it doesn't join group chats yet. It has no buttons yet: reply **好** or **ok** to go ahead,
+**先等等** or **wait** to hold.
+
 ## Connect WeChat
 
 WeChat works through **WeChat's own ClawBot**, a feature WeChat added for people's own AI: a
@@ -120,7 +153,7 @@ Ducter.
 
 ## iMessage
 
-iMessage is the fourth group on the same page. It goes through a Mac, so you set it up in the
+iMessage is the fifth group on the same page. It goes through a Mac, so you set it up in the
 Ducter app on that Mac; see [Talk to your partner in iMessage](imessage.md).
 
 ## What goes where
@@ -128,7 +161,7 @@ Ducter app on that Mac; see [Talk to your partner in iMessage](imessage.md).
 - **What you say in a chat app is answered there.** Its first reply, any question about it, and
   the result all come back to the same chat. A job that takes a while shows one short line,
   like "Still on it: …", that updates itself instead of sending more messages.
-- **What you start in the Ducter app stays in the app.** It isn't copied into Telegram or Slack.
+- **What you start in the Ducter app stays in the app.** It isn't copied into a chat app.
 - **When your partner comes to you on its own** (something it noticed, a result after you left,
   a question that came up later), it goes to the one place you last talked from, once. If it
   went to Telegram, your phone doesn't get a Ducter notification for it too.
@@ -137,8 +170,9 @@ Ducter app on that Mac; see [Talk to your partner in iMessage](imessage.md).
 
 ## Answering questions in a chat app
 
-- A question you can change your mind about later comes with buttons: **Go** and **Hold**. You
-  can also just type **ok** or **好**.
+- A question you can change your mind about later comes with buttons in Telegram and Slack: **Go**
+  and **Hold**. You can also just type **ok** or **好**. In Feishu and WeChat there are no buttons:
+  reply **好** / **ok** or **先等等** / **wait**.
 - Anything that reaches other people, your phone or computer, or merges work shows one sentence
   and **Open in Ducter**, so you decide with the whole picture.
 - **Payments, sign-ins and keys never go to a chat app.** You only see "Something needs you in
@@ -151,7 +185,7 @@ from someone else is read as their words, not yours: your partner never takes in
 
 ## When you have more than one partner
 
-Your bot (or WeChat's ClawBot) is your first partner's. Your other partners talk to you in the
+Your bot or app (or WeChat's ClawBot) is your first partner's. Your other partners talk to you in the
 same chat, each with its name in front: **小家：…** / **Home: …**.
 
 - **To talk to one of them, start with its name:** "小家，周六提醒我交房租" or "Home, remind me
@@ -177,21 +211,26 @@ The first time another partner writes to you in a chat app, it says how to talk 
 - **Telegram keeps a copy of your chats** on its servers.
 - **In a work Slack, the workspace's admins may be able to see what's said** in your direct
   messages with the app, and **everyone in a channel can read** what you and your partner say there.
+- **In a work Feishu or Lark, your organization's admins may be able to see what's said** in your
+  direct messages with the app.
 - **In a Slack thread you @ your partner in,** it reads that thread's messages (up to the last 20
   before yours) for that answer; nothing else in the channel is read.
-- Your bot's key stays on your own computer, in a file only your account can read. It is never
-  shown again.
+- Your bot's or app's key stays on your own computer, in a file only your account can read. It is
+  never shown again.
 
 ## Another account, or disconnect
 
-In **Settings › Chat apps**, **Switch account** forgets your account (the bot stays; link
+In **Settings › Chat apps**, **Switch account** forgets your account (the bot or app stays; link
 the same one or another any time). **Disconnect** forgets the bot's key too, so it asks first, in place, and your partner
 confirms it under the card; your conversation stays in Ducter. To connect the same Telegram bot
-again, send BotFather `/mybots`, pick your bot, then **API Token**, and paste that key. If anyone
-else writes to your bot, it doesn't answer them; Settings tells you once that someone tried.
+again, send BotFather `/mybots`, pick your bot, then **API Token**, and paste that key. To connect
+the same Feishu / Lark app again, copy its **App ID** and **App Secret** from **Credentials & Basic
+Info**. If anyone else writes to your bot or app, it doesn't answer them; Settings tells you once
+that someone tried.
 
 ## Coming soon
 
 - Slack's own assistant view (the status line and suggested prompts) where your plan has it.
 - A small "via Telegram" mark under your message in the Ducter app.
-- A Telegram bot or Slack app of its own for each of your partners.
+- A Telegram bot, Slack app or Feishu / Lark app of its own for each of your partners.
+- Feishu / Lark group chats, pictures, files and buttons.

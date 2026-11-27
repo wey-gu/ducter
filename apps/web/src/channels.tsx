@@ -1,5 +1,6 @@
 // 设置 › 聊天软件 / Settings › Chat apps (D276, design/channels.md §6): connect the person's own
-// Telegram bot and Slack app, link their account with a one-time code, see who is linked, unlink.
+// Telegram bot, Slack app and Feishu / Lark Custom App (D622, §14), link their account with a
+// one-time code, see who is linked, unlink.
 // A token goes to the home once, in channel_connect, and never comes back.
 //
 // D283: D273's grid. Each chat app is one raised group whose first row is the app itself (its letter
@@ -16,7 +17,7 @@ import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
-import { Btn, DangerButton, How, LinkBtn } from "./controls.tsx";
+import { Btn, DangerButton, How, LinkBtn, Seg } from "./controls.tsx";
 import { keepClauses } from "./format.ts";
 import { Qr } from "./phone.tsx";
 import { GConfirm, Said, say, Waiting } from "./set-grid.tsx";
@@ -76,9 +77,14 @@ A.onChannelFrame = (f) => {
 };
 
 /** A chat app's name: Telegram and Slack are theirs in every language; WeChat's is 微信 in Chinese. */
-const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : "Telegram");
+const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : kind === "feishu" ? t("chats.feishu") : "Telegram");
 const BOTFATHER = "https://t.me/BotFather";
 const SLACK_APPS = "https://api.slack.com/apps?new_app=1";
+const FEISHU_APPS = "https://open.feishu.cn/app";
+const LARK_APPS = "https://open.larksuite.com/app";
+/** D622: the exact names the app asks for; the same three in the Mac card. */
+const FEISHU_SCOPES = ["im:message.p2p_msg:readonly", "im:message:send_as_bot", "im:message:update"];
+const FEISHU_EVENTS = ["im.message.receive_v1"];
 /** D531: the partner's face, as Slack shows it per message; the same PNG to upload as the app's icon. */
 const faceOf = () => `https://ducter.ai/faces/${A.partners?.find((p) => p.id === "default")?.look ?? "sand"}.png`;
 
@@ -223,23 +229,23 @@ function Step(p: { n: number; text: string; children?: ComponentChildren }) {
 
 function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
   const name = nameOf(v.kind);
-  const needsTokens = v.state === "off" || (v.state === "cant_connect" && v.reason === "token");
+  const needsTokens = v.state === "off" || (v.state === "cant_connect" && (v.reason === "token" || (v.kind === "feishu" && v.reason === "setup")));
   const stranger = v.strangerAt && Date.now() - Date.parse(v.strangerAt) < 24 * 3600_000;
   const [line, tone] = stateLine(v);
-  const who = t(v.kind === "telegram" ? "chats.tg.who" : "chats.sl.who");
+  const who = t(v.kind === "telegram" ? "chats.tg.who" : v.kind === "slack" ? "chats.sl.who" : v.domain === "lark" ? "chats.fs.who.lark" : "chats.fs.who");
   if (resting(v)) return <Resting v={v} name={name} line={line} tone={tone} note={who} />;
   return (
     <section class="set-card chat-app" aria-label={name}>
       <Head kind={v.kind} name={name} line={line} tone={tone} />
       {stranger && <Row title={t("chats.stranger", name, A.S.personaName)} />}
       {needsTokens ? (
-        <Connect kind={v.kind} manifest={manifest} who={who} />
+        <Connect v={v} manifest={manifest} who={who} />
       ) : (
         <>
           {v.reinstall && <Reinstall manifest={manifest} />}
           {v.state === "unlinked" && <Link v={v} />}
           {v.state === "linked" && (
-            <Row title={t("chats.linked.who", v.linked?.name ?? "")} line={v.kind === "slack" ? t("chats.sl.linked.goes") : t("chats.linked.goes", name)} />
+            <Row title={linkedWho(v)} line={v.kind === "slack" ? t("chats.sl.linked.goes") : t("chats.linked.goes", name)} />
           )}
           <ForgetFoot kind={v.kind} name={name} note={who} label={t("chats.forget", name)}>
             {v.state === "linked" && <Btn kind="text" size="sm" label={t("chats.unlink")} about={name} onClick={() => A.send({ t: "channel_unlink", kind: v.kind })} />}
@@ -250,18 +256,70 @@ function ChannelCard({ v, manifest }: { v: ChannelView; manifest: string }) {
   );
 }
 
-function Field(p: { id: string; label: string; value: string; placeholder: string; onInput: (v: string) => void; wrong?: boolean }) {
+function Field(p: { id: string; label: string; value: string; placeholder: string; onInput: (v: string) => void; wrong?: boolean; secret?: boolean }) {
   return (
     <label class="acct-field chat-field" for={p.id}>
       <span>{p.label}</span>
-      <input id={p.id} class={p.wrong ? "wrong" : undefined} type="password" autocomplete="off" spellcheck={false} placeholder={p.placeholder} value={p.value} onInput={(e) => p.onInput((e.target as HTMLInputElement).value)} />
+      <input id={p.id} class={p.wrong ? "wrong" : undefined} type={p.secret === false ? "text" : "password"} autocomplete="off" spellcheck={false} placeholder={p.placeholder} value={p.value} onInput={(e) => p.onInput((e.target as HTMLInputElement).value)} />
     </label>
   );
 }
 
-function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string; who: string }) {
+/** D622: the partner's own Feishu / Lark app, the same flow as Slack: steps, two pastes, Connect, code. */
+function FeishuSetup({ domain, setDomain, appId, setAppId, secret, setSecret, bad }: { domain: "feishu" | "lark"; setDomain: (d: "feishu" | "lark") => void; appId: string; setAppId: (s: string) => void; secret: string; setSecret: (s: string) => void; bad?: Result["reason"] }) {
+  return (
+    <>
+      <Step n={1} text={t(domain === "lark" ? "chats.fs.step1.lark" : "chats.fs.step1")}>
+        <span class="chat-aside">
+          <small class="chat-have">{t("chats.fs.domain")}</small>
+          <Seg
+            label={t("chats.fs.domain")}
+            value={domain}
+            options={[
+              { v: "feishu", label: t("chats.fs.domain.feishu") },
+              { v: "lark", label: t("chats.fs.domain.lark") },
+            ]}
+            onPick={setDomain}
+          />
+        </span>
+        <span class="chat-aside">
+          <LinkBtn kind="text" size="sm" href={domain === "lark" ? LARK_APPS : FEISHU_APPS} label={t(domain === "lark" ? "chats.fs.open.lark" : "chats.fs.open")} />
+        </span>
+      </Step>
+      <Step n={2} text={t("chats.fs.step2")}>
+        <span class="chat-scopes">
+          {FEISHU_SCOPES.map((x) => (
+            <code class="chat-chip" key={x}>
+              {x}
+            </code>
+          ))}
+        </span>
+      </Step>
+      <Step n={3} text={t("chats.fs.step3")}>
+        <span class="chat-scopes">
+          {FEISHU_EVENTS.map((x) => (
+            <code class="chat-chip" key={x}>
+              {x}
+            </code>
+          ))}
+        </span>
+      </Step>
+      <Step n={4} text={t("chats.fs.step4")} />
+      <Step n={5} text={t("chats.fs.step5")}>
+        <Field id="ch-feishu-id" label={t("chats.fs.app")} placeholder="cli_…" value={appId} onInput={setAppId} wrong={bad === "token"} secret={false} />
+        <Field id="ch-feishu-secret" label={t("chats.fs.secret")} placeholder="…" value={secret} onInput={setSecret} wrong={bad === "token"} />
+      </Step>
+    </>
+  );
+}
+
+function Connect({ v, manifest, who }: { v: ChannelView; manifest: string; who: string }) {
+  const kind = v.kind;
   const [token, setToken] = useState("");
   const [app, setApp] = useState("");
+  const [appId, setAppId] = useState("");
+  const [secret, setSecret] = useState("");
+  const [domain, setDomain] = useState<"feishu" | "lark">(v.domain === "lark" ? "lark" : "feishu");
   const [copied, setCopied] = useState(false);
   const [view, setView] = useState(false);
   const busy = S.busy[kind];
@@ -269,12 +327,18 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
   const go = () => {
     S.busy[kind] = true;
     delete S.bad[kind];
-    A.send(kind === "telegram" ? { t: "channel_connect", kind, token: token.trim() } : { t: "channel_connect", kind, botToken: token.trim(), appToken: app.trim() });
+    if (kind === "feishu") A.send({ t: "channel_connect", kind, appId: appId.trim(), appSecret: secret.trim(), domain });
+    else if (kind === "telegram") A.send({ t: "channel_connect", kind, token: token.trim() });
+    else A.send({ t: "channel_connect", kind, botToken: token.trim(), appToken: app.trim() });
     setToken("");
     setApp("");
+    setAppId("");
+    setSecret("");
     A.changed();
   };
-  const ready = kind === "telegram" ? !!token.trim() : !!token.trim() && !!app.trim();
+  const ready = kind === "telegram" ? !!token.trim() : kind === "slack" ? !!token.trim() && !!app.trim() : !!appId.trim() && !!secret.trim();
+  // The privacy line follows the console choice too, before anything is connected.
+  const note = kind === "feishu" ? t(domain === "lark" ? "chats.fs.who.lark" : "chats.fs.who") : who;
   return (
     <>
       <ol class="chat-steps">
@@ -292,6 +356,8 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
               <Field id="ch-telegram-a" label={t("chats.tg.key")} placeholder="123456789:AA…" value={token} onInput={setToken} wrong={bad === "token"} />
             </Step>
           </>
+        ) : kind === "feishu" ? (
+          <FeishuSetup domain={domain} setDomain={setDomain} appId={appId} setAppId={setAppId} secret={secret} setSecret={setSecret} bad={bad} />
         ) : (
           <>
             <Step n={1} text={t("chats.sl.step1")}>
@@ -317,13 +383,18 @@ function Connect({ kind, manifest, who }: { kind: ChannelKind; manifest: string;
             </Step>
           </>
         )}
-        {bad && <li class="chat-bad">{t(bad === "token" ? "chats.bad.key" : "chats.bad.network")}</li>}
+        {bad && <li class="chat-bad">{t(bad === "token" ? "chats.bad.key" : bad === "setup" ? "chats.bad.setup" : "chats.bad.network")}</li>}
       </ol>
-      <Foot note={who}>
+      <Foot note={note}>
         <Btn kind="primary" label={t(busy ? "chats.connecting" : "chats.connect")} about={nameOf(kind)} disabled={busy || !ready} onClick={go} />
       </Foot>
     </>
   );
+}
+
+function linkedWho(v: ChannelView): string {
+  if (v.kind === "feishu" && !v.linked?.name) return t(v.domain === "lark" ? "chats.fs.linked.lark" : "chats.fs.linked");
+  return t("chats.linked.who", v.linked?.name ?? "");
 }
 
 function Link({ v }: { v: ChannelView }) {
@@ -344,6 +415,12 @@ function Link({ v }: { v: ChannelView }) {
             <p>{t(c.link ? "chats.tg.code" : "chats.tg.code.only")}</p>
             <code class="chat-chip">/start {c.code}</code>
           </>
+        ) : v.kind === "feishu" ? (
+          <>
+            <p>{t(v.domain === "lark" ? "chats.fs.code.lark" : "chats.fs.code", v.bot?.name || A.S.personaName)}</p>
+            <b class="chats-code">{c.code}</b>
+            <small>{t(v.domain === "lark" ? "chats.fs.find.lark" : "chats.fs.find", v.bot?.name || A.S.personaName)}</small>
+          </>
         ) : (
           <>
             <p>{t("chats.sl.code", v.bot?.name || A.S.personaName)}</p>
@@ -353,7 +430,7 @@ function Link({ v }: { v: ChannelView }) {
         )}
         <small>{t("chats.code.ttl")}</small>
       </span>
-      {c.link && <LinkBtn kind="primary" href={c.link} label={t(v.kind === "telegram" ? "chats.tg.open" : "chats.sl.open.dm")} />}
+      {c.link && <LinkBtn kind="primary" href={c.link} label={t(v.kind === "telegram" ? "chats.tg.open" : v.kind === "slack" ? "chats.sl.open.dm" : v.domain === "lark" ? "chats.fs.open.dm.lark" : "chats.fs.open.dm")} />}
     </div>
   );
 }

@@ -14,6 +14,9 @@
 //  - D301, WeChat (research/105): the scan is the pairing; it may write only inside the window
 //    after the person's words (caps.replyWindowMs, caps.windowSends), with no buttons and no edits,
 //    so a question asks for a typed 好 / 先等等 and there is no status line.
+//  - D622, Feishu / Lark (design/channels.md §14): the person's own Custom App over the open
+//    platform's long connection; a direct chat only, no buttons or files, a typed 好 / 先等等 for a
+//    card, and an edit for the status line.
 //  - D516, several partners: one thread per chat app carries them all. The bot is the default
 //    partner's; another partner's words there lead with its name. The person's words go to the
 //    partner whose message they reply to, else the one named at their start (an address, like an
@@ -32,6 +35,7 @@ import { logUserMessage, type ReplyDecisions } from "../reply.ts";
 import { cutPoints } from "./format.ts";
 import { createOutbox, type Outbox } from "./outbox.ts";
 import { ChannelError, type BotInfo, type Channel, type InMessage, type InTap, type OutButton, type Trouble } from "./port.ts";
+import { createFeishu, feishuAppLink, type FeishuDomain } from "./feishu.ts";
 import { createSlack, faceUrl, isSlackAppToken, isSlackBotToken, slackAppLink, slackManifest } from "./slack.ts";
 import { openChannelStore, THREADS_KEPT, type ChannelRec, type ChannelStore, type ChannelThread } from "./store.ts";
 import { createTelegram, isTelegramToken } from "./telegram.ts";
@@ -132,12 +136,14 @@ export interface ChannelDeps {
   gapMs?: number;
   /** D301, tests: WeChat's login against a fake, and the pause between scan polls. */
   wechat?: { login?: WechatLogin; api?: string; pollGapMs?: number };
+  /** D622, tests: Feishu's open platform and long connection against a fake. */
+  feishu?: { base?: string; fetch?: typeof fetch; WebSocket?: typeof WebSocket; backoffMs?: number; pingMs?: number };
 }
 
 export interface Channels {
   view(): ChannelView[];
   frame(): Extract<ServerFrame, { t: "channels" }>;
-  connect(kind: ChannelKind, t: { token?: string; botToken?: string; appToken?: string; verifyCode?: string }): Promise<{ ok: boolean; reason?: "token" | "network" }>;
+  connect(kind: ChannelKind, t: { token?: string; botToken?: string; appToken?: string; appId?: string; appSecret?: string; domain?: FeishuDomain; verifyCode?: string }): Promise<{ ok: boolean; reason?: "token" | "network" | "setup" }>;
   code(kind: ChannelKind): { ok: true; code: string; link?: string; expiresAt: number } | { ok: false; reason: "not_connected" | "busy" };
   unlink(kind: ChannelKind): boolean;
   forget(kind: ChannelKind): void;
@@ -480,7 +486,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (!rec) return { kind, state: "off", ...(kind === "wechat" && scanFail ? { reason: scanFail } : {}) };
       const l = live.get(kind);
       const bot = rec.bot ? { name: rec.bot.name, ...(rec.bot.handle ? { handle: rec.bot.handle } : {}), ...(rec.bot.team ? { team: rec.bot.team } : {}) } : undefined;
-      const base = { kind, ...(bot ? { bot } : {}), ...(rec.linked ? { linked: { name: rec.linked.name, at: rec.linked.at } } : {}), ...(rec.strangerAt ? { strangerAt: rec.strangerAt } : {}) };
+      const base = { kind, ...(bot ? { bot } : {}), ...(rec.linked ? { linked: { name: rec.linked.name, at: rec.linked.at } } : {}), ...(rec.strangerAt ? { strangerAt: rec.strangerAt } : {}), ...(kind === "feishu" && rec.domain ? { domain: rec.domain } : {}) };
       if (l?.trouble) return { ...base, state: "cant_connect", reason: l.trouble };
       if (!l?.up) return { ...base, state: "starting" };
       const until = rec.linked ? openUntil(kind) : undefined;
@@ -543,7 +549,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   };
 
   const troubled = (kind: ChannelKind, err: unknown) => {
-    if (err instanceof ChannelError && (err.trouble === "token" || err.trouble === "blocked")) setTrouble(kind, err.trouble);
+    if (err instanceof ChannelError && (err.trouble === "token" || err.trouble === "blocked" || err.trouble === "setup")) setTrouble(kind, err.trouble);
     else if (err instanceof ChannelError && err.trouble === "refused") spent(kind);
   };
 
@@ -873,7 +879,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   };
   for (const e of log.read({ stream: "channel", kinds: ["user_msg"], limit: 500 })) {
     const id = (e.body as Bodies["user_msg"]).clientId;
-    if (id && /^(telegram|slack|wechat):/.test(id)) remember(id);
+    if (id && /^(telegram|slack|feishu|wechat):/.test(id)) remember(id);
   }
 
   /** D531: why the person's words were taken or dropped, at info level (never the words or who). */
@@ -905,7 +911,9 @@ export function createChannels(deps: ChannelDeps): Channels {
     if (!acc) {
       // Not linked yet: only a live code links, and a wrong one gets silence.
       if (m.forwarded || !store.redeem(kind, m.text, m.from.id)) return note(kind, "ignored: not linked yet, and no live code");
-      store.patch(kind, { linked: { id: m.from.id, chat: m.chat, name: m.from.name || m.from.id, at: new Date(clock.now()).toISOString() } });
+      // Feishu has no name in the message event (and no contact scope is asked for): the card says
+      // 和你的飞书连着 / Linked to your Feishu instead of inventing one.
+      store.patch(kind, { linked: { id: m.from.id, chat: m.chat, name: m.from.name || (kind === "feishu" ? "" : m.from.id), at: new Date(clock.now()).toISOString() } });
       store.setLastRoute(kind);
       changed();
       note(kind, "linked");
@@ -1028,9 +1036,11 @@ export function createChannels(deps: ChannelDeps): Channels {
       ? deps.make(kind, rec, store)
       : kind === "telegram"
         ? createTelegram({ token: rec.token, offset: () => store.get("telegram")?.offset, setOffset: (n) => store.patch("telegram", { offset: n }) })
-        : kind === "wechat"
-          ? createWechat({ token: rec.token, ...(rec.base ? { base: rec.base } : {}), botId: rec.bot?.id ?? "", state: () => wechatState(store), save: (p) => store.patch("wechat", p) })
-          : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "" });
+        : kind === "feishu"
+          ? createFeishu({ appId: rec.appId ?? "", appSecret: rec.token, domain: rec.domain ?? "feishu", ...(deps.feishu ?? {}) })
+          : kind === "wechat"
+            ? createWechat({ token: rec.token, ...(rec.base ? { base: rec.base } : {}), botId: rec.bot?.id ?? "", state: () => wechatState(store), save: (p) => store.patch("wechat", p) })
+            : createSlack({ botToken: rec.token, appToken: rec.appToken ?? "" });
 
   const bring = async (kind: ChannelKind, rec: ChannelRec): Promise<BotInfo> => {
     live.get(kind)?.ch.stop();
@@ -1051,7 +1061,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       return bot;
     } catch (err) {
       if (live.get(kind) === l) {
-        l.trouble = err instanceof ChannelError && (err.trouble === "token" || err.trouble === "conflict" || err.trouble === "blocked") ? err.trouble : "network";
+        l.trouble = err instanceof ChannelError && (err.trouble === "token" || err.trouble === "conflict" || err.trouble === "blocked" || err.trouble === "setup") ? err.trouble : "network";
         changed();
       }
       throw err;
@@ -1071,6 +1081,33 @@ export function createChannels(deps: ChannelDeps): Channels {
     view,
     frame: () => ({ t: "channels", channels: view(), slackManifest: slackManifest(deps.personaName()) }),
     async connect(kind, t) {
+      if (kind === "feishu") {
+        const appId = t.appId?.trim() ?? "";
+        const appSecret = t.appSecret?.trim() ?? "";
+        const domain: FeishuDomain = t.domain === "lark" ? "lark" : "feishu";
+        if (!/^cli_[A-Za-z0-9]{6,}$/.test(appId) || appSecret.length < 6) return { ok: false, reason: "token" };
+        const before = store.get(kind);
+        const rec: ChannelRec = { token: appSecret, appId, domain };
+        try {
+          const bot = await bring(kind, rec);
+          const same = before?.appId === appId && before?.domain === domain && before?.bot?.id === bot.id;
+          store.set(kind, {
+            ...rec,
+            bot: { id: bot.id, name: bot.name, ...(bot.appId ? { appId: bot.appId } : {}) },
+            ...(same && before?.linked ? { linked: before.linked } : {}),
+            ...(same && before?.strangerAt ? { strangerAt: before.strangerAt } : {}),
+            ...(same && before?.hinted ? { hinted: before.hinted } : {}),
+          });
+          changed();
+          return { ok: true };
+        } catch (err) {
+          live.get(kind)?.ch.stop();
+          live.delete(kind);
+          if (before) void bring(kind, before).catch(() => {});
+          changed();
+          return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : err instanceof ChannelError && err.trouble === "setup" ? "setup" : "network" };
+        }
+      }
       if (kind === "wechat") {
         // WeChat's number for this scan (need_verifycode): the next poll carries it.
         if (t.verifyCode && scan?.step === "verify") {
@@ -1087,7 +1124,7 @@ export function createChannels(deps: ChannelDeps): Channels {
           return { ok: true };
         } catch (err) {
           changed();
-          return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : "network" };
+          return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : err instanceof ChannelError && err.trouble === "setup" ? "setup" : "network" };
         }
       }
       const token = (kind === "telegram" ? t.token : t.botToken)?.trim() ?? "";
@@ -1099,7 +1136,7 @@ export function createChannels(deps: ChannelDeps): Channels {
         const bot = await bring(kind, rec);
         // The same bot again keeps its linked account and its place in the updates.
         const same = before?.bot?.id === bot.id;
-        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}), ...(bot.teamId ? { teamId: bot.teamId } : {}), ...(bot.appId ? { appId: bot.appId } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}) });
+        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}), ...(bot.teamId ? { teamId: bot.teamId } : {}), ...(bot.appId ? { appId: bot.appId } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}), ...(same && before?.strangerAt ? { strangerAt: before.strangerAt } : {}), ...(same && before?.hinted ? { hinted: before.hinted } : {}) });
         changed();
         return { ok: true };
       } catch (err) {
@@ -1108,7 +1145,7 @@ export function createChannels(deps: ChannelDeps): Channels {
         // What was there before stays as it was.
         if (before) void bring(kind, before).catch(() => {});
         changed();
-        return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : "network" };
+        return { ok: false, reason: err instanceof ChannelError && err.trouble === "token" ? "token" : err instanceof ChannelError && err.trouble === "setup" ? "setup" : "network" };
       }
     },
     code(kind) {
@@ -1119,7 +1156,14 @@ export function createChannels(deps: ChannelDeps): Channels {
       // D531: Slack's link opens the app's messages, where the code goes (the bot as it is now, else as stored).
       const appId = live.get(kind)?.bot?.appId ?? rec.bot?.appId;
       const teamId = live.get(kind)?.bot?.teamId ?? rec.bot?.teamId;
-      const link = kind === "telegram" && rec.bot?.handle ? `https://t.me/${rec.bot.handle}?start=${c.raw}` : kind === "slack" && appId ? slackAppLink(appId, teamId) : undefined;
+      const link =
+        kind === "telegram" && rec.bot?.handle
+          ? `https://t.me/${rec.bot.handle}?start=${c.raw}`
+          : kind === "slack" && appId
+            ? slackAppLink(appId, teamId)
+            : kind === "feishu" && rec.appId
+              ? feishuAppLink(rec.appId, rec.domain ?? "feishu")
+              : undefined;
       return { ok: true, code: c.code, expiresAt: c.expiresAt, ...(link ? { link } : {}) };
     },
     unlink(kind) {

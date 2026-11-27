@@ -2,5 +2,6 @@
 export { cardPolicy, createChannels, type ChannelDeps, type Channels } from "./hub.ts";
 export { createTelegram, isTelegramToken, TELEGRAM_MAX_TEXT } from "./telegram.ts";
 export { createSlack, faceUrl, isSlackAppToken, isSlackBotToken, slackAppLink, slackManifest, SLACK_MAX_TEXT } from "./slack.ts";
+export { createFeishu, feishuAppLink, feishuOrigin, FEISHU_EVENTS, FEISHU_MAX_TEXT, FEISHU_SCOPES, LARK_ORIGIN, FEISHU_ORIGIN, type FeishuDomain } from "./feishu.ts";
 export { createWechat, wechatLogin, WECHAT_WINDOW_MS, WECHAT_WINDOW_SENDS, type WechatLogin } from "./wechat.ts";
 export { ChannelError, RetryAfter, type Channel, type ChannelCaps } from "./port.ts";

@@ -1,10 +1,11 @@
-# Chat apps: Telegram, Slack and WeChat as more windows on the one conversation
+# Chat apps: Telegram, Slack, Feishu / Lark and WeChat as more windows on the one conversation
 
 > Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
-> D276, D301 (WeChat, §9), D516 (several partners, §10), D531 (Slack as it is today, faces, @ in a channel, §11) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
-> (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking).
+> D276, D301 (WeChat, §9), D516 (several partners, §10), D531 (Slack as it is today, faces, @ in a channel, §11), D622 (Feishu / Lark, §14) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking), `research/235` §4 (Feishu / Lark).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
-> only.** No real Telegram bot or Slack workspace was used; see "What is not verified".
+> only.** No real Telegram bot or Slack workspace was used; see "What is not verified". Feishu /
+> Lark was built 2026-11-27 against a fake open platform and long connection only (D622, §14).
 
 ## 1. The moment
 
@@ -20,8 +21,12 @@
   send `/newbot`, name the bot, paste its key). Slack: four, in Slack's own order and words (copy the
   app manifest, create the app from it, install it from OAuth & Permissions and paste the bot token
   shown there, make the app-level token and paste it), then **获得口令 / Get a code** and send it from
-  **在 Slack 里打开 / Open in Slack** (D531). Nothing to
-  learn first; the group says what goes there and who else can see it (D283).
+  **在 Slack 里打开 / Open in Slack** (D531). Feishu / Lark: five steps in the console the person's team
+  uses (create a **企业自建应用 / Custom App**, add **机器人 / Bot**, add the three permissions,
+  choose **使用长连接接收事件 / Receive events through a long connection** and add
+  `im.message.receive_v1`, publish a version), then paste **App ID** and **App Secret** and send the
+  code from **在飞书里打开 / Open in Feishu** (D622). Nothing to learn first; the group says what
+  goes there and who else can see it (D283).
 
 ## 2. One conversation, many windows (D276 (1))
 
@@ -30,7 +35,7 @@ chat app; that client calls the same paths the apps use:
 
 | From the chat app | Becomes |
 |---|---|
-| The linked account's words | `user_msg` through `logUserMessage`, with `via: "telegram" \| "slack"` and the service's message id as `clientId` (`telegram:<chat>:<message_id>`, `slack:<channel>:<ts>`) |
+| The linked account's words | `user_msg` through `logUserMessage`, with `via: "telegram" \| "slack"` and the service's message id as `clientId` (`telegram:<chat>:<message_id>`, `slack:<channel>:<ts>`, `feishu:<open_id>:<message_id>`) |
 | A reply there (Telegram's reply, a Slack thread under a partner message) | a D236 reply to that message (`reply: {seq}`); one to an open question answers it |
 | Pictures and files | D206 / D259 media (`media.put(..., {sent: true})`); Telegram ≤ 20 MB in, Slack as its files allow |
 | A forwarded Telegram message, a Slack shared message | a `user_msg` with `forwarded: {from}`: the partner reads it fenced as outside data, never the person's words or instructions; it never answers a question by itself |
@@ -92,15 +97,22 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
 - **The partner speaks as itself.** Telegram: the person's own bot from BotFather, its token
   pasted once. Slack: the person's own Slack app with a bot user, from the manifest Ducter
   shows (`slackManifest`: bot user named after the partner, the DM tab, Socket Mode on, token
-  rotation off, interactivity, bot scopes `app_mentions:read chat:write chat:write.customize
+  rotation off, interactivity, scopes `app_mentions:read chat:write chat:write.customize
   im:history im:read im:write users:read files:read files:write`, events `app_mention message.im`,
   **no user scopes**; D531), an app-level token (`xapp-`,
-  `connections:write`) and the bot token (`xoxb-`). Never a user token, never sending as the
-  person, no Telegram Business connection. Long polling and Socket Mode: no public address.
+  `connections:write`) and the bot token (`xoxb-`). Feishu / Lark: the person's own **企业自建应用 /
+  Custom App**, its **App ID** and **App Secret** pasted once; bot capability on, permissions
+  `im:message.p2p_msg:readonly im:message:send_as_bot im:message:update`, event
+  `im.message.receive_v1` over the **long connection** (D622, §14). Never a user token, never
+  sending as the person, no Telegram Business connection. Long polling, Socket Mode and Feishu's
+  long connection: no public address.
 - **Pairing reuses D83's code shape** (8 letters, 10 minutes, one use), minted by Settings, kept
   only as a hash and only in memory (a restart voids it). Telegram: the deep link
   `t.me/<bot>?start=<code>` (or `/start <code>` typed); Slack: the person DMs the code to the
-  bot, opened by `https://slack.com/app_redirect?app=<A>&team=<T>` (D531). One linked account per chat app; a second code is refused while one is linked.
+  bot, opened by `https://slack.com/app_redirect?app=<A>&team=<T>` (D531); Feishu / Lark: the person
+  DMs the code to the app, opened by `https://applink.feishu.cn/client/bot/open?appId=<A>` (Lark:
+  `applink.larksuite.com`; D622). One linked account per chat app; a second code is refused
+  while one is linked.
 - **Strangers get silence.** Anyone else, a group, a channel: nothing logged, nothing answered. The
   one exception is the linked person's @-mention in a Slack channel (D531, §11); a teammate's
   mention there is silence too.
@@ -112,17 +124,21 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   (**还没连上 / Not connected**, **正在连… / Connecting…**, **还差一步：连上你的账号 / One more
   step: link your account**, **在 {@bot or workspace} 等你 / Waiting for you at {…} (D296)**, why it can't
   connect in words), the steps and fields, **连上 / Connect**, **连上你的账号 / Link your account**
-  with **获得口令 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram** or **在 Slack
-  里打开 / Open in Slack** and the code, **和 {name} 连着 / Linked to {name}** with **换个账号 / Use another account** (D468), **断开 {app} / Disconnect
-  {app}**, the one line of who else can see it (**Telegram 会存一份你们的聊天记录。** · **这个工作区的
-  管理员可能看得到你在这儿说的话。**), and one line under the groups of what goes there. An app never
+  with **获得口令 / Get a code** (D531), then **在 Telegram 里打开 / Open in Telegram**, **在 Slack
+  里打开 / Open in Slack** or **在飞书里打开 / Open in Feishu** and the code, **和 {name} 连着 /
+  Linked to {name}** (Feishu: **和你的飞书连着 / Linked to your Feishu**) with **换个账号 / Use
+  another account** (D468), **断开 {app} / Disconnect {app}**, the one line of who else can see it
+  (**Telegram 会存一份你们的聊天记录。** · **这个工作区的管理员可能看得到你在这儿说的话。** · **这是你在飞书里
+  自己的应用：你们的话经过飞书。**), and one line under the groups of what goes there. An app never
   connected rests as its first row with **设置 / Set up** and that one line until pressed; then its steps
   open in place (D365, as D337's own number). A refused key or a connect on its way keeps them open.
 - **The page (D283).** D273's grid on the Mac and the web: the page's heading and a one-line lede;
-  then one raised group per chat app, **Telegram**, **Slack**, **iMessage** (D277, the third; on
-  the web it says it is set up on a Mac). A group's first row is the app: its mark (D314: the app's own
-  mark, drawn faithfully at 24 on the small white clay tile: Telegram's plane, Slack's four
-  colours, Messages' bubble, WeChat's two bubbles; it replaced D283's letter pebbles), its name, one line of how it stands; never a title on the paper above it. A setup is a
+  then one raised group per chat app, **Telegram**, **Slack**, **Feishu / Lark**, **WeChat**, then
+  **iMessage** (D277, the last; on the web it says it is set up on a Mac). A group's first row is
+  the app: its mark (D314: the app's own mark, drawn faithfully at 24 on the small white clay tile:
+  Telegram's plane, Slack's four colours, Feishu's letter **F** until its own mark is drawn,
+  Messages' bubble, WeChat's two bubbles; it replaced D283's letter pebbles), its name, one line of
+  how it stands; never a title on the paper above it. A setup is a
   short guided path: a numbered step mark (a 26 sunken pebble) centred in the tile column, one
   sentence a step on the text column, what the step needs under the sentence (a command as a mono
   chip, **打开 BotFather / Open BotFather** and **打开 Slack / Open Slack** as quiet links, a field
@@ -148,13 +164,20 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   acked by `envelope_id` after it was handled, `disconnect` → a new socket), mrkdwn with `& < >`
   escaped, Block Kit buttons (label ≤ 75, value ≤ 2000), `chat.update`, the files v2 upload.
   429 → `Retry-After`.
+- `feishu.ts` (D622, §14): the open API over `fetch` (`tenant_access_token`, `bot/v3/info`,
+  `im/v1/messages`, `reply`, `PUT` edit) plus the long connection: `POST /callback/ws/endpoint`
+  with the App ID and App Secret, then a WebSocket of protobuf `Frame`s (seq 1, log 2, service 3,
+  method 4, headers 5, payload 8; method 0 control, 1 data), an ack echoing the frame with
+  `{"code":200}` and `biz_rt` inside 3 s, a ping every `ClientConfig.PingInterval`, and split
+  packets joined by `sum`/`seq`/`message_id`. Text and edits; no buttons, no files yet.
 - `outbox.ts`: one line per chat, a gap between sends (1 s), the service's wait honoured, a few
   tries with backoff on the network; a permanent refusal fails at once and shows as Can't connect.
 - `format.ts`: the partner's light Markdown to Telegram entities (UTF-16 offsets) or Slack
   mrkdwn; splitting at a paragraph, a line, a space or a sentence end, never in a surrogate pair
   (Telegram 4096; Slack 39,000 of text, 3,000 in a card's section).
 - `store.ts`: `<dataDir>/channels.json`, 0600 (D102): tokens, the bot, the linked account,
-  Telegram's offset, the last place. Tokens never reach a client frame or a log line.
+  Telegram's offset, Feishu's App ID and open platform (D622), the last place. Tokens never
+  reach a client frame or a log line.
 - `hub.ts`: everything above that is the same for every chat app. Everything it sends has every
   key-shaped string hidden first (D152's `redact`, exactly as a client sees the Log).
 
@@ -164,14 +187,15 @@ Frames (`packages/protocol/src/channels.ts`): `channels` (subscribe), `channel_c
 ## 8. What is not verified
 
 Built and tested against fake servers (`packages/core/test/fake-telegram.ts`,
-`fake-slack.ts`): pairing, stranger silence, inbound → `user_msg` with `via`, replies, buttons →
-decide, edits to the end state, splitting, `retry_after` / `Retry-After`, a refreshed socket,
-files in, forwarded data, quiet hours, notifications off, and one end-to-end run through a core
-started in the test. **Not checked live:** a real BotFather bot and Telegram's real answers
-(entity edge cases, album timing, the 409 when a webhook is set), a real Slack workspace (the
-manifest as Slack's importer reads it, an admin-gated install, Socket Mode's refresh timing,
-`files.getUploadURLExternal` with form encoding, a Slack Connect DM), the Mac page on screen.
-iMessage is a separate step on the Mac app (`research/88` §4). See `todo.md` "Chat apps".
+`fake-slack.ts`, `fake-feishu.ts`): pairing, stranger silence, inbound → `user_msg` with `via`,
+replies, buttons → decide (typed 好 / 先等等 in Feishu), edits to the end state, splitting,
+`retry_after` / `Retry-After`, a refreshed socket, files in, forwarded data, quiet hours,
+notifications off, and one end-to-end run through a core started in the test. **Not checked live:**
+a real BotFather bot and Telegram's real answers (entity edge cases, album timing, the 409 when a
+webhook is set), a real Slack workspace (the manifest as Slack's importer reads it, an admin-gated
+install, Socket Mode's refresh timing, `files.getUploadURLExternal` with form encoding, a Slack
+Connect DM), a real Feishu / Lark tenant (D622, §14), the Mac page on screen. iMessage is a
+separate step on the Mac app (`research/88` §4). See `todo.md` "Chat apps".
 
 ## 9. WeChat, through WeChat's own ClawBot (D301)
 
@@ -368,3 +392,73 @@ hel needs the new manifest before it is seen live.
   link asked for).
 - **Not verified:** a real workspace's `conversations.replies` over a Socket Mode app; how long it
   takes on a busy thread; group DMs (`mpim`, not subscribed).
+
+
+## 14. Feishu / Lark, the person's own Custom App (D622)
+
+**Built 2026-11-27, checked against a fake open platform and long connection only**
+(`packages/core/test/fake-feishu.ts`); no real tenant, app or Feishu account was used. Evidence: the
+open platform's own pages for the long connection, [editing a
+message](https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/update.md),
+[sending a message](https://open.feishu.cn/document/server-docs/im-v1/message/create.md?lang=zh-CN),
+[the bot's info](https://open.feishu.cn/document/client-docs/bot-v3/obtain-bot-info.md?lang=zh-CN),
+[opening a bot chat](https://open.feishu.cn/document/common-capabilities/applink-protocol/supported-protocol/open-a-bot)
+and the long-connection frame codec as the Go and Rust SDKs write it (research/235 §4).
+
+- **Who, and the moment.** A person in a Chinese workplace whose team lives in Feishu (or Lark
+  abroad); the heavy developer whose team's channel is where work is handed over; the consumer who
+  already has Feishu open all day. Before, the partner lived only in Ducter; after, it is one more
+  contact in the app the team already uses, with its own name and its own app, and no public address
+  to open.
+- **The route.** The person's own **企业自建应用 / Custom App** on `open.feishu.cn` or
+  `open.larksuite.com` (one card, one setting: **飞书（中国）/ Feishu (China)** or **Lark（国际）/
+  Lark (global)**). Ducter reads with a `tenant_access_token`
+  (`/open-apis/auth/v3/tenant_access_token/internal`), learns the bot's name and `open_id` from
+  `/open-apis/bot/v3/info`, and opens the long connection with `POST /callback/ws/endpoint` (App ID
+  and App Secret; `data.URL`, `ClientConfig.PingInterval`, the `service_id` in the URL). No event
+  request URL, no public IP, no third-party SDK: plain `fetch` and the platform `WebSocket`, with the
+  protobuf frames encoded and decoded in `feishu.ts`.
+- **The frames.** A `Frame` is `seq_id = 1`, `log_id = 2`, `service = 3`, `method = 4`,
+  `headers = 5` (each a `key = 1, value = 2` message), `payload = 8`. `method 0` is control (ping,
+  pong); `method 1` is an event. Every data frame is acked by echoing its ids, service, method and
+  headers plus `biz_rt`, with `{"code":200,"headers":null,"data":null}`; the ack goes out within
+  3 s or Feishu sends the event again. A ping goes out every `PingInterval`. A payload split over
+  several frames carries `sum`, `seq` and one `message_id`; they are joined in order.
+- **The window.** Only a one-to-one chat (`chat_type: "p2p"`) is the person's; a group or a topic is
+  silence. The linked `open_id` is the one account; anyone else gets the same once-a-day line in
+  Settings. The person's words become a `user_msg` with `via: "feishu"` and
+  `feishu:<open_id>:<message_id>` (the open_id is where a reply goes, the chat_id is where the event
+  came from); a quote (`parent_id`) is a D236 reply. The app's words go back
+  where the turn started, exactly as §3 says. Words are plain text (Feishu text has no Markdown; a
+  link keeps its address after its label).
+- **No buttons, no typing, no files.** A reversible card says which words answer it, as WeChat's
+  does: reply **好 / ok** or **先等等 / wait**, and the hub answers it. Anything that must be seen
+  whole is **在 Ducter 里看看 / Open in Ducter**, with the address written out when there is one. A
+  status line is an edit (Feishu allows 20 edits on a message, so it is a line, never a stream);
+  there is no typing indicator. Pictures and files are owed (the card and the docs say so).
+- **The card, in Settings › 聊天软件 / Chat apps** (the same grid and steps as Slack, §6): one group
+  after Slack, its own letter mark **F** until Feishu's mark is drawn (todo.md); the domain choice
+  **飞书（中国）/ Feishu (China)** or **Lark（国际）/ Lark (global)** first, then the one link for it
+  (**打开飞书开放平台 / Open Feishu's console**, or **打开 Lark 开放平台 / Open Lark's console**);
+  the exact permission names `im:message.p2p_msg:readonly`, `im:message:send_as_bot`,
+  `im:message:update`; the exact event `im.message.receive_v1` beside **使用长连接接收事件 / Receive
+  events through a long connection**; the publish step; the fields **App ID** and **App Secret**;
+  **连上 / Connect** tests them (token, bot info, endpoint) before it says connected. A missing bot
+  capability, permission, event or published version is **cant_connect · setup**, in words
+  (**应用还没设置好：按上面的步骤检查权限和事件。/ The app isn't set up yet: check the permissions
+  and events in the steps.**), never a refused key. Then **获得口令 / Get a code**, **在飞书里打开 /
+  Open in Feishu** (`applink.feishu.cn/client/bot/open?appId=…`; Lark's
+  `applink.larksuite.com`), the code, and **和你的飞书连着 / Linked to your Feishu** (no name is
+  asked for: the event carries none and no contact scope is requested).
+- **The same rules.** The one thread (§10) carries other partners' words with **{name}：** in front
+  (the app cannot show a per-message face); quiet hours, notifications off, one place, one claim,
+  and the card policy are the hub's, unchanged. **Disconnect** forgets the App Secret; **Switch
+  account** keeps the app; both ask in place.
+- **Not verified.** A real tenant and app: the console's exact words in both regions, whether
+  `POST /callback/ws/endpoint` takes `AppID`/`AppSecret` as written (the SDK's own field names), the
+  first websocket handshake and its ping interval, `bot/v3/info`'s `activate_status` on a
+  self-built app, whether `im.message.receive_v1` arrives over the long connection as soon as the
+  version is published, the 3 s ack under load, `PUT /im/v1/messages/:id` for a text message, the
+  20-edit limit, `applink` opening the chat on desktop and phone, Lark's English console labels and
+  the larksuite.com origin end to end. **Not built (owed):** group @-mentions, threads, pictures and
+  files, interactive cards with buttons, a per-partner app. See `todo.md`.

@@ -63,6 +63,16 @@ export function BrandTile({ name, faded }: { name: string; faded?: boolean }) {
       </span>
     );
   }
+  // D622: no faithful mark yet (Feishu / Lark, Outlook, …): a letter on the same tile,
+  // never a blank one (todo.md's owed marks).
+  if (!SVGS[name]) {
+    const letter = name.trim().charAt(0).toUpperCase() || "?";
+    return (
+      <span class={`g-tile mark brand${faded ? " faded" : ""}`} aria-hidden="true">
+        <span class="brand-letter">{letter}</span>
+      </span>
+    );
+  }
   return (
     <span class={`g-tile mark brand${faded ? " faded" : ""}`} aria-hidden="true">
       <BrandMark name={name} />

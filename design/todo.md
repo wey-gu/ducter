@@ -1317,7 +1317,8 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 
 ## Chat apps (D276, `channels.md`)
 
-Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
+Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode, a fake Feishu open
+platform + long connection).
 
 - [ ] **One live run on a real Telegram bot** (BotFather token, the deep link, a turn, a card's buttons, an edit to the end state, a picture both ways, an album, a 409 while a webhook is set). Trigger: before calling chat apps more than a preview.
 - [ ] **One live run in a real Slack workspace** (the manifest through Slack's importer, an admin-gated install, Socket Mode's refresh after hours, Block Kit buttons, `chat.update`, the files v2 upload with form encoding, a shared message). Trigger: the same.
@@ -1337,6 +1338,32 @@ Built against fakes only (a fake Bot API, a fake Slack Web API + Socket Mode).
 - [ ] **iMessage on its own connection to the home** so it follows the one-thread rules (a name first, a reply keeps, the thread holds) instead of the partner the Mac shows (today it speaks for the shown one, labelled). Trigger: a person uses iMessage with two partners.
 - [ ] **A naive-rater check of the name address** (do people find 「小家，…」 from the one line, and read **小家：** as another partner in the same contact?). Trigger: the next rater round.
 - [ ] **WeChat quoted replies** keep the partner only if iLink's `ref_msg` names a message the hub sent; check live, and map its id if needed. Trigger: the WeChat live run.
+
+### Feishu / Lark (D622, `channels.md` §14)
+
+Built against a fake open platform and long connection only (`fake-feishu.ts`).
+
+- [ ] **One live run on a real Feishu tenant, then a Lark one** (a self-built app, the bot
+  capability, the three permissions, the long-connection event, a published version, App
+  ID/Secret, a direct message and its answer, a typed 好, an edit to the end state, a stranger's
+  silence, a restart, a disconnected socket coming back). Trigger: before calling Feishu / Lark
+  more than a preview.
+- [ ] **The console's exact words in both regions**, held to the app:
+  `POST /callback/ws/endpoint`'s `AppID`/`AppSecret` fields, `bot/v3/info`'s `activate_status` on a
+  self-built app, whether the version's publish is enough for events to arrive, the 3 s ack under a
+  burst, `PUT /im/v1/messages/:id` for a text message and the 20-edit limit, and `applink` opening
+  the app's chat on desktop and phone. Trigger: the live run above.
+- [ ] **Group @-mentions and threads** (the Slack shape, `channels.md` §11–§13), if a person's team
+  works in a Feishu group: the app hears `im.message.receive_v1` in a group, only the linked
+  person's @ is taken, its answer goes in a thread, a teammate's words are outside data. Trigger: a
+  person asks, or the author's own team moves there.
+- [ ] **Pictures and files both ways** (D206/D259): upload via `im/v1/images` / `im/v1/files`,
+  download through `im/v1/messages/:id/resources/:file_key`; set `caps.files` and the max sizes only
+  after the live run. Trigger: the live run passes.
+- [ ] **Buttons on an interactive card** (card 2.0, `card.action.trigger`), so a reversible card is
+  a tap as in Slack, instead of a typed 好. Trigger: the files slice is in, or a person asks.
+- [ ] **A per-partner Feishu app** (D516's owed other half): its own app ID and secret for another
+  partner, one contact each. Trigger: a person with several partners asks.
 
 ### WeChat through ClawBot (D301, `channels.md` §9, research/105)
 
@@ -1387,9 +1414,10 @@ Built against a fake iLink and CDN only.
 - **The Chat apps clay with human raters** (trigger: the next rater round; LLM raters only so far,
   D283; the letter pebbles are gone, D314).
 - **D314's marks still owed** (trigger: the first person who uses one): GitHub Copilot, OpenClaw,
-  OpenCode, Outlook, Feishu / Lark and WeCom keep a letter or a drawn stand-in; a website in
-  Autofill keeps its letter (its own favicon would mean fetching it, a privacy question first). The
-  phone's Settings list and the rail keep Ducter's own clay (the sections are Ducter's).
+  OpenCode, Outlook and WeCom keep a letter or a drawn stand-in; Feishu / Lark keeps its **F** (the
+  shared letter tile, D622) until its mark is drawn; a website in Autofill keeps its letter (its
+  own favicon would mean fetching it, a privacy question first). The phone's Settings list and the
+  rail keep Ducter's own clay (the sections are Ducter's).
 - **D314: a comprehension pass on the per-kind Done for you glyphs** (merge, PR, setting, install)
   with human raters, and on the iOS Simulator (headless Chrome only so far).
 - **The 来自 iMessage / via iMessage mark** under the person's message on the Mac and the web

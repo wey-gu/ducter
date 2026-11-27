@@ -18,10 +18,13 @@ export interface LinkedAccount {
 }
 
 export interface ChannelRec {
-  /** Telegram: the BotFather token. Slack: the bot token (xoxb-). */
+  /** Telegram: the BotFather token. Slack: the bot token (xoxb-). Feishu: the App Secret. */
   token: string;
   /** Slack: the app-level token (xapp-) Socket Mode opens with. */
   appToken?: string;
+  /** D622, Feishu: the app's App ID, and the open platform it was made on. */
+  appId?: string;
+  domain?: "feishu" | "lark";
   bot?: { id: string; name: string; handle?: string; team?: string; teamId?: string; appId?: string };
   linked?: LinkedAccount;
   /** Telegram: the next update to read (confirmed only after it was handled). */
@@ -61,6 +64,7 @@ export const THREADS_KEPT = 200;
 interface File {
   telegram?: ChannelRec;
   slack?: ChannelRec;
+  feishu?: ChannelRec;
   wechat?: ChannelRec;
   /** Where the person last spoke to the partner: a chat app, or "app" (any Ducter app). */
   lastRoute?: ChannelKind | "app";

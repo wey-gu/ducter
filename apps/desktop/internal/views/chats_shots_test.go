@@ -16,7 +16,7 @@ import (
 )
 
 // D283: Settings › 聊天软件 / Chat apps pictured in each state, Telegram,
-// Slack and iMessage, for review:
+// Slack, Feishu / Lark (D622) and iMessage, for review:
 //
 //	DUCTER_CHATS_SHOTS=1 DUCTER_SHOTS_DIR=../../../../.shots/d283/after go test ./internal/views -run ChatsShots
 //
@@ -31,14 +31,16 @@ func TestChatsShots(t *testing.T) {
 	at := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
 	manifest := "{\n  \"display_information\": { \"name\": \"小鸭\" },\n  \"features\": { \"bot_user\": { \"display_name\": \"小鸭\" } },\n  \"settings\": { \"socket_mode_enabled\": true }\n}"
 	states := map[string][]protocol.ChannelView{
-		"off": {{Kind: "telegram", State: "off"}, {Kind: "slack", State: "off"}},
+		"off": {{Kind: "telegram", State: "off"}, {Kind: "slack", State: "off"}, {Kind: "feishu", State: "off"}},
 		"linked": {
 			{Kind: "telegram", State: "linked", Bot: &protocol.ChannelBot{Name: "小鸭", Handle: "xiaoya_bot"}, Linked: &protocol.ChannelLinked{Name: "Wey", At: at}},
 			{Kind: "slack", State: "unlinked", Bot: &protocol.ChannelBot{Name: "小鸭", Team: "Nowledge"}},
+			{Kind: "feishu", State: "unlinked", Domain: "feishu", Bot: &protocol.ChannelBot{Name: "小鸭"}},
 		},
 		"bad": {
 			{Kind: "telegram", State: "cant_connect", Reason: "token"},
 			{Kind: "slack", State: "cant_connect", Reason: "network", Bot: &protocol.ChannelBot{Name: "小鸭", Team: "Nowledge"}},
+			{Kind: "feishu", State: "cant_connect", Reason: "setup", Domain: "feishu"},
 		},
 	}
 	ims := map[string]imessage.Status{
@@ -55,6 +57,7 @@ func TestChatsShots(t *testing.T) {
 			app.Receive(protocol.ServerFrame{T: "channels", Channels: states[name], SlackManifest: manifest})
 			if name == "linked" {
 				app.Receive(protocol.ServerFrame{T: "channel_result", ChannelKind: "slack", Op: "code", OK: true, Code: "K7QM-4XPA", ExpiresAt: time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
+				app.Receive(protocol.ServerFrame{T: "channel_result", ChannelKind: "feishu", Op: "code", OK: true, Code: "K7QM-4XPA", ExpiresAt: time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339), Link: "https://applink.feishu.cn/client/bot/open?appId=cli_fake"})
 			}
 			app.openTab(TabChats)
 			tt := ui.NewTesterWith(app.View, 1280, 1900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
@@ -63,6 +66,13 @@ func TestChatsShots(t *testing.T) {
 				tt.Frame()
 			}
 			save(t, dir, fmt.Sprintf("mac-chats-%s-%s.png", name, lang), tt)
+			if name == "bad" {
+				tt.SetSize(900, 1900)
+				for i := 0; i < 4; i++ {
+					tt.Frame()
+				}
+				save(t, dir, fmt.Sprintf("mac-chats-%s-%s-900.png", name, lang), tt)
+			}
 			if name == "linked" {
 				app.openTab(TabNotify)
 				for i := 0; i < 4; i++ {

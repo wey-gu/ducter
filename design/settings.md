@@ -15,7 +15,7 @@ personal-AI user, **F** a fresh user who has never heard of a subagent.
 | 伙伴 / Partner | H (which AI agent, which model, who does tasks); C renames it | "Is it on the smart one? Is it using up my limit?" | It is itself, on the model they chose, and they can see what is left in plain sentences | The partner's face and name at the top; one line where it lives and what it thinks with, as a phrase (住在这台 Mac 上，用 Claude Code 的 Opus 想事情) |
 | 通知 / Notifications | C and F: "will it bother me at night?" | Unsure when it will interrupt | Quiet hours and the default wait are set, and the partner says in one line what that means | Notifications on, quiet hours 23:00–08:00 offered with one switch |
 | 账号 / Accounts | C most (what it may read; whether it may call); F next | A wall of rows each saying the same green word | Calm: the place says how it reads, a row speaks only when it differs; flipping a switch gets one word back from the partner | The one tap (oo) or the add row; nothing read until they say yes |
-| 聊天软件 / Chat apps | C (Telegram, Slack), H (Slack) | Connected, but to what? | "在 @bot 等你": it is waiting there, by name | One group per app, resting as its row with 设置 / Set up and its privacy line until pressed (D365); then its steps as rows; nothing connected until they paste a key |
+| 聊天软件 / Chat apps | C (Telegram, Slack, Feishu / Lark), H (Slack, Feishu) | Connected, but to what? | "在 @bot 等你": it is waiting there, by name | One group per app, resting as its row with 设置 / Set up and its privacy line until pressed (D365); then its steps as rows; nothing connected until they paste a key |
 | 密码和银行卡 / Passwords & cards (D336) | C booking travel | Unsure what it can see, and what "autofill" even keeps | Each saved thing is a row with its mark; what it can and cannot read said once | Its list line says what it is for and where it is kept (登录、付款、填地址时用，锁着存在你的电脑上); three add rows, one per kind; the uses section says none yet |
 | 外观和声音 / Look and sound | Everyone, briefly | — | The preview smiles back at a choice (D150) | The preview stage and three groups |
 | 在哪儿运行 / Where it runs | H (a server home), F once ("does closing the window stop it?") | Afraid closing the window loses work | This Mac (or hel) as the group's first row, small clay in the tile column, and one sentence that it keeps working | The row and its sentence; Rest, data and Remove further down, quiet |
@@ -47,7 +47,7 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 | A switch alone at a row's right edge | `switchControl` in `tileRow` | `Switch` (`controls.tsx`, D295) | Use my voice; a service's 自己留意 |
 | The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch |
 | A list of names of one kind | `listWords` (、 / , ) | `t("acct.sep")` | oo's accounts; your details |
-| A thing never set up, resting until chosen (D337, D365) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, WeChat); calls from your own number |
+| A thing never set up, resting until chosen (D337, D365) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, Feishu / Lark, WeChat); calls from your own number |
 | A choice of a few as a row, the choice at the right edge (D432) | `tileRow` with `choices` | `chat-row` with `Seg` | 等多久再按默认做, 每天最多, To-do sources' 新的来了 and 做完以后 |
 | A pane still being read (D432) | `paneWait` | `Waiting` | Partner and Notifications (Mac), To-do sources, Chat apps (web), Passwords & cards |
 | A line to copy (D432; one look D459) | `lendCopy` (kind `line`, `check`, `ask`) | `CopyLine` | Memory's and Agent messaging's missing tool |
@@ -218,7 +218,8 @@ The two weakest, and what changed:
 
 - **聊天软件 / Chat apps** (21/35): every app never connected showed its whole setup. Each now rests as
   its first row with **设置 / Set up** and its privacy line; the steps open in place. A refused key or a
-  connect on its way keeps them open. `docs/chat-apps.md` says **Set up** first.
+  connect on its way keeps them open. Feishu / Lark joined later with the same shape (D622, below).
+  `docs/chat-apps.md` says **Set up** first.
 - **待办来源 / To-do sources** (22/35): with nothing added the add group says
   **还没有加上的。在下面挑一个。** under its heading (no card holding one line); the web's add rows are
   rows at 15/700 and the vault path is the shared add row, as on the Mac; who owns a to-do sits under
@@ -1012,3 +1013,63 @@ its computer, with its real path everywhere.
   refused rather than copied. The New task clone field's **会放在 {path}** line links here.
 - **Not chosen:** a field under Data (it belongs to a computer, not to the home's data), a lone
   `改` beside the path (D592), copying a tree of repositories across disks.
+
+
+## Feishu / Lark, the fourth chat app (D622)
+
+**Who.** A person whose team lives in Feishu (China) or Lark (abroad) and already has it open all
+day; the heavy developer whose team hands work over there; the fresh user who has never made a
+work app. **Before:** the partner is only in Ducter. **After:** 顺滑, it is one more contact in an
+app the team already uses, with its own name; 放心, nobody else can talk to it and it asks for
+nothing but a direct message.
+
+- **The card.** One group in the chat apps grid, after Slack (Telegram, Slack, Feishu / Lark,
+  WeChat, iMessage), in the same shape D283/D365 settled: the app's mark on the small white clay tile
+  — Feishu has no faithful mark in the repo yet, so it keeps the letter **F** (the letter tile
+  todo.md owed) — its name **飞书 / Lark** (**Feishu / Lark** in en), one line of how it stands, the
+  steps as numbered rows, one sentence each, and the group's one primary at the right of its last
+  line.
+- **The steps** (`apps/web/src/channels.tsx` `FeishuSetup`; `views/chats.go` `chatConnect`):
+  1. choose **飞书（中国）/ Feishu (China)** or **Lark（国际）/ Lark (global)** first; the one link
+     under it opens that console (**打开飞书开放平台 / Open Feishu's console**, or
+     **打开 Lark 开放平台 / Open Lark's console**), where the person creates a
+     **企业自建应用 / Custom App** and adds **机器人 / Bot** under **应用能力 / App Features**;
+  2. **开发配置 › 权限管理 / Development › Permissions**: the three exact names
+     `im:message.p2p_msg:readonly`, `im:message:send_as_bot`, `im:message:update`, each a mono chip;
+  3. **事件与回调 › 事件配置 / Events & Callbacks › Event Configuration**: choose
+     **使用长连接接收事件 / Receive events through a long connection**, then add
+     `im.message.receive_v1`, a mono chip;
+  4. **版本管理与发布 / Version Management & Release**: create and publish a version, with the person
+     in its availability;
+  5. **凭证与基础信息 / Credentials & Basic Info**: paste **App ID** and **App Secret**.
+- **The test.** **连上 / Connect** checks the App ID and App Secret (a `tenant_access_token`), the
+  bot (`bot/v3/info`, including `activate_status`) and the long connection
+  (`POST /callback/ws/endpoint`) before it says connected; a missing bot capability, permission,
+  event or published version is **cant_connect · setup** with the steps still open and
+  **应用还没设置好：按上面的步骤检查权限和事件。/ The app isn't set up yet: check the permissions
+  and events in the steps.** under them, never a refused key. A wrong key keeps the fields open
+  with the shared line.
+- **The pair.** **获得口令 / Get a code** then **在飞书里打开 / Open in Feishu** (or **在 Lark 里打开 /
+  Open in Lark**) opens the app's chat through `applink`; the code is pasted there. The linked row
+  says **和你的飞书连着 / Linked to your Feishu** (or **Lark**) because Feishu's event carries no
+  display name and the card asks for no contact scope; **换个账号 / Switch account** and **断开 {app} /
+  Disconnect {app}** are the other apps' quiet actions, the disconnect asking in place.
+- **The states.** off (resting row), starting, unlinked (the code), linked, cant_connect · token |
+  network | setup; the once-a-day stranger line; **在 {bot} 等你 / Waiting for you at {bot}** uses the
+  app's own name. The privacy line says what it is: **这是你在飞书里自己的应用：你们的话经过飞书，
+  Ducter 不替你给别人发消息。/ This is your own app in Feishu: your words go through Feishu. Ducter
+  never messages anyone as you.**
+- **One setting, two consoles.** The same card covers feishu.cn and larksuite.com; the choice is the
+  open platform, and the name, code, link and privacy line follow it. No second Feishu card, no
+  separate Lark card.
+- **Words** are in both tables (D292: no inline zh/en branches): `apps/web/src/i18n-channels.ts`
+  `chats.feishu`, `chats.fs.*`, `chats.cant.setup`, `chats.bad.setup`; the Mac's
+  `internal/i18n/channels.go` has the same keys. The product-model glossary has the new words
+  (企业自建应用, App ID, App Secret, 长连接, 权限, 事件).
+- **Shots.** `.shots/feishu/after/`: Mac 1280 and 900, web 1400 and 390, zh and en, the resting card,
+  the steps open, connected waiting for the code, and the setup error. The card is new, so there is
+  no before pane; the "before" is the page without it.
+- **Not verified:** a real tenant and app (the console's exact labels in both regions, `activate_status`,
+  the first handshake, the ack under load, the text edit's 20 times, the applink on desktop and
+  phone, Lark's English labels). Owed: group @-mentions, threads, pictures/files, card buttons, a
+  per-partner app. See `channels.md` §14 and `todo.md`.

@@ -82,7 +82,41 @@ export function createHandoffs(o: {
     if (h.from.messageId) byMessage.set(h.from.messageId, h.handoffId);
   };
 
-  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["handoff"] })) remember({ ...(e.body as HandoffBody) });
+  // D645 (research/245 §3.7, B7): one record per `repo#n`. Older homes (hel, 11-26) made two
+  // for one item, `issue:…` and `pr:…`; they are one record when read, never rewritten in the Log.
+  const RANK: Record<HandoffBody["state"], number> = { settled: 9, done: 8, declined: 7, returned: 7, withdrawn: 6, taken: 5, unclaimed: 4, given: 3 };
+  const mergeOld = (a: HandoffBody, b: HandoffBody): HandoffBody => {
+    const [win, lose] = RANK[b.state] > RANK[a.state] || (RANK[b.state] === RANK[a.state] && b.at > a.at) ? [b, a] : [a, b];
+    const adds = [...(a.adds ?? []), ...(b.adds ?? [])].sort((x, y) => x.at.localeCompare(y.at));
+    return {
+      ...lose,
+      ...win,
+      givenAt: a.givenAt < b.givenAt ? a.givenAt : b.givenAt,
+      messages: [...new Set([...(a.messages ?? []), ...(b.messages ?? []), ...(a.from.messageId ? [a.from.messageId] : []), ...(b.from.messageId ? [b.from.messageId] : [])])],
+      ...(adds.length ? { adds } : {}),
+      ...(win.taskId || lose.taskId ? { taskId: win.taskId ?? lose.taskId } : {}),
+      ...(win.why || lose.why ? { why: win.why ?? lose.why } : {}),
+      ...(win.outcome || lose.outcome ? { outcome: win.outcome ?? lose.outcome } : {}),
+      ...(win.settledBy || lose.settledBy ? { settledBy: win.settledBy ?? lose.settledBy } : {}),
+      ...(win.unclaimedAt || lose.unclaimedAt ? { unclaimedAt: win.unclaimedAt ?? lose.unclaimedAt } : {}),
+      ...(win.wakeAt || lose.wakeAt ? { wakeAt: [win.wakeAt, lose.wakeAt].filter(Boolean).sort().at(-1) } : {}),
+    };
+  };
+  {
+    const byNorm = new Map<string, HandoffBody[]>();
+    for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["handoff"] })) {
+      const h = e.body as HandoffBody;
+      const key = handoffKey(h.from, h.to, h.item);
+      const list = byNorm.get(key) ?? [];
+      // Only the old issue:/pr: pair for one GitHub number is one item; a later re-give of the same
+      // kind is a new ask and keeps its own record.
+      const i = list.findIndex((x) => x.item.kind !== h.item.kind);
+      if (i >= 0) list[i] = mergeOld(list[i]!, { ...h, key });
+      else list.push({ ...h, key });
+      byNorm.set(key, list);
+    }
+    for (const list of byNorm.values()) for (const h of list) remember(h);
+  }
   for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["owned_news"] })) {
     const b = e.body as Bodies["owned_news"];
     if (b?.pr) prState.set(b.pr.toLowerCase(), { state: b.seen?.state, ...(b.seen?.letGo ? { letGo: true } : {}) });
@@ -101,8 +135,11 @@ export function createHandoffs(o: {
   const settle = (h: HandoffBody, by: HandoffSettle): HandoffBody =>
     HANDOFF_TERMINAL.has(h.state) ? h : put({ ...h, state: "settled", at: iso(o.now()), settledBy: by });
 
+  const GITHUB_REF = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+$/;
   const settleIfOver = (h: HandoffBody): HandoffBody => {
-    if (h.item.kind !== "pr") return h;
+    // D645 (research/245 §3.7, B7): repo#n is one item, so either the PR's merge/close or the
+    // issue's close settles it, whichever kind the record was first written as.
+    if (!GITHUB_REF.test(h.item.ref)) return h;
     const p = byPr(h.item.ref);
     return p?.state === "merged" || p?.state === "closed" ? settle(h, p.state) : h;
   };
@@ -115,7 +152,7 @@ export function createHandoffs(o: {
     if (!o.issueState) return;
     for (const h of [...byId.values()]) {
       if (h.state !== "given" && h.state !== "unclaimed" && h.state !== "taken") continue;
-      if (h.item.kind !== "issue") continue;
+      if (!GITHUB_REF.test(h.item.ref)) continue;
       const [owner] = h.item.ref.split("#");
       if (repo && owner?.toLowerCase() !== repo.toLowerCase()) continue;
       const by = await o.issueState(h.item.ref).catch(() => undefined);
@@ -325,8 +362,9 @@ export function createHandoffs(o: {
         return;
       }
       if (state !== "closed") return;
+      // D645 (research/245 §3.7, B7): the same ref, whichever kind the record carries.
       for (const h of [...byId.values()]) {
-        if (h.item.kind !== "issue" || h.item.ref.trim().toLowerCase() !== r) continue;
+        if (h.item.ref.trim().toLowerCase() !== r) continue;
         if (!HANDOFF_TERMINAL.has(h.state)) settle(h, "closed");
       }
     },

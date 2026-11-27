@@ -169,6 +169,13 @@ func (a *App) eventStory(task *store.Task, ev *protocol.LogEvent) (rowStory, boo
 func (a *App) storyOf(task *store.Task) rowStory {
 	att := task.Attention()
 	rep := task.Report()
+	// D645 (research/245 §3.7, B1): no computer could read GitHub for it; after its quiet the
+	// row says so, with the fix (install gh there, or read it on the home).
+	if c := task.Card; c != nil && c.GitHubBlind != nil && (att == protocol.Blocked || att == protocol.Working || att == protocol.Queued) {
+		if since, err := time.Parse(time.RFC3339, c.GitHubBlind.Since); err == nil && time.Since(since) >= 30*time.Minute {
+			return rowStory{words: a.L.T("onhand.github.blind", a.pad(c.GitHubBlind.Device), a.pad(c.GitHubBlind.Home))}
+		}
+	}
 	switch att {
 	case protocol.NeedsYou:
 		q := ""

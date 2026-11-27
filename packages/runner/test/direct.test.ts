@@ -113,18 +113,21 @@ describe("D585: a question typed in the task", () => {
     await runner.dispose();
   });
 
-  test("still at work on its own (Working): its turn owes its report as before (nudged once)", async () => {
-    // Its first turn ended without a report: nudged, then the nudge's report. A person's words to it
-    // after a turn of its own that said nothing new keep the old rule.
+  test("its turn ended with no report: stopped, not working; a person's words are a conversation then", async () => {
+    // D645 (research/245 §3.7, B4): a turn that ends with nothing running is stopped (D467's
+    // 停下了), never 在做. Its first turn was nudged; the nudge turn said nothing new, so it is
+    // stopped. The person's own words there are a conversation (D585): it goes back to stopped,
+    // owes no report, and is never nudged twice for it.
     const { runner, inputs } = await taskThat(async (t) => t.say("Started."), async (t) => t.say("Still on it."));
     await waitFor(() => inputs.includes(NUDGE), "the nudge of its own turn");
     await waitFor(() => turnsEnded() >= 2, "nudge turn");
     await Bun.sleep(30);
-    expect(attention()).toBe("working");
+    expect(attention()).toBe("blocked");
     await runner.send(ID, "carry on", undefined, "user", "c5");
     await waitFor(() => turnsEnded() >= 3, "the person's turn");
     await Bun.sleep(60);
-    expect(inputs.filter((i) => i === NUDGE)).toHaveLength(2);
+    expect(inputs.filter((i) => i === NUDGE)).toHaveLength(1);
+    expect(attention()).toBe("blocked");
     await runner.dispose();
   });
 

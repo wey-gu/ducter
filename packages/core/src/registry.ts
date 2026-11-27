@@ -274,6 +274,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         c.attention = b.attention;
         c.residency = b.residency;
         c.reason = b.reason;
+        // D645 (research/245 §3.7, B4): what it waits for when the person owes it an answer.
+        if (b.waitsFor) c.waitsFor = b.waitsFor;
+        else delete c.waitsFor;
         // D395: why it couldn't start, until it is started again.
         if (b.cant) c.cant = b.cant;
         else delete c.cant;
@@ -432,7 +435,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
     setMarks(fn) {
       markOf = fn;
     },
-    setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("@ducter/protocol").CantStart) {
+    setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("@ducter/protocol").CantStart, waitsFor?: string) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);
       const c = cards.get(taskId)!;
       // D633: "working" is a turn's state. Parked means no session is alive, so a transition into
@@ -443,6 +446,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       const body: Bodies["task_state"] = { taskId, attention, residency };
       if (reason) body.reason = reason;
       if (cant) body.cant = cant;
+      if (waitsFor) body.waitsFor = waitsFor;
       log.append({ stream: taskStream(taskId), origin: "system", kind: "task_state", body });
     },
   };

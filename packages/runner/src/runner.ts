@@ -21,6 +21,7 @@ import { userEditsNote } from "./brief.ts";
 import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 import { fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
 import { directTurn, withDirectNote } from "./direct.ts";
+import { turnEndAttention } from "@ducter/protocol/src/turn-end.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
@@ -516,11 +517,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const stream = (id: string) => `task:${id}`;
   const taskWindows = () => (core.settings?.get().windows ?? resolveWindows(undefined, process.env).windows).tasks;
 
-  function setState(t: TaskRt, attention: Attention, residency: Residency, reason?: string) {
-    if (t.attention === attention && t.residency === residency && !reason) return;
+  function setState(t: TaskRt, attention: Attention, residency: Residency, reason?: string, waitsFor?: string) {
+    if (t.attention === attention && t.residency === residency && !reason && !waitsFor) return;
     t.attention = attention;
     t.residency = residency;
-    core.tasks.setState(t.id, attention, residency, reason);
+    core.tasks.setState(t.id, attention, residency, reason, undefined, waitsFor);
   }
 
   /** D415: its agent never started (it failed first): no session id ever, not carried from another. */
@@ -719,7 +720,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // D585: who opened this turn. The person's own words make it a conversation with them: it owes
     // no report, and where the card stood comes back when it ends without one (onTurnEnd).
     if (from === "user") {
-      t.personTurn = { before: t.askedFrom ?? currentAttention(t) };
+      // D645 (research/245 §3.7, B4): needs_you is owed only while a question is open. After
+      // the person answered on the card, the stale state is not restored: the turn ends stopped.
+      const c = core.tasks.get(t.id);
+      const stillAsking = !!c?.pendingDecisionId || c?.lastReport?.state === "needs_input";
+      const was = t.askedFrom ?? currentAttention(t);
+      t.personTurn = { before: was === "needs_you" && !stillAsking ? "blocked" : was };
       directTurn.start(core, t.id);
     } else {
       t.personTurn = undefined;
@@ -1480,6 +1486,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
     // D266: its background shells and subagents still run: the session is at work, not idle.
     const bg = busy ? 0 : bgLive(t);
+    // D645 (research/245 §3.7, B4): every turn end, not once at start. A task told to wait for
+    // the person is needs-you (with the question) until the answer reaches it; a turn that ended with
+    // nothing running is stopped, never 在做. A live waiter or background job keeps it at work.
+    if (!busy && !t.dropped && !compactTurn && bg === 0 && !(asked && BACK_AFTER_ASKED.has(asked.before))) {
+      const card = core.tasks.get(t.id);
+      const end = card ? turnEndAttention(card) : undefined;
+      if (end && (currentAttention(t) !== end.attention || (card?.waitsFor ?? "") !== (end.waitsFor ?? "")))
+        setState(t, end.attention, t.session ? "warm" : "parked", undefined, end.waitsFor);
+    }
     // Stopped by the user: it is not working any more, it waits for them (truthful card).
     if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), bg > 0 ? "hot" : "warm");
     if (!busy && !t.dropped) armPark(t);
@@ -1551,8 +1566,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
   }
 
-  /** A turn ended with no report (the stall rule): one nudge; a second miss leaves it to the user. */
+  /** A turn ended with no report (the stall rule): one nudge; a second miss leaves it stopped. */
   async function missedReport(t: TaskRt) {
+    // A task waiting on the person owes no report: the answer is its next turn.
+    const card = core.tasks.get(t.id);
+    if (card && turnEndAttention(card)?.waitsFor) return;
     if (!t.nudged) {
       t.nudged = true;
       try {
@@ -1569,9 +1587,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const ranMs = Math.max(0, Date.now() - Date.parse(t.card.openedAt));
       logEvent(t, { role: "system", text: "no report after one nudge; leaving the task idle (stall rule)", raw: { stall: true, facts: { ranMs, toolCalls: t.toolCalls ?? 0, ...(t.lastWords ? { lastWords: t.lastWords } : {}) } } });
       // It stopped without reporting: the user's turn, not "working" (2026-11-11: a task on hel
-      // read 在做 for four hours after it stalled and its harness exited). The note says why;
-      // a message from the user sets it working again.
-      if (currentAttention(t) === "working") setState(t, "needs_you", t.session ? "warm" : "parked");
+      // read 在做 for four hours after it stalled and its harness exited). D467's 停下了: blocked with
+      // no waiter, shown as needs-you once its quiet is old enough. A message from the user sets it
+      // working again.
+      if (currentAttention(t) === "working" || currentAttention(t) === "queued") setState(t, "blocked", t.session ? "warm" : "parked");
     }
   }
 

@@ -746,6 +746,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     connections,
     clock: workClock,
     persona: persona.id,
+    dataDir,
     exec: opts.work?.exec,
     minEveryMs: opts.work?.minEveryMs,
     ownedEveryMs: opts.work?.ownedEveryMs,

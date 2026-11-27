@@ -2,13 +2,14 @@
 // routines, the partner's and tasks' tools for them, the client frames, and On hand's view.
 // See waiters.ts, until.ts, routines.ts for each mechanism.
 import { readdir, stat } from "node:fs/promises";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
 import { directOnly, directOnlyWhy, fill, harnessName, words } from "@ducter/protocol";
 import { langOfText } from "./lang.ts";
 import { urlArgv, WATCH_MAX_ITEMS } from "@ducter/protocol/src/watch.ts";
-import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
+import type { LogStore, Runner, WorkerLink, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { CHECK_MAX_OUTPUT, describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
 import { jsonArg, jsonText } from "@ducter/protocol/src/tool-schema.ts";
 import { runCheck, type CheckResult, type Exec } from "@ducter/protocol/src/checks-run.ts";
@@ -58,6 +59,8 @@ export interface WorkOptions {
   log: LogStore;
   tasks: CoreRegistry;
   mcp: CoreMcpHub;
+  /** D645 (research/245 §3.7, B1): the home's data folder, for the GitHub-blind facts kept across a restart. */
+  dataDir?: string;
   runner: () => Runner | undefined;
   workers?: () => WorkerLinks | undefined;
   connections?: ConnectionsStore;
@@ -83,6 +86,42 @@ export interface WorkOptions {
 }
 
 const expand = (p: string) => (p.startsWith("~/") ? homedir() + p.slice(1) : p === "~" ? homedir() : p);
+
+/**
+ * D645 (research/245 §3.7, B1): whether a look reads a fact about a GitHub repository (a PR's
+ * or an issue's state, a PR's checks), so it can run where a signed-in gh exists rather than on the
+ * task's computer. The brief's set exactly: `gh api` (a GET) and `gh pr view|checks`, about a
+ * github.com repo, named by `repos/owner/repo` or `--repo owner/repo`. Every other look stays where
+ * it ran (a file, a port, a local build are facts about that computer).
+ */
+export function githubLookRepo(spec: CheckSpec | undefined): string | undefined {
+  const argv = spec?.argv;
+  if (!argv?.length) return undefined;
+  if (String(argv[0]).split("/").pop() !== "gh") return undefined;
+  const rest = argv.slice(1).map(String);
+  if (rest.some((a) => /^--hostname$/.test(a) || /^--hostname=/.test(a))) return undefined; // not github.com's own host
+  const repoArg = (() => {
+    for (let i = 0; i < rest.length; i++) if (rest[i] === "--repo" || rest[i] === "-R") return rest[i + 1];
+    return rest.map((a) => /^(?:--repo|-R)=(.+)$/.exec(a)?.[1]).find(Boolean);
+  })();
+  const ghRepo = repoArg && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repoArg) ? repoArg.toLowerCase() : undefined;
+  if (rest[0] === "api") {
+    // A GET: no method but GET, and no field or body that would make it a write.
+    const method = (() => {
+      for (let i = 0; i < rest.length; i++) if (rest[i] === "-X" || rest[i] === "--method") return String(rest[i + 1] ?? "").toUpperCase();
+      return rest.map((a) => /^--method=(.+)$/.exec(a)?.[1]).find(Boolean)?.toUpperCase();
+    })();
+    if (method && method !== "GET") return undefined;
+    if (rest.some((a) => ["-f", "-F", "--field", "--raw-field", "--input"].includes(a) || /^--(?:field|raw-field|input)=/.test(a))) return undefined;
+    for (const a of rest.slice(1)) {
+      const m = /^repos\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)(?:\/|$)/.exec(a);
+      if (m) return m[1]!.toLowerCase();
+    }
+    return ghRepo;
+  }
+  if (rest[0] === "pr" && (rest[1] === "view" || rest[1] === "checks")) return ghRepo;
+  return undefined;
+}
 
 /** Where a task's check runs: its device, in its place. */
 export function placeOfCheck(place: Place | undefined): { device: string; cwd?: string } {
@@ -179,21 +218,118 @@ export function clockCheck(check: CheckSpec): boolean {
 export function createWork(o: WorkOptions): Work {
   const { log, tasks, mcp } = o;
 
+  // ---------- D645 (research/245 §3.7, B1): GitHub facts are read where gh is ----------
+  // A PR's or an issue's true state is a fact about github.com, not about the computer a task ran
+  // on. A look that reads one runs on the home when the home has a signed-in gh, else on the first
+  // online device that has one, else on the task's device (where it fails as it did before, and the
+  // card says it is blind). The probe's answer is cached; a signed-out gh is not a reader.
+  const GH_PROBE_MS = 5 * 60_000;
+  const GH_FAIL_MS = 60_000;
+  const ghProbe = new Map<string, { at: number; ok: boolean }>();
+  const blindFile = o.dataDir ? join(o.dataDir, "github-blind.json") : undefined;
+  const blind = new Map<string, { since: string; device?: string; home?: string }>();
+  if (blindFile && existsSync(blindFile)) {
+    try {
+      const raw = JSON.parse(readFileSync(blindFile, "utf8")) as Record<string, { since: string; device?: string; home?: string }>;
+      for (const [id, v] of Object.entries(raw)) if (v?.since) blind.set(id, v);
+    } catch (err) {
+      console.warn("[work] github-blind.json is unreadable; starting with none:", (err as Error).message);
+    }
+  }
+  const saveBlind = () => {
+    if (!blindFile) return;
+    try {
+      const tmp = `${blindFile}.tmp`;
+      writeFileSync(tmp, JSON.stringify(Object.fromEntries(blind), null, 2) + "\n", { mode: 0o600 });
+      renameSync(tmp, blindFile);
+    } catch (err) {
+      console.warn("[work] couldn't keep github-blind.json:", (err as Error).message);
+    }
+  };
+  const markBlind = (taskId: string, device: string) => {
+    if (blind.has(taskId)) return;
+    blind.set(taskId, { since: new Date().toISOString(), device: o.loopsWhere?.nameOf?.(device) ?? device, home: o.loopsWhere?.nameOf?.("local") ?? "the home" });
+    saveBlind();
+  };
+  const clearBlind = (taskId: string) => {
+    if (blind.delete(taskId)) saveBlind();
+  };
+
+  /** Whether a signed-in gh is on this device now (cached; a worker that is away is not a reader). */
+  const ghReady = async (device: string): Promise<boolean> => {
+    const now = Date.now();
+    const hit = ghProbe.get(device);
+    if (hit && now - hit.at < (hit.ok ? GH_PROBE_MS : GH_FAIL_MS)) return hit.ok;
+    const spec: CheckSpec = { argv: ["gh", "auth", "status"], succeedWhen: { exitCode: 0 } };
+    let ok = false;
+    try {
+      if (device === "local") ok = !!(await runCheck(spec, { exec: o.exec, timeoutMs: 15_000 })).met;
+      else {
+        const link = o.workers?.()?.link(device);
+        if (link?.online()) ok = !!(await link.call<CheckResult>("check", { spec }, 15_000)).met;
+      }
+    } catch {
+      ok = false;
+    }
+    ghProbe.set(device, { at: now, ok });
+    return ok;
+  };
+
+  /** The home first, then the first online device with a signed-in gh; undefined when none has one. */
+  const ghReader = async (): Promise<string | undefined> => {
+    if (await ghReady("local")) return "local";
+    for (const w of o.workers?.()?.list() ?? []) {
+      if (!w.online || !w.id || w.id === "local") continue;
+      if (await ghReady(w.id)) return w.id;
+    }
+    return undefined;
+  };
+
   const check = async (spec: CheckSpec, w: { taskId?: string }, outputMax?: number): Promise<CheckResult> => {
     const where = placeOfCheck(w.taskId ? tasks.get(w.taskId)?.place : undefined);
-    const device = spec.device ?? where.device;
-    const at = cwdOfCheck(where.cwd, spec.cwd);
-    if ("error" in at) return { ok: false, met: false, summary: at.error, error: at.error };
-    const cwd = at.cwd;
-    if (device === "local") return runCheck({ ...spec, ...(cwd ? { cwd } : {}) }, { exec: o.exec, ...(outputMax ? { outputMax } : {}) });
-    const link = o.workers?.()?.link(device);
-    if (!link) return { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };
-    if (!link.online()) return { ok: false, met: false, summary: `${link.name} can't be reached`, error: "offline" };
-    try {
-      return await link.call<CheckResult>("check", { spec: { ...spec, ...(cwd ? { cwd } : {}) }, ...(outputMax ? { outputMax } : {}) }, 30_000);
-    } catch (err) {
-      return { ok: false, met: false, summary: (err as Error).message, error: (err as Error).message };
+    const github = githubLookRepo(spec);
+    // An explicit device is the caller's own choice; every other GitHub read is routed.
+    let device = spec.device ?? where.device;
+    let rerouted = false;
+    let noReader = false;
+    // A home with no other computer has nowhere else to read: no probe, exactly as before.
+    const otherComputers = (o.workers?.()?.list() ?? []).some((x) => x.id && x.id !== "local");
+    if (github && !spec.device && (otherComputers || where.device !== "local")) {
+      const reader = await ghReader();
+      if (reader) {
+        device = reader;
+        rerouted = reader !== where.device;
+      } else {
+        noReader = true;
+      }
     }
+    const at = cwdOfCheck(where.cwd, rerouted ? undefined : spec.cwd);
+    if ("error" in at) return { ok: false, met: false, summary: at.error, error: at.error };
+    // A read routed to another computer runs where gh's own config lives, not in a folder that
+    // exists only on the task's computer (gh api and gh pr --repo need no cwd).
+    const cwd = rerouted ? undefined : at.cwd;
+    const specHere: CheckSpec = rerouted ? { ...spec, cwd: undefined } : spec;
+    let result: CheckResult;
+    if (device === "local") result = await runCheck({ ...specHere, ...(cwd ? { cwd } : {}) }, { exec: o.exec, ...(outputMax ? { outputMax } : {}) });
+    else {
+      const link = o.workers?.()?.link(device);
+      if (!link) result = { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };
+      else if (!link.online()) result = { ok: false, met: false, summary: `${link.name} can't be reached`, error: "offline" };
+      else {
+        try {
+          result = await link.call<CheckResult>("check", { spec: { ...specHere, ...(cwd ? { cwd } : {}) }, ...(outputMax ? { outputMax } : {}) }, 30_000);
+        } catch (err) {
+          result = { ok: false, met: false, summary: (err as Error).message, error: (err as Error).message };
+        }
+      }
+    }
+    if (github && w.taskId) {
+      if (result.ok && !result.error) clearBlind(w.taskId);
+      // None could read, or the one computer there could not: a signed-out or missing gh is the
+      // same blindness for the card. A 404 or a red CI is a read that worked.
+      else if (noReader || /gh is not installed|gh auth login|not logged in/i.test(`${result.error ?? ""} ${result.summary ?? ""}`)) markBlind(w.taskId, where.device);
+    }
+    return result;
   };
   /** Why an event can't be watched (an oo account, an MCP server), before any wait is set. */
   const eventRefusal = (ev: EventSpec): string | undefined => {
@@ -729,6 +865,9 @@ export function createWork(o: WorkOptions): Work {
       const views = new Map(waiters.views().map((v) => [v.waiterId, v]));
       return {
         ...on,
+        // D645 (research/245 §3.7, B1): a task whose GitHub reads no computer can run says so
+        // on its card; the row words it after its quiet.
+        tasks: blind.size ? on.tasks.map((c) => (blind.has(c.taskId) ? { ...c, githubBlind: blind.get(c.taskId)! } : c)) : on.tasks,
         // A routine's own watch is shown on its routine card, not as a wait.
         // D546: the live view keeps whose wait it is (the registry knows the partner that set it).
         waiters: on.waiters.filter((w) => !w.routineId).map((w) => { const v = views.get(w.waiterId); return v ? (w.persona ? { ...v, persona: w.persona } : v) : w; }),

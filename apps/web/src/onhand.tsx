@@ -102,6 +102,11 @@ export function settledLine(task: Task): string | undefined {
 export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" } {
   const a = attention(task);
   const r = reportOf(task);
+  // D645 (research/245 §3.7, B1): no computer could read GitHub for it; after its quiet the
+  // row says so, with the fix (install gh there, or read it on the home).
+  const blind = task.card?.githubBlind;
+  if (blind && (a === "blocked" || a === "working" || a === "queued") && Date.now() - Date.parse(blind.since) >= 30 * 60_000)
+    return { words: t("onhand.github.blind", blind.device || blind.home || "", blind.home || blind.device || "") };
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
     // D539: a copy card says what it copies where, in the reader's words.

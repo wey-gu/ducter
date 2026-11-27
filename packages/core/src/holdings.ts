@@ -221,7 +221,8 @@ export function createHoldings(o: {
     try {
       // The hand-off records: D628's own settle, for every record about this ref.
       for (const h of o.handoffs.open()) {
-        if (h.item.kind !== r.kind || h.item.ref.toLowerCase() !== r.ref) continue;
+        // D645 (research/245 §3.7, B7): one record per repo#n, so the ref alone matches it.
+        if (h.item.ref.toLowerCase() !== r.ref) continue;
         o.handoffs.observeGithub(r.ref, state, r.kind);
         changed = true;
       }

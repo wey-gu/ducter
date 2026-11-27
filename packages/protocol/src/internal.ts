@@ -98,7 +98,7 @@ export interface TaskRegistry {
   get(taskId: string): TaskCard | undefined;
   list(): TaskCard[];
   onHand(): OnHand;
-  setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("./index.ts").CantStart): void; // appends task_state
+  setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("./index.ts").CantStart, waitsFor?: string): void; // appends task_state
 }
 
 // D312: persona: the partner calling (absent: the default), or for a task-role call the partner the task is for.

@@ -14,6 +14,7 @@
 import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepChanged, KeepBody, KeepCard, KeepEdit, KeepField, KeepFrom, KeepItem, KeepPage, KeepProposal, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
 import { actingPersona } from "./acting.ts";
 import { BELL_ABOUT_MAX, BELL_COALESCE_MS, BELL_JOIN_MS, BELL_RATE_MAX, BELL_RATE_WINDOW_MS, fill, prWakeOf, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX, type KeepBellUrl, type PrWake } from "@ducter/protocol";
+import { detect } from "@ducter/protocol/src/lang.ts";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -57,6 +58,7 @@ const W = {
     paused: "「{title}」暂停了。",
     pausedUntil: "「{title}」暂停了，{until} 恢复。",
     done: "「{title}」做完了。",
+    heldElsewhere: "「{title}」已经由「{holder}」在跟了，单独为它开的看守到此结束；以后的轮次都记在「{holder}」名下。",
     stopped: "「{title}」停下了。",
     untilLine: "一直做到：{until}。哪一轮看到它成立了，就在报告的第一句说出来，并写明凭什么。",
     speaksLine: "什么时候出声：{speaks}。其余时候不出声，没有变化就不用说。",
@@ -88,6 +90,7 @@ const W = {
     paused: "“{title}” is paused.",
     pausedUntil: "“{title}” is paused; it resumes {until}.",
     done: "“{title}” is done.",
+    heldElsewhere: "“{title}” is already looked after by “{holder}”; its separate Keep ends here, and every later round belongs to “{holder}”.",
     stopped: "“{title}” is stopped.",
     untilLine: "Keep at it until: {until}. When a round sees that it holds, say so in the report's first line, with what shows it.",
     speaksLine: "When to speak: {speaks}. Otherwise stay silent; nothing new needs no word.",
@@ -476,12 +479,60 @@ export function createKeeps(o: {
     ...(h.persona && h.persona !== "default" ? { persona: h.persona } : {}),
   });
 
+  /**
+   * D645 (research/245 §3.7, B6): who already holds this task, if anyone. A helper's item is
+   * held by that helper's Keep; a task of another loop's or routine's Keep is held by it. The task
+   * never mints a Keep of its own then: its rounds belong to the holder.
+   */
+  const holderOf = (taskId: string, exceptKeepId?: string): { keepId?: string; name: string } | undefined => {
+    for (const [t, h] of o.helperTasks()) {
+      if (t !== taskId) continue;
+      const helper = o.helpers?.()?.get(h);
+      if (!helper || helper.state !== "on") continue;
+      const kept = [...byId.values()].find((k) => k.from.kind === "helper" && k.from.helperId === h);
+      return { ...(kept ? { keepId: kept.keepId } : {}), name: helper.name };
+    }
+    for (const k of byId.values()) {
+      if (k.keepId === exceptKeepId || k.from.kind === "helper" || k.life === "done" || k.life === "stopped") continue;
+      if (itemsOf(k).some((x) => x.taskId === taskId)) return { keepId: k.keepId, name: k.title };
+    }
+    return undefined;
+  };
+
   const sources = (): { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] => {
     const out: { from: KeepFrom; made: KeepBody["made"]; shape: (kept?: KeepBody) => Shape | undefined }[] = [];
-    for (const b of o.loops.ever()) out.push({ from: { kind: "loop", taskId: b.taskId }, made: "task_loop", shape: () => fromLoop(b) });
+    for (const b of o.loops.ever()) {
+      // D645 (research/245 §3.7, B6): one holder per piece of work. A loop on a task a helper
+      // (or another Keep) already holds is the holder's round, never a second Keep.
+      const own = byFrom.get(keyOf({ kind: "loop", taskId: b.taskId }));
+      if (holderOf(b.taskId, own)) continue;
+      out.push({ from: { kind: "loop", taskId: b.taskId }, made: "task_loop", shape: () => fromLoop(b) });
+    }
     for (const r of o.routines.ever()) out.push({ from: { kind: "routine", routineId: r.routineId }, made: "routine", shape: () => fromRoutine(r) });
     for (const h of o.helpers?.()?.list() ?? []) out.push({ from: { kind: "helper", helperId: h.id }, made: "helpers.json", shape: (k) => fromHelper(h, k) });
     return out;
+  };
+
+  /**
+   * D645 (research/245 §3.7, B6): a loop Keep made before this rule (hel's kp_9c76608d03) is
+   * ended at the first start, once, with one line on its task; sync skips it from then on.
+   */
+  const retireHeldLoops = (now: number) => {
+    for (const k of [...byId.values()]) {
+      if (k.from.kind !== "loop" || k.life === "done" || k.life === "stopped") continue;
+      const holder = holderOf(k.from.taskId, k.keepId);
+      if (!holder) continue;
+      put({ ...k, life: "stopped", endedAt: k.endedAt ?? iso(now), bell: undefined });
+      const c = tasks.get(k.from.taskId);
+      const lang = (detect(c?.title ?? k.title)?.lang ?? "en") as LangTag;
+      log.append({
+        persona: c?.persona ?? k.persona,
+        stream: `task:${k.from.taskId}`,
+        origin: "system",
+        kind: "task_event",
+        body: { taskId: k.from.taskId, role: "system", from: "ducter", text: fill(words(W, lang).heldElsewhere, { title: k.title, holder: holder.name }) },
+      });
+    }
   };
 
   let booted = false;
@@ -490,6 +541,7 @@ export function createKeeps(o: {
     let made = 0;
     let changed = 0;
     const now = clock.now();
+    retireHeldLoops(now);
     for (const s of sources()) {
       const id = byFrom.get(keyOf(s.from));
       const kept0 = id ? byId.get(id) : undefined;

@@ -78,7 +78,11 @@ task in {name}** where the bare ＋ stood.
    **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays the menu bar's.
    D471: nothing more under it. D467's lines (刚才, 待你处理 with the first two stuck tasks, 接下来) named
    tasks the rows named again, and on the author's real board the two disagreed; every task is now its
-   own row, said once. D584: a row whose story is only the state's own word (**在做 / 做完了**, a task
+   own row, said once. **A turn's end is checked every time** (D645, research/245 §3.7): 在做 only
+   while a turn runs (or a start is queued); a task told to wait for the person is 等你 with its question
+   until the answer reaches it; a turn that ended with nothing running is stopped (D467's 停下了). A
+   task whose GitHub read no computer can run says so on its row after half an hour, with the fix
+   (装上 gh on that computer, or 在 hel 上读). D584: a row whose story is only the state's own word (**在做 / 做完了**, a task
    that said nothing yet) has no second line: its time (**在做 3 分钟了 / 7:52 做完**) says it.
    **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
    classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D472's line and its

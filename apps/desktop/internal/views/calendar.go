@@ -535,10 +535,8 @@ func (a *App) calChangeBlock(c *ui.Context, d *store.DecisionState) {
 		Radius(t.RadiusMD).Background(t.Sunken).Children(func() {
 		ui.Row(c.Key("main")).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 			// A date is the thing: the leaf is the calendar's mark, richer than a glyph.
-			month := i18n.CalMonthBand(a.L.Lang, at)
-			if a.L.Lang == i18n.EN {
-				month = strings.ToUpper(month)
-			}
+			// The band is capitals (DEC); Chinese has no case, so 12 月 is unchanged.
+			month := strings.ToUpper(i18n.CalMonthBand(a.L.Lang, at))
 			a.dateLeaf(c, month, fmt.Sprint(at.Day()), i18n.CalWeekday(a.L.Lang, at), a.calColor(ch.Color), a.calLeafState(d))
 			ui.Column(c.Key("body")).Grow(1).Basis(0).MinWidth(0).Gap(t.S1 - 2).Children(func() {
 				// 1. the thing's name.

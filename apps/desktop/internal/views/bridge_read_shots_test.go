@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 )
 
-// D-PENDING: 已送达 / 已读 / 「{n}/{m} 已读」 beside a message Ducter sent on the person's behalf:
+// D619: 已送达 / 已读 / 「{n}/{m} 已读」 beside a message Ducter sent on the person's behalf:
 // Settings › Agent 通信's 来往, the conversation's relay line, and a helper's rounds. A live run:
 //
 //	DUCTER_PORT=7630 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh bun apps/web/demo-bridge-read.ts

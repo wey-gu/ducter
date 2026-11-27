@@ -117,6 +117,9 @@ export function helpText(t: T): string {
     opt("--check", t("help.check")),
     opt("--to <version>", t("help.to")),
     opt("--plan", t("help.plan")),
+    opt("--bundle <file>", t("help.bundle")),
+    opt("--receive <file>", t("help.receive")),
+    opt("--passphrase-stdin", t("help.passphrase")),
     opt("--include-conversation", t("help.includeConversation")),
     opt("--out <dir>", t("help.out")),
   ].join("\n");
@@ -608,15 +611,20 @@ export async function run(argv: string[]): Promise<number | "running"> {
   if (args.command === "uninstall") return cmdUninstall(ctx);
   if (args.command === "report") return cmdReport(ctx);
   if (args.command === "move")
-    // D504: the plan only, read-only; the AI agents and GitHub's CLI are asked if they're signed in.
+    // D504: the plan reads only; D621 adds one local bundle and receiving it. The AI agents
+    // and GitHub's CLI are asked if they're signed in (for the plan and the bundle's list).
     return cmdMove({
       t,
       dataDir,
       json: args.json,
       plan: Boolean(args.plan),
+      ...(args.bundle ? { bundle: args.bundle } : {}),
+      ...(args.receive ? { receive: args.receive } : {}),
+      ...(args.passphraseStdin ? { passphraseStdin: true } : {}),
       ...(args.to ? { to: args.to } : {}),
       computer: thisComputer(),
       platform: process.platform,
+      env: process.env,
       probe: async () => {
         const agents = await installedAgents(dataDir);
         const gh = host.which("gh") ? (await host.run(["gh", "auth", "status"], 5000)).code === 0 : false;

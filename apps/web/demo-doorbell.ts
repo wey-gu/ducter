@@ -1,4 +1,4 @@
-// D-PENDING: a Keep with a doorbell, for shots and a look. One task in rounds looks at #10473's CI
+// D621: a Keep with a doorbell, for shots and a look. One task in rounds looks at #10473's CI
 // every 30 minutes; its doorbell rang once (CI #42), so the round says 门铃响了 with the caller's
 // label; its doorbell is on. The URL is revealed to the page once, as a partner's turn-on does.
 //   DUCTER_PORT=7600 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh bun apps/web/demo-doorbell.ts

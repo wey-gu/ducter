@@ -1,9 +1,13 @@
 # Moving Ducter to another computer (`ducter move`, D504)
 
-> 2026-11-24 · **Decided (D504), first slice built: `ducter move --plan [--to <computer>]`,
-> read-only, tested over a fake home (`packages/cli/test/move.test.ts`).** The later slices
-> (receive, bundle, import, handover, cut-over, rollback) are designed here and owed
-> (`design/todo.md` "Moving Ducter"). Labels: **VERIFIED** (code read this session),
+> 2026-11-24, updated 2026-11-27 · **Decided (D504), first slice built: `ducter move --plan
+> [--to <computer>]`, read-only. Second slice built (D621): `ducter move --bundle <file>` and
+> `ducter move --receive <file>`, one encrypted file carried by hand, checked file by file and
+> entry by entry. Tested over fake homes (`packages/cli/test/move.test.ts`,
+> `packages/cli/test/move-bundle.test.ts`, `packages/core/test/move-receiving.test.ts`).** Still
+> owed: the freeze, the network handover (one-time code, X25519, resumable chunks), the
+> Mem/Bridge handover, cut-over, rollback, the app's row (`design/todo.md` "Moving Ducter").
+> Labels: **VERIFIED** (code read this session),
 > **DOCUMENTED** (a design note or vendor page says so), **INFERRED** (judgment).
 
 The first reason Ducter exists (`motivation.md`): the author's cloud environment "had to move
@@ -105,35 +109,48 @@ worker; their task keys stay valid because `mcp.secret` moves.
    file's size and mtime). `--to` naming a computer that already does tasks for this home uses its
    paired system and says the move can go over that connection; any other name is assumed a
    Linux server, said once.
-2. **Receive.** On the new computer, `ducter move --receive` (or the installer's last line): an
-   empty Ducter that refuses if it already has a Log, makes an X25519 key, and shows a one-time
-   move code (D83's alphabet, 10 minutes, one use) with its address. A computer that already does
-   tasks for this home skips the code: the request goes over its authenticated worker socket.
-3. **Freeze.** On the old home, after the person's Go: new turns are held (D325's queue),
-   routines stop their timers, chat apps stop polling (cursors written), new tasks queue, tasks
-   on the home reach a step end (§3). The partner says one line in the conversation first.
-4. **Bundle.** A snapshot (`VACUUM INTO` of `ducter.db` and `devices.db`; every other file
-   copied), a manifest with each file's SHA-256 and the Log's count and last-event hash; Autofill
-   re-locked (§2). **Encrypted at rest**: AES-256-GCM under a key from X25519 between the two homes,
-   the move code authenticating the exchange (the new home's public key fingerprint rides with
-   the code), so a bundle file copied off the wire or the disk opens nothing. Sent over HTTPS or
-   the worker socket in resumable chunks; the bundle on either disk is deleted after import.
-5. **Import.** The new home checks every hash and the Log's count and last-event hash, writes the
-   files with their modes (0600 secrets), puts the Autofill key into its keychain or key file,
-   and starts in *receiving* state (no pollers, no routines yet).
-6. **Handover.** §4, then the tunnel: the old home stops cloudflared, the new home runs it with
+2. **Bundle, a file carried by hand (built, D621).** `ducter move --bundle <file>
+   [--to <computer>] [--passphrase-stdin]`: one encrypted archive of §2's "Yes" rows. A
+   passphrase is made and shown once, or read from stdin; it is never an argument and never
+   written to disk. AES-256-GCM under a scrypt key, the header bound as AAD (a copied file opens
+   nothing; a wrong passphrase and a changed file are refused before anything is written). The
+   Log and `devices.db` are consistent snapshots through SQLite's backup API, never a copy of a
+   live file; every other file is read and hashed, then streamed once into the cipher, so a
+   change during the write aborts it. Autofill is opened with this home's key and re-locked
+   inside the bundle; the old key, `kept-keys`, `task-keys` and `key-grants.json` stay. The
+   bundle lists what is redone and what stays; the home keeps running and is only read.
+3. **Receive, a file carried by hand (built, D621).** `ducter move --receive <file>` on the
+   new computer: refuses a data folder that already has work (a fresh install, not started),
+   checks the passphrase, every file's SHA-256, and the Log's count and last-event hash, and
+   writes 0600 files and 0700 folders into a staging folder renamed into place only when every
+   check passes. Autofill is re-encrypted under the new home's own keychain or key file; a
+   `move-receiving.json` marker says this home is received but not switched over, and `startCore`
+   refuses to start it (two homes on one chat app is D324's bug). It prints the sign-ins to redo
+   (agents that share one reason are one line, GitHub its own), the Mem line and the devices line
+   in `--plan`'s words. Its last line promises no way back this slice has not built: the old
+   computer is untouched and still the one running. No pollers, no routines, no network, no
+   cut-over.
+4. **Freeze and send (next).** On the old home, after the person's Go: new turns are held (D325's
+   queue), routines stop their timers, chat apps stop polling (cursors written), new tasks queue,
+   tasks on the home reach a step end (§3); then the same bundle is taken and sent. The receive
+   and the one-time move code (D83's alphabet, 10 minutes, one use) meet: an empty Ducter makes
+   an X25519 key, and the move code authenticates the exchange, so the bundle key comes from the
+   two homes and not from a passphrase. Sent over HTTPS or the worker socket in resumable
+   chunks; the bundle on either disk is deleted after import. A computer that already does tasks
+   for this home skips the code: the request goes over its authenticated worker socket.
+5. **Handover.** §4, then the tunnel: the old home stops cloudflared, the new home runs it with
    the same credentials (same hostname). A domain way: the plan's DNS line, checked by the
    new home's own `/.well-known/ducter-home` before it counts.
-7. **Cut-over.** The old home sends every socket `{t:"ways"}` with the new home's ways first,
+6. **Cut-over.** The old home sends every socket `{t:"ways"}` with the new home's ways first,
    then a `moved` frame, and stops. Apps, the CLI and workers race the new ways, verify the same
    key, and connect (D293); their tokens are in the moved `devices.db`. The new home starts its
    pollers, routines and the parked tasks. Counts in the conversation: **搬好了：{n} 条记录都在。/
    Moved: all {n} entries are here.**
-8. **After.** The old computer, by default, joins the new home as a computer that does tasks
+7. **After.** The old computer, by default, joins the new home as a computer that does tasks
    (D155, one Go, default yes when it has local work or Mac abilities). Its old data folder is
    kept frozen 30 days; its Ducter answers only in *moved* mode: a web page shows where Ducter
    went, a socket gets the ways and `moved`. Then it deletes the frozen folder, the home key last.
-9. **Rollback.** `ducter move --back` (and a row on the new home) is the same move in reverse,
+8. **Rollback.** `ducter move --back` (and a row on the new home) is the same move in reverse,
    carrying only the Log after the freeze's seq plus changed files, so it takes seconds. If the
    new computer is gone, `ducter move --undo` on the old one starts it again from its frozen
    point after the person confirms, naming what is lost (entries after the freeze, by count).
@@ -141,7 +158,8 @@ worker; their task keys stay valid because `mcp.secret` moves.
 
 **Zero loss, measured.** Equal Log count and last-event hash; every manifest hash; chat cursors
 continuous; one Bridge connection at the end (Mem's list); every paired device seen on the new
-home within a day, or listed.
+home within a day, or listed. The local bundle slice already measures the first two and the
+per-file hashes on both sides; cut-over is what adds the rest.
 
 ## 6. Risks and what is not decided
 
@@ -156,6 +174,13 @@ home within a day, or listed.
 - **Cross-system browser sign-ins** (INFERRED, §2): redo is the safe default until checked live.
 - **Autofill on a server** is kept in a key file, said in the plan's risks.
 - **Disk space** on the new computer: the plan says the size; the receive step checks free space.
+- **A passphrase carried by hand** (D621): until the two-home X25519 exchange, the person has
+  to keep the passphrase somewhere safe and lose it if they lose the paper. The home is untouched
+  either way; the next slice's bundle can be made again.
+- **A bundle taken while the home runs is not a freeze** (D621): the Log and `devices.db` are
+  consistent snapshots and every file is hashed before it is streamed, but a chat cursor or a
+  settings write can land between two files. The freeze comes with the network handover and is
+  what makes the whole bundle one moment.
 
 ## 7. Verified
 
@@ -165,3 +190,12 @@ home within a day, or listed.
   known worker vs a new name, Linux → Linux carrying the browser, zh and en, and every file's size
   and mtime unchanged after the plan.
 - Not run on the author's real home (it would only read; the brief forbade touching `~/.ducter`).
+- `packages/cli/test/move-bundle.test.ts` (D621): a fake Mac home (tasks, a Keep, a routine,
+  an app, an Autofill secret, keys, a tunnel address, a browser profile) bundled and received into
+  a fresh temp home: the same events in the same order, the same `readLog` projection, the same
+  key files, the app and media bytes, the Keep, and an Autofill vault that opens under the new
+  key (the old key file is not copied); a made passphrase shown once and absent from the file; a
+  wrong passphrase, a changed byte after the header, and a target with work refused with nothing
+  written; bundling a home with its Log still open leaves every file's size and mtime unchanged
+  and still receives every event; zh and en words for the sign-ins, the Mem line and "no pairing
+  again". Not run on the author's real home; not tried across two real computers.

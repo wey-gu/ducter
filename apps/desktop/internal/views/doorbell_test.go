@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D-PENDING: 门铃 / Doorbell on a Keep's 怎么做 card: off by default; on, the URL with Copy and a
+// D621: 门铃 / Doorbell on a Keep's 怎么做 card: off by default; on, the URL with Copy and a
 // curl example; 换一个地址; and a ring's round line shows the caller's label as text, marked as
 // their words. A helper (perItem) has no row: its address is its door.
 func TestDoorbellRow(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 
 func intp(n int) *int { return &n }
 
-// D-PENDING: 已送达 / 已读 / 「{n}/{m} 已读」 beside a sent message, and nothing when Mem has no
+// D619: 已送达 / 已读 / 「{n}/{m} 已读」 beside a sent message, and nothing when Mem has no
 // receipt (unknown is never a made-up unread). The same words as the web's receiptWords.
 func TestBridgeReceiptText(t *testing.T) {
 	zh := &App{L: i18n.New(i18n.ZH)}

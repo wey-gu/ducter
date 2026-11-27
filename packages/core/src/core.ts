@@ -608,6 +608,9 @@ export function repoOfClone(clone: string): { owner: string; repo: string } | un
 
 export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
+  // D621: a received home is not switched over. Starting it would put a second Ducter on the
+  // same chat apps, routines and Bridge mailbox; the cut-over slice is what clears this marker.
+  if (existsSync(join(dataDir, "move-receiving.json"))) throw new Error("this Ducter was received from another computer and has not been switched over yet: keep using the old computer until the switch-over step");
   // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the key file.
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   // An existing dir from an older install (0755/0775) is tightened too, when it is ours.

@@ -11,14 +11,26 @@
 //   work    tasks under way and routines, and what happens to each;
 //   stays   what stays on this computer (it can keep doing tasks for the new home);
 //   risks   what to know before going.
-// The move itself (bundle, import, handover, cut-over, rollback) is later slices: design/move.md.
+// D621 adds the local half: `--bundle <file>` writes one encrypted archive of what goes, and
+// `--receive <file>` checks it into a fresh data folder and says what is still to be redone. No
+// freeze, network transfer, handover, cut-over or rollback yet: design/move.md §5.
 import { Database } from "bun:sqlite";
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { sameComputer } from "@ducter/protocol/src/computer-name.ts";
 import { HARNESS_KEYS, isHarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
-import type { T } from "./i18n.ts";
+import type { MsgKey, T } from "./i18n.ts";
+import {
+  homeHasWork,
+  newPassphrase,
+  readBundle,
+  writeBundle,
+  type BundleItem,
+  type BundleNote,
+  type BundleReadResult,
+  type BundleWriteResult,
+} from "./move-bundle.ts";
 import { sizeOf } from "./uninstall.ts";
 
 export type OsKind = "darwin" | "linux" | "other";
@@ -27,6 +39,10 @@ export interface MoveItem {
   what: string;
   detail?: string;
   bytes?: number;
+  /** The table key and its variables, so a received home can say the same thing in its language. */
+  key?: MsgKey;
+  detailKey?: MsgKey;
+  vars?: Record<string, string | number>;
 }
 export interface MoveWork {
   id: string;
@@ -301,11 +317,19 @@ export function planMove(i: PlanMoveInput): MovePlanResult {
     if (!a.signedIn) continue;
     // An agent that signs in with a key in keys.env goes with it (the registry says which keys are whose).
     const viaKey = a.harness !== undefined && isHarnessId(a.harness) && HARNESS_KEYS[a.harness].some((k) => keys.includes(k));
-    if (!viaKey) redo.push({ id: `agent:${a.name}`, what: t("move.redo.agent", { agent: a.name }), detail: t("move.redo.agent.why") });
+    if (!viaKey) redo.push({ id: `agent:${a.name}`, what: t("move.redo.agent", { agent: a.name }), detail: t("move.redo.agent.why"), key: "move.redo.agent", detailKey: "move.redo.agent.why", vars: { agent: a.name, computer } });
   }
-  if (i.github) redo.push({ id: "github", what: t("move.redo.github"), detail: t("move.redo.github.why") });
-  if (mem || exists(at("bridge-connection.json"))) redo.push({ id: "mem-signin", what: t("move.redo.mem"), detail: t("move.redo.mem.why") });
-  if (profiles.length && sameOs !== true) redo.push({ id: "browser", what: t("move.redo.browser", { n: profiles.length }), detail: t(sameOs === false ? "move.redo.browser.why" : "move.redo.browser.unknown") });
+  if (i.github) redo.push({ id: "github", what: t("move.redo.github"), detail: t("move.redo.github.why", { computer }), key: "move.redo.github", detailKey: "move.redo.github.why", vars: { computer } });
+  if (mem || exists(at("bridge-connection.json"))) redo.push({ id: "mem-signin", what: t("move.redo.mem"), detail: t("move.redo.mem.why"), key: "move.redo.mem", detailKey: "move.redo.mem.why" });
+  if (profiles.length && sameOs !== true)
+    redo.push({
+      id: "browser",
+      what: t("move.redo.browser", { n: profiles.length }),
+      detail: t(sameOs === false ? "move.redo.browser.why" : "move.redo.browser.unknown"),
+      key: "move.redo.browser",
+      detailKey: sameOs === false ? "move.redo.browser.why" : "move.redo.browser.unknown",
+      vars: { n: profiles.length },
+    });
 
   // ---------- what follows the new address ----------
   const appClients = devices.clients.filter((d) => d.app);
@@ -341,10 +365,10 @@ export function planMove(i: PlanMoveInput): MovePlanResult {
   // ---------- what stays on this computer ----------
   const folder = join(ducterFolder({ ...(i.home ? { home: i.home } : {}), dataDir, env: i.env ?? process.env }).path, "worktrees");
   const hereTasks = work.filter((w) => w.then === "stays").length + (log?.routines.here ?? 0);
-  if (hereTasks) stays.push({ id: "local-work", what: t("move.stays.local", { n: hereTasks }), detail: t("move.stays.local.why", { computer }) });
-  if (exists(folder)) stays.push({ id: "worktrees", what: t("move.stays.worktrees"), detail: t("move.stays.worktrees.why"), bytes: sizeOf(folder) });
-  if (from === "darwin" && to?.os !== "darwin") stays.push({ id: "mac", what: t("move.stays.mac"), detail: t("move.stays.mac.why", { computer, target }) });
-  if (exists(at("phone"))) stays.push({ id: "phone", what: t("move.stays.phone"), detail: t("move.stays.phone.why", { computer, target }) });
+  if (hereTasks) stays.push({ id: "local-work", what: t("move.stays.local", { n: hereTasks }), detail: t("move.stays.local.why", { computer }), key: "move.stays.local", detailKey: "move.stays.local.why", vars: { n: hereTasks, computer } });
+  if (exists(folder)) stays.push({ id: "worktrees", what: t("move.stays.worktrees"), detail: t("move.stays.worktrees.why"), bytes: sizeOf(folder), key: "move.stays.worktrees", detailKey: "move.stays.worktrees.why" });
+  if (from === "darwin" && to?.os !== "darwin") stays.push({ id: "mac", what: t("move.stays.mac"), detail: t("move.stays.mac.why", { computer, target }), key: "move.stays.mac", detailKey: "move.stays.mac.why", vars: { computer, target } });
+  if (exists(at("phone"))) stays.push({ id: "phone", what: t("move.stays.phone"), detail: t("move.stays.phone.why", { computer, target }), key: "move.stays.phone", detailKey: "move.stays.phone.why", vars: { computer, target } });
 
   // ---------- worth knowing ----------
   const busy = work.filter((w) => w.on === "home").length;
@@ -370,6 +394,56 @@ export function human(n: number): string {
   return `${v >= 10 ? Math.round(v) : v.toFixed(1)} ${u[k]}`;
 }
 
+interface RenderableItem {
+  id: string;
+  what: string;
+  detail?: string;
+  bytes?: number;
+  key?: MsgKey;
+  detailKey?: MsgKey;
+  vars?: Record<string, string | number>;
+}
+
+const isAgentSignIn = (it: RenderableItem): boolean => it.key === "move.redo.agent" && it.detailKey === "move.redo.agent.why" && typeof it.vars?.agent === "string";
+
+/** The names in a sentence, with the table's own separator and final "and" (zh uses 、 for both). */
+function joinedNames(names: string[], t: T): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return names.slice(0, -1).join(t("move.list.sep")) + t("move.list.and") + names[names.length - 1]!;
+}
+
+/**
+ * One renderer for every list of move items: the plan, the bundle and the received home. Sign-ins
+ * that share one reason are one line (D621); GitHub keeps its own (another reason, a command).
+ */
+function renderedItems<I extends RenderableItem>(items: I[], t: T): { what: string; detail?: string; bytes?: number }[] {
+  const firstAgent = items.findIndex((it) => isAgentSignIn(it));
+  const agents = items.filter((it) => isAgentSignIn(it));
+  const out: { what: string; detail?: string; bytes?: number }[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i]!;
+    if (isAgentSignIn(it)) {
+      if (i !== firstAgent) continue;
+      if (agents.length > 1) {
+        const names = agents.map((a) => String(a.vars?.agent ?? "")).filter(Boolean);
+        out.push({ what: t("move.redo.agents", { agents: joinedNames(names, t) }), detail: t("move.redo.agents.why", { computer: String(agents[0]?.vars?.computer ?? "") }) });
+      } else {
+        out.push({
+          what: it.key ? t(it.key, it.vars ?? {}) : it.what,
+          ...(it.detailKey ? { detail: t(it.detailKey, it.vars ?? {}) } : it.detail ? { detail: it.detail } : {}),
+        });
+      }
+      continue;
+    }
+    out.push({
+      what: it.key ? t(it.key, it.vars ?? {}) : it.what,
+      ...(it.detailKey ? { detail: t(it.detailKey, it.vars ?? {}) } : it.detail ? { detail: it.detail } : {}),
+      ...(it.bytes ? { bytes: it.bytes } : {}),
+    });
+  }
+  return out;
+}
+
 export function formatMovePlan(p: MovePlan, t: T): string {
   const out: string[] = [];
   out.push(p.to ? t("move.head.to", { name: p.from.partner, from: p.from.computer, to: p.to.name }) : t("move.head", { name: p.from.partner, from: p.from.computer }));
@@ -377,7 +451,7 @@ export function formatMovePlan(p: MovePlan, t: T): string {
   const section = (title: string, items: MoveItem[]) => {
     if (!items.length) return;
     out.push("", title);
-    for (const it of items) {
+    for (const it of renderedItems(items, t)) {
       out.push(`  ${it.what}${it.bytes ? `  (${human(it.bytes)})` : ""}`);
       if (it.detail) out.push(`    ${it.detail}`);
     }
@@ -400,17 +474,278 @@ export interface MoveCtx {
   dataDir: string;
   json: boolean;
   plan: boolean;
+  bundle?: string;
+  receive?: string;
+  passphraseStdin?: boolean;
   to?: string;
   computer: string;
   platform: NodeJS.Platform;
+  /** Test seams for the passphrase and this home's Autofill lock. */
+  stdin?: () => Promise<string>;
+  stdinIsTTY?: boolean;
+  env?: Record<string, string | undefined>;
+  now?: number;
   probe?: () => Promise<{ agents?: { name: string; harness?: string; signedIn: boolean }[]; github?: boolean }>;
   print?: (s: string) => void;
 }
 
+/** The items that stay behind or are redone, carried into the bundle so the new home can say them. */
+function bundleItem(it: MoveItem): BundleItem {
+  return {
+    id: it.id,
+    what: it.what,
+    ...(it.detail ? { detail: it.detail } : {}),
+    ...(it.key ? { key: it.key } : {}),
+    ...(it.detailKey ? { detailKey: it.detailKey } : {}),
+    ...(it.vars ? { vars: it.vars } : {}),
+    ...(it.bytes ? { bytes: it.bytes } : {}),
+  };
+}
+
+/** Plain words that travel with the bundle and are printed on both sides. */
+function bundleNotes(dataDir: string): BundleNote[] {
+  const at = (f: string) => join(dataDir, f);
+  const notes: BundleNote[] = [];
+  if (existsSync(at("kept-keys"))) notes.push({ id: "kept-keys", key: "move.bundle.notes.keptKeys" });
+  if (existsSync(at("task-keys"))) notes.push({ id: "task-keys", key: "move.bundle.notes.taskKeys" });
+  if (existsSync(at("key-grants.json"))) notes.push({ id: "grants", key: "move.bundle.notes.grants" });
+  notes.push({ id: "caches", key: "move.bundle.notes.caches" });
+  notes.push({ id: "running", key: "move.bundle.notes.running" });
+  notes.push({ id: "next", key: "move.bundle.notes.next" });
+  return notes;
+}
+
+function itemLines(items: BundleItem[], t: T): string[] {
+  const out: string[] = [];
+  for (const it of renderedItems(items, t)) {
+    out.push(`  ${it.what}${it.bytes ? `  (${human(it.bytes)})` : ""}`);
+    if (it.detail) out.push(`    ${it.detail}`);
+  }
+  return out;
+}
+
+function noteLines(notes: BundleNote[], t: T): string[] {
+  return notes.map((n) => `  ${t(n.key, n.vars ?? {})}`);
+}
+
+function counts(t: T, files: number, entries: number): { files: string; entries: string } {
+  return {
+    files: t(files === 1 ? "move.count.file.one" : "move.count.file.many", { n: files }),
+    entries: t(entries === 1 ? "move.count.entry.one" : "move.count.entry.many", { n: entries }),
+  };
+}
+
+export function formatBundleResult(r: Extract<BundleWriteResult, { ok: true }>, t: T, file: string, passphrase: string, shown: boolean): string {
+  const m = r.manifest;
+  const out: string[] = [];
+  out.push(t("move.bundle.head", { name: m.from.partner, computer: m.from.computer }));
+  out.push(`  ${file}`);
+  out.push(`  ${t("move.bundle.contents", { ...counts(t, r.files, r.events), size: human(r.bytes) })}`);
+  out.push("");
+  if (shown) {
+    out.push(t("move.bundle.passphrase"));
+    out.push(`  ${passphrase}`);
+    out.push(t("move.bundle.passphrase.once"));
+  } else {
+    out.push(t("move.bundle.passphrase.stdin"));
+  }
+  out.push("");
+  out.push(t("move.bundle.next", { file }));
+  out.push("");
+  if (m.redo.length) {
+    out.push(t("move.section.redo"));
+    out.push(...itemLines(m.redo, t));
+    out.push("");
+  }
+  if (m.stays.length) {
+    out.push(t("move.section.stays"));
+    out.push(...itemLines(m.stays, t));
+    out.push("");
+  }
+  if (m.notes.length) {
+    out.push(t("move.section.risks"));
+    out.push(...noteLines(m.notes, t));
+    out.push("");
+  }
+  out.push(t("move.bundle.footer"));
+  return out.join("\n");
+}
+
+export function formatReceiveResult(r: Extract<BundleReadResult, { ok: true }>, t: T, dir: string): string {
+  const m = r.manifest;
+  const out: string[] = [];
+  out.push(t("move.receive.head", { name: m.from.partner, computer: m.from.computer, dir }));
+  out.push(`  ${t("move.receive.checked", counts(t, r.files, r.events))}`);
+  if (r.relocked) out.push(`  ${t("move.receive.autofill")}`);
+  out.push(`  ${t("move.receive.notRunning", { computer: m.from.computer })}`);
+  if (m.redo.length) {
+    out.push("", t("move.section.redo"));
+    out.push(...itemLines(m.redo, t));
+  }
+  if (m.stays.length) {
+    out.push("", t("move.receive.section.stays", { computer: m.from.computer }));
+    out.push(...itemLines(m.stays, t));
+  }
+  out.push("", t("move.section.risks"));
+  out.push(`  ${t("move.receive.devices")}`);
+  out.push(`  ${t("move.receive.mem")}`);
+  out.push(...noteLines(m.notes.filter((n) => n.id === "caches" || n.id === "kept-keys" || n.id === "task-keys" || n.id === "grants"), t));
+  out.push("");
+  out.push(t("move.receive.next", { computer: m.from.computer }));
+  out.push(t("move.receive.delete"));
+  return out.join("\n");
+}
+
+function bundleError(e: Extract<BundleWriteResult, { ok: false }>, t: T, file: string): string {
+  switch (e.error) {
+    case "no_home":
+      return t("move.noHome", { dir: "" });
+    case "exists":
+      return t("move.bundle.exists", { file });
+    case "inside":
+      return t("move.bundle.inside", { file });
+    case "no_dir":
+      return t("move.bundle.noDir", { file });
+    case "no_autofill_key":
+      return t("move.bundle.noAutofillKey");
+    case "autofill_damaged":
+      return t("move.bundle.autofillDamaged");
+    case "changed":
+      return t("move.bundle.changed", { file: e.detail ?? "" });
+    case "passphrase":
+      return t("move.passphrase.empty");
+    default:
+      return t("move.bundle.write", { file, detail: e.detail ?? "" });
+  }
+}
+
+function receiveError(e: Extract<BundleReadResult, { ok: false }>, t: T, file: string, dir: string): string {
+  switch (e.error) {
+    case "not_empty":
+      return t("move.receive.notEmpty", { dir });
+    case "bad_file":
+      return t("move.receive.badFile", { file });
+    case "wrong_passphrase":
+      return t("move.receive.wrongPassphrase");
+    case "tampered":
+      return t("move.receive.tampered");
+    case "no_space":
+      return t("move.receive.noSpace", { size: human(e.need ?? 0), free: human(e.free ?? 0), dir });
+    case "autofill_key":
+      return t("move.receive.autofillKey");
+    case "passphrase":
+      return t("move.passphrase.empty");
+    default:
+      return t("move.receive.write", { dir, detail: e.detail ?? "" });
+  }
+}
+
+/** A typed passphrase without echo on a terminal; stdin otherwise. Never an argument, never a file. */
+async function readPassphrase(c: MoveCtx, prompt: string): Promise<string> {
+  if (c.stdin) return (await c.stdin()).trim();
+  if (c.passphraseStdin || c.stdinIsTTY === false || !process.stdin.isTTY) return (await Bun.stdin.text()).split(/\r?\n/)[0]!.trim();
+  return (await readHidden(prompt)).trim();
+}
+
+function readHidden(prompt: string): Promise<string> {
+  return new Promise((resolve) => {
+    process.stdout.write(prompt);
+    const stdin = process.stdin;
+    stdin.setRawMode?.(true);
+    stdin.resume();
+    let s = "";
+    const done = (v: string) => {
+      stdin.off("data", on);
+      stdin.setRawMode?.(false);
+      stdin.pause();
+      process.stdout.write("\n");
+      resolve(v);
+    };
+    const on = (b: Buffer) => {
+      for (const ch of b.toString("utf8")) {
+        if (ch === "\r" || ch === "\n") return done(s);
+        if (ch === "\u0003") return done("");
+        if (ch === "\u007f" || ch === "\b") s = s.slice(0, -1);
+        else s += ch;
+      }
+    };
+    stdin.on("data", on);
+  });
+}
+
+async function cmdBundle(c: MoveCtx, file: string): Promise<number> {
+  const print = c.print ?? ((s: string) => console.log(s));
+  if (!isHome(c.dataDir)) {
+    print(c.json ? JSON.stringify({ ok: false, error: "no_home", dataDir: c.dataDir }) : c.t("move.noHome", { dir: c.dataDir }));
+    return 1;
+  }
+  const facts = (await c.probe?.().catch(() => ({}))) ?? {};
+  const p = planMove({ dataDir: c.dataDir, t: c.t, computer: c.computer, platform: c.platform, ...(c.to ? { to: c.to } : {}), ...facts, ...(c.now ? { now: c.now } : {}) });
+  if (!p.ok) return 1;
+  const fromStdin = Boolean(c.passphraseStdin || c.stdin);
+  const passphrase = fromStdin ? await readPassphrase(c, c.t("move.receive.passphrasePrompt")) : newPassphrase();
+  if (!passphrase) {
+    print(c.json ? JSON.stringify({ ok: false, error: "passphrase" }) : c.t("move.passphrase.empty"));
+    return 1;
+  }
+  const r = await writeBundle({
+    dataDir: c.dataDir,
+    out: file,
+    passphrase,
+    from: { computer: p.from.computer, os: p.from.os, partner: p.from.partner },
+    goes: p.goes.map(bundleItem),
+    redo: p.redo.map(bundleItem),
+    stays: p.stays.map(bundleItem),
+    notes: bundleNotes(c.dataDir),
+    includeBrowser: p.goes.some((g) => g.id === "browser"),
+    platform: c.platform,
+    env: c.env ?? process.env,
+    ...(c.now ? { now: c.now } : {}),
+  });
+  if (!r.ok) {
+    print(c.json ? JSON.stringify({ ok: false, error: r.error, file }) : bundleError(r, c.t, file));
+    return 1;
+  }
+  if (c.json) print(JSON.stringify({ ok: true, file, bytes: r.bytes, files: r.files, events: r.events, passphrase: fromStdin ? undefined : passphrase, manifest: r.manifest }, null, 2));
+  else print(formatBundleResult(r, c.t, file, passphrase, !fromStdin));
+  return 0;
+}
+
+async function cmdReceive(c: MoveCtx, file: string): Promise<number> {
+  const print = c.print ?? ((s: string) => console.log(s));
+  if (homeHasWork(c.dataDir)) {
+    print(c.json ? JSON.stringify({ ok: false, error: "not_empty", dataDir: c.dataDir }) : c.t("move.receive.notEmpty", { dir: c.dataDir }));
+    return 1;
+  }
+  if (!existsSync(file)) {
+    print(c.json ? JSON.stringify({ ok: false, error: "bad_file", file }) : c.t("move.receive.badFile", { file }));
+    return 1;
+  }
+  const passphrase = await readPassphrase(c, c.t("move.receive.passphrasePrompt"));
+  if (!passphrase) {
+    print(c.json ? JSON.stringify({ ok: false, error: "passphrase" }) : c.t("move.passphrase.empty"));
+    return 1;
+  }
+  const r = await readBundle({ file, dataDir: c.dataDir, passphrase, platform: c.platform, env: c.env ?? process.env });
+  if (!r.ok) {
+    print(c.json ? JSON.stringify({ ok: false, error: r.error, file, dataDir: c.dataDir, detail: r.detail }) : receiveError(r, c.t, file, c.dataDir));
+    return 1;
+  }
+  if (c.json) print(JSON.stringify({ ok: true, dataDir: c.dataDir, files: r.files, events: r.events, relocked: r.relocked, manifest: r.manifest }, null, 2));
+  else print(formatReceiveResult(r, c.t, c.dataDir));
+  return 0;
+}
+
 export async function cmdMove(c: MoveCtx): Promise<number> {
   const print = c.print ?? ((s: string) => console.log(s));
+  if (c.bundle && c.receive) {
+    print(c.t("move.oneAtATime"));
+    return 2;
+  }
+  if (c.bundle) return cmdBundle(c, c.bundle);
+  if (c.receive) return cmdReceive(c, c.receive);
   if (!c.plan) {
-    print(c.t("move.onlyPlan"));
+    print(c.t("move.usage"));
     return 2;
   }
   if (!isHome(c.dataDir)) {
@@ -418,7 +753,7 @@ export async function cmdMove(c: MoveCtx): Promise<number> {
     return 1;
   }
   const facts = (await c.probe?.().catch(() => ({}))) ?? {};
-  const p = planMove({ dataDir: c.dataDir, t: c.t, computer: c.computer, platform: c.platform, ...(c.to ? { to: c.to } : {}), ...facts });
+  const p = planMove({ dataDir: c.dataDir, t: c.t, computer: c.computer, platform: c.platform, ...(c.to ? { to: c.to } : {}), ...facts, ...(c.now ? { now: c.now } : {}) });
   if (!p.ok) return 1;
   print(c.json ? JSON.stringify(p, null, 2) : formatMovePlan(p, c.t));
   return 0;

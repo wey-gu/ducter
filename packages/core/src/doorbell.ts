@@ -1,4 +1,4 @@
-// D-PENDING: a Keep's doorbell. A CI job, a GitHub webhook, a cron on another server or a phone
+// D621: a Keep's doorbell. A CI job, a GitHub webhook, a cron on another server or a phone
 // shortcut says "something changed, look now" by POSTing to a secret URL off this home. The event
 // is only a doorbell (research/235 §1, the reference app's rule): its body is never read, never
 // stored, never reaches the model or the round. At most the caller's own "about" header (a short

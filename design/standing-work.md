@@ -69,6 +69,12 @@
   record and says so back once); a row with a task keeps D602's actions. A hand-off arrival round never ends on the
   head's colon (`arrivalDid`). Both clients read the facts on the existing frames (`TaskCard.handoff`,
   `KeepPage.handoffs`); the web and Mac tests, the geometry at 390/1150, and `.shots/handoff/` cover them.
+- **D628, one truth for a PR.** A hand-off about a PR settles when the PR merges or closes
+  (`settled`, why merged/closed, never a reminder). A task whose work was that PR and whose only
+  remaining waits are timers is done: its waits are cancelled, it leaves 等结果, and a wake it
+  still gets says the hand-off is over. A wait that keeps re-arming the same words with nothing
+  new backs off after six same-reason re-arms (30–45 min → hours), says so once to the person, and never polls
+  for ever at the old pace.
 - **D620, the doorbell.** A Keep that runs a round (a task in rounds or a routine) can be rung
   from outside by a secret URL (`/doorbell/<token>`): a CI job, a GitHub webhook, a cron on another
   server or a phone shortcut says "something changed, look now". The event is only a doorbell: its

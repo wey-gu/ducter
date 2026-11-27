@@ -6,7 +6,7 @@ package i18n
 
 var zhIsles = Table{
 	// D157: the words on a parcel: waiting at the bridge, moved here.
-	"isles.tag.waits": "在等",
+	"isles.tag.waits": "等结果",
 	"isles.tag.moved": "已转到 %s",
 	// Another computer (D84) while tasks run on it: 另一台电脑 · 在做 1 个任务.
 	"device.other.working":     "在做 %d 个任务",

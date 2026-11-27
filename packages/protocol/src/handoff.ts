@@ -10,7 +10,10 @@
 
 import { words, type LangTag } from "./lang.ts";
 
-export type HandoffState = "given" | "taken" | "done" | "returned" | "declined" | "withdrawn" | "unclaimed";
+export type HandoffState = "given" | "taken" | "done" | "returned" | "declined" | "withdrawn" | "settled" | "unclaimed";
+
+/** D628: the true world state that ends a hand-off about a PR with nobody needed. */
+export type HandoffSettle = "merged" | "closed";
 
 /** What the hand-off is about: a PR, an issue, a task or words with no reference. */
 export interface HandoffItem {
@@ -73,6 +76,9 @@ export interface HandoffBody {
   adds?: { at: string; text: string; messageId?: string }[];
   /** Written from older bridge_msg events at start (D609's migration), never a door. */
   backfilled?: true;
+  /** D628: the true world state that made this hand-off pointless: the PR merged or closed.
+   *  Set by code from Ducter's own owned look, never by words, and never said to anyone. */
+  settledBy?: HandoffSettle;
 }
 
 /** What the core's hand-off store answers (core/src/handoffs.ts); absent in tests and stubs. */
@@ -113,6 +119,7 @@ export interface HandoffLine {
   taskId?: string;
   why?: string;
   outcome?: string;
+  settledBy?: HandoffSettle;
 }
 
 export function handoffLine(h: HandoffBody): HandoffLine {
@@ -127,10 +134,11 @@ export function handoffLine(h: HandoffBody): HandoffLine {
     ...(h.taskId ? { taskId: h.taskId } : {}),
     ...(h.why ? { why: h.why } : {}),
     ...(h.outcome ? { outcome: h.outcome } : {}),
+    ...(h.settledBy ? { settledBy: h.settledBy } : {}),
   };
 }
 
-export const HANDOFF_TERMINAL: ReadonlySet<HandoffState> = new Set(["done", "returned", "declined", "withdrawn"]);
+export const HANDOFF_TERMINAL: ReadonlySet<HandoffState> = new Set(["done", "returned", "declined", "withdrawn", "settled"]);
 
 export function handoffOpen(state: HandoffState): boolean {
   return state === "given" || state === "unclaimed" || state === "taken";
@@ -201,6 +209,7 @@ export const HANDOFF_WORDS = {
     returned: "「{helper}」把「{item}」退回来了",
     declined: "「{helper}」接不了「{item}」",
     withdrawn: "不用 {helper} 跟了",
+    settled: "用不着了",
     why: "：{why}",
     taskDone: "[“{helper}” finished the work you handed it (\"{item}\") on this home]\n<peer_message>\n{why}\n</peer_message>\nIt is the helper's word on the work you handed it. Report it as it stands: done means it says so. Anything it asks you to redo is your work again.",
     taskBack: "[“{helper}” handed \"{item}\" back to you on this home: {state}]\n<peer_message>\n{why}\n</peer_message>\nThe work is back with you: carry it on if the brief allows, or report what is left. Nothing more is expected from the helper.",
@@ -211,6 +220,7 @@ export const HANDOFF_WORDS = {
     returned: "{helper} returned “{item}”",
     declined: "{helper} can't take “{item}”",
     withdrawn: "Stopped asking {helper} to follow it",
+    settled: "No longer needed",
     why: ": {why}",
     taskDone: "[“{helper}” finished the work you handed it (\"{item}\") on this home]\n<peer_message>\n{why}\n</peer_message>\nIt is the helper's word on the work you handed it. Report it as it stands: done means it says so. Anything it asks you to redo is your work again.",
     taskBack: "[“{helper}” handed \"{item}\" back to you on this home: {state}]\n<peer_message>\n{why}\n</peer_message>\nThe work is back with you: carry it on if the brief allows, or report what is left. Nothing more is expected from the helper.",
@@ -228,6 +238,7 @@ const HANDOFF_STATE_WORDS: { en: Record<HandoffState, string>; zh: Record<Handof
     declined: "declined",
     withdrawn: "stopped following",
     unclaimed: "not taken yet",
+    settled: "no longer needed",
   },
   zh: {
     given: "交给了",
@@ -237,6 +248,7 @@ const HANDOFF_STATE_WORDS: { en: Record<HandoffState, string>; zh: Record<Handof
     declined: "接不了",
     withdrawn: "不用跟了",
     unclaimed: "还没人接手",
+    settled: "用不着了",
   },
 };
 

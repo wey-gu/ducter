@@ -1,5 +1,6 @@
 // `ducter status`: one look at the running process over its client WebSocket.
 import type { Bodies, LogEvent, OnHand, ServerFrame, TaskCard } from "@ducter/protocol";
+import { prOf } from "@ducter/protocol/src/pr-state.ts";
 import type { T } from "./i18n.ts";
 import { plainStyle, type Style } from "./doctor.ts";
 import { appAddress, openSocket, type Target } from "./home.ts";
@@ -64,10 +65,16 @@ export function openDecisions(events: LogEvent[]): Bodies["decision"][] {
   return [...open.values()];
 }
 
-/** A finished repo task whose commits aren't merged yet: it waits for the user's Merge. */
+/** A finished repo task whose commits aren't merged yet: it waits for the user's Merge. The task's
+ *  own PR is the truth: one that merged, closed or was let go (a duplicate, not needed) never stands
+ *  here, even when its branch still has commits the base doesn't. */
 export function toMerge(c: TaskCard): boolean {
   if (c.place.kind !== "repo" || c.residency === "archived") return false;
   if (c.attention !== "done" && c.attention !== "done_claimed") return false;
+  // A PR is where the work merges: merged, closed and let go are already done, and an open one
+  // merges on GitHub, never through this local-merge list.
+  if (prOf(c.prs)) return false;
+  if (c.integrated?.act === "merge") return false;
   const r = c.lastReport;
   if (r?.branch) return r.branch.commits > 0;
   return Boolean(r?.evidence?.some((e) => e.kind === "diff"));

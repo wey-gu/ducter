@@ -45,6 +45,8 @@ export interface Work {
   setKeepRules(f: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined): void;
   /** D612: the small app a round of this task should fill (its own or its Keep's), or "". */
   setAppNote(f: ((taskId: string) => string | undefined) | undefined): void;
+  /** D628: the true state of a hand-off whose PR merged or closed, told to the task when it wakes anyway. */
+  setSettledNote(f: ((taskId: string, lang: import("@ducter/protocol").LangTag) => string | undefined) | undefined): void;
   stop(): void;
 }
 
@@ -120,6 +122,8 @@ const W = {
     // D593: a Keep's round: its end is in the standing words above; the task's own reason is its note.
     roundKeep: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有上面「整件事做到」那一条成立时才报 done。下一轮到时 Ducter 会叫你。",
     memo: "上一轮你给自己记下要查的：「{reason}」。那是你的笔记，只做其中上面要求的部分。",
+    slow: "「{reason}」这件已经这样等了 {n} 次，我把叫醒它的间隔放长了；要是不用再等，跟我说一声，我先停下它。",
+    slowNote: "这个等已经这样回来 {n} 次了，什么都没变，所以下一次叫醒放到 {every} 以后。要是没什么可等的了，就跟我说，把它停下。",
   },
   en: {
     time: 'It\'s time: "{reason}". Carry on.',
@@ -135,9 +139,16 @@ const W = {
     roundNow: 'It is {now} where the person is. Write every time they read in their time zone, or as "in 45 minutes"; never UTC.',
     roundKeep: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once the "ends when" line above holds. Ducter wakes you for the next one.',
     memo: 'Last round you noted to check: "{reason}". That is your note: do only the part of it the above asks for.',
+    slow: "“{reason}” has come back {n} times with nothing new, so I've spaced out how often it wakes; say the word if you'd rather stop waiting.",
+    slowNote: "This same wait has come back {n} times with nothing new, so its next wake is {every} away instead of the usual. If there is nothing left to wait for, say so and stop it.",
   },
 };
 const wordsOf = (reason: string) => words(W, langOfText(reason));
+
+/** D628: after this many same-reason timer re-arms with nothing new, the wait backs off. */
+export const WAIT_REPEAT_N = 6;
+const WAIT_MAX_BACKOFF_MS = 8 * 60 * 60_000;
+const normReason = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 
 /** D297: the words a task gets when its agent's limit has reset, in the language of the wait's
  *  reason (protocol transcript.ts reads them back). */
@@ -231,6 +242,7 @@ export function createWork(o: WorkOptions): Work {
   const untils = createUntils({ log, tasks, runner: o.runner, check });
   let keepRules: ((of: { taskId: string } | { routineId: string }) => string | undefined) | undefined;
   let appNote: ((taskId: string) => string | undefined) | undefined;
+  let settledNote: ((taskId: string, lang: import("@ducter/protocol").LangTag) => string | undefined) | undefined;
   const routines = createRoutines({ log, tasks, waiters, runner: o.runner, clock: o.clock, persona: o.persona, defaultZone: o.defaultZone, rules: (routineId) => keepRules?.({ routineId }) });
   const owned = createOwned({ log, tasks, runner: o.runner, check, clock: o.clock, ...(o.ownedEveryMs ? { everyMs: o.ownedEveryMs } : {}) });
   // D528: a time as the person reads it, in their zone ("15:13"; another day: "2026-11-25 15:13", with the zone named).
@@ -261,7 +273,9 @@ export function createWork(o: WorkOptions): Work {
   /** D496: a task woken by its own wait hears where the PRs it owns stand (a request for changes from before included). */
   const withPRs = (taskId: string, text: string) => {
     const s = owned.standing(taskId);
-    return s ? `${text}\n\n${s}` : text;
+    const over = settledNote?.(taskId, langOfText(tasks.get(taskId)?.title ?? ""));
+    const more = [s, over].filter(Boolean).join("\n\n");
+    return more ? `${text}\n\n${more}` : text;
   };
 
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
@@ -376,6 +390,22 @@ export function createWork(o: WorkOptions): Work {
     required: ["connection", "service", "trigger"],
   };
 
+  /** D628: how many armed timer waiters with these same words came since the last report. */
+  const repeatStreak = (taskId: string, reason: string): number => {
+    const want = normReason(reason);
+    const lastReport = log.read({ stream: `task:${taskId}`, kinds: ["report"], limit: 1 }).at(-1)?.seq ?? 0;
+    let n = 0;
+    for (const e of log.read({ stream: "channel", kinds: ["waiter"], limit: 2000 }).reverse()) {
+      if (e.seq <= lastReport) break; // a report since then is something new
+      const w = e.body as Bodies["waiter"];
+      if (w.taskId !== taskId || w.state !== "armed") continue;
+      if (w.check || w.event || w.watch || w.judge) break; // a real look: not this same timer
+      if (normReason(w.reason) !== want) break;
+      n++;
+    }
+    return n;
+  };
+
   const timerFor = (taskId: string, reason: string, a: { afterMinutes?: number; atISO?: string }) => {
     const notes = shorthand(reason);
     if (notes) return { ok: false, error: `reason is shown to the person as written, after 等 / Waiting until: write it as plain words in their language (再看一轮评审 / look at the reviews again), not notes like "${notes}".` };
@@ -391,6 +421,23 @@ export function createWork(o: WorkOptions): Work {
     // D427: the person set this task's rhythm ("改成每小时"): its rounds follow it, whatever the task asked.
     const rhythm = loops.rhythm(taskId);
     if (rhythm && !a.atISO) at = now + rhythm;
+    // D628: a timer that keeps coming back with the same words and nothing new backs off
+    // (30–45 min → hours). The count is structural: the armed timer waiters since the last report.
+    const streak = repeatStreak(taskId, reason) + 1;
+    if (!a.atISO && !rhythm && streak > WAIT_REPEAT_N) {
+      const factor = 2 ** Math.min(streak - WAIT_REPEAT_N, 6);
+      at = Math.min(now + WAIT_MAX_BACKOFF_MS, now + (at - now) * factor);
+    }
+    const backedOff = !a.atISO && !rhythm && streak > WAIT_REPEAT_N;
+    const every = backedOff ? `${Math.max(1, Math.round((at - now) / 60_000))} min` : "";
+    if (backedOff && streak === WAIT_REPEAT_N + 1) {
+      // Said once per task and reason, in the partner's voice, only as an offer to stop waiting.
+      const said = log.read({ stream: "channel", kinds: ["ai_msg"], limit: 2000 }).some((e) => {
+        const b = e.body as Bodies["ai_msg"];
+        return b.waitSlow?.taskId === taskId && normReason(b.waitSlow.reason) === normReason(reason);
+      });
+      if (!said) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(wordsOf(reason).slow, { reason, n: String(streak) }), waitSlow: { taskId, reason } } });
+    }
     try {
       // D394: a task has one timer of its own, the newest. A round started by another wake (a
       // nudge, a compaction, a restart's re-run) re-arms it instead of starting a second cadence
@@ -406,10 +453,12 @@ export function createWork(o: WorkOptions): Work {
         atLocal: localTime(at, now),
         ...(before.length ? { replaced: before.map((v) => v.at) } : {}),
         ...(rhythm ? { rhythm: `every ${Math.round(rhythm / 60_000)} min, as the person set it` } : {}),
+        ...(backedOff ? { backedOff: every, repeats: streak } : {}),
         note:
-          loops.get(taskId)?.state === "on"
+          (loops.get(taskId)?.state === "on"
             ? "Armed; it replaces any timer you had. If you tell the person when, say atLocal (their time) or \"in N minutes\", never UTC. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. Ducter keeps this task going in rounds until the person says stop: a round's report never ends it."
-            : "Armed; it replaces any timer you had. If you tell the person when, say atLocal (their time) or \"in N minutes\", never UTC. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.",
+            : "Armed; it replaces any timer you had. If you tell the person when, say atLocal (their time) or \"in N minutes\", never UTC. End your turn now; you will be woken then, and nobody needs a report from a round that found nothing new. To repeat, call wait_for again when you wake.") +
+          (backedOff ? ` ${fill(wordsOf(reason).slowNote, { n: String(streak), every })}` : ""),
       };
     } catch (err) {
       return { ok: false, error: (err as Error).message };
@@ -643,6 +692,7 @@ export function createWork(o: WorkOptions): Work {
     look: (spec, taskId) => check(spec, { taskId }),
     setKeepRules: (f) => void (keepRules = f),
     setAppNote: (f) => void (appNote = f),
+    setSettledNote: (f) => void (settledNote = f),
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),

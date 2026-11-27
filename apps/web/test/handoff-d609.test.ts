@@ -26,6 +26,8 @@ describe("D609: the sender's one line", () => {
     expect(handoffTaskWords(line("returned", { why: "我只接 PR，这个是 issue。" }), zh)).toBe("PR Babysitter 退回了：我只接 PR，这个是 issue。");
     expect(handoffTaskWords(line("declined", { why: "超出我接的范围。" }), zh)).toBe("PR Babysitter 没接：超出我接的范围。");
     expect(handoffTaskWords(line("withdrawn"), zh)).toBe("不用 PR Babysitter 跟了");
+    expect(handoffTaskWords(line("settled", { settledBy: "merged" }), zh)).toBe("用不着了：PR 已合并");
+    expect(handoffTaskWords(line("settled", { settledBy: "closed" }), zh)).toBe("用不着了：PR 已关闭");
     expect(handoffTaskWords(line("unclaimed"), zh)).toBe("交给 PR Babysitter，等它接手");
     expect(handoffTaskWords(line("given"), en)).toBe("Handed to PR Babysitter, waiting for it to take it");
     expect(handoffTaskWords(line("taken"), en)).toBe("PR Babysitter took it");
@@ -33,6 +35,7 @@ describe("D609: the sender's one line", () => {
     expect(handoffTaskWords(line("returned", { why: "Out of scope." }), en)).toBe("PR Babysitter returned it: Out of scope.");
     expect(handoffTaskWords(line("declined", { why: "Not mine." }), en)).toBe("PR Babysitter didn't take it: Not mine.");
     expect(handoffTaskWords(line("withdrawn"), en)).toBe("Stopped asking PR Babysitter to follow it");
+    expect(handoffTaskWords(line("settled", { settledBy: "merged" }), en)).toBe("No longer needed: the PR merged");
   });
 });
 
@@ -48,6 +51,7 @@ describe("D609: 手上的事 grouped by state", () => {
       line("given", { id: "ho_g0", givenAt: "2026-11-26T16:20:00Z" }),
       line("done", { id: "ho_done", taskId: "t-done", outcome: "评审通过" }),
       line("withdrawn", { id: "ho_w", taskId: "t-w" }),
+      line("settled", { id: "ho_s", taskId: "t-s", settledBy: "merged" }),
     ];
     const doneItem: KeepItem = { taskId: "t-done", title: "完成的 PR", at: "work" };
     const gs = handoffGroups(hs, [takenItem, legacy, doneItem]);
@@ -58,6 +62,7 @@ describe("D609: 手上的事 grouped by state", () => {
     expect(gs[2]!.rows.map((h) => h.id)).toEqual(["ho_r"]);
     expect(gs[3]!.rows.map((h) => h.id)).toEqual(["ho_d"]);
     expect(gs.flatMap((g) => g.rows.map((h) => h.id))).not.toContain("ho_w");
+    expect(gs.flatMap((g) => g.rows.map((h) => h.id))).not.toContain("ho_s");
     // Nothing for an empty group: all four get an entry, but the view draws only the non-empty.
     const onlyGiven = handoffGroups([line("given")], []);
     expect(onlyGiven.filter((g) => g.rows.length || g.legacy.length).map((g) => g.key)).toEqual(["waiting"]);

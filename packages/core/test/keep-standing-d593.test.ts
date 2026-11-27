@@ -146,6 +146,7 @@ test("hel's sequence: from now on, then a round's ask with run now, then the nex
   // A new review request arrives (hel's mem#11320): the round after the sources saw it is handed it.
   b.gh.issues.push({ ...pr("nowledge-co/mem", 11320, "fix(team): keep profile edits with the selected member"), state: "open" });
   b.gh.touch(b.gh.issues.at(-1)!);
+  b.gh.issues.at(-1)!.updated = new Date(b.clock.now()).toISOString(); // the fake clock, not the wall clock
   await b.ts.look();
   const after = await nextRound(b);
   expect(after).toContain("https://github.com/nowledge-co/mem/pull/11320");

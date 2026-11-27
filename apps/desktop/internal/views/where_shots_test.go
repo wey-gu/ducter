@@ -194,7 +194,7 @@ func TestParcelMoments(t *testing.T) {
 	}
 	app.S.Tasks["t_keynote"].State = &protocol.TaskState{TaskID: "t_keynote", Attention: protocol.Blocked, Reason: "device:asleep:MacBook"}
 	waits := app.parcelMoments(mac, at.Add(time.Minute), true)
-	if len(waits) != 1 || waits[0].at != 0 || waits[0].tag != "在等" {
+	if len(waits) != 1 || waits[0].at != 0 || waits[0].tag != "等结果" {
 		t.Errorf("waits: %+v", waits)
 	}
 }

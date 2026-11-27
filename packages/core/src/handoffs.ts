@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import type { Bodies, Helper, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { detect, words, type LangTag } from "@ducter/protocol/src/lang.ts";
-import { helperQuestions, handoffItem, handoffKey, handoffStateWord, HANDOFF_TERMINAL, HANDOFF_WORDS, type HandoffBody, type HandoffFrom, type HandoffItem, type HandoffTo } from "@ducter/protocol/src/handoff.ts";
+import { helperQuestions, handoffItem, handoffKey, handoffStateWord, HANDOFF_TERMINAL, HANDOFF_WORDS, type HandoffBody, type HandoffFrom, type HandoffItem, type HandoffSettle, type HandoffTo } from "@ducter/protocol/src/handoff.ts";
 import { HELPER_TAKE_MS, isHelperWork, localHandoff, LOCAL_MSG } from "@ducter/protocol/src/helpers.ts";
 
 export interface Handoffs {
@@ -58,6 +58,8 @@ export function createHandoffs(o: {
   onChange?: () => void;
   /** Read the bridge_msg events already in the Log into records (D609's migration). Default true. */
   backfill?: boolean;
+  /** D628: an issue's true state, read from GitHub once a PR in its repository merged. */
+  issueState?: (ref: string) => Promise<HandoffSettle | undefined>;
 }): Handoffs {
   const { log } = o;
   const byId = new Map<string, HandoffBody>();
@@ -65,6 +67,10 @@ export function createHandoffs(o: {
   const byMessage = new Map<string, string>();
   let tellAgent = o.tellAgent;
   let backfilling = false;
+  // D628: the true state of a PR, from Ducter's own owned look. A hand-off about it settles
+  // by itself when it merges or closes; code reads the fact, never the words around it.
+  const prState = new Map<string, { state?: "open" | "merged" | "closed" | "not_ours"; letGo?: boolean }>();
+  const byPr = (ref: string) => prState.get(ref.trim().toLowerCase());
 
   const remember = (h: HandoffBody) => {
     byId.set(h.handoffId, h);
@@ -74,6 +80,10 @@ export function createHandoffs(o: {
   };
 
   for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["handoff"] })) remember({ ...(e.body as HandoffBody) });
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["owned_news"] })) {
+    const b = e.body as Bodies["owned_news"];
+    if (b?.pr) prState.set(b.pr.toLowerCase(), { state: b.seen?.state, ...(b.seen?.letGo ? { letGo: true } : {}) });
+  }
 
   const put = (h: HandoffBody): HandoffBody => {
     const copy: HandoffBody = { ...h, ...(h.messages ? { messages: [...h.messages] } : {}), ...(h.adds ? { adds: h.adds.map((x) => ({ ...x })) } : {}) };
@@ -82,6 +92,33 @@ export function createHandoffs(o: {
     remember(copy);
     o.onChange?.();
     return copy;
+  };
+
+  /** D628: settle a record about a PR from the world's own state; never a message to anyone. */
+  const settle = (h: HandoffBody, by: HandoffSettle): HandoffBody =>
+    HANDOFF_TERMINAL.has(h.state) ? h : put({ ...h, state: "settled", at: iso(o.now()), settledBy: by });
+
+  const settleIfOver = (h: HandoffBody): HandoffBody => {
+    if (h.item.kind !== "pr") return h;
+    const p = byPr(h.item.ref);
+    return p?.state === "merged" || p?.state === "closed" ? settle(h, p.state) : h;
+  };
+
+  const settleAll = () => {
+    for (const h of [...byId.values()]) if (!HANDOFF_TERMINAL.has(h.state)) settleIfOver(h);
+  };
+
+  const settleIssues = async (repo?: string) => {
+    if (!o.issueState) return;
+    for (const h of [...byId.values()]) {
+      if (h.state !== "given" && h.state !== "unclaimed" && h.state !== "taken") continue;
+      if (h.item.kind !== "issue") continue;
+      const [owner] = h.item.ref.split("#");
+      if (repo && owner?.toLowerCase() !== repo.toLowerCase()) continue;
+      const by = await o.issueState(h.item.ref).catch(() => undefined);
+      const cur = byId.get(h.handoffId);
+      if (by && cur && !HANDOFF_TERMINAL.has(cur.state)) settle(cur, by);
+    }
   };
 
   const openOf = (h: HandoffBody | undefined): h is HandoffBody => !!h && !HANDOFF_TERMINAL.has(h.state);
@@ -114,7 +151,7 @@ export function createHandoffs(o: {
         adds: [...(prev.adds ?? []), { at, text: a.said, ...(a.messageId ? { messageId: a.messageId } : {}) }],
       };
       if (!prev.from.messageId && a.messageId) next.from = { ...prev.from, messageId: a.messageId };
-      return { handoff: put(next), created: false };
+      return { handoff: settleIfOver(put(next)), created: false };
     }
     const from: HandoffFrom = { ...a.from, ...(a.messageId ? { messageId: a.messageId } : {}) };
     const body: HandoffBody = {
@@ -131,7 +168,9 @@ export function createHandoffs(o: {
       givenAt: a.at,
       ...(a.backfilled ? { backfilled: true as const } : {}),
     };
-    return { handoff: put(body), created: true };
+    const made = put(body);
+    if (made.item.kind === "issue") void settleIssues(made.item.ref.split("#")[0]);
+    return { handoff: settleIfOver(made), created: true };
   };
 
   const say = async (h: HandoffBody, state: "done" | "returned" | "declined" | "withdrawn", why: string): Promise<void> => {
@@ -279,6 +318,21 @@ export function createHandoffs(o: {
       tellAgent = fn;
     },
   };
+  // D628: a merge or close ends every hand-off about that PR. The record is the truth's, not
+  // a reminder: it is not said back to the sender, and the helper's page stops counting it.
+  log.subscribe((e) => {
+    if (e.kind !== "owned_news") return;
+    const b = e.body as Bodies["owned_news"];
+    if (!b?.pr) return;
+    prState.set(b.pr.toLowerCase(), { state: b.seen?.state, ...(b.seen?.letGo ? { letGo: true } : {}) });
+    if (b.seen?.state === "merged" || b.seen?.state === "closed") {
+      settleAll();
+      // A merged PR is the usual way an issue closes; the issue's own state is still the guard.
+      if (b.seen.state === "merged" && o.issueState) void settleIssues(b.pr.split("#")[0]);
+    }
+  });
+  settleAll();
+  void settleIssues();
   // A claim from one of the helper's tasks always means taken, whichever door made the record.
   log.subscribe((e) => {
     if (backfilling || e.kind !== "bridge_msg") return;

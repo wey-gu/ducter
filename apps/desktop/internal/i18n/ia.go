@@ -90,7 +90,7 @@ var zhIA = Table{
 	"partner.face.needs_you": "有事找你",
 	"partner.face.done":      "刚做完",
 	"partner.face.napping":   "在休息",
-	"partner.face.waiting":   "在等",
+	"partner.face.waiting":   "等结果",
 	"partner.loading":        "正在问 %s…",
 
 	"partner.talk.title": "怎么说话",

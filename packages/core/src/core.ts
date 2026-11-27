@@ -81,6 +81,7 @@ import { callAbility, createDevicesView, publicAddress, qrRows, homeName as save
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
 import { createHandoffs } from "./handoffs.ts";
+import { createSettledHandoffs, settledHandoffNote } from "./settled-handoffs.ts";
 import { isHelperWork } from "@ducter/protocol/src/helpers.ts";
 import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
 import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
@@ -1397,6 +1398,32 @@ export function startCore(opts: CoreOptions = {}): Core {
       return true;
     },
     onChange: () => onHandChanged(),
+    // D628: an issue hand-off settles when GitHub says the issue is closed (a merged PR is
+    // the usual way); the look runs only for an issue a helper was handed.
+    ...(process.env.NODE_ENV === "test"
+      ? {}
+      : {
+          issueState: async (ref: string) => {
+            const [repo, n] = ref.split("#");
+            if (!repo || !n) return undefined;
+            const r = await work.look({ argv: ["gh", "api", `repos/${repo}/issues/${n}`, "--jq", "{state: .state, reason: .state_reason}"], succeedWhen: { path: "state", equals: "closed" } }, "");
+            if (!r.ok) return undefined;
+            try {
+              const j = JSON.parse(r.output ?? "") as { state?: string };
+              return j.state === "closed" ? "closed" : undefined;
+            } catch {
+              return undefined;
+            }
+          },
+        }),
+  });
+  // D628: a merged or closed PR settles its hand-offs, and a task whose work was that PR and
+  // whose only waits are timers is done: its waiters are cancelled, it leaves 等结果.
+  const settledHandoffs = createSettledHandoffs({ log, handoffs, tasks, waiters: work.waiters, onChange: () => onHandChanged() });
+  // D628: a task that wakes anyway after its hand-off's PR merged hears the truth once.
+  work.setSettledNote((taskId, lang) => {
+    const h = [...handoffs.all()].reverse().find((x) => x.from.task === taskId && x.state === "settled" && x.settledBy);
+    return h ? settledHandoffNote(h, lang) : undefined;
   });
   /** D494: a helper's work on hand (its tasks it still holds, D507) and what it took in the last 7 days, from the Log. */
   const helperCount = (id: string) => {
@@ -3349,6 +3376,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       ownNumber.stop();
       decisions.stop();
       living.stop();
+      settledHandoffs.stop();
       work.stop();
       limitWaits.stop();
       brainHold.stop();

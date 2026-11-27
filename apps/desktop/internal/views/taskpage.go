@@ -408,6 +408,12 @@ func (a *App) handoffNote(c *ui.Context, task *store.Task) {
 		key, args = "handoff.declined", []any{h.To, gist}
 	case "withdrawn":
 		key, args = "handoff.withdrawn", []any{h.To}
+	case "settled":
+		why := "handoff.settled.closed"
+		if h.SettledBy == "merged" {
+			why = "handoff.settled.merged"
+		}
+		key, args = "handoff.settled", []any{a.L.T(why)}
 	}
 	uiText(c.Key("handoff:"+h.ID), autospace(a.L.T(key, args...))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.6))
 }

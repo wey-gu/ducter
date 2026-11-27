@@ -3461,6 +3461,32 @@ a.task-link {
   border-radius: 5px;
   background: var(--line);
 }
+/* D644 amendment: Settings and its panes are places you go to, not a glance. On a phone or a
+   split pane under 700 the sheet opens at its top detent — the whole screen, the safe area at
+   the top, the list's ‹ 对话 and each pane's ‹ 设置 as the ways back; no rounded top, no grab, and
+   no conversation behind it. A pointer drag down at the top still closes (sheetmotion.ts), and a
+   wide screen keeps the 640 form sheet below. */
+@media (max-width: 699px) {
+  .sheet-frame.settings-sheet {
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sheet-frame.settings-sheet > .grab {
+    display: none;
+  }
+  .sheet-frame.settings-sheet > .sheet {
+    padding-top: calc(var(--safe-top) + 12px);
+  }
+  .sheet-frame.settings-sheet .list-back {
+    display: flex;
+  }
+}
 /* An iPad or a wide window (D176): a sheet stands in the middle as a card, like an iPad form
    sheet, not pinned to a far-away bottom edge; it has no grab. */
 @media (min-width: 700px) and (min-height: 640px) {
@@ -3763,6 +3789,11 @@ a.task-link {
   gap: var(--s2);
   justify-content: flex-end;
 }
+/* D644: the Settings list's way back to the conversation, only on a full-height phone sheet. */
+.set-back.list-back {
+  display: none;
+}
+
 .set-back {
   align-self: flex-start;
   display: flex;
@@ -3852,6 +3883,13 @@ a.task-link {
    longer than the row wraps inside its own option. */
 .seg.stack {
   flex-direction: column;
+  gap: 2px;
+}
+/* D161, D468: when equal shares would spill, the words first take their own width and share the
+   room left (an English "Follow the system" beside Light and Dark); only a line that still spills
+   folds. */
+.seg.sized button {
+  flex: 1 1 auto;
 }
 /* D468: four that don't fit in one line, two by two (Seg measures), each as wide as its share. */
 .seg.two {
@@ -3868,6 +3906,10 @@ a.task-link {
   white-space: normal;
   text-align: start;
   overflow-wrap: anywhere;
+}
+/* A stacked choice reads as one list, not a beige block: a hairline between its rows. */
+.seg.stack button + button {
+  border-top: 1px solid var(--line);
 }
 .seg button.on {
   background: var(--surface);
@@ -6924,6 +6966,16 @@ button.bcard:active {
   flex: none;
   color: var(--faint);
   letter-spacing: 2px;
+}
+/* The details' facts: the name is the row's title; the email and phone stand apart (D291), the
+   phone unbroken at its spaces. */
+.set-row .af-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
 }
 .af-card {
   flex: none;
@@ -14232,6 +14284,18 @@ button.chip-file {
 .g-open small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-open small.warn { color: var(--failed-ink); }
 .switch.bare { flex: none; padding: 0; min-height: 0; margin: 0; background: none; border: 0; box-shadow: none; } /* D296: a switch alone, no card base under it */
+/* A bare switch inside a pushed page keeps its bare box: `.set-page.pushed .switch` (three
+   classes) otherwise put a 56-tall, 12/16-padded row round it, pushing its tile off a 320 screen
+   and holding the switch 16 in from the edge. It never drops under its words (D296). */
+.set-page.pushed .switch.bare,
+.set-page.pushed .set-card > .switch.bare {
+  padding: 0;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
 .g-block { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s3) var(--set-in, var(--s4)) var(--s4) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
 .g-block.first { padding: var(--s4) var(--set-in, var(--s4)); }
 .g-group > .switch { min-height: 64px; padding: var(--s3) var(--set-in, var(--s4)) var(--s3) calc(var(--set-in, var(--s4)) + var(--chat-col)); }
@@ -14302,6 +14366,25 @@ button.chip-file {
   /* D372: a rule keeps its quiet 删除 beside it, centred on the row. */
   .chat-row.one-line { flex-wrap: nowrap; }
   .chat-row.one-line .grow { flex-basis: 0; min-width: 0; }
+  /* A switch never drops under its words (D296); a nowrap row that ended in a switch was aligned
+     to its right edge, and its tile went off the left of a 320 screen. */
+  .chat-row:has(> .switch.bare) { justify-content: flex-start; }
+  /* A group head's short state stays at the right edge (D296), the words wrapping beside it. */
+  .set-page.pushed .chat-head:has(> .g-state) {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+  .set-page.pushed .chat-head:has(> .g-state) > .grow {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+/* A 320 screen has 180 for a switch row's words beside its 40 tile and 44 switch; the 12rem
+   English floor cannot stand there. 10rem keeps about 160 and the tile on screen. */
+@media (max-width: 360px) {
+  .chat-row:has(> .switch.bare) > .grow {
+    min-width: 10rem;
+  }
 }
 /* D443: a state row whose fix is a long button (改由这台收 / Receive here instead, 重试 with its
    note) would squeeze its words into a sliver beside it at 390: the button goes under the words. */
@@ -21686,7 +21769,13 @@ html[data-text-size="large"] .brand-mark > svg {
    column's start back to the card's edge, so three choices stand in one track instead of a tall stack. */
 @media (max-width: 520px) {
   .chat-row:not(.tiled) > .seg,
-  .set-page.pushed .set-card > div.chat-row:not(.tiled) > .seg { flex: 1 1 calc(100% + var(--chat-col)); margin-left: calc(-1 * var(--chat-col)); }
+  .set-page.pushed .set-card > div.chat-row:not(.tiled) > .seg {
+    flex: 1 1 calc(100% + var(--chat-col));
+    margin-left: calc(-1 * var(--chat-col));
+    /* Never wider than the card's inner width: on a 320 screen the English words' own width
+       used to hang 40 points off the left edge. */
+    max-width: calc(100% + var(--chat-col) + var(--set-in, var(--s4)));
+  }
 }
 
 /* ---------- D480, D489: where an agent's answers go, its Space chosen in place ---------- */

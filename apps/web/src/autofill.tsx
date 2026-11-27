@@ -8,7 +8,7 @@ import { DETAIL_CLASS, KEY_ENV } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { title, type DecisionState } from "./store.ts";
-import { Btn, DangerButton, How, Seg, Toggle } from "./controls.tsx";
+import { Btn, DangerButton, Facts, How, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
 import { Waiting } from "./set-grid.tsx";
 import { TABLES } from "./i18n.ts";
@@ -227,6 +227,12 @@ export function AutofillSettings() {
   const signins = f.items.filter((x) => x.kind === "signin");
   const cards = f.items.filter((x) => x.kind === "card");
   const kept = f.details.filter((d) => d.kept);
+  // D291: the details are facts, not one comma-joined run: the name is the row's title, the email
+  // and phone stand apart, and a phone never breaks at its spaces.
+  const shown = kept.filter((d) => d.value);
+  const titleItem = shown.find((d) => d.key === "name") ?? shown[0];
+  const detailFacts = shown.filter((d) => d !== titleItem && d.key !== "address").slice(0, 2);
+  const detailTitle = titleItem?.value ?? (kept.length ? t("af.d.kept", kept.length) : t("af.d.add"));
   const edit = (e: Editing) => ((A.savedFailed = false), setEditing(e));
   return (
     <>
@@ -337,8 +343,10 @@ export function AutofillSettings() {
                 </svg>
               </span>
               <span class="grow">
-                {/* D296: a list said as one, never facts joined with " · " (the Mac's afRow). */}
-                <b>{kept.length ? kept.filter((d) => d.value).slice(0, 3).map((d) => (d.key === "phone" ? d.value!.replace(/ /g, "\u00a0") : d.value)).join(t("acct.sep")) || t("af.d.kept", kept.length) : t("af.d.add")}</b>
+                {/* D291: a fact is its own element, never one joined run: the name, then each
+                    reachable fact apart. */}
+                <b>{detailTitle}</b>
+                <Facts class="af-facts" items={detailFacts.map((d) => (d.key === "phone" ? d.value!.replace(/ /g, "\u00a0") : d.value))} />
                 <small>{kept.length ? (kept.some((d) => !d.value) ? t("af.d.also", kept.filter((d) => !d.value).map((d) => t(`af.d.${d.key}`)).join(t("acct.sep"))) : t("af.d.edit")) : t("af.d.why")}</small>
               </span>
             </button>
@@ -367,7 +375,7 @@ export function AutofillSettings() {
                   </small>
                 </span>
                 {x.usedAt && <span class="g-state">{usedLine(x)}</span>}
-                <span class="af-dots" aria-hidden="true">
+                <span class="g-state">
                   {x.hint ?? t("af.key.kept")}
                 </span>
               </button>

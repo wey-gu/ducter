@@ -128,7 +128,7 @@ func TestMemD554Words(t *testing.T) {
 		tf := ui.NewTesterWith(fresh.View, 1150, 2400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tf.Frame()
 		tf.Frame()
-		for _, s := range []string{L.T("mem.step.account"), L.T("mem.step.account.go")} {
+		for _, s := range []string{L.T("mem.step.account", "hel"), L.T("mem.step.account.go")} {
 			if !hasText(tf, s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tf.Texts())
 			}

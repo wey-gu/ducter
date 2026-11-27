@@ -8,6 +8,8 @@ import type { ComponentChildren, Ref } from "preact";
 export function SheetFrame(p: {
   label: string;
   class?: string;
+  /** D644: a frame of its own (Settings' full-height phone sheet), never the body's page classes. */
+  frameClass?: string;
   frame?: Ref<HTMLDivElement>;
   body?: Ref<HTMLDivElement>;
   scrim?: Ref<HTMLDivElement>;
@@ -17,7 +19,7 @@ export function SheetFrame(p: {
   return (
     <>
       <div class="scrim" ref={p.scrim} onClick={p.onScrim} />
-      <div class="sheet-frame" ref={p.frame} role="dialog" aria-modal="true" aria-label={p.label}>
+      <div class={`sheet-frame${p.frameClass ? ` ${p.frameClass}` : ""}`} ref={p.frame} role="dialog" aria-modal="true" aria-label={p.label}>
         <div class="grab" />
         <div class={p.class ? `sheet ${p.class}` : "sheet"} ref={p.body}>
           {p.children}

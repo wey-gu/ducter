@@ -474,7 +474,7 @@ export const phone: { zh: Record<string, string>; en: Record<string, string> } =
     "call.card.rails": "I ask you before every call, and open by saying I'm an AI calling for you.",
     "call.card.cap": "Daily limit",
     "call.card.cap.help": "Calls stop there, and Tuwa caps it too.",
-    "call.card.off": "I turned these off on %s",
+    "call.card.off": "I turned these off for you on %s",
     "call.card.sampling": "%s doesn't sample your voice",
     "call.card.shared": "Nothing goes to %s Friends",
     "call.card.dnc": "%d numbers never called",

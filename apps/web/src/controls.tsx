@@ -522,11 +522,23 @@ export function Seg<V extends string | number>(p: { label: string; value: V | un
     const el = ref.current;
     if (!el) return;
     const fit = () => {
-      el.classList.remove("stack", "two");
+      el.classList.remove("stack", "two", "sized");
       // D445: a choice whose own words overflow it counts too (the buttons shrink before the row does:
       // To-do sources' "Take it directly" ran into "Don't tell me" at 390).
-      const spill = () => el.scrollWidth > el.clientWidth + 1 || [...el.children].some((b) => b.scrollWidth > b.clientWidth + 1);
+      const row = el.closest(".chat-row") as HTMLElement | null;
+      const spill = () =>
+        el.scrollWidth > el.clientWidth + 1 ||
+        [...el.children].some((b) => b.scrollWidth > b.clientWidth + 1) ||
+        // A choice in a row that is already past the card (a full-width phone track) is no fit,
+        // however wide the choice itself grew.
+        (!!row && row.scrollWidth > row.clientWidth + 1);
       if (!spill()) return;
+      // Long words first take their own width and share the room left: an English "Follow the
+      // system" beside Light and Dark fits one track this way, where equal thirds stacked three
+      // tall rows for one choice. Only a line that still spills folds.
+      el.classList.add("sized");
+      if (!spill()) return;
+      el.classList.remove("sized");
       // D468: four that don't fit in a line sit two by two while their words fit (发现了就说 stood four
       // lines tall on a phone); else one per line.
       if (el.children.length === 4) {

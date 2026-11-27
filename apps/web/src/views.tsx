@@ -3061,16 +3061,22 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
 
 // ---------- sheets ----------
 
-function Sheet({ children, label }: { children: preact.ComponentChildren; label: string }) {
+function Sheet({ children, label, frameClass, resetKey }: { children: preact.ComponentChildren; label: string; frameClass?: string; resetKey?: string }) {
   // D290: it goes back down the way it came, and on a phone follows the finger down to close.
   const { sheet, body, scrim, close } = useSheetMotion(() => ((A.sheet = null), A.changed()));
+  // D644: Settings is a place, and every pane opens at its own head. The body is the one scroller
+  // across the list and its pages; a list scrolled to its last row must not leave the next pane
+  // opened half-way down (the full-height phone sheet made that certain).
+  useEffect(() => {
+    body.current?.scrollTo({ top: 0 });
+  }, [resetKey]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && close();
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
   return (
-    <SheetFrame label={label} frame={sheet} body={body} scrim={scrim} onScrim={close}>
+    <SheetFrame label={label} frameClass={frameClass} frame={sheet} body={body} scrim={scrim} onScrim={close}>
       {children}
       <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
     </SheetFrame>
@@ -3780,9 +3786,18 @@ export function SettingsSheet() {
   }, [page, A.folderFocus]);
   const devPushed = page === "devices" && deviceCardShown(dev);
   return (
-    <Sheet label={t("settings.title")}>
+    <Sheet label={t("settings.title")} frameClass="settings-sheet" resetKey={page || "overview"}>
       {!sec ? (
-        <div class={`set-page${popped ? " popped" : ""}`} key="list">
+        <div class={`set-page${popped ? " popped" : ""}`} key="list" data-page="overview">
+          {/* D644 amendment: a full-height Settings is a place, not a glance; the list's way back
+              is the conversation, the panes' is 设置. Hidden on a wide sheet, where a tap outside
+              closes and the list keeps its one title. */}
+          <button class="set-back list-back" onClick={() => ((A.sheet = null), A.changed())} aria-label={t("nav.conversation")}>
+            <span class="back-chev" aria-hidden="true">
+              <Chev back />
+            </span>
+            {t("nav.conversation")}
+          </button>
           <h2>{t("settings.title")}</h2>
           {/* D469: the partner's brief on its own world, then where things live; the pages after. */}
           <SetBrief go={go} />
@@ -3790,7 +3805,7 @@ export function SettingsSheet() {
           <div class="set-card set-list">
             {/* D469: the brief replaced the partner's hero, so the partner is a row of the list again. */}
             {SECTIONS.filter((x) => x.page !== "peers" || peersPageShown()).map((x) => (
-              <button class="set-row" key={x.page} onClick={() => go(x.page)}>
+              <button class="set-row" key={x.page} data-page={x.page} onClick={() => go(x.page)}>
                 <SectionArt art={x.art} size={40} />
                 <span class="grow">
                   <b>{t(x.page === "peers" ? "settings.short.peers" : x.title)}</b>
@@ -3802,7 +3817,7 @@ export function SettingsSheet() {
           </div>
         </div>
       ) : (
-        <div class="set-page pushed" key={page}>
+        <div class="set-page pushed" key={page} data-page={page}>
           {!devPushed && (
             <>
               <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>

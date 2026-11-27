@@ -6,7 +6,7 @@ package i18n
 
 var zhPartners = Table{
 	"partners.title":             "伙伴们",
-	"partners.help":              "每个伙伴有自己的名字和对话，互相看不到。你的设备、账号和任务是大家一起用的。",
+	"partners.help":              "每个伙伴有自己的名字和对话，互相看不到；设备、账号和任务大家一起用。",
 	"partners.add":               "再加一个伙伴",
 	"partners.add.help":          "比如一个管工作、一个管家里，或者家里每人一个。",
 	"partners.add.name":          "叫它什么",
@@ -61,7 +61,7 @@ var zhPartners = Table{
 	"partners.thinks.acct":        "%s想事情也用它",
 	"partners.thinks.and":         "、",
 	"loadout.brain.title.default": "默认用什么想事情",
-	"loadout.brain.default.note":  "%s 和没单独选的伙伴都用这个。要给哪个伙伴单独选，点它的「修改」。",
+	"loadout.brain.default.note":  "%s 和没单独选的伙伴都用这个；要给哪一个单独选，点它的「修改」。",
 	"said.effort":                 "好，从你的下一句话开始，思考深度用「%s」。",
 	// D565: each partner's figure, its shape, and the one line of how it carries itself.
 	"partners.look.butter":       "奶黄",
@@ -85,7 +85,7 @@ var zhPartners = Table{
 
 var enPartners = Table{
 	"partners.title":             "Your partners",
-	"partners.help":              "Each partner has its own name and its own conversation, which the others can't see. Your devices, accounts and tasks are shared.",
+	"partners.help":              "Each partner has its own name and conversation, private from the others; devices, accounts and tasks are shared.",
 	"partners.add":               "Add a partner",
 	"partners.add.help":          "One for work and one for home, say, or one for each person in the family.",
 	"partners.add.name":          "Its name",
@@ -140,7 +140,7 @@ var enPartners = Table{
 	"partners.thinks.acct":        "Also thinks for %s",
 	"partners.thinks.and":         " and ",
 	"loadout.brain.title.default": "What partners think with by default",
-	"loadout.brain.default.note":  "%s and every partner without its own choice use this. To give one its own, choose Change on its row.",
+	"loadout.brain.default.note":  "%s and every partner without its own choice use this; to give one its own, choose Change on its row.",
 	"said.effort":                 "Got it: from your next message, I use %s effort.",
 	// D565: each partner's figure, its shape, and the one line of how it carries itself.
 	"partners.look.butter":       "Butter",

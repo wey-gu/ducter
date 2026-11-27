@@ -911,7 +911,7 @@ func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
 		a.chatStep(c, 2, a.L.T("mem.step.signin"), func() {
 			// D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account.
 			if phase != "signing_in" {
-				a.note(c, a.L.T("mem.step.account"))
+				a.note(c, a.L.T("mem.step.account", home))
 				if a.quietLink(c, "mem-account", a.L.T("mem.step.account.go"), a.L.T("mem.step.account.go")) {
 					a.openLink(memSite)
 				}

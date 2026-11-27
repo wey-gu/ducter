@@ -35,7 +35,7 @@ export const d475Words: { zh: Record<string, string>; en: Record<string, string>
     "say.todos.item": "%s has %s open",
     "say.todos.sep": ", ",
     "say.todos.n": "%s. Hand me any of them and I'll take it on.",
-    "say.chats.n": "You can reach me in %s too. It's still one conversation.",
+    "say.chats.n": "You can also reach me in %s. It's still one conversation.",
     "say.af.signins": "%d sign-ins",
     "say.af.signins.one": "1 sign-in",
     "say.af.cards": "%d cards",

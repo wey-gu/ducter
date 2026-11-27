@@ -13,6 +13,8 @@ import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
 const controls = readFileSync(join(import.meta.dir, "../src/controls.tsx"), "utf8");
+const views = readFileSync(join(import.meta.dir, "../src/views.tsx"), "utf8");
+const sheetFrame = readFileSync(join(import.meta.dir, "../src/sheet-frame.tsx"), "utf8");
 
 const CHROME = [
   process.env.CHROME_PATH,
@@ -119,6 +121,36 @@ window.__audit = (min) => {
 };
 </script></body></html>`;
 
+
+/** The real frame classes for a full-height Settings, without starting a core: the phone's top
+ *  detent and the wide form sheet are CSS, and the source test below holds Settings to the class. */
+const sheetProbe = (w: number, safe: number) => `<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>${css}
+html, body { margin: 0; height: 100%; }
+:root { --safe-top: ${safe}px; --safe-bottom: 0px; }
+</style></head><body>
+<div class="scrim"></div>
+<div class="sheet-frame settings-sheet" id="sf" role="dialog" aria-modal="true" aria-label="设置">
+  <div class="grab"></div>
+  <div class="sheet" id="sb">
+    <button class="set-back list-back"><span class="back-chev">‹</span>对话</button>
+    <h2>设置</h2>
+    <div class="set-page" data-page="overview">
+      <div class="set-brief"><p class="sb-lead">都好好的，我在这儿。</p></div>
+      <div class="set-card set-list"><button class="set-row"><span class="grow"><b>伙伴</b><small>在 Hetzner Server 上运行</small></span></button></div>
+    </div>
+  </div>
+</div>
+<script>
+window.__sheet = () => {
+  const f = document.getElementById('sf'), b = document.getElementById('sb');
+  const r = f.getBoundingClientRect();
+  const safe = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
+  const back = document.querySelector('.list-back');
+  return { top: r.top, height: r.height, width: r.width, vh: innerHeight, safe, pad: parseFloat(getComputedStyle(b).paddingTop) || 0, back: back ? getComputedStyle(back).display : '' };
+};
+</script></body></html>`;
+
 /** Chrome's websocket for the page target; Chrome must be the one this profile started. */
 async function cdp(port: number) {
   for (let i = 0; i < 100; i++) {
@@ -132,7 +164,7 @@ async function cdp(port: number) {
 }
 
 describe("Settings' shared controls hold at every width", () => {
-  test("no control under 44 on touch, none under 36 on a desktop, and nothing past the sheet", async () => {
+  test("no control under 44 on touch, none under 36 on a desktop, nothing past the sheet, and Settings at its top detent at 390", async () => {
     if (!CHROME) return; // a machine without Chrome already skips the other rendered geometry tests
     const dir = mkdtempSync(join(tmpdir(), "ducter-setgeom-"));
     const html = join(dir, "probe.html");
@@ -185,6 +217,30 @@ describe("Settings' shared controls hold at every width", () => {
         const bad = r.result?.value as string[];
         expect(bad, `${w}px: ${bad?.join("; ")}`).toEqual([]);
       }
+      // The full-height Settings on a phone / a split under 700; the 640 form sheet at 1180.
+      const sheetHtml = join(dir, "sheet.html");
+      for (const [w, h, safe] of [[390, 844, 47], [320, 640, 0], [1180, 820, 47]] as const) {
+        writeFileSync(sheetHtml, sheetProbe(w, safe));
+        await sc("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: w < 700, screenWidth: w, screenHeight: h });
+        if (w < 700) await sc("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+        else await sc("Emulation.setTouchEmulationEnabled", { enabled: false });
+        await sc("Page.navigate", { url: `file://${sheetHtml}` });
+        await Bun.sleep(250);
+        const r = await sc("Runtime.evaluate", { expression: "window.__sheet()", returnByValue: true });
+        const v = r.result?.value as { top: number; height: number; width: number; vh: number; safe: number; pad: number; back: string };
+        if (w < 700) {
+          expect(v.top, `${w}: Settings top ${v.top} ≤ safe ${v.safe} + 16`).toBeLessThanOrEqual(v.safe + 16);
+          expect(v.height, `${w}: full height`).toBeGreaterThanOrEqual(h - 1);
+          expect(v.width, `${w}: full width`).toBeCloseTo(w, 0);
+          expect(v.back, `${w}: the list's way back`).not.toBe("none");
+          expect(v.pad, `${w}: content below the safe area`).toBeGreaterThanOrEqual(v.safe + 12);
+        } else {
+          expect(v.top, "1180: still the wide form sheet").toBeGreaterThan(16);
+          expect(v.height, "1180: not full height").toBeLessThanOrEqual(h - 32);
+          expect(v.width, "1180: the 640 form sheet").toBeLessThanOrEqual(641);
+          expect(v.back, "1180: no list back on the wide sheet").toBe("none");
+        }
+      }
       await send("Target.closeTarget", { targetId });
       ws.close();
     } finally {
@@ -212,4 +268,10 @@ test("the choice's fit tries the words' own width before it folds", () => {
   expect(css).toMatch(/max-width: calc\(100% \+ var\(--chat-col\) \+ var\(--set-in, var\(--s4\)\)\)/);
   // A bare switch in a pushed page keeps its bare box (the switch row's 76-wide padding pushed tiles off).
   expect(css).toContain(".set-page.pushed .switch.bare");
+  // D644 amendment: Settings is the one sheet that opens at its top detent on a phone.
+  expect(views).toContain('frameClass="settings-sheet"');
+  expect(sheetFrame).toContain("sheet-frame${p.frameClass");
+  expect(css).toMatch(/@media \(max-width: 699px\) \{[\s\S]*?\.sheet-frame\.settings-sheet \{[\s\S]*?top: 0;[\s\S]*?height: 100dvh;/);
+  expect(css).toContain(".sheet-frame.settings-sheet .list-back");
+  expect(views).toContain('resetKey={page || "overview"}');
 });

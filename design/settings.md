@@ -1100,10 +1100,25 @@ filled with `demo-settings-real.ts` (`DEMO_PARTNERS=1`), plus `demo-first.ts DEM
   the email and phone as separate facts, and a key's **kept** as a readable `g-state`; This phone's
   **Folded keeps the conversation…** and its voice help.
 - **Held**: Devices (64 rows, 40 clay, hairlines, versions, the night switch), Agent messaging (the
-  picture names Ducter among an agent's words, D501's exception), the 640 form sheet at 1180.
+  picture names Ducter among an agent's words, D501's exception). The 640 form sheet stays at 1180;
+  a phone or a split pane under 700 is now full height (D644 amendment, below).
 - **Proposed, not built**: one shared Mem setup group for Memory and Agent messaging; per-computer
   version rows on the web; a Settings find/jump; a live-step Mem setup checklist; a live D296 flow
   walk of every said line and ask.
 - **Checked**: `bun run build:web`, both `tsc` gates, `bun test apps/web/test` 1286 / 0, the new
   `settings-polish-geometry.test.ts` (3 / 0: no control under 44 on touch or 36 on a desktop, no
   overflow at 320–1180), the settings suites 178 / 0, and the Mac's Mem-step test.
+
+
+### Full height on a phone (D644 amendment)
+
+The lead's review: the phone's Settings opened as a bottom sheet at its content height, so the
+first screen was **‹ 设置** and the pane title over the conversation. On a phone-width screen and a
+split pane under 700 the Settings frame is **`top: 0; height: 100dvh`**, square-topped, no grab,
+the content below `--safe-top`, the conversation not visible; the list has **‹ 对话 /
+Conversation** and each pane keeps **‹ 设置 / Settings**. The body resets to its top on every page
+change, so a list scrolled to its last row opens the next pane at its head. Dragging down at the
+top and the back rows close; a wide screen keeps the 640 form sheet. Checked by
+`settings-polish-geometry.test.ts` (top 0 ≤ safe + 16 at 390, full height at 390 and 320, 1180
+still 640 with no list back) and shots `.shots/settings-polish/fullheight/` (every pane's first
+screen at 390 × 844 and 320 × 640, before and after, wide samples and 2× top crops).

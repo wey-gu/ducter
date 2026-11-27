@@ -3461,6 +3461,32 @@ a.task-link {
   border-radius: 5px;
   background: var(--line);
 }
+/* D644 amendment: Settings and its panes are places you go to, not a glance. On a phone or a
+   split pane under 700 the sheet opens at its top detent — the whole screen, the safe area at
+   the top, the list's ‹ 对话 and each pane's ‹ 设置 as the ways back; no rounded top, no grab, and
+   no conversation behind it. A pointer drag down at the top still closes (sheetmotion.ts), and a
+   wide screen keeps the 640 form sheet below. */
+@media (max-width: 699px) {
+  .sheet-frame.settings-sheet {
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .sheet-frame.settings-sheet > .grab {
+    display: none;
+  }
+  .sheet-frame.settings-sheet > .sheet {
+    padding-top: calc(var(--safe-top) + 12px);
+  }
+  .sheet-frame.settings-sheet .list-back {
+    display: flex;
+  }
+}
 /* An iPad or a wide window (D176): a sheet stands in the middle as a card, like an iPad form
    sheet, not pinned to a far-away bottom edge; it has no grab. */
 @media (min-width: 700px) and (min-height: 640px) {
@@ -3763,6 +3789,11 @@ a.task-link {
   gap: var(--s2);
   justify-content: flex-end;
 }
+/* D644: the Settings list's way back to the conversation, only on a full-height phone sheet. */
+.set-back.list-back {
+  display: none;
+}
+
 .set-back {
   align-self: flex-start;
   display: flex;

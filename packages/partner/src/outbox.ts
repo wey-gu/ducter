@@ -44,8 +44,11 @@ export interface Outbox extends MemoryClient {
 }
 
 /** The key a save waits under: the same save is always the same key, shaped as a UUID for Mem's --id. */
-export function outboxKey(m: Pick<MemoryAdd, "title" | "content" | "provenance">): string {
-  const h = createHash("sha256").update(JSON.stringify([m.provenance.persona, m.provenance.logSeq ?? null, m.provenance.taskId ?? null, m.title, m.content])).digest("hex");
+export function outboxKey(m: Pick<MemoryAdd, "title" | "content" | "provenance"> & { replaces?: string }): string {
+  // D652: a correction of one id is its own key; an ordinary save's key is unchanged.
+  const parts: unknown[] = [m.provenance.persona, m.provenance.logSeq ?? null, m.provenance.taskId ?? null, m.title, m.content];
+  if (m.replaces) parts.push(m.replaces);
+  const h = createHash("sha256").update(JSON.stringify(parts)).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-8${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
@@ -149,6 +152,8 @@ export function withOutbox(inner: MemoryClient, o: { file: string; now?: () => n
     ...(inner.threads ? { threads: (q: string, n: number, to?: ThreadOpts) => inner.threads!(q, n, to) } : {}),
     ...(inner.forget ? { forget: (id: string) => inner.forget!(id) } : {}),
     ...(inner.correct ? { correct: (id: string, t: string) => inner.correct!(id, t) } : {}),
+    ...(inner.replace ? { replace: (id: string, t: string, p: MemoryAdd["provenance"], k?: "preference" | "decision" | "fact" | "other") => inner.replace!(id, t, p, k) } : {}),
+    ...(inner.feedback ? { feedback: (id: string, note?: string) => inner.feedback!(id, note) } : {}),
     ...(inner.archive ? { archive: (id: string) => inner.archive!(id) } : {}),
     ...(inner.restore ? { restore: (id: string, p: MemoryAdd["provenance"]) => inner.restore!(id, p) } : {}),
     waiting: () => new Set(pending().map((e) => e.key)),

@@ -245,13 +245,19 @@ What your partner remembers about you has its own section, **Memory**.
   notes anything, in the conversation or in its tasks; what it noted stays. When a task starts
   with a few memories, its page says so in one quiet line under your brief, **Brought n memories**;
   open it to see the titles, open one in **Memory**, or tap **This is wrong** to ask your partner
-  to correct it.
+  to correct it; the partner saves the right version in place of that exact memory, so the next task
+  and every other AI tool read the corrected one.
 - **What I know about you** groups what Nowledge Mem holds about you: **How you like things**,
   **What you decided** and **What it knows**, the newest of each first. What you told it is the usual source, so those lines
   say nothing more; a line from somewhere else says so (**Saved by Codex**, with Codex's mark, **You
   saved it**, or **Nowledge Mem drew it from your conversations**). Tap a line to **Fix** its words or
-  **Forget** it; forgetting asks first and reaches Nowledge Mem, so your other AI tools won't recall
-  it either, and your partner answers in one line (**OK, forgetting "…"**). **Search what it remembers** finds one thing. **Ask {name}
+  **Forget** it. **Fix** keeps your corrected words as the one every AI tool reads next: the old memory
+  is retired, whoever wrote it, and the row waits for Nowledge Mem before the partner says **OK, it now
+  reads "…"**. **Forget** asks first and reaches Nowledge Mem, so your other AI tools won't recall it
+  either (it is hidden, never deleted), and the partner says **OK, forgetting "…"** once Nowledge Mem
+  agrees. If Nowledge Mem didn't take a change (its sign-in lapsed, it can't be reached, or it refused),
+  one line says which right under the row, the memory stays exactly as it was, and the line tells you the
+  one way through. **Search what it remembers** finds one thing. **Ask {name}
   what it remembers about you** goes back to your conversation with that question ready to send; your
   partner answers in a few lines of its own, and you can tell it what's wrong there.
 - **Check this week's**, under the switch, opens what it noted about you in the last seven days.

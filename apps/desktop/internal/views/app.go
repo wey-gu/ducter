@@ -957,7 +957,7 @@ func (a *App) correctMemory(id, title string) {
 	if id == "" {
 		return
 	}
-	a.sendWords(a.L.T("task.recalled.wrong.words", title, id))
+	a.sendWords(a.L.T("task.recalled.wrong.words", title, id), id)
 	a.Route = RouteConversation
 }
 
@@ -1162,6 +1162,8 @@ func (a *App) readWhenSeen(c *ui.Context) {
 func (a *App) Welcomed() {
 	a.Failed = false
 	a.readSent = 0
+	// D652: the socket that was waiting for Mem is gone; the row stops waiting (a fresh page asks again).
+	a.memPage.busy, a.memPage.busyOp, a.memPage.busyTitle = "", "", ""
 	a.Status = client.Connected // a welcome means the socket is up
 	// D204: a clone in flight asks again on the new socket (the same clone, by its id).
 	a.resendClone()
@@ -1290,6 +1292,9 @@ func (a *App) Receive(f protocol.ServerFrame) {
 				a.send(protocol.AsksGet{T: "asks_get", IDs: ids})
 			}
 		}
+	case "mem_done":
+		// D652: 改 / 忘掉 on Memory answered after Nowledge Mem did (or didn't).
+		a.memDone(f.MemDone)
 	case "error":
 		// A decide the home refused answers nothing: put its card back.
 		if strings.HasPrefix(f.Message, "decide:") {

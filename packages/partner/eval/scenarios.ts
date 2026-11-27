@@ -66,6 +66,8 @@ export type Seed =
 export interface UserSay {
   text: string;
   replyTo?: string;
+  /** D652: the memory id a 这条不对 tap carried (the client's `send` frame carries it too). */
+  corrects?: string;
 }
 
 
@@ -214,6 +216,10 @@ export interface Expect {
   noRemember?: boolean;
   /** Text no memory_add call (even a refused one) may contain. */
   rememberForbid?: RegExp[];
+  /** D652: a save carried this `replaces` id (the person named the wrong memory this turn). */
+  replaces?: string;
+  /** D652: memory_add was called at least once (a refusal the partner should answer). */
+  memoryTried?: boolean;
   /**
    * D304: the 想起了 / Remembered source lines under the replies: exactly this many (0 = none), and,
    * when given, the one line names this memory (by its seed title) and is by this kind of source.
@@ -1860,6 +1866,30 @@ export const scenarios: Scenario[] = [
     expect: { lines: 1, opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK], rememberKind: "preference" },
     rubric:
       "A lasting preference. Pass if the partner saved it (memory_add) and answers with at most one short natural English line (\"Got it, pnpm from now on.\") or nothing, without saying it saved anything to memory. No task.",
+  },
+  // D652 (research/243 Brief A): a Codex-written wrong preference, corrected from a task's
+  // 带进来 line. The person's tap names the memory's id in their own words; the replacement supersedes
+  // that id, not only the partner's own earlier memory.
+  {
+    id: "mem-correct-codex-zh",
+    category: "memory",
+    lang: "zh",
+    memories: [...MEM_BACKGROUND, { id: "codex-friday", title: "周五下午可以发版", content: "周五下午发版没问题，出过几次都没事。", kind: "preference", source: "codex" }],
+    steps: [{ user: "「周五下午可以发版」这条记忆不对（codex-friday）。周五发版出过问题，以后周五都不发版，把对的存下来。", corrects: "codex-friday" }],
+    expect: { lines: 3, sentences: 3, opens: 0, remember: /周五|Friday/i, replaces: "codex-friday", msgs: [0, 2], maxChars: 160, forbid: [/已存入记忆|saved to memory|我查了|I searched|I checked/i] },
+    rubric:
+      "A task brought in a Codex-written preference (周五下午可以发版) and the user tapped 这条不对, naming its id and the correction in their own words (以后周五都不发版). Pass if the correction was saved and the reply does not say the old Friday line is still fine or ask the user to go delete it; a short ack or silence is fine. The deterministic check already confirms the save carried that id as `replaces`. Fail only on a claim that the old line is still in force, or a task opened.",
+  },
+  {
+    id: "mem-correct-refused-en",
+    category: "memory",
+    lang: "en",
+    memoryDown: "signed_out",
+    memories: [{ id: "codex-friday", title: "Deploy on Fridays is fine", content: "Releases can go out on Friday afternoons.", kind: "preference", source: "codex" }],
+    steps: [{ user: "“Deploy on Fridays is fine” is wrong (memory codex-friday). We don't deploy on Fridays. Save the correction now.", corrects: "codex-friday" }],
+    expect: { sentences: 4, opens: 0, msgs: [1, 3], maxChars: 300, memoryTried: true, noRemember: true, require: [/Nowledge Mem|memory/i, /sign|couldn|can't|cannot|not able|didn't|not saved|out of reach/i], forbid: [/^OK\b|saved to memory/i] },
+    rubric:
+      "The user names a wrong memory's title and id, gives the correction, and asks to save it, but Nowledge Mem isn't signed in on the home, so the correction could not be kept. Pass if the partner says the correction didn't save and points to Nowledge Mem's sign-in or Settings › Memory (naming that place or saying to sign in again is right; no button to press). A short line is fine. Fail only on claiming it was saved, or opening a task.",
   },
   {
     id: "mem-one-time-zh",

@@ -562,6 +562,18 @@ export function saidInConversation(said: string, heard: readonly string[]): bool
 }
 
 /**
+ * D652: memory_add's `replaces` is honoured only for an id the person themselves named (the
+ * 这条不对 tap's words, or the answer that follows it). Code checks only that the id is in their
+ * own recent words, never that a replacement is right: the model words it, the person's tap is the claim.
+ */
+export function namedInTurn(id: string, texts: readonly string[]): boolean {
+  // A model may copy the parentheses around the id (`（codex-friday）`): the id itself is the
+  // letters, digits, _ and - that Mem's ids are made of.
+  const bare = id.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
+  return !!bare && texts.some((t) => t.includes(bare));
+}
+
+/**
  * D304: a recall mark, [[m2]] (or a list, [[m1, m3]]: the first counts), wherever the partner put it.
  * D433: [[c1]] names one of the person's past conversations with another AI tool the same way.
  */
@@ -750,6 +762,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     add: (m) => (core.settings && !core.settings.get().memory ? noMemory.add(m) : memoryOn.add(m)),
     ...(memoryOn.threads ? { threads: (q: string, n: number, to?: ThreadOpts) => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.threads!(q, n, to)) } : {}),
     ...(memoryOn.about ? { about: () => (core.settings && !core.settings.get().memory ? Promise.resolve({ ok: false as const, reason: "not_configured" as const, message: "Memory is off for this partner." }) : memoryOn.about!()) } : {}),
+    // D652: the person said a recall was wrong; Mem hears it when its nmem has the verb.
+    ...(memoryOn.feedback ? { feedback: (id: string, note?: string) => (core.settings && !core.settings.get().memory ? Promise.resolve(false) : memoryOn.feedback!(id, note)) } : {}),
   };
   // D487: what their memory holds about them, read in the background and given to each fresh session.
   const known = createKnown({ ...(memory.about ? { about: memory.about } : {}), on: () => memoryOn !== noMemory && !(core.settings && !core.settings.get().memory), now });
@@ -771,6 +785,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   });
   if (memoryOn.forget) core.settings?.setForgetter((id) => memoryOn.forget!(id));
   if (memoryOn.correct) core.settings?.setCorrector?.((id, title) => memoryOn.correct!(id, title));
+  // D652: the page's 改 retires the memory by id: the corrected words are a new memory, and
+  // `m supersede` takes the wrong one out of every tool's recall, whoever wrote it.
+  if (memoryOn.replace) core.settings?.setReplacer?.((id, title, kind) => memoryOn.replace!(id, title, { persona: core.persona.id }, kind));
+  if (memoryOn.feedback) core.settings?.setFeedback?.((id, note) => memoryOn.feedback!(id, note));
   // D329: 撤销 / Undo on a Noted line: a save still waiting is dropped; one in Mem is archived (never
   // deleted), and the memory it replaced, if any, is written back as it was.
   core.settings?.setMemHooks?.({
@@ -3964,6 +3982,33 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
   );
 
+  /**
+   * D652: the id the person's own 这条不对 tap carried (a `send` frame's `corrects`, kept in the
+   * user_msg body), this turn or just before it. The tap is the claim; code needs no word from the
+   * model to use it.
+   */
+  const personCorrects = (t: TurnState | null): string | undefined => {
+    const evs = [...(t?.triggers ?? []), ...core.log.read({ stream: "channel", kinds: ["user_msg"], limit: HEARD_MESSAGES })];
+    for (let i = evs.length - 1; i >= 0; i--) {
+      const e = evs[i]!;
+      if (e.kind !== "user_msg" || (e.persona && e.persona !== core.persona.id)) continue;
+      const c = (e.body as Bodies["user_msg"]).corrects;
+      if (typeof c === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(c)) return c;
+    }
+    return undefined;
+  };
+  /**
+   * D652: what the person themselves recently said, for `replaces`: the turn's messages and
+   * their last few (the 这条不对 tap is one; the answer that says what is right is the next). Never a
+   * task's report: another tool's id is not the person naming it.
+   */
+  const personWords = (t: TurnState | null): string[] => {
+    const users = core.log
+      .read({ stream: "channel", kinds: ["user_msg"], limit: HEARD_MESSAGES })
+      .filter((e) => !e.persona || e.persona === core.persona.id)
+      .map((e) => (e.body as Bodies["user_msg"]).text ?? "");
+    return [...(t?.userTexts ?? []), ...users];
+  };
   /** D490: what memory_add's `said` may quote: the person's recent messages, and the reports this turn answers. */
   const heardWords = (t: TurnState | null): string[] => {
     const strings = (v: unknown, out: string[]): string[] => {
@@ -3982,7 +4027,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "memory_add",
-    "Remember something durable about the user in their long-term memory (Nowledge Mem): a preference they stated, a decision they made, a lasting fact about their work, projects or people, resting on words they said. Never secrets (keys, passwords, tokens), never task plumbing (ids, branches, worktrees, commits, progress), never one-off chatter or an instruction for one piece of work, never that a tool or computer can't do something. The app shows the user a small \"Noted\" line with the title, so don't announce it in your reply.",
+    "Remember something durable about the user in their long-term memory (Nowledge Mem): a preference they stated, a decision they made, a lasting fact about their work, projects or people, resting on words they said. Never secrets, task plumbing (ids, branches, worktrees, commits), one-off chatter or a single piece of work's instruction, or that a tool or computer can't do something. The app shows the user a small \"Noted\" line with the title, so don't announce it in your reply. When the user's own words name a wrong memory's id (这条不对), pass it as `replaces`.",
     {
       type: "object",
       properties: {
@@ -3991,13 +4036,21 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         said: { type: "string", description: "Their own words it rests on, copied exactly from their message (or a task's report)" },
         kind: { type: "string", enum: ["preference", "decision", "fact"], description: "preference: how they like things; decision: a choice they made; fact: about their work or people" },
         importance: { type: "number", description: "0..1, default 0.6; 0.8+ for explicit \"always/never\" rules" },
+        replaces: { type: "string", description: "When the user says a memory is wrong and their own words name its id (这条不对 / This is wrong), the id; the corrected memory replaces it" },
       },
       required: ["title", "content", "said", "kind"],
     },
-    async (args: { title?: unknown; content?: unknown; said?: unknown; kind?: unknown; importance?: unknown }) => {
+    async (args: { title?: unknown; content?: unknown; said?: unknown; kind?: unknown; importance?: unknown; replaces?: unknown }) => {
       const title = typeof args?.title === "string" ? args.title.trim().slice(0, 80) : "";
       const content = typeof args?.content === "string" ? args.content.trim().slice(0, 1200) : "";
       if (!title || !content) return { ok: false, error: "memory_add needs `title` and `content`." };
+      // D652: the wrong memory the person named, if their turn's own words carry its id. The
+      // model may only repeat what they named; an id it invents or carries from elsewhere is ignored.
+      const wanted = typeof args?.replaces === "string" ? args.replaces.trim() : "";
+      const byWords = wanted && turn && namedInTurn(wanted, personWords(turn)) ? wanted.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80) : undefined;
+      // The person's tap is the claim even when the model leaves `replaces` out: a correction that
+      // needs the model to repeat an id would not stick.
+      const named = byWords ?? (turn ? personCorrects(turn) : undefined);
       // D490: grounded writes. What is kept rests on words that were said: code checks only that they were
       // (an invariant), never what they mean; whether they are worth keeping is the partner's judgement.
       const said = typeof args?.said === "string" ? args.said.trim().slice(0, 400) : "";
@@ -4019,6 +4072,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         title,
         content,
         ...(kind ? { unitType: kind } : {}),
+        ...(named ? { replaces: named } : {}),
         importance: typeof args.importance === "number" ? args.importance : undefined,
         provenance: {
           persona: core.persona.id,
@@ -4027,6 +4081,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         },
       });
       noteMemState(r);
+      // D652: Mem hears that its recall was wrong, when its nmem has a feedback verb; the Log
+      // holds the intent either way (the page's own corrections record theirs in core settings).
+      if (r.ok && named) {
+        const sent = memory.feedback ? await memory.feedback(named, said).catch(() => false) : false;
+        core.log.append({ stream: "channel", origin: "system", kind: "memory_feedback", body: { memoryId: named, op: "fix", note: said, sent } });
+      }
       // D552: a save that can't wait in the outbox (Mem not signed in, or memory off) is lost. When the
       // person asked for it, a 「好」 with nothing kept breaks trust: they hear it once, plainly.
       // D563: and what they hear is the true reason, never "not signed in" for a Mem that isn't there.
@@ -4036,7 +4096,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });
       known.stale(); // D487: the next look reads what it holds now
       // D329: it replaced what it remembered before, or waits for Mem; either way the line says so, not the reply.
-      return { ok: true, note: `Remembered${r.replaced ? `, in place of what you remembered before (“${r.replaced.title}”)` : ""}. The user sees a small Noted line; don't mention it in your reply.` };
+      // D652: an id the person didn't name this turn is never superseded; the model hears so once.
+      const ignored = wanted && !named ? " The `replaces` id wasn't in the user's own words this turn, so nothing was superseded." : "";
+      return { ok: true, note: `Remembered${r.replaced ? `, replacing “${r.replaced.title}”` : ""}.${ignored} The user sees a small Noted line; don't mention it in your reply.` };
     },
   );
 

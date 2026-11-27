@@ -66,7 +66,7 @@ describe("confirm, correct, forget", () => {
     const ai = r.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "周五下午。" } });
     const line = r.log.append({ stream: "channel", origin: "partner", kind: "memory_recalled", body: { memoryId: "m_cc", title: "t", by: "tool", from: "Claude Code", aboutSeq: ai.seq } });
     const forgot: string[] = [];
-    r.settings.setForgetter((id) => (forgot.push(id), Promise.resolve(true)));
+    r.settings.setForgetter((id) => (forgot.push(id), Promise.resolve({ ok: true })));
     expect(await r.settings.forget(line.seq)).toBe("mem");
     expect(forgot).toEqual(["m_cc"]);
     expect((await r.settings.view()).mem.forgotten).toEqual([line.seq]);

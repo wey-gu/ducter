@@ -429,7 +429,7 @@ func (a *App) richChoices(c *ui.Context, m protocol.RichModel, at richAt) {
 
 // sendWords sends words a tap says for the person (a choice, a checklist's
 // progress) as their reply, without the composer's pictures or reply-to.
-func (a *App) sendWords(text string) {
+func (a *App) sendWords(text string, corrects ...string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return
@@ -439,6 +439,10 @@ func (a *App) sendWords(text string) {
 	a.pending = append(a.pending, pendingMsg{clientID: id, text: text, sent: true})
 	a.thinkingSince = a.Now()
 	a.markRead()
-	a.send(protocol.Send{T: "send", Text: text, ClientID: id})
+	c := ""
+	if len(corrects) > 0 {
+		c = corrects[0]
+	}
+	a.send(protocol.Send{T: "send", Text: text, ClientID: id, Corrects: c})
 	a.list.ScrollToEnd()
 }

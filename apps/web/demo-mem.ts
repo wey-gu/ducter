@@ -52,12 +52,20 @@ const store = (zh: boolean) => (kept ??= memories(zh));
 export const demoForget = async (id: string) => {
   const before = kept?.length ?? 0;
   kept = kept?.filter((x) => x.id !== id);
-  return (kept?.length ?? 0) < before;
+  return (kept?.length ?? 0) < before ? { ok: true as const } : { ok: false as const, reason: "rejected" as const };
 };
 export const demoFix = async (id: string, title: string) => {
   const it = kept?.find((x) => x.id === id);
   if (it) it.title = title;
   return !!it;
+};
+/** D652: the page's 改: a new memory takes the old one's place (a new id), like `m supersede`. */
+export const demoReplace = async (id: string, title: string) => {
+  const i = kept?.findIndex((x) => x.id === id) ?? -1;
+  if (i < 0) return { ok: false as const, reason: "rejected" as const };
+  const next = `m_fix${i}_${Date.now()}`;
+  kept = kept!.map((x, j) => (j === i ? { ...x, id: next, title } : x));
+  return { ok: true as const, id: next };
 };
 
 /** The fake `nmem --json …` for core's Bridge row and Mem glance. */
@@ -124,11 +132,11 @@ type DemoLog = { append(e: { stream: string; origin: string; kind: string; body:
  * it learned, a reply that leaned on the person's own words (想起了你 … 说的), and one that leaned on
  * what Claude Code saved (想起了 Claude Code … 记下的). Forget and corrections "reach Mem" (a fake).
  */
-export function seedRecall(core: { log: DemoLog; settings: { learnedThisWeek(at: number): number; setForgetter(f: (id: string) => Promise<boolean>): void; setCorrector?(f: (id: string, t: string) => Promise<boolean>): void } }, zh: boolean, setSkew: (ms: number) => void) {
+export function seedRecall(core: { log: DemoLog; settings: { learnedThisWeek(at: number): number; setForgetter(f: (id: string) => Promise<{ ok: boolean }>): void; setCorrector?(f: (id: string, t: string) => Promise<boolean>): void } }, zh: boolean, setSkew: (ms: number) => void) {
   const log = core.log;
   const day = 86_400_000;
   const ymd = (back: number) => new Date(Date.now() - back).toISOString().slice(0, 10);
-  core.settings.setForgetter(async () => true);
+  core.settings.setForgetter(async () => ({ ok: true }));
   core.settings.setCorrector?.(async () => true);
   const week = core.settings.learnedThisWeek(Date.now());
   setSkew(-3 * 3600_000);

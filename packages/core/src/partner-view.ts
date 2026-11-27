@@ -224,6 +224,8 @@ export function partnerView(o: PartnerViewOptions): CoreApi {
     // Forgetting, correcting and the trusted agents are the default's (Settings › 伙伴), for now.
     setForgetter: () => {},
     setCorrector: () => {},
+    setReplacer: () => {},
+    setFeedback: () => {},
     setMemState: (s: "connected" | "missing") => core.settings!.setMemState(s),
   };
   // D536: the holds as seen from its own agent while it has one, else the default's view of them.

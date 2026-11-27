@@ -1437,6 +1437,8 @@ type Send struct {
 	App string `json:"app,omitempty"`
 	// Via (D277): "imessage" when the Mac app's iMessage bridge relays it.
 	Via string `json:"via,omitempty"`
+	// Corrects (D652): the memory id the person's 这条不对 tap named.
+	Corrects string `json:"corrects,omitempty"`
 	// Refs (D534): what the words refer to with @ or /.
 	Refs []Ref `json:"refs,omitempty"`
 }
@@ -2243,10 +2245,33 @@ type MemForget struct {
 }
 
 // MemFix fixes one memory's words on Settings › 记忆 by Mem's id (D321).
+// D652: Kind is the row's kind, so the replacement Mem keeps it.
 type MemFix struct {
 	T     string `json:"t"` // "mem_fix"
 	ID    string `json:"id"`
 	Title string `json:"title"`
+	Kind  string `json:"kind,omitempty"`
+}
+
+// MemDone is the answer to mem_forget / mem_fix, after Nowledge Mem answered
+// (D652). OK false: the row is as it was; Why says signed_out,
+// unreachable or refused, in D590's words.
+type MemDone struct {
+	ID    string `json:"id"`
+	Op    string `json:"op"` // fix | forget
+	OK    bool   `json:"ok"`
+	Why   string `json:"why,omitempty"`
+	Title string `json:"title,omitempty"`
+	NewID string `json:"newId,omitempty"`
+}
+
+func decodeMemDone(data []byte, f ServerFrame) (ServerFrame, error) {
+	var m MemDone
+	if err := json.Unmarshal(data, &m); err != nil {
+		return f, err
+	}
+	f.MemDone = &m
+	return f, nil
 }
 
 // MemFind searches Mem for Settings › 记忆 (D321); answered by mem_found.
@@ -3382,6 +3407,8 @@ type ServerFrame struct {
 	MemFound *MemFound `json:"-"`
 	// MemAnswered is mem_answered (D465), decoded on its own (its answer is a word, not a WbAnswer).
 	MemAnswered *MemAnswered `json:"-"`
+	// MemDone is mem_done (D652): whether Nowledge Mem took a memory's 改 / 忘掉.
+	MemDone *MemDone `json:"-"`
 	// MemFile (D566) is a mem_file_save answer: kept, or why not.
 	MemFile *MemFileAnswer `json:"-"`
 	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
@@ -3612,6 +3639,9 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "mem_answered":
 		// D465: its "answer" is a word where the shared struct's is the workbench's.
 		return decodeMemAnswered(data, ServerFrame{T: head.T})
+	case "mem_done":
+		// D652: a memory's 改 / 忘掉 was answered after Mem did (or didn't).
+		return decodeMemDone(data, ServerFrame{T: head.T})
 	}
 	var f ServerFrame
 	if err := json.Unmarshal(data, &f); err != nil {
@@ -3656,6 +3686,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeMemFound(data, f)
 	case "mem_answered":
 		return decodeMemAnswered(data, f)
+	case "mem_done":
+		return decodeMemDone(data, f)
 	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result":
 		return decodeSources(data, f)
 	default:

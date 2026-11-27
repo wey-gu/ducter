@@ -136,6 +136,13 @@ type memPageState struct {
 	copiedAt            time.Time
 	ruleOff             string // D465: the rule asked to turn off, in place
 	checkOpen           bool   // D569: Mem's asks opened from their one quiet row
+	// D652: 改 / 忘掉 wait for Mem; a refusal leaves the row as it was with why.
+	busy      string // the memory being changed
+	busyOp    string // fix | forget
+	busyTitle string // what the partner's said line will name
+	failed    string // the memory Mem didn't take
+	failedOp  string
+	failedWhy string
 }
 
 // memFind sends the search's words to Mem now ("" clears it).
@@ -177,49 +184,76 @@ func (a *App) openMemory(id, title string) {
 	a.openTab(TabMemory)
 }
 
-// memForget forgets one memory by Mem's id: it leaves the page at once, and
-// the partner says so in its one word under the section (D459, D296).
+// memForget forgets one memory by Mem's id (D321). D652: the row waits for Mem's answer; on a
+// success the partner's word follows (mem_done), on a refusal the row is as it was with one line.
 func (a *App) memForget(id, title string) {
-	drop := func(xs []protocol.MemItem) []protocol.MemItem {
-		var out []protocol.MemItem
-		for _, x := range xs {
-			if x.ID != id {
-				out = append(out, x)
-			}
-		}
-		return out
-	}
-	if m := a.S.Mem; m != nil && m.Glance != nil {
-		m.Glance.About = drop(m.Glance.About)
-	}
-	if f := a.S.MemFound; f != nil {
-		f.Items = drop(f.Items)
-	}
+	ps := &a.memPage
+	ps.busy, ps.busyOp, ps.busyTitle = id, "forget", title
+	ps.failed = ""
 	a.send(protocol.MemForget{T: "mem_forget", ID: id})
-	a.say("mem-about", a.L.T("said.mem.forget", title))
 }
 
-// memFix fixes one memory's words by Mem's id: the page shows them at once.
-func (a *App) memFix(id, title string) {
+// memFix fixes one memory's words by Mem's id (D321). D652: the corrected words are a new
+// memory that supersedes this one (Mem's id changes); the row waits for Mem's answer.
+func (a *App) memFix(id, title, kind string) {
 	words := strings.Join(strings.Fields(title), " ")
 	if words == "" {
 		return
 	}
-	fix := func(xs []protocol.MemItem) {
-		for i := range xs {
-			if xs[i].ID == id {
-				xs[i].Title = words
+	ps := &a.memPage
+	ps.busy, ps.busyOp, ps.busyTitle = id, "fix", words
+	ps.failed = ""
+	a.send(protocol.MemFix{T: "mem_fix", ID: id, Title: words, Kind: kind})
+}
+
+// memDone settles a 改 or 忘掉 on Settings › 记忆 after Nowledge Mem answered (D652): the said
+// line only on a success, one line in the failed ink and the row as it was otherwise.
+func (a *App) memDone(f *protocol.MemDone) {
+	if f == nil {
+		return
+	}
+	ps := &a.memPage
+	title := ps.busyTitle
+	ps.busy, ps.busyOp, ps.busyTitle = "", "", ""
+	if f.OK {
+		ps.failed = ""
+		// A fix is a new memory: a search result shows the corrected one, under its new id; a
+		// forgotten one leaves the search too, now that Mem did it.
+		if got := a.S.MemFound; got != nil {
+			if f.Op == "forget" {
+				kept := got.Items[:0]
+				for _, it := range got.Items {
+					if it.ID != f.ID {
+						kept = append(kept, it)
+					}
+				}
+				got.Items = kept
+			} else if f.Op == "fix" && f.NewID != "" {
+				for i := range got.Items {
+					if got.Items[i].ID == f.ID {
+						got.Items[i].ID = f.NewID
+						if f.Title != "" {
+							got.Items[i].Title = f.Title
+						}
+					}
+				}
 			}
 		}
+		key := "said.mem.fix"
+		if f.Op == "forget" {
+			key = "said.mem.forget"
+		}
+		if f.Title != "" {
+			title = f.Title
+		}
+		a.say("mem-about", a.L.T(key, title))
+		return
 	}
-	if m := a.S.Mem; m != nil && m.Glance != nil {
-		fix(m.Glance.About)
+	ps.failed, ps.failedOp = f.ID, f.Op
+	ps.failedWhy = f.Why
+	if ps.failedWhy == "" {
+		ps.failedWhy = "refused"
 	}
-	if f := a.S.MemFound; f != nil {
-		fix(f.Items)
-	}
-	a.send(protocol.MemFix{T: "mem_fix", ID: id, Title: words})
-	a.say("mem-about", a.L.T("said.mem.fix", words))
 }
 
 // memRow is one memory, tapped open in place: where it came from as its
@@ -239,21 +273,21 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem, bare bool) {
 	t := a.T
 	ps := &a.memPage
 	open := ps.open == m.ID
-	if open && ps.mode == "ask" {
+	if open && ps.mode == "ask" && ps.busy != m.ID {
 		keep, goOn := a.confirmRow(c, "memi:"+m.ID, a.L.T("mem.item.forget.ask", m.Title), a.L.T("mem.forget.keep"), a.L.T("partner.memory.forget"), m.Title)
 		if keep {
 			ps.mode = ""
 		}
 		if goOn {
-			ps.open, ps.mode = "", ""
+			ps.mode = ""
 			a.memForget(m.ID, m.Title)
 		}
 		return
 	}
-	if open && ps.mode == "fix" {
+	if open && ps.mode == "fix" && ps.busy != m.ID {
 		save := func() {
-			ps.open, ps.mode = "", ""
-			a.memFix(m.ID, ps.fixText)
+			ps.mode = ""
+			a.memFix(m.ID, ps.fixText, m.Kind)
 		}
 		a.textBlock(c, "memfix:"+m.ID, func() {
 			ui.TextInput(c.Key("memfix-in:"+m.ID), &ps.fixText).Label(a.L.T("learned.fix")).
@@ -295,14 +329,31 @@ func (a *App) memRow(c *ui.Context, m protocol.MemItem, bare bool) {
 		}
 	}
 	if open {
-		a.footRow(c, "memi-acts:"+m.ID, a.L.T("mem.item.wrong"), func() {
-			if a.quietButton(c, "memi-fix:"+m.ID, a.L.T("learned.fix"), m.Title, false, 0) {
-				ps.mode, ps.fixText = "fix", m.Title
+		// D652: the row waits for Nowledge Mem; a refusal is one line in the failed ink,
+		// under the row as it was, and the actions stay for a retry.
+		if ps.busy == m.ID {
+			a.footRow(c, "memi-busy:"+m.ID, "", func() {
+				a.busyButton(c, a.L.T("mem.done.wait"), m.Title, t.ControlSM, t.Surface)
+			})
+		} else {
+			if ps.failed == m.ID {
+				why := ps.failedWhy
+				if why == "" {
+					why = "refused"
+				}
+				a.textBlock(c, "memi-failed:"+m.ID, func() {
+					uiText(c, a.L.T("mem.done.failed."+ps.failedOp, a.L.T("mem.done.why."+why))).FontSize(t.SM).TextColor(t.Failed.Ink).LineHeight(a.leading(1.5))
+				})
 			}
-			if a.quietDanger(c, "memi-forget:"+m.ID, a.L.T("partner.memory.forget"), m.Title) {
-				ps.mode = "ask"
-			}
-		})
+			a.footRow(c, "memi-acts:"+m.ID, a.L.T("mem.item.wrong"), func() {
+				if a.quietButton(c, "memi-fix:"+m.ID, a.L.T("learned.fix"), m.Title, false, 0) {
+					ps.mode, ps.fixText = "fix", m.Title
+				}
+				if a.quietDanger(c, "memi-forget:"+m.ID, a.L.T("partner.memory.forget"), m.Title) {
+					ps.mode = "ask"
+				}
+			})
+		}
 	}
 }
 

@@ -152,6 +152,14 @@ export function createMemGlance(opts: { run: NmemCall; on: () => boolean; change
       if (!last?.about.some((x) => x.id === id)) return;
       set({ ...last, about: last.about.map((x) => (x.id === id ? { ...x, title: clip(title) } : x)) });
     },
+    /**
+     * D652: the row was corrected by a replacement (new memory + supersede): its id changes, its
+     * words and kind stay where the row was. The next read of Mem reconciles the rest.
+     */
+    replaced(oldId: string, newId: string, title: string, kind?: MemItem["kind"]) {
+      if (!last?.about.some((x) => x.id === oldId)) return;
+      set({ ...last, about: last.about.map((x) => (x.id === oldId ? { ...x, id: newId, title: clip(title), ...(kind ? { kind } : {}) } : x)) });
+    },
     /** D321: search Mem for the page; undefined when Mem didn't answer. */
     async find(q: string): Promise<MemItem[] | undefined> {
       const words = q.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);

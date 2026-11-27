@@ -514,6 +514,12 @@ line.
   mark the partner adds. Trigger: the next persona change (it needs one more line and its eval).
 - [ ] **One fix at Memory's head while Mem is signed out**: an agent plugin's update then waits under the sign-in, not
   beside it. Trigger: D589's Settings pass lands.
+- [ ] **Mem hears that a recall was wrong** (D652): 改, 忘掉 and 这条不对 record the intent in the Log
+  (`memory_feedback`) and send it to Mem only when its nmem has a feedback verb. Trigger: **nmem gains
+  `m feedback`**. Then read that verb's own `--help` and correct `createNmemClient.feedback`'s argv before
+  trusting it (today's shape is borrowed from Mem's MCP `memory_feedback` and unverified); replay the Log's
+  `sent: false` records where the person still means it. The ask is in `research/private/mem-feedback-ask-2026-11-27.md`
+  (not sent).
 
 ## What Mem would like checked (D465, research/202)
 

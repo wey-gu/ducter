@@ -163,6 +163,22 @@ func TestMemoryTab(t *testing.T) {
 			t.Fatalf("忘掉 sent %v", (*sent)[n:])
 		}
 		tt.Frame()
+		// D652: the row waits for Mem; nothing is said and nothing leaves before it answers.
+		if !hasText(tt, L.T("mem.done.wait")) || hasText(tt, L.T("said.mem.forget", first.Title)) {
+			t.Fatalf("after the tap: %q", tt.Texts())
+		}
+		if !hasText(tt, autospace(first.Title)) {
+			t.Fatalf("the row left before Mem answered: %q", tt.Texts())
+		}
+		// Mem took it: the row leaves (as the fresh settings frame would show) and the word comes.
+		app.Receive(protocol.ServerFrame{T: "mem_done", MemDone: &protocol.MemDone{ID: first.ID, Op: "forget", OK: true, Title: first.Title}})
+		for i, x := range app.S.Mem.Glance.About {
+			if x.ID == first.ID {
+				app.S.Mem.Glance.About = append(app.S.Mem.Glance.About[:i], app.S.Mem.Glance.About[i+1:]...)
+				break
+			}
+		}
+		tt.Frame()
 		for _, x := range tt.Texts() {
 			if x == first.Title || x == autospace(first.Title) {
 				t.Fatalf("a forgotten memory is still shown")
@@ -186,8 +202,13 @@ func TestMemoryTab(t *testing.T) {
 		if err := tt.Click(spoken(L, L.T("learned.save"), second.Title)); err != nil {
 			t.Fatal(err)
 		}
-		if fx, ok := (*sent)[len(*sent)-1].(protocol.MemFix); !ok || fx.ID != second.ID || fx.Title != "Chat in Chinese" {
+		if fx, ok := (*sent)[len(*sent)-1].(protocol.MemFix); !ok || fx.ID != second.ID || fx.Title != "Chat in Chinese" || fx.Kind != second.Kind {
 			t.Fatalf("改 sent %v", (*sent)[n:])
+		}
+		app.Receive(protocol.ServerFrame{T: "mem_done", MemDone: &protocol.MemDone{ID: second.ID, Op: "fix", OK: true, Title: "Chat in Chinese"}})
+		tt.Frame()
+		if !hasText(tt, L.T("said.mem.fix", "Chat in Chinese")) {
+			t.Fatalf("no word after the fix: %q", tt.Texts())
 		}
 		// Search: the words go to Mem; only the answer to them is shown.
 		app.memFind("Weizhen")

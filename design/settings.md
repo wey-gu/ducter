@@ -45,7 +45,7 @@ with the author's accounts laid over it (`.shots/d296/before`, `.shots/d296/afte
 |---|---|---|---|
 | A row that goes elsewhere, with its tile | `tileLinkRow` (`settings_rows.go`) | the list rows of the phone's Settings | AI accounts → Devices (the agents' coins); Your devices and AI accounts (a clay laptop) |
 | A switch alone at a row's right edge | `switchControl` in `tileRow` | `Switch` (`controls.tsx`, D295) | Use my voice; a service's 自己留意 |
-| The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch |
+| The partner's one word after a change | `say` / `saidLine` (`settings_rows.go`) | `say` / `Said` (`set-grid.tsx`) | Quiet hours, the default wait, a service's watch switch, To-do sources' choices and removal, Agent messaging's trust changes, a rule's removal, a folder move |
 | A list of names of one kind | `listWords` (、 / , ) | `t("acct.sep")` | oo's accounts; your details |
 | A thing never set up, resting until chosen (D337, D365) | `chatHeadWith` + `chatSetUp` (`chats.go`); the own number's group | `Resting` (`channels.tsx`); `own-phone.tsx` | Chat apps (Telegram, Slack, Feishu / Lark, WeChat); calls from your own number |
 | A choice of a few as a row, the choice at the right edge (D432) | `tileRow` with `choices` | `chat-row` with `Seg` | 等多久再按默认做, 每天最多, To-do sources' 新的来了 and 做完以后 |
@@ -68,7 +68,13 @@ stay quiet from 23:00 to 08:00 and tell you everything after.**), quiet hours of
 switch (**好，Slack bot 我自己留意着。/ Got it: I'll keep an eye on Slack bot myself.** · **好，
 Slack bot 你问起来我再看。/ Got it: I'll look at Slack bot only when you ask.**), a partner's new
 figure (D565: **好，我现在是{figure}了，还是我。/ There: I'm {figure} now. Still me.**, said by that
-partner, its small figure in its new shape where the pebble pops in). It is a 12-point
+partner, its small figure in its new shape where the pebble pops in). D296's later changes say what
+will now happen, never "done" for the tap: **新的来了** and **做完以后** on To-do sources (**好，新来的待办
+我会直接开任务做。**, **好，做完以后我会在 GitHub 上留言并关掉。**), a source's removal (**好，移除了
+{name}。已经接下的事还在；它们在那个软件里的变化，我不再看了，也不会再写回去。**), Agent messaging's
+**改成先问你 / 不再听它的 / 恢复**, a rule's removal (**好，以后不按「{rule}」了。**) and the Ducter folder's
+move (**好，以后的活儿都在 {path} 里做。**). Each is said only after the home's own frame shows the change.
+It is a 12-point
 clay pebble on the done ink that pops in on Bouncy's spring (web `--t-pop` on `--spring-soft`)
 and the line in the soft ink rising 4 on Across's spring, under the group on the text edge; it
 goes after 4 s. Reduced motion: it appears and goes without moving. Never a toast; never for a
@@ -207,8 +213,10 @@ zh light, demo cores on fresh data folders):
 A new pane after 账号 / Accounts, for the developer with issues and the consumer with an Obsidian vault;
 the fresh user sees what it is and nothing happens until something is added. Each source is one group
 (its own mark, whose or which folder, counts apart), two segments (新的来了, 做完以后), the standing line,
-a quiet 移除 that asks in place; then 还能加上 (the home's gh, the vaults Obsidian lists there, a folder by
-path, Jira coming soon). Flows and words: `task-sources.md` §6.
+a quiet 移除 that asks in place and says what stays; then 还能加上 (the home's gh, the vaults Obsidian lists
+there, a folder by path, and Jira as one line: **Jira 的分给你的事项，即将推出。**). A failed source is one
+sentence in the person's language, the app's own words behind **详情**, and **再试一次**. Flows and words:
+`task-sources.md` §6.
 
 ## The pass of 0.0.79 (research/135, D365)
 
@@ -862,7 +870,7 @@ errors (`DEMO_NEEDS=1`) and empty (a bare demo core): `.shots/settings-r5/{befor
 **The walk, as the three people.** H (four partners, a server home, OOMOL down) opens Overview: three needs, each
 with its way, in one column now; Accounts says OOMOL once with 再试一次 and its rows fade; Partner's rows are one
 height. C opens Passwords & cards on a phone: their details read as three things, the number whole. F on a Mac
-with nothing set up: To-do sources offers 可以加上 (never 还能加上 over nothing); Where it runs names this Mac once.
+with nothing set up: To-do sources offers 可以加上这些 (never 还能加上 over nothing); Where it runs names this Mac once.
 The partner's word after each change (D296) was walked where it exists (quiet hours, the wait, a watch switch, a
 figure, the files switch) and held.
 
@@ -872,7 +880,7 @@ figure, the files switch) and held.
 | 2 | Partner, the one you're talking with | **正在聊** a third line; its **改一下** alone below, off the actions' edge | **正在聊** the shared state word (`tag` on) where the others have **换到**; **改一下** after it |
 | 3 | Passwords & cards › Your details, phone | **+86 / 138 0000 0000** | A phone number never breaks at its spaces |
 | 4 | Where it runs, a home on this Mac this window didn't start | A card with only **这台 Mac**, over the map naming it again | The group shows only with something to do |
-| 5 | To-do sources, nothing added | **还能加上** over **还没有加上的** | **可以加上** |
+| 5 | To-do sources, nothing added | **还能加上** over **还没有加上的** | **可以加上这些** |
 | 6 | Accounts, nothing connected, phone | **连接 Tuwa** squeezed **用 Tuwa 打**'s line to a five-line strip | A group's head row drops its button under its words as every row does (D468); a switch never |
 
 Left, with reasons, in D589.
@@ -885,10 +893,9 @@ Left, with reasons, in D589.
 - D469's owed: a comprehension pass on Overview's labels; the author's review; Mem's questions answered on
   Overview (they need their two memories read: Memory's job for now).
 - D459's leftovers: Accounts' connection added and the phone's sign-in still answer with a boxed notice at the
-  top (`partnerToast`), not the said line; the web's quiet hours are the browser's time fields where the Mac
-  has pills; 发现了就说's four choices stack into a tall block on a phone; the web titles a memory kind
-  inside its card (`g-cap`), the Mac above it; Agent messaging's problems are bold sentences, not a title and
-  a line.
+  top (`partnerToast`), not the said line; 发现了就说's four choices stack into a tall block on a phone; the web
+  titles a memory kind inside its card (`g-cap`), the Mac above it; Agent messaging's problems are bold
+  sentences, not a title and a line.
 - A comprehension pass with people on the said lines and on a row with no state word.
 - The web has no AI accounts row on Accounts (the phone has no Devices page of its own there);
   its Partner page keeps the tray-less lists (D89).
@@ -992,7 +999,8 @@ its computer, with its real path everywhere.
   devices. With `DUCTER_FOLDER` set the row says **由 DUCTER_FOLDER 设定 / Set by DUCTER_FOLDER**,
   has no chevron and doesn't open.
 - **The sheet** (the row open in place): **改成 ~/Ducter / Change it to ~/Ducter** first on a Mac
-  whose folder is still lowercase (one tap: a case-only rename, two renames on APFS),
+  whose folder is still lowercase (a case-only rename, two renames on APFS; it asks in place first:
+  **把 Ducter 文件夹搬到 ~/Ducter？**, then **搬到 ~/Ducter / Move it to ~/Ducter**),
   **选一个位置… / Choose a location…** (macOS's own folder picker on this Mac; a path field for
   another computer), **搬过去 / Move it there**, and **在访达中显示 / Show in Finder** for this Mac.
 - **States.** While it moves the row says **在搬… / Moving…**. Refused because tasks are working in
@@ -1001,6 +1009,8 @@ its computer, with its real path everywhere.
   a target holding things, a folder inside itself, Ducter's own data folder, a computer away or too
   old. Done, one line under the row: **Ducter 文件夹搬到 {path} 了，{n} 个项目和 {m} 个工作副本
   一起搬过去。 / The Ducter folder moved to {path}, with {n} projects and {m} working copies.**
+  The partner's word follows the home's answer, under the row: **好，以后的活儿都在 {path} 里做。 / Got it:
+  from now on the work lives in {path}.**
 - **The wires.** `folder_change {path, device?, clientId}` →
   `folder_change_result {ok, from?, path?, projects?, worktrees?, repaired?, tasks?, reason?}`.
   `DeviceView.folder {path, why}` carries the real path; `DucterFolderView.why` says `env`/`chosen`.

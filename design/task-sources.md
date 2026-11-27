@@ -79,14 +79,23 @@ place (the same inode: Obsidian and the syncs keep following the file):
 - **Settings › 待办来源 / To-do sources** (after 账号 / Accounts): the lede; one card per source (its mark,
   its name, whose or which folder, counts **{n} 个没做完** **{n} 个在做** as separate facts (D351: only after a look
   that read the list; GitHub's is the true total, **至少 {n} 个没做完** when only a bound is known, and
-  **{n} 个 PR 等你 review** apart; before a look **正在看…**; a failed look **没能读到 {app}。**, its reason
-  apart, and **再试一次**), **新的来了** and
+  **{n} 个 PR 等你 review** apart; before a look **正在看…**; a failed look **没能读到 {app}。** in the person's
+  language, the source's own words behind **详情**, and **再试一次**), **新的来了** and
   **做完以后** as segments, which part it reads as labelled 44-tall fields saved on Return or leaving them (D348:
   GitHub **只看这些仓库** as owner/repo by commas, blank = every repository; a vault **看哪个文件夹** and **只看带这个标签的**,
   blank = the whole vault, any tag; `source_set`, read by the adapters from the next look), the standing line, a problem row, a quiet **移除** that asks in place:
-  **移除 {name}？已经接下的事还在。**); **还能加上**: GitHub always while it isn't added (D345: **连上** signs the home in, in place, putting gh there first when it isn't; signed in, it is a source with its defaults), each vault Obsidian
-  lists on the home, **加上一个 Obsidian 库…** by folder, and **Jira** with **即将推出 / Coming soon**. Its clay
-  art (D348): `set_todos`, a cream note page with one box ticked in mint and one still open.
+  **移除 {name}？已经接下的事还在；它们在那个软件里的变化，我不再看了，也不会再写回去。** — a bound task keeps its
+  chip and its to-do, but nothing is read from or written back to that source after it is gone); **还能加上**: GitHub
+  always while it isn't added (D345: **连上** signs the home in, in place, putting gh there first when it isn't; signed
+  in, it is a source with its defaults), each vault Obsidian lists on the home, **加上一个 Obsidian 库…** by folder (with
+  nothing added the heading is **可以加上这些 / You can add these**), and **Jira** as one line **Jira 的分给你的事项，
+  即将推出。/ Jira issues assigned to you are coming soon.** Its clay art (D348): `set_todos`, a cream note page
+  with one box ticked in mint and one still open.
+- **D296's word after a choice or a removal** (one partner line under the source, only once the home's answer):
+  **新的来了** → **好，新来的待办我会直接开任务做。** / **好，新来的待办我会在对话里跟你说一声。** /
+  **好，新来的待办我不再提，你问起来我再看。**; **做完以后** → **好，做完以后我会在 GitHub 上留言并关掉。**
+  (or 留言 / 先问你 / 勾掉 / 不动它); a removal → **好，移除了 {name}。已经接下的事还在；它们在那个软件里的变化，
+  我不再看，也不会再写回去。** The words say what will now happen, never "done" for the tap.
 - **The chip** (opened task's meta line, On hand cards, New task's pick, the write card): the app's own
   mark (D314) and `repo#12` or the note's name; it opens the to-do in its app (`obsidian://open…` for a
   vault line); beside it, apart (D291): **已留言 / Commented**, **已关掉 / Closed**, **已勾掉 / Ticked off**,

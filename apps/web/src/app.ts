@@ -451,7 +451,11 @@ class AppState {
   devices?: DeviceView[];
   /** D611: each computer's Ducter folder row: its editor, the move in flight, the tasks that kept it
    *  and the line a move left. */
-  folderRows: Record<string, { open?: boolean; busy?: boolean; cid?: string; err?: string; done?: string; tasks?: { taskId: string; title: string }[]; typed?: string }> = {};
+  folderRows: Record<string, { open?: boolean; busy?: boolean; ask?: boolean; cid?: string; err?: string; done?: string; tasks?: { taskId: string; title: string }[]; typed?: string }> = {};
+  /** D296: one word the home owes after a consequential change, with the state that proves it landed.
+   *  Never said on the tap: only a frame from the home can keep it (a change whose answer never came says
+   *  nothing). `want` reads the state the home just sent; a stale entry is dropped after SAY_AFTER_MS. */
+  private saidAfter: { key: string; text: string; want?: () => boolean; at: number }[] = [];
   /** D611: the computer whose folder row to open after a New task clone line tapped it. */
   folderFocus?: string;
   /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
@@ -989,7 +993,13 @@ class AppState {
     if (f.t === "mem_answered") return void ((this.memSettleFailed = f.ok ? undefined : f.id), this.changed());
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
-    if (f.t === "rules") return void ((this.rules = f.rules), (this.ruleDefaults = f.defaults ?? []), (this.standing = f.standing ?? []), this.changed());
+    if (f.t === "rules") {
+      this.rules = f.rules;
+      this.ruleDefaults = f.defaults ?? [];
+      this.standing = f.standing ?? [];
+      this.flushSaidAfter(); // D296: a rule's removal is said once the home's rules no longer have it
+      return void this.changed();
+    }
     if (f.t === "pins") {
       this.pins = f.pins;
       if (f.refused) this.toast(this.L.t(`pin.refused.${f.refused}`, PINS_MAX));
@@ -1235,6 +1245,8 @@ class AppState {
     }
     // D304: a correction says whether Nowledge Mem took it too.
     if (f.corrected) this.toast(this.L.t(f.corrected.how === "mem" ? "learned.fixed.mem" : "learned.fixed.here"));
+    // D296: a trust change's word waits for this frame, the home's answer, never the tap.
+    this.flushSaidAfter();
     this.changed();
   }
 
@@ -1284,6 +1296,29 @@ class AppState {
     this.sheet = null;
     this.route = { name: "conv" };
     this.changed();
+  }
+
+  /** D296: keep a word to say once the home's next settings frame (or rules frame) proves the change
+   *  landed. The words say what will now happen, never "done" for the tap. */
+  sayAfter(key: string, text: string, want?: () => boolean) {
+    this.saidAfter.push({ key, text, ...(want ? { want } : {}), at: Date.now() });
+  }
+
+  /** D296: the home answered; say the words whose change it shows, once. Stale words are dropped: a
+   *  change whose answer never came is silent, never said later over something else. */
+  private flushSaidAfter() {
+    if (!this.saidAfter.length) return;
+    const now = Date.now();
+    const rest: typeof this.saidAfter = [];
+    for (const p of this.saidAfter) {
+      if (now - p.at > 15_000) continue;
+      if (p.want && !p.want()) {
+        rest.push(p);
+        continue;
+      }
+      say(p.key, p.text);
+    }
+    this.saidAfter = rest;
   }
 
   /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */
@@ -1691,6 +1726,8 @@ class AppState {
     if (f.path) {
       st.done = this.L.t("settings.folder.done", tilde(f.path), f.projects ?? 0, f.worktrees ?? 0);
       st.typed = f.path;
+      // D296: what will now happen, said on the home's own answer (the row keeps the counts).
+      say(`folder:${hit?.[0] ?? dev}`, this.L.t("said.folder.moved", tilde(f.path)));
     }
     void this.changed();
   }

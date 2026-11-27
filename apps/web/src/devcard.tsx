@@ -35,6 +35,7 @@ import { MemAction } from "./mem-plugin.tsx";
 import { RecordsOnDevice } from "./worker-records.tsx";
 import { KeptKeys } from "./autofill.tsx";
 import { FolderRow } from "./folder-row.tsx";
+import { Said } from "./set-grid.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
@@ -259,6 +260,7 @@ function DeviceSheet({ dv, folded, go }: { dv: DeviceView; folded: Client[]; go:
       <Guard words={t(dv.home ? "home.g" : "worker.g", A.S.personaName)} />
       {/* D611: this computer's Ducter folder, a rule row like every other (D592). */}
       <FolderRow dv={dv} />
+      <Said k={`folder:${dv.id}`} />
       <DucterLine dv={dv} />
       {/* D514: what Ducter tidied away here, one quiet line; nothing before the first. */}
       {dv.tidied && dv.tidied.count > 0 && <div class="dc-status dc-tidied">{A.L.t("card.tidied", dv.tidied.count, tidySize(dv.tidied.bytes))}</div>}

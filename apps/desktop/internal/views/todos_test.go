@@ -186,12 +186,24 @@ func TestTodosPane(t *testing.T) {
 	if app.S.Sources.Sources[0].WhenDone != "close" {
 		t.Error("the choice doesn't show at once")
 	}
+	// D296: the word is what will now happen, and only the home's answer says it.
+	if w := app.settings.said["todos:src_gh"].text; w != "" {
+		t.Errorf("the choice's word came before the home answered: %q", w)
+	}
+	app.Receive(protocol.ServerFrame{T: "source_result", Sources: &protocol.SourcesFrame{Op: "set", OK: true, ID: "src_gh"}})
 	todoFrames(tt, 2)
+	if w, want := app.settings.said["todos:src_gh"].text, app.L.T("said.todos.done.close"); w != want {
+		t.Errorf("the choice's word is %q, want %q", w, want)
+	}
+	saidShot(t, tt, "todos-said-"+string(i18n.ZH))
+	if !hasText(tt, app.L.T("said.todos.done.close")) {
+		t.Errorf("the choice's word isn't drawn: %q", tt.Texts())
+	}
 	if err := tt.Click("移除，GitHub"); err != nil {
 		t.Fatalf("%v in %q", err, tt.Texts())
 	}
 	todoFrames(tt, 2)
-	if !hasText(tt, "移除 GitHub？已经接下的事还在。") {
+	if !hasText(tt, "移除 GitHub？已经接下的事还在；它们在那个软件里的变化，我不再看了，也不会再写回去。") {
 		t.Fatalf("Remove doesn't ask in place: %q", tt.Texts())
 	}
 	if _, ok := lastSent[protocol.SourceRemoveReq](*sent); ok {
@@ -202,6 +214,18 @@ func TestTodosPane(t *testing.T) {
 	}
 	if f, ok := lastSent[protocol.SourceRemoveReq](*sent); !ok || f.ID != "src_gh" {
 		t.Fatalf("remove sends %+v", f)
+	}
+	if w := app.settings.said["todos-remove"].text; w != "" {
+		t.Errorf("the removal's word came before the home answered: %q", w)
+	}
+	app.Receive(protocol.ServerFrame{T: "source_result", Sources: &protocol.SourcesFrame{Op: "remove", OK: true, ID: "src_gh"}})
+	todoFrames(tt, 2)
+	if w, want := app.settings.said["todos-remove"].text, app.L.T("said.todos.remove", "GitHub"); w != want {
+		t.Errorf("the removal's word is %q, want %q", w, want)
+	}
+	saidShot(t, tt, "todos-remove-said-"+string(i18n.ZH))
+	if !hasText(tt, "已经接下的事还在；它们在那个软件里的变化，我不再看了，也不会再写回去。") {
+		t.Errorf("the removal doesn't say what stays: %q", tt.Texts())
 	}
 	// Adding a found vault.
 	if err := tt.Click("加上，Work notes"); err != nil {
@@ -253,10 +277,21 @@ func TestTodosCountOnlyAfterALook(t *testing.T) {
 		}}}})
 		app.openTab(TabTodos)
 		todoFrames(tt, 4)
-		for _, want := range []string{w("正在看…", "Looking…"), w("没能读到 Obsidian。", "Couldn't read Obsidian."), "gh: Server Error (HTTP 502)", w("再试一次", "Try again")} {
+		for _, want := range []string{w("正在看…", "Looking…"), w("没能读到 Obsidian。", "Couldn't read Obsidian."), w("详情", "Details"), w("再试一次", "Try again")} {
 			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
+		}
+		if hasText(tt, "gh: Server Error (HTTP 502)") {
+			t.Errorf("%s: the app's raw words show before 详情", lang)
+		}
+		if err := tt.Click(w("详情，Obsidian", "Details, Obsidian")); err != nil {
+			t.Fatalf("%v in %q", err, tt.Texts())
+		}
+		todoFrames(tt, 2)
+		saidShot(t, tt, "todos-error-details-"+string(lang))
+		if !hasText(tt, "gh: Server Error (HTTP 502)") {
+			t.Errorf("%s: 详情 doesn't show the app's own words", lang)
 		}
 		if hasText(tt, w("0 个没做完", "0 open")) {
 			t.Errorf("%s: a count no look read: %q", lang, tt.Texts())

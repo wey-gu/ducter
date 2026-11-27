@@ -16,6 +16,7 @@ export function FolderRow({ dv, last }: { dv: DeviceView; last?: boolean }) {
   const st = A.folderRow(dv.id);
   const env = f.why === "env";
   const busy = !!st.busy;
+  const asking = !!st.ask;
   const values = busy ? [t("settings.folder.moving")] : [tilde(f.path)];
   const muted = env ? t("settings.folder.env") : st.done || "";
   const base = f.path.replace(/\/+$/, "").split("/").pop() ?? "";
@@ -36,6 +37,7 @@ export function FolderRow({ dv, last }: { dv: DeviceView; last?: boolean }) {
       error={st.err}
       onOpen={() => {
         st.open = true;
+        st.ask = false;
         st.err = "";
         st.tasks = undefined;
         st.typed = f.path;
@@ -45,6 +47,7 @@ export function FolderRow({ dv, last }: { dv: DeviceView; last?: boolean }) {
       onCancel={() => {
         if (st.busy) return;
         st.open = false;
+        st.ask = false;
         st.err = "";
         st.tasks = undefined;
         A.changed();
@@ -65,7 +68,24 @@ export function FolderRow({ dv, last }: { dv: DeviceView; last?: boolean }) {
               <p class="fd-wait">{t("settings.folder.wait")}</p>
             </div>
           )}
-          {lower && <Btn kind="secondary" size="sm" label={t("settings.folder.toMac")} onClick={() => A.folderMove(dv.id, "~/Ducter")} />}
+          {lower &&
+            (asking ? (
+              <span class="ask-in-place">
+                <small>{t("settings.folder.toMac.ask")}</small>
+                <Btn kind="text" size="sm" label={t("settings.folder.toMac.keep")} onClick={() => ((st.ask = false), A.changed())} />
+                <Btn
+                  kind="secondary"
+                  size="sm"
+                  label={t("settings.folder.toMac.go")}
+                  onClick={() => {
+                    st.ask = false;
+                    A.folderMove(dv.id, "~/Ducter");
+                  }}
+                />
+              </span>
+            ) : (
+              <Btn kind="secondary" size="sm" label={t("settings.folder.toMac")} onClick={() => ((st.ask = true), A.changed())} />
+            ))}
           <Field value={st.typed ?? f.path} label={t("settings.folder.choose")} placeholder={t("settings.folder.path.placeholder")} onInput={(v) => ((st.typed = v), A.changed())} />
         </>
       )}

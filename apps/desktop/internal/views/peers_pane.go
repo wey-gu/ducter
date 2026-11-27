@@ -213,8 +213,12 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 			})
 		})
 	}
-	if phase == "on" || len(p.Muted) == 0 {
+	if phase == "on" {
 		return // D470: on, the muted are under 谁能让我做什么
+	}
+	if len(p.Muted) == 0 {
+		a.saidLine(c, "peer-undo") // D296: the last 恢复 leaves this line behind, where the row was
+		return
 	}
 	a.group(c, "peer-muted", a.L.T("peers.muted.title"), "", func() {
 		for _, agent := range p.Muted {
@@ -223,11 +227,15 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 				if a.quietButton(c, "muted:"+agent, a.L.T("peers.muted.undo"), agent, false, 0) {
 					next := *p
 					next.Muted = without(p.Muted, agent)
-					set(next)
+					a.SetSettings(protocol.SettingsPatch{Peers: &next})
+					a.sayAfter("peer-undo", a.L.T("said.peers.trust.undo", agent), func(st *protocol.Settings) bool {
+						return st.Peers != nil && !contains(st.Peers.Muted, agent)
+					})
 				}
 			})
 		}
 	})
+	a.saidLine(c, "peer-undo")
 }
 
 // peersNames is D364's one quiet row: an nmem too old to say who wrote

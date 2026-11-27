@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -109,12 +110,35 @@ type settingsState struct {
 	// folders (D611): each computer's Ducter folder row: its open editor, the move in flight,
 	// the tasks that kept it from moving, and the line a move left.
 	folders map[string]*folderRowState
+	// D296: a word the home owes after a consequential change, with the state that proves it landed.
+	// Only a settings frame says it; a change whose answer never came says nothing.
+	saidPending []saidPendingWord
+	// ruleRemove is the rule asking in place; ruleAsked is the removal whose rules frame is owed
+	// (D289/D296).
+	ruleRemove string
+	ruleAsked  *ruleAsked
 	// choiceCol is the one width a group's choice controls share (D618): a column of
 	// tracks, not a ragged right edge with three left edges. 0 is each track's own width.
 	choiceCol float32
 	// trailAlign is true while a card's foot draws its actions: their text, not their padding,
 	// ends on the switches' right edge (D618; D582 keeps the padding).
 	trailAlign bool
+}
+
+// saidPendingWord is one word the home owes (D296): the state that proves the change, and when it
+// was asked. Older than saidAfterMS, it is dropped rather than said over something else.
+type saidPendingWord struct {
+	key  string
+	text string
+	want func(*protocol.Settings) bool
+	at   time.Time
+}
+
+// ruleAsked is a rule removal waiting for the home's rules frame: the rule's words are kept because
+// the rule itself is gone by then.
+type ruleAsked struct {
+	id    string
+	words string
 }
 
 type removeState struct {

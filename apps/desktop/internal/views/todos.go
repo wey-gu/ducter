@@ -34,6 +34,12 @@ const TabTodos = "todos"
 // box ticked in mint and one still open (design/art/assets/prompts/set_todos.md).
 const todosArt = "set_todos"
 
+// todoSetAsk is a source choice on its way: what was sent, and the source's kind for its words.
+type todoSetAsk struct {
+	req  protocol.SourceSetReq
+	kind string
+}
+
 type todosState struct {
 	removing string          // the source whose Remove asks in place
 	adding   map[string]bool // "github" or a vault's folder, while its add is in flight
@@ -57,6 +63,11 @@ type todosState struct {
 	// 再试一次 / Try again on a source whose look failed, until the home
 	// says it is looking (or the look read).
 	retrying map[string]bool
+	// D296: a choice or a removal on its way to the home; its word waits for the answer.
+	pendingSet    map[string]todoSetAsk
+	pendingRemove map[string]string
+	// A failed source's own words, behind 详情 (D296).
+	errOpen map[string]bool
 	// D357: On hand's fold of the to-dos (todos_onhand.go).
 	fold todoFold
 }
@@ -70,6 +81,15 @@ func (a *App) todosInit() {
 	if s.retrying == nil {
 		s.retrying = map[string]bool{}
 	}
+	if s.pendingSet == nil {
+		s.pendingSet = map[string]todoSetAsk{}
+	}
+	if s.pendingRemove == nil {
+		s.pendingRemove = map[string]string{}
+	}
+	if s.errOpen == nil {
+		s.errOpen = map[string]bool{}
+	}
 	if v := a.S.Sources; v != nil {
 		for _, src := range v.Sources {
 			if src.Looking || src.State != "error" {
@@ -78,24 +98,51 @@ func (a *App) todosInit() {
 		}
 	}
 	for _, r := range a.S.SourceResults {
-		if r.Op != "add" {
-			continue
-		}
-		s.adding = map[string]bool{}
-		switch {
-		case r.OK:
-			s.pathOpen, s.path, s.addErr = false, "", ""
-		case r.Reason == "exists":
-			s.addErr = a.L.T("todos.add.exists")
-		case r.Reason == "missing":
-			s.addErr = a.L.T("todos.add.missing", a.todoHome())
-		case r.Reason == "no_tool" || r.Reason == "signed_out":
-			s.addErr = a.L.T("todos.state."+r.Reason, a.todoHome())
-		default:
-			s.addErr = a.L.T("todos.state.error")
+		switch r.Op {
+		case "add":
+			s.adding = map[string]bool{}
+			switch {
+			case r.OK:
+				s.pathOpen, s.path, s.addErr = false, "", ""
+			case r.Reason == "exists":
+				s.addErr = a.L.T("todos.add.exists")
+			case r.Reason == "missing":
+				s.addErr = a.L.T("todos.add.missing", a.todoHome())
+			case r.Reason == "no_tool" || r.Reason == "signed_out":
+				s.addErr = a.L.T("todos.state."+r.Reason, a.todoHome())
+			default:
+				s.addErr = a.L.T("todos.state.error")
+			}
+		case "set":
+			ask, asked := s.pendingSet[r.ID]
+			delete(s.pendingSet, r.ID)
+			if !r.OK || !asked {
+				continue
+			}
+			// D296: what the choice will now do, once the home's answer has it.
+			a.say("todos:"+r.ID, a.todoSetSaid(ask.req, ask.kind))
+		case "remove":
+			name, asked := s.pendingRemove[r.ID]
+			delete(s.pendingRemove, r.ID)
+			if !r.OK || !asked {
+				continue
+			}
+			a.say("todos-remove", a.L.T("said.todos.remove", name))
 		}
 	}
 	a.S.SourceResults = nil
+}
+
+/** todoSetSaid is what a source's 新的来了 / 做完以后 choice will now do, in the partner's voice (D296). */
+func (a *App) todoSetSaid(req protocol.SourceSetReq, kind string) string {
+	if req.WhenNew != "" {
+		return a.L.T("said.todos.new." + req.WhenNew)
+	}
+	k := "said.todos.done." + req.WhenDone
+	if kind == "obsidian" && req.WhenDone == "ask" {
+		k += ".obsidian"
+	}
+	return a.L.T(k)
 }
 
 // todoHome is the home computer by its own name, as the sentences about
@@ -132,6 +179,7 @@ func (a *App) todosPanel(c *ui.Context) {
 	for _, s := range v.Sources {
 		a.todoSourceGroup(c, s)
 	}
+	a.saidLine(c, "todos-remove") // D296: a removal's word, where the card was
 	a.todoAddGroup(c, v)
 }
 
@@ -205,6 +253,7 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 			}
 			if rm {
 				a.todos.removing = ""
+				a.todos.pendingRemove[s.ID] = name
 				a.send(protocol.SourceRemoveReq{T: "source_remove", ID: s.ID})
 			}
 			return
@@ -220,6 +269,7 @@ func (a *App) todoSourceGroup(c *ui.Context, s protocol.SourceView) {
 				a.todos.removing = s.ID
 			}
 		})
+		a.saidLineIn(c, "todos:"+s.ID)
 	})
 }
 
@@ -234,29 +284,35 @@ func (a *App) todoProblem(c *ui.Context, s protocol.SourceView) {
 		line = a.L.T("todos.state."+s.State, home)
 	}
 	if s.State == "error" {
-		// A failed look says so, why (gh's own words), and 再试一次 / Try again.
+		// D296: the person's sentence first, the source's own words behind 详情, and 再试一次.
 		a.textBlock(c, "src-problem:"+s.ID, func() {
 			ui.Column(c).Gap(t.S2).Grow(1).Children(func() {
 				uiText(c.Key("line"), line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
-				if s.Error != "" {
-					uiText(c.Key("why"), s.Error).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-				}
-				ui.Row(c.Key("again")).Children(func() {
+				ui.Row(c.Key("again")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 					if s.Looking || a.todos.retrying[s.ID] {
 						uiText(c, a.L.T("todos.looking")).FontSize(t.SM).TextColor(t.InkMuted)
 					} else if a.buttonFor(c, a.L.T("todos.retry"), protocol.SourceKindName(s.Kind), btnSecondary, t.ControlSM, t.Surface) {
 						a.todos.retrying[s.ID] = true
 						a.send(protocol.SourcesReq{T: "sources"})
 					}
+					if s.Error != "" && a.quietButton(c, "todo-more:"+s.ID, a.L.T("todos.details"), protocol.SourceKindName(s.Kind), false, 0) {
+						a.todos.errOpen[s.ID] = !a.todos.errOpen[s.ID]
+					}
 				})
+				if s.Error != "" && a.todos.errOpen[s.ID] {
+					uiText(c.Key("why"), s.Error).Font(t.Mono).FontSize(t.MonoSM).LineHeight(a.leading(1.45)).TextColor(t.InkMuted).Role(ui.RoleStatus)
+				}
 			})
 		})
 		return
 	}
 	a.textBlock(c, "src-problem:"+s.ID, func() {
-		tx := uiText(c, line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
-		if s.Error != "" {
-			tx.Tooltip(s.Error)
+		uiText(c, line).FontSize(t.SM).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+		if s.Error != "" && a.quietButton(c, "todo-more:"+s.ID, a.L.T("todos.details"), protocol.SourceKindName(s.Kind), false, 0) {
+			a.todos.errOpen[s.ID] = !a.todos.errOpen[s.ID]
+		}
+		if s.Error != "" && a.todos.errOpen[s.ID] {
+			uiText(c.Key("why"), s.Error).Font(t.Mono).FontSize(t.MonoSM).LineHeight(a.leading(1.45)).TextColor(t.InkMuted)
 		}
 		if (s.State == "no_tool" || s.State == "signed_out") && a.todos.login == nil {
 			ui.Row(c).Children(func() {
@@ -321,12 +377,16 @@ func (a *App) todoChoices(c *ui.Context, s protocol.SourceView) {
 		write = a.L.T(k)
 	}
 	block("new", a.L.T("todos.new"), news, newLabels, s.WhenNew, take, func(v string) {
+		req := protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenNew: v}
+		a.todos.pendingSet[s.ID] = todoSetAsk{req: req, kind: s.Kind}
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenNew = v })
-		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenNew: v})
+		a.send(req)
 	})
 	block("done", a.L.T("todos.done"), dones, doneLabels, s.WhenDone, write, func(v string) {
+		req := protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenDone: v}
+		a.todos.pendingSet[s.ID] = todoSetAsk{req: req, kind: s.Kind}
 		a.setSource(s.ID, func(x *protocol.SourceView) { x.WhenDone = v })
-		a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, WhenDone: v})
+		a.send(req)
 	})
 }
 
@@ -392,6 +452,7 @@ func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
 		if s.Kind == "github" {
 			field("repos", a.L.T("todos.repos"), a.L.T("todos.repos.all"), a.L.T("todos.repos.hint"), strings.Join(s.Repos, ", "), func(v string) {
 				repos := reposOf(v)
+				delete(a.todos.pendingSet, s.ID) // a filter says nothing (D296)
 				a.setSource(s.ID, func(x *protocol.SourceView) { x.Repos = repos })
 				a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Repos: repos})
 			})
@@ -399,11 +460,13 @@ func (a *App) todoFilters(c *ui.Context, s protocol.SourceView) {
 		}
 		field("folder", a.L.T("todos.folder"), a.L.T("todos.folder.all"), "", s.Folder, func(v string) {
 			v = strings.Trim(strings.TrimSpace(v), "/\\")
+			delete(a.todos.pendingSet, s.ID) // a filter says nothing (D296)
 			a.setSource(s.ID, func(x *protocol.SourceView) { x.Folder = v })
 			a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Folder: &v})
 		})
 		field("tag", a.L.T("todos.tag"), a.L.T("todos.tag.any"), "", s.Label, func(v string) {
 			v = strings.TrimSpace(v)
+			delete(a.todos.pendingSet, s.ID) // a filter says nothing (D296)
 			a.setSource(s.ID, func(x *protocol.SourceView) { x.Label = v })
 			a.send(protocol.SourceSetReq{T: "source_set", ID: s.ID, Label: &v})
 		})
@@ -521,7 +584,8 @@ func (a *App) todoAddGroup(c *ui.Context, v *protocol.SourcesView) {
 				uiText(c, s.addErr).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
 			})
 		}
-		a.tileRow(c, "add-jira", a.brandTile(c, "jira", true), "Jira", a.L.T("todos.jira.sub"), func() { a.quietTag(c, a.L.T("todos.soon")) })
+		// D296: Jira is one whole line, not a row with a mark and nothing to do.
+		a.footRow(c, "add-jira", a.L.T("todos.jira.line"), nil)
 	})
 }
 

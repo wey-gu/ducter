@@ -1263,6 +1263,15 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.peekOthers()
 	case "partners":
 		a.peekOthers()
+	case "settings":
+		// D296: a trust change's word waits for the home's own settings frame.
+		a.flushSaidAfter()
+	case "rules":
+		// D296: a rule's removal is said once the home's rules no longer have it.
+		a.flushRuleRemove()
+	case "source_result":
+		// D296: a source's choice or removal is said at once, even if the pane is drawn next frame.
+		a.todosInit()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
 		if f.Action == "stop_background" && !f.OK {

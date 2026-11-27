@@ -23,13 +23,14 @@ Open **Settings › To-do sources** (**设置 › 待办来源**). Under **You c
   assigned to you. It reads the issues and pull requests assigned to you.
 - **Each Obsidian vault** Obsidian knows on the computer your partner runs on. You can also add one by
   its folder with **Add an Obsidian vault…**.
-- **Jira**: coming soon.
+- **Jira**: coming soon. It is one line under the ones you can add, not a row with nothing to do.
 
 Tap **Add** (for GitHub, **Connect**). Nothing starts because you added it.
 
 Right after you add one it says **Looking…** until it has read the list, then how many are open. For
 GitHub it also says how many pull requests are waiting for your review. If it
-couldn't read it, it says **Couldn't read GitHub.** (or Obsidian) and why, with **Try again**.
+couldn't read it, it says **Couldn't read GitHub.** (or Obsidian) in your language, with
+**Try again**; GitHub's or Obsidian's own words are behind **Details**.
 
 ## Only part of it
 
@@ -187,14 +188,20 @@ after their comment; the rest close themselves when their pull request is merged
 ## When a new one comes
 
 Each source has **When a new one comes**; the line under it says what the one you picked does, and changes as you pick.
-The source's last line says when Ducter last looked (*Looked just now*), with **Remove** beside it; it
-asks once, and tasks already taken stay.
+The source's last line says when Ducter last looked (*Looked just now*), with **Remove** beside it. It
+asks first: **Remove GitHub? Tasks it took stay; I'll stop watching their changes there, and won't
+write back.** Tasks already taken keep their to-do and its mark, but nothing is read from that app for
+them again, and nothing is written back to it. After you remove it, the same sentence says what stays.
 
 - **Say so** (GitHub's default): your partner mentions new ones in one short line, and asks which to
   take.
 - **Stay quiet** (Obsidian's default): it waits until you ask.
 - **Take it on**: new ones start without asking, up to five a day. Your partner offers this once,
   after a couple you took from the same place have finished well.
+
+After you choose, your partner says what will now happen, once the change has gone through: *Got it:
+new to-dos become tasks on their own*, *Got it: I'll tell you in the conversation when a new one
+comes*, or *Got it: I won't mention new ones; I'll look when you ask*.
 
 ## When it's done
 
@@ -207,6 +214,10 @@ asks once, and tasks already taken stay.
   sees your vault, so this happens by itself; choose **Ask you first** or **Leave it** if you prefer. Repeating
   to-dos are left for you to tick in Obsidian, so Obsidian can make the next one. If you have the note
   open and are typing, it waits and tries again.
+
+Each choice under **When it's done** also gets one word once it has gone through: *Got it: when one is
+done, I'll ask you before commenting on GitHub*, *Got it: when one is done, I'll comment and close it*,
+or *Got it: when one is done, I'll tick it off in your note*.
 
 Everything it writes is in **[Done for you](done-for-you.md)**.
 

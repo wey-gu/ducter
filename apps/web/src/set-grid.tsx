@@ -127,6 +127,17 @@ export function say(key: string, text: string, replaces?: string, face?: SaidFac
   for (const f of saidListeners) f();
 }
 
+/** The word kept for a key, as the home's answer left it (the view's and the tests' read). */
+export function saidNow(key: string): string | undefined {
+  return saidWords.get(key)?.text;
+}
+
+/** Drop every said word (a test's clean page, or a socket that starts over). */
+export function saidClear() {
+  saidWords.clear();
+  for (const f of saidListeners) f();
+}
+
 /**
  * The partner's one word after a change (D296): a small clay pebble pops in on the done ink, then the
  * line in its voice, on the text edge; it settles away by itself. Never a toast, never what a switch

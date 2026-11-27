@@ -42,8 +42,21 @@ func TestD611FolderRow(t *testing.T) {
 			}
 		}
 
-		// The one tap sends ~/Ducter; while it runs the row says so.
-		app.folderMove("local", "~/Ducter")
+		// D289/D296: 改成 ~/Ducter asks in place first, then sends it.
+		if err := tt.Click(L.T("settings.folder.toMac")); err != nil {
+			t.Fatalf("%v in %q", err, tt.Texts())
+		}
+		tt.Frame()
+		saidShot(t, tt, "folder-ask-"+string(lang))
+		if !hasText(tt, L.T("settings.folder.toMac.ask")) {
+			t.Errorf("%s: the ~/Ducter move doesn't ask: %q", lang, tt.Texts())
+		}
+		if _, ok := lastFrame[protocol.FolderChangeReq](sent); ok {
+			t.Fatalf("%s: the move went before it was confirmed", lang)
+		}
+		if err := tt.Click(L.T("settings.folder.toMac.go")); err != nil {
+			t.Fatalf("%v in %q", err, tt.Texts())
+		}
 		req, ok := lastFrame[protocol.FolderChangeReq](sent)
 		if !ok || req.Path != "~/Ducter" || req.Device != "" {
 			t.Fatalf("%s: folder_change %+v", lang, req)
@@ -69,6 +82,14 @@ func TestD611FolderRow(t *testing.T) {
 		tt.Frame()
 		if !hasText(tt, L.T("settings.folder.done", "~/Ducter", 3, 5)) {
 			t.Errorf("%s: no done line: %q", lang, tt.Texts())
+		}
+		// D296: the partner's word is the consequence, said on the home's own answer.
+		if w := app.settings.said["folder:local"].text; w != L.T("said.folder.moved", "~/Ducter") {
+			t.Errorf("%s: the move's word is %q, want %q", lang, w, L.T("said.folder.moved", "~/Ducter"))
+		}
+		saidShot(t, tt, "folder-said-"+string(lang))
+		if !hasText(tt, L.T("said.folder.moved", "~/Ducter")) {
+			t.Errorf("%s: the move's word isn't drawn: %q", lang, tt.Texts())
 		}
 
 		// A real long path, still inside the window at 1150.

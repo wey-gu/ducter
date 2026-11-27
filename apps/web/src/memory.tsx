@@ -1115,12 +1115,38 @@ function PeersThread({ th, p }: { th: Thread; p: PeersSettings }) {
   const trust = trustOf(th, p);
   const line = trust === "trusted" ? t("peers.trust.trusted", TRUSTED_DAILY) : trust === "own" ? t("peers.trust.own") : trust === "team" ? t("peers.trust.team") : t("peers.muted", th.agent);
   const who = capWho(whoOf(th));
+  const key = `peer-trust:${th.agent}`;
   return (
+    <>
     <Group class="mem-g peer-thread" label={who}>
       <GHead tile={<PeerTile agent={th.agent} host={th.host} />} name={who} line={line}>
-        {trust === "trusted" && <Btn kind="text" size="sm" label={t("peers.trust.ask")} about={th.agent} onClick={() => A.setSettings({ peers: { ...p, trusted: p.trusted.filter((x) => x !== th.agent) } })} />}
-        {trust === "team" && <Btn kind="text" size="sm" label={t("peers.trust.mute")} about={th.agent} onClick={() => A.setSettings({ peers: { ...p, muted: [...p.muted, th.agent], allowed: (p.allowed ?? []).filter((x) => x !== th.agent) } })} />}
+        {trust === "trusted" && (
+          <Btn
+            kind="text"
+            size="sm"
+            label={t("peers.trust.ask")}
+            about={th.agent}
+            onClick={() => {
+              A.setSettings({ peers: { ...p, trusted: p.trusted.filter((x) => x !== th.agent) } });
+              // D296: what will now happen, once the home's settings no longer have it trusted.
+              A.sayAfter(key, t("said.peers.trust.ask", th.agent), () => !(A.settings?.peers?.trusted ?? []).includes(th.agent));
+            }}
+          />
+        )}
+        {trust === "team" && (
+          <Btn
+            kind="text"
+            size="sm"
+            label={t("peers.trust.mute")}
+            about={th.agent}
+            onClick={() => {
+              A.setSettings({ peers: { ...p, muted: [...p.muted, th.agent], allowed: (p.allowed ?? []).filter((x) => x !== th.agent) } });
+              A.sayAfter(key, t("said.peers.trust.mute", th.agent), () => (A.settings?.peers?.muted ?? []).includes(th.agent));
+            }}
+          />
+        )}
       </GHead>
+      <Said k={key} />
       {th.items.map((x) => {
         const l = exLine(x);
         const w = exWhen(x);
@@ -1142,6 +1168,7 @@ function PeersThread({ th, p }: { th: Thread; p: PeersSettings }) {
         );
       })}
     </Group>
+    </>
   );
 }
 
@@ -1220,10 +1247,20 @@ function PeersRules({ p }: { p: PeersSettings }) {
         />
         {p.muted.map((a) => (
           <GRow key={`m-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.muted", a)}>
-            <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } })} />
+            <Btn
+              kind="text"
+              size="sm"
+              label={t("peers.muted.undo")}
+              about={a}
+              onClick={() => {
+                A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } });
+                A.sayAfter("peer-undo", t("said.peers.trust.undo", a), () => !(A.settings?.peers?.muted ?? []).includes(a));
+              }}
+            />
           </GRow>
         ))}
       </Group>
+      <Said k="peer-undo" />
     </section>
   );
 }
@@ -1377,10 +1414,20 @@ export function PeersPage() {
           <Group class="mem-g" label={t("peers.muted.title")}>
             {p.muted.map((a) => (
               <GRow key={`m-${a}`} tile={<ToolTile from={peerTool(a)} />} title={t("peers.muted", a)}>
-                <Btn kind="text" size="sm" label={t("peers.muted.undo")} about={a} onClick={() => A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } })} />
+                <Btn
+                  kind="text"
+                  size="sm"
+                  label={t("peers.muted.undo")}
+                  about={a}
+                  onClick={() => {
+                    A.setSettings({ peers: { ...p, muted: p.muted.filter((x) => x !== a) } });
+                    A.sayAfter("peer-undo", t("said.peers.trust.undo", a), () => !(A.settings?.peers?.muted ?? []).includes(a));
+                  }}
+                />
               </GRow>
             ))}
           </Group>
+          <Said k="peer-undo" />
         </section>
       )}
     </>

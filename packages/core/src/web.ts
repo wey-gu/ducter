@@ -34,8 +34,13 @@ import pdfJs from "../../../apps/web/static/pdf.js" with { type: "file" };
 import pdfWorkerJs from "../../../apps/web/static/pdf.worker.js" with { type: "file" };
 import manifest from "../../../apps/web/static/manifest.webmanifest" with { type: "file" };
 import font from "../../../apps/web/static/bricolage.woff" with { type: "file" };
+import faviconIco from "../../../apps/web/static/favicon.ico" with { type: "file" };
+import favicon32 from "../../../apps/web/static/favicon-32.png" with { type: "file" };
+import favicon48 from "../../../apps/web/static/favicon-48.png" with { type: "file" };
 import icon192 from "../../../apps/web/static/icon-192.png" with { type: "file" };
 import icon512 from "../../../apps/web/static/icon-512.png" with { type: "file" };
+import iconMaskable192 from "../../../apps/web/static/icon-maskable-192.png" with { type: "file" };
+import iconMaskable512 from "../../../apps/web/static/icon-maskable-512.png" with { type: "file" };
 import touchIcon from "../../../apps/web/static/apple-touch-icon.png" with { type: "file" };
 import monoFont from "../../../apps/web/static/fonts/jetbrains-mono.woff2" with { type: "file" };
 import roundedFont from "../../../apps/web/static/fonts/rounded-sc-bold.woff2" with { type: "file" };
@@ -128,8 +133,13 @@ const ASSETS: Record<string, [string, string]> = {
   "pdf.worker.js": [pdfWorkerJs, "text/javascript; charset=utf-8"],
   "manifest.webmanifest": [manifest, "application/manifest+json"],
   "bricolage.woff": [font, "font/woff"],
+  "favicon.ico": [faviconIco, "image/x-icon"],
+  "favicon-32.png": [favicon32, "image/png"],
+  "favicon-48.png": [favicon48, "image/png"],
   "icon-192.png": [icon192, "image/png"],
   "icon-512.png": [icon512, "image/png"],
+  "icon-maskable-192.png": [iconMaskable192, "image/png"],
+  "icon-maskable-512.png": [iconMaskable512, "image/png"],
   "apple-touch-icon.png": [touchIcon, "image/png"],
   "fonts/jetbrains-mono.woff2": [monoFont, "font/woff2"],
   "fonts/rounded-sc-bold.woff2": [roundedFont, "font/woff2"],
@@ -280,6 +290,10 @@ export async function webStatic(req: Request): Promise<Response | undefined> {
     res.headers.set("content-security-policy", cspFor(req));
     res.headers.set("referrer-policy", "no-referrer");
     return res;
+  }
+  // Browsers ask for /favicon.ico on their own, whatever the page links to.
+  if (path === "/favicon.ico") {
+    return serveFile(req, faviconIco, "image/x-icon", "public, max-age=86400");
   }
   if (path === "/sw.js") {
     const res = await serveFile(req, swJs, "text/javascript; charset=utf-8", "no-cache");

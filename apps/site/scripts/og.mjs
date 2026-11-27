@@ -6,11 +6,14 @@
 //
 //   node scripts/og.mjs                    # the chosen layout, to public/og.png
 //   node scripts/og.mjs --layout b --out /tmp/b.png
+//   node scripts/og.mjs --layout social --out ../../.shots/brand/social-preview.png
 //
 // Three layouts were drawn and rated (design/site.md, "The share image"); `a` won and is the default.
-// Needs Chrome (CHROME=/path/to/chrome to choose one). Not run by the build: og.png is committed.
+// `social` is GitHub's 1280 x 640 card: the positioning line, the character, one real screen of
+// On hand and the address, with nothing overlapping. Needs Chrome (CHROME=/path/to/chrome to choose
+// one). Not run by the build: og.png is committed.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -18,14 +21,17 @@ import sharp from "sharp";
 
 const site = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pub = join(site, "public");
-const W = 1200, H = 630, MAX_BYTES = 400 * 1024;
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(`--${name}`);
   return i > 0 ? process.argv[i + 1] : def;
 };
 const layout = arg("layout", "a");
-const out = resolve(arg("out", join(pub, "og.png")));
+// GitHub's social preview is 1280 x 640; every other card is the site's 1200 x 630.
+const [W, H] = layout === "social" ? [1280, 640] : [1200, 630];
+const MAX_BYTES = 400 * 1024;
+const out = resolve(arg("out", layout === "social" ? join(site, "../../.shots/brand/social-preview.png") : join(pub, "og.png")));
+mkdirSync(dirname(out), { recursive: true });
 
 /** The tagline, from the home page's <h1>: its first sentence and the quieter line after it. */
 function tagline(src = readFileSync(join(site, "src/pages/index.astro"), "utf8")) {
@@ -39,13 +45,16 @@ function tagline(src = readFileSync(join(site, "src/pages/index.astro"), "utf8")
 
 const url = (p) => pathToFileURL(join(pub, p)).href;
 const SHOT = { file: "shots/hero-light.webp", w: 1080, h: 1350 };
+const MANY = { file: "shots/many-light.webp", w: 1920, h: 1000 };
 
-/** A window onto part of the real screen, in source pixels, drawn `w` wide. */
-function crop([x1, y1, x2, y2], w, cls = "") {
+/** A window onto part of a real screen, in source pixels, drawn `w` wide. */
+function cropOf(shot, [x1, y1, x2, y2], w, cls = "") {
   const s = w / (x2 - x1);
   return `<div class="crop ${cls}" style="width:${w}px;height:${Math.round((y2 - y1) * s)}px">` +
-    `<img src="${url(SHOT.file)}" style="width:${SHOT.w * s}px;left:${-x1 * s}px;top:${-y1 * s}px" alt=""></div>`;
+    `<img src="${url(shot.file)}" style="width:${shot.w * s}px;left:${-x1 * s}px;top:${-y1 * s}px" alt=""></div>`;
 }
+const crop = (r, w, cls = "") => cropOf(SHOT, r, w, cls);
+const cropMany = (r, w, cls = "") => cropOf(MANY, r, w, cls);
 // Regions of hero-light.webp (1080 x 1350).
 const R = {
   whole: [40, 0, 1040, 1350],
@@ -57,6 +66,15 @@ const R = {
 const art = (name, w) => `<img class="art" src="${url(`art/${name}-480.webp`)}" style="width:${w}px" alt="">`;
 // The address, alone: the character is already in the picture once.
 const word = `<div class="mark">ducter.ai</div>`;
+
+/** D414's line, read from positioning.md: the GitHub card's opening, never a second copy. */
+function positioningLine(src = readFileSync(join(site, "../../design/positioning.md"), "utf8")) {
+  const row = src.split("\n").find((l) => /^\| \*\*Line\*\*/.test(l));
+  const en = row?.split("|")[2]?.trim();
+  if (!en) throw new Error("no Line row in design/positioning.md");
+  const [first, ...rest] = en.split(/(?<=\.)\s+/);
+  return { first, quiet: rest.join(" "), line: en };
+}
 
 const css = `
 @font-face { font-family: "Bricolage"; src: url("${url("fonts/bricolage.woff2")}") format("woff2-variations"); font-weight: 200 800; }
@@ -77,14 +95,22 @@ h1 .quiet { display: block; margin-top: 0.3em; font-size: 0.56em; line-height: 1
 
 /** Each layout: where the line, the screen and the character go. */
 const layouts = {
-  // A: the line on the left, the whole screen on the right running off the bottom, the character
-  // peeking over the screen's corner. Text first; the screen is the proof.
+  // A: the line on the left, the whole screen on the right, the character on its own ground at
+  // the lower left. Nothing overlaps: the screen is a real window, not a backdrop.
   a: (t) => `
     <div class="glow" style="width:900px;height:900px;right:-260px;top:-160px"></div>
-    <div class="abs" style="left:72px;top:76px;width:560px"><h1 style="font-size:74px">${t.first}<span class="quiet">${t.quiet}</span></h1></div>
-    <div class="abs" style="left:72px;bottom:64px">${word}</div>
-    <div class="abs" style="left:684px;top:64px">${crop(R.whole, 452)}</div>
-    <div class="abs" style="left:556px;top:404px;transform:rotate(-6deg)">${art("ducter_done", 150)}</div>`,
+    <div class="abs" style="left:64px;top:62px;width:560px"><h1 style="font-size:62px">${t.first}<span class="quiet">${t.quiet}</span></h1></div>
+    <div class="abs" style="left:64px;bottom:54px">${word}</div>
+    <div class="abs" style="left:72px;bottom:106px">${art("ducter_done", 116)}</div>
+    <div class="abs" style="left:710px;top:50px">${crop(R.whole, 400)}</div>`,
+  // GitHub's social preview (1280 x 640): D414's line, the character, and one real screen of
+  // On hand (a wide crop, fully inside the card), the address at the lower left.
+  social: (t) => `
+    <div class="glow" style="width:880px;height:880px;right:-200px;top:-180px"></div>
+    <div class="abs" style="left:64px;top:70px;width:520px"><h1 style="font-size:62px">${t.first}<span class="quiet">${t.quiet}</span></h1></div>
+    <div class="abs" style="left:64px;bottom:52px">${word}</div>
+    <div class="abs" style="left:72px;bottom:104px">${art("ducter_done", 116)}</div>
+    <div class="abs" style="left:660px;top:52px">${cropMany([320, 40, 1400, 1000], 580)}</div>`,
   // B: the screen leads. The morning note and the finished job as two real cards, large enough to
   // read, the character between them; the line across the bottom.
   b: (t) => `
@@ -109,7 +135,7 @@ const layouts = {
 function html(name) {
   const draw = layouts[name];
   if (!draw) throw new Error(`no layout ${name}: ${Object.keys(layouts).join(", ")}`);
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${draw(tagline())}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${draw(name === "social" ? positioningLine() : tagline())}</body></html>`;
 }
 
 function chrome() {

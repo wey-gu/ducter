@@ -15,7 +15,9 @@
 // `--receive <file>` checks it into a fresh data folder and says what is still to be redone. No
 // freeze, network transfer, handover, cut-over or rollback yet: design/move.md §5.
 import { Database } from "bun:sqlite";
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { sameComputer } from "@ducter/protocol/src/computer-name.ts";
 import { HARNESS_KEYS, isHarnessId } from "@ducter/protocol/src/harnesses.ts";
@@ -31,6 +33,7 @@ import {
   type BundleReadResult,
   type BundleWriteResult,
 } from "./move-bundle.ts";
+import { listenOnce, localMoveHost, newMoveCode, sendMove, type MoveHost, type MoveListenResult, type MoveSendResult } from "./move-send.ts";
 import { sizeOf } from "./uninstall.ts";
 
 export type OsKind = "darwin" | "linux" | "other";
@@ -476,7 +479,21 @@ export interface MoveCtx {
   plan: boolean;
   bundle?: string;
   receive?: string;
+  listen?: boolean;
+  unfreeze?: boolean;
   passphraseStdin?: boolean;
+  code?: string;
+  /** The running home's port (`move --to/--unfreeze`); absent in tests that pass a fake host. */
+  port?: number;
+  /** The listener's bind port; absent = an ephemeral port (never 7777). */
+  bindPort?: number;
+  bindHost?: string;
+  listenCode?: string;
+  listenTimeoutMs?: number;
+  /** How long a send waits for running turns before asking (default 10 minutes). */
+  waitMs?: number;
+  host?: MoveHost;
+  ask?: (prompt: string) => Promise<string>;
   to?: string;
   computer: string;
   platform: NodeJS.Platform;
@@ -571,7 +588,7 @@ export function formatBundleResult(r: Extract<BundleWriteResult, { ok: true }>, 
   return out.join("\n");
 }
 
-export function formatReceiveResult(r: Extract<BundleReadResult, { ok: true }>, t: T, dir: string): string {
+export function formatReceiveResult(r: Extract<BundleReadResult, { ok: true }>, t: T, dir: string, via: "file" | "listen" = "file"): string {
   const m = r.manifest;
   const out: string[] = [];
   out.push(t("move.receive.head", { name: m.from.partner, computer: m.from.computer, dir }));
@@ -592,8 +609,228 @@ export function formatReceiveResult(r: Extract<BundleReadResult, { ok: true }>, 
   out.push(...noteLines(m.notes.filter((n) => n.id === "caches" || n.id === "kept-keys" || n.id === "task-keys" || n.id === "grants"), t));
   out.push("");
   out.push(t("move.receive.next", { computer: m.from.computer }));
-  out.push(t("move.receive.delete"));
+  out.push(t(via === "listen" ? "move.receive.afterSend" : "move.receive.delete"));
   return out.join("\n");
+}
+
+export function formatSentResult(p: MovePlan, sent: Extract<MoveSendResult, { ok: true }>, address: string, t: T): string {
+  const out: string[] = [];
+  out.push(t("move.send.head", { name: p.from.partner, computer: p.from.computer, address }));
+  out.push(`  ${t("move.send.checked", counts(t, sent.files, sent.events))}`);
+  if (sent.relocked) out.push(`  ${t("move.send.autofill")}`);
+  if (p.redo.length) {
+    out.push("", t("move.section.redo"));
+    out.push(...itemLines(p.redo.map(bundleItem), t));
+  }
+  if (p.stays.length) {
+    out.push("", t("move.receive.section.stays", { computer: p.from.computer }));
+    out.push(...itemLines(p.stays.map(bundleItem), t));
+  }
+  out.push("", t("move.send.frozen"));
+  out.push(t("move.send.next"));
+  return out.join("\n");
+}
+
+function listenError(r: Extract<MoveListenResult, { ok: false }>, t: T): string {
+  switch (r.error) {
+    case "timeout":
+      return t("move.listen.timeout");
+    case "wrong_code":
+      return t("move.listen.wrongCode");
+    case "bad_request":
+      return t("move.listen.badRequest");
+    case "refused":
+      return t("move.listen.refused");
+    case "write":
+      return t("move.listen.write", { detail: r.detail ?? "" });
+    default:
+      return t("move.listen.stopped");
+  }
+}
+
+function sendError(r: Extract<MoveSendResult, { ok: false }>, t: T): string {
+  switch (r.error) {
+    case "wrong_code":
+      return t("move.send.wrongCode");
+    case "connection":
+      return t("move.send.connection", { detail: r.detail ?? "" });
+    case "bad_address":
+      return t("move.send.badAddress");
+    case "refused":
+      return t("move.send.refused", { detail: r.detail ?? "" });
+    default:
+      return t("move.send.failed", { detail: r.detail ?? r.error });
+  }
+}
+
+async function answerYes(c: MoveCtx, prompt: string): Promise<boolean> {
+  let answer = "";
+  if (c.ask) answer = await c.ask(prompt);
+  else {
+    if (!process.stdin.isTTY) return false;
+    const { createInterface } = await import("node:readline/promises");
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      answer = await rl.question(prompt);
+    } finally {
+      rl.close();
+    }
+  }
+  return /^(y|yes|是|好|发|send)/i.test(answer.trim());
+}
+
+async function cmdSend(c: MoveCtx, address: string): Promise<number> {
+  const print = c.print ?? ((s: string) => console.log(s));
+  if (!c.code) {
+    print(c.json ? JSON.stringify({ ok: false, error: "no_code" }) : c.t("move.send.noCode"));
+    return 1;
+  }
+  const host = c.host ?? (await localMoveHost(c.port ?? 7777));
+  if (!host) {
+    print(c.json ? JSON.stringify({ ok: false, error: "no_core" }) : c.t("move.send.noCore"));
+    return 1;
+  }
+  let dir: string | undefined;
+  try {
+    let state: Awaited<ReturnType<MoveHost["freeze"]>>;
+    try {
+      state = await host.freeze();
+    } catch {
+      print(c.t("move.send.noCore"));
+      return 1;
+    }
+    const until = Date.now() + (c.waitMs ?? 10 * 60_000);
+    while (state.running.length && Date.now() < until) {
+      await Bun.sleep(250);
+      try {
+        state = await host.status();
+      } catch (e) {
+        print(c.t("move.send.connection", { detail: (e as Error).message }));
+        return 1;
+      }
+    }
+    if (state.running.length) {
+      if (!c.ask && !process.stdin.isTTY) {
+        print(c.t("move.send.stillRunning", { n: state.running.length }));
+        return 1;
+      }
+      if (!(await answerYes(c, c.t("move.send.ask", { n: state.running.length })))) {
+        print(c.t("move.send.cancelled"));
+        return 1;
+      }
+    }
+    const facts = (await c.probe?.().catch(() => ({}))) ?? {};
+    const p = planMove({ dataDir: c.dataDir, t: c.t, computer: c.computer, platform: c.platform, ...facts, ...(c.now ? { now: c.now } : {}) });
+    if (!p.ok) {
+      print(c.t("move.bundle.write", { file: "", detail: "no home" }));
+      return 1;
+    }
+    dir = mkdtempSync(join(tmpdir(), "ducter-move-send-"));
+    const file = join(dir, "move.ducter");
+    const passphrase = randomBytes(32).toString("hex");
+    const w = await writeBundle({
+      dataDir: c.dataDir,
+      out: file,
+      passphrase,
+      from: { computer: p.from.computer, os: p.from.os, partner: p.from.partner },
+      goes: p.goes.map(bundleItem),
+      redo: p.redo.map(bundleItem),
+      stays: p.stays.map(bundleItem),
+      notes: bundleNotes(c.dataDir),
+      includeBrowser: p.goes.some((g) => g.id === "browser"),
+      platform: c.platform,
+      env: c.env ?? process.env,
+      ...(c.now ? { now: c.now } : {}),
+    });
+    if (!w.ok) {
+      print(c.json ? JSON.stringify({ ok: false, error: w.error }) : c.t("move.send.bundleFailed", { detail: bundleError(w, c.t, file) }));
+      return 1;
+    }
+    const sent = await sendMove(address, c.code, file, passphrase);
+    if (!sent.ok) {
+      print(c.json ? JSON.stringify({ ok: false, error: sent.error, detail: sent.detail }) : sendError(sent, c.t));
+      return 1;
+    }
+    if (c.json) print(JSON.stringify({ ok: true, address, files: sent.files, events: sent.events, relocked: sent.relocked, from: p.from, redo: p.redo, stays: p.stays }, null, 2));
+    else print(formatSentResult(p, sent, address, c.t));
+    return 0;
+  } finally {
+    host.close();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+async function cmdListen(c: MoveCtx): Promise<number> {
+  const print = c.print ?? ((s: string) => console.log(s));
+  if (c.receive) {
+    print(c.t("move.listen.both"));
+    return 2;
+  }
+  if (homeHasWork(c.dataDir)) {
+    print(c.json ? JSON.stringify({ ok: false, error: "not_empty", dataDir: c.dataDir }) : c.t("move.receive.notEmpty", { dir: c.dataDir }));
+    return 1;
+  }
+  const bindPort = c.bindPort ?? 0;
+  if (bindPort === 7777) {
+    print(c.t("move.listen.port7777"));
+    return 1;
+  }
+  const code = c.listenCode ?? newMoveCode();
+  const timeoutMs = c.listenTimeoutMs ?? 10 * 60_000;
+  let h: ReturnType<typeof listenOnce>;
+  try {
+    h = listenOnce({
+      code,
+      port: bindPort,
+      ...(c.bindHost ? { host: c.bindHost } : {}),
+      timeoutMs,
+      onBundle: (file, passphrase) => readBundle({ file, dataDir: c.dataDir, passphrase, platform: c.platform, env: c.env ?? process.env }),
+    });
+  } catch (e) {
+    print(c.t("move.listen.startFailed", { detail: (e as Error).message }));
+    return 1;
+  }
+  print(c.t("move.listen.head"));
+  print(`  ${c.t("move.listen.run", { address: h.address, code: h.code })}`);
+  print(c.t("move.listen.wait", { minutes: Math.max(1, Math.round(timeoutMs / 60_000)) }));
+  const r = await h.done;
+  if (!c.json) print("");
+  if (!r.ok) {
+    print(c.json ? JSON.stringify({ ok: false, error: r.error, detail: r.detail }) : listenError(r, c.t));
+    return 1;
+  }
+  if (r.receive.ok) {
+    print(c.json ? JSON.stringify({ ok: true, dataDir: c.dataDir, files: r.receive.files, events: r.receive.events, relocked: r.receive.relocked, manifest: r.receive.manifest }, null, 2) : formatReceiveResult(r.receive, c.t, c.dataDir, "listen"));
+    return 0;
+  }
+  print(c.json ? JSON.stringify({ ok: false, error: r.receive.error }) : receiveError(r.receive, c.t, "", c.dataDir));
+  return 1;
+}
+
+async function cmdUnfreeze(c: MoveCtx): Promise<number> {
+  const print = c.print ?? ((s: string) => console.log(s));
+  const host = c.host ?? (await localMoveHost(c.port ?? 7777));
+  if (!host) {
+    print(c.json ? JSON.stringify({ ok: false, error: "no_core" }) : c.t("move.unfreeze.noCore"));
+    return 1;
+  }
+  try {
+    let st: Awaited<ReturnType<MoveHost["unfreeze"]>>;
+    try {
+      st = await host.unfreeze();
+    } catch (e) {
+      print(c.t("move.unfreeze.noCore"));
+      return 1;
+    }
+    if (st.frozen) {
+      print(c.json ? JSON.stringify({ ok: false, error: "still_frozen" }) : c.t("move.send.failed", { detail: "still frozen" }));
+      return 1;
+    }
+    print(c.json ? JSON.stringify({ ok: true, frozen: false }) : c.t("move.unfreeze.done"));
+    return 0;
+  } finally {
+    host.close();
+  }
 }
 
 function bundleError(e: Extract<BundleWriteResult, { ok: false }>, t: T, file: string): string {
@@ -738,12 +975,15 @@ async function cmdReceive(c: MoveCtx, file: string): Promise<number> {
 
 export async function cmdMove(c: MoveCtx): Promise<number> {
   const print = c.print ?? ((s: string) => console.log(s));
+  if (c.unfreeze) return cmdUnfreeze(c);
+  if (c.listen) return cmdListen(c);
   if (c.bundle && c.receive) {
     print(c.t("move.oneAtATime"));
     return 2;
   }
   if (c.bundle) return cmdBundle(c, c.bundle);
   if (c.receive) return cmdReceive(c, c.receive);
+  if (!c.plan && c.to && /^(https?|wss?):\/\//i.test(c.to)) return cmdSend(c, c.to);
   if (!c.plan) {
     print(c.t("move.usage"));
     return 2;

@@ -160,6 +160,8 @@ export async function browseFolders(
 }
 
 export interface NewTaskDeps {
+  /** D627: true while this home is frozen for a move: no new task starts. */
+  held?: () => boolean;
   log: LogStore;
   tasks: TaskRegistry;
   runner: () => Runner | undefined;
@@ -489,6 +491,13 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   const git = d.git ?? realGit;
   const words = typeof input.words === "string" ? input.words.trim() : "";
   if (!words) return { ok: false, reason: "empty", message: "Say what the task should do." };
+  if (d.held?.()) {
+    return {
+      ok: false,
+      reason: "failed",
+      message: languageOf(words, d.settings).startsWith("zh") ? "Ducter 正在搬到另一台电脑，先不接新任务；搬完再开。" : "Ducter is moving to another computer, so it isn't taking new tasks right now.",
+    };
+  }
   const runner = d.runner();
   if (!runner) return { ok: false, reason: "failed", message: languageOf(words, d.settings).startsWith("zh") ? "现在开不了任务。" : "Tasks can't run right now." };
   let place: Place = input.place ?? { kind: "none" };

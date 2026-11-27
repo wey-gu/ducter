@@ -45,6 +45,8 @@ export interface Args {
   plan?: boolean; // move --plan (D504): only the plan, nothing changed; move --to <computer> reuses `to`
   bundle?: string; // move --bundle <file>: one encrypted archive of what moves
   receive?: string; // move --receive <file>: import a bundle into an empty data folder
+  listen?: boolean; // move --receive --listen: wait once for the old home (D627)
+  unfreeze?: boolean; // move --unfreeze: lift a frozen home (D627)
   passphraseStdin?: boolean; // move --bundle/--receive: read the passphrase from stdin, never an argument
 }
 
@@ -198,13 +200,25 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--passphrase-stdin":
         args.passphraseStdin = true;
         continue;
-      case "--bundle":
-      case "--receive": {
+      case "--bundle": {
         const v = value();
         if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
-        args[a.slice(2) as "bundle" | "receive"] = v.trim();
+        args.bundle = v.trim();
         continue;
       }
+      case "--receive": {
+        // D627: `--receive <file>` imports a file; `--receive --listen` waits once instead.
+        const v = value();
+        if (v === undefined) args.listen = true;
+        else args.receive = v.trim();
+        continue;
+      }
+      case "--listen":
+        args.listen = true;
+        continue;
+      case "--unfreeze":
+        args.unfreeze = true;
+        continue;
       case "--agents":
         args.agents = true;
         continue;

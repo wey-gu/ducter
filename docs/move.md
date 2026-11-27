@@ -1,6 +1,6 @@
 ---
 title: Move Ducter to another computer
-description: See what moving your Ducter to a new Mac or a server would carry over, make one encrypted bundle of it, and receive it on the new computer. The switch-over itself is coming soon.
+description: See what moving your Ducter to a new Mac or a server would carry over, make one encrypted bundle of it or send it over your network, and receive it on the new computer. The switch-over itself is coming soon.
 order: 3.2
 ---
 
@@ -11,9 +11,9 @@ server that never sleeps, or on a new Mac. Moving it should lose nothing: not th
 not your partners, not the phone you paired, not the routines it runs for you.
 
 **The switch-over is coming soon.** You can already see the plan, make one encrypted bundle of
-what moves, and receive it on the new computer. The new computer checks every file and every
-entry of the Log before it keeps anything. Until the switch-over, keep using the Ducter on the
-old computer.
+what moves, send it over your network, and receive it on the new computer. The new computer
+checks every file and every entry of the Log before it keeps anything. Until the switch-over,
+keep using the Ducter on the old computer.
 
 ## See the plan
 
@@ -112,11 +112,47 @@ need no pairing again: they follow when the move is switched over.
 Nothing starts on the new computer yet; keep using the Ducter on the old computer. The
 switch-over is the next version.
 
+## Send it over the network instead
+
+If both computers can reach each other, you don't need to carry a file.
+
+On the **new** computer, in an empty data folder, run:
+
+```sh
+ducter move --receive --listen
+```
+
+It prints one command with an address and a one-time code, and waits. The code works once and
+stops after 10 minutes. Nothing is written until every check passes.
+
+On the **old** computer, run that command:
+
+```sh
+ducter move --to http://192.168.1.20:51234 --code ABCD-EFGH
+```
+
+The old Ducter first freezes itself: no new task starts, routines and Keeps stop waking, chat
+apps stop reading (their place is kept), and Nowledge Bridge stays quiet. A task already at work is
+allowed to reach a turn end; if any are still running after ten minutes, it asks before going on.
+It then sends the same encrypted bundle the file path makes, over one encrypted connection, and
+the new computer checks it exactly as `--receive` does.
+
+The old computer stays frozen after the send and still owns everything, even if Ducter restarts.
+Nothing is switched over. If anything went wrong, or you want to go back to work on the old
+computer, run:
+
+```sh
+ducter move --unfreeze
+```
+
+That lifts the freeze and the old Ducter takes work again.
+
 ## After the bundle arrives
 
 1. Sign in to the AI agents, GitHub and Nowledge Mem on the new computer, as the receive command
    listed.
 2. Switch the move over. That step is coming soon; until then, keep using the Ducter on the old
    computer.
-3. Once the switch-over works, delete the bundle. Until then, leave the old computer untouched;
-   it is still the one running.
+3. Once the switch-over works, delete the bundle if you made one. If you sent it over the
+   network, there is no file to delete. Until then, leave the old computer untouched; it is
+   still the one running.

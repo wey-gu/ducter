@@ -156,6 +156,9 @@ export interface Channels {
   turnEnded(): void;
   /** Starts the chat apps that were connected before. */
   start(): Promise<void>;
+  /** D627: a move pauses reading and writing without tearing the subscription down. */
+  pause(): void;
+  resume(): Promise<void>;
   stop(): void;
   /** Resolves when nothing is waiting to be sent (tests). */
   idle(): Promise<void>;
@@ -218,6 +221,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   let releaseTimer: unknown;
   let lastUser: { seq: number; via?: ChannelKind; at: number } | undefined;
   let fromChat = 0; // >0 while the hub itself logs a message or a decision (synchronous appends)
+  let paused = false;
   const w = () => wordsIn(HUB_WORDS, deps.lang());
   const W = {
     linked: () => w().linked,
@@ -796,6 +800,7 @@ export function createChannels(deps: ChannelDeps): Channels {
   // ---------- the Log, followed ----------
 
   const off = log.subscribe((e) => {
+    if (paused) return;
     try {
       switch (e.kind) {
         case "user_msg": {
@@ -1190,6 +1195,22 @@ export function createChannels(deps: ChannelDeps): Channels {
         const rec = store.get(kind);
         if (rec) await bring(kind, rec).catch((err) => console.warn(`[channels] ${kind} didn't start: ${(err as Error).message}`));
       }
+    },
+    pause() {
+      paused = true;
+      scan?.stop.abort();
+      scan = undefined;
+      for (const l of live.values()) l.ch.stop();
+      live.clear();
+      for (const w of words.values()) clock.clearTimeout(w.timer);
+      words.clear();
+      for (const j of jobs.values()) if (j.timer) clock.clearTimeout(j.timer);
+      for (const k of [...typing.keys()]) stopTyping(k);
+      if (releaseTimer) clock.clearTimeout(releaseTimer);
+    },
+    async resume() {
+      paused = false;
+      await this.start();
     },
     stop() {
       off();

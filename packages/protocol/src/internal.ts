@@ -147,6 +147,8 @@ export interface CoreApi {
     mem?: MemIdentity;
   };
   dataDir: string; // ~/.ducter
+  /** D627: true while this home is frozen for a move (the partner holds its Bridge turns). */
+  frozen?(): boolean;
   /** Paired worker machines (system.md "Workers"); absent in tests and stubs. */
   workers?: WorkerLinks;
   /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */

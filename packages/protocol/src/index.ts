@@ -1522,6 +1522,20 @@ export interface UntilView {
 //  - task_send: delivered to the task as steer when it is mid-turn and the harness supports it,
 //    otherwise as the next turn ("prompted") or queued behind the current turn.
 
+/** D627: a home frozen for a move: what it holds and what is still running on it. */
+export interface MoveState {
+  frozen: boolean;
+  running: { taskId: string; title: string }[];
+}
+
+/** D627: the core's freeze controls (`ducter move --to`, `--unfreeze`). */
+export interface MoveControl {
+  freeze(): MoveState;
+  unfreeze(): MoveState;
+  status(): MoveState;
+  frozen(): boolean;
+}
+
 export type ClientFrame =
   // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
   // client: what is connecting (D128: `open_task` goes to the apps, never to a CLI); absent = an app.
@@ -1806,6 +1820,11 @@ export type ClientFrame =
   | { t: "repairs_week"; weeks?: number }
   // D588: `ducter usage`: the tokens tasks used over the last `days` (1–31) in the person's days (`tz`: minutes east of UTC), counted from the Log; answered with usage_days_result.
   | { t: "usage_days"; days?: number; tz?: number; top?: number }
+  // D627: freeze this home for a move (new tasks refused, routines/Keeps held, chat apps stopped),
+  // ask how it stands, or lift the freeze (the way back for this slice).
+  | { t: "move_freeze" }
+  | { t: "move_status" }
+  | { t: "move_unfreeze" }
   // D514: `ducter worktrees [--plan]`: every working copy Ducter made, what goes when and what stays and why; changes nothing. Answered with worktrees_plan_result.
   | { t: "worktrees_plan" }
   // D242: fresh keys for media this client holds refs to (its keys ran out); answered with media_keys.
@@ -2189,6 +2208,10 @@ export type ServerFrame =
   | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
   // D588: `ducter usage`: what the tasks used, answered on the asking socket only.
   | { t: "usage_days_result"; report?: import("./usage.ts").UsageReport; error?: string }
+  // D627: `ducter move --to` / `--unfreeze`, answered on the asking socket only.
+  | { t: "move_freeze_result"; move?: MoveState; error?: string }
+  | { t: "move_status_result"; move?: MoveState; error?: string }
+  | { t: "move_unfreeze_result"; move?: MoveState; error?: string }
   | { t: "worktrees_plan_result"; plan?: import("./tidy.ts").TidyPlan; error?: string }
   // D242: a fresh key per id the home holds (ids it doesn't hold are left out). Not "keys": the saved frame's.
   | { t: "media_keys"; mediaKeys: Record<string, string> }

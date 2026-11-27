@@ -6304,6 +6304,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     checkBridge,
     onTrigger(e: LogEvent) {
       if (closed) return;
+      // D627: a home frozen for a move holds Bridge turns; the message stays in the Log.
+      if (e.kind === "bridge_msg" && core.frozen?.()) return;
       if (seen.has(e.seq)) return;
       seen.add(e.seq);
       if (seen.size > 5000) {

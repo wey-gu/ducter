@@ -111,7 +111,8 @@ const html = `<!doctype html><html lang="zh"><head><meta charset="utf-8"><style>
       const shown = (sel) => { const e = top.querySelector(sel); return !!e && getComputedStyle(e).display !== "none"; };
       if (w === 1000) {
         if (shown(".trail > .crumb")) bad.push({ kind: "header", w, why: "crumbs still take the title's room" });
-        if (shown(".bench-toggle") || shown(".fill")) bad.push({ kind: "header", w, why: "secondary marks still on the bar" });
+        if (shown(".bench-toggle")) bad.push({ kind: "header", w, why: "the workbench mark still on the bar" });
+        if (!shown(".fill")) bad.push({ kind: "header", w, why: "the fill (the way back beside) is gone" });
         if (shown(".info-label")) bad.push({ kind: "header", w, why: "branch label still on the bar" });
       } else {
         if (!shown(".trail > .crumb")) bad.push({ kind: "header", w, why: "crumbs gone at 1440" });

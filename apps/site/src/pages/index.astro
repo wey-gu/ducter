@@ -9,7 +9,7 @@ import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
 import Shot from "../components/Shot.astro";
 import { launchFilm, siteLinks } from "../lib/links";
-import { agentsByNameAnd, agentsSoonAnd, agentsTasksAnd, agentsTodayAnd } from "../lib/agents";
+import { agents, agentsByNameAnd, agentsSoonAnd, agentsTasksAnd, agentsTodayAnd } from "../lib/agents";
 import { homeFaq } from "../lib/faq";
 
 // D326, D414, D558: the page answers a visitor's questions in their order: what will it do for me
@@ -69,7 +69,7 @@ const beforeWith = [
 type Reach = { art: (keyof typeof import("../art.json"))[]; title: string; text: string; href: string; agentCoins?: true };
 const reach: Reach[] = [
   { art: ["server_awake"], title: "Your computers and servers", text: "It lives on your Mac or a Linux server you own. Add a NAS, a cloud machine or another Mac with one line, and say where a task should run.", href: "/docs/add-a-computer" },
-  { art: ["coin_claude_code", "coin_codex", "coin_pi", "coin_deepseek_harness", "coin_devin", "coin_antigravity", "coin_kimi", "coin_opencode"], agentCoins: true, title: "The AI agents you have", text: `${agentsTodayAnd} can be your partner, signed in as you, on the plan or key you already have. ${agentsTasksAnd} takes any task; ${agentsByNameAnd} take tasks only when you ask for them by name. ${agentsSoonAnd} are coming soon.`, href: "/docs/faq#which-ai-agents-does-it-work-with" },
+  { art: ["coin_claude_code", "coin_codex", "coin_pi", "coin_deepseek_harness", "coin_devin", "coin_cursor", "coin_antigravity", "coin_kimi", "coin_opencode"], agentCoins: true, title: "The AI agents you have", text: `${agentsTodayAnd} can be your partner, signed in as you, on the plan or key you already have. ${agentsTasksAnd} ${agents.tasks.length > 1 ? "take" : "takes"} any task; ${agentsByNameAnd} take tasks only when you ask for them by name. ${agentsSoonAnd} ${agents.soon.length > 1 ? "are" : "is"} coming soon.`, href: "/docs/faq#which-ai-agents-does-it-work-with" },
   { art: ["ab_web"], title: "A real browser", text: "Its own Chrome window, apart from yours. Watch it from your phone, and take a turn when a page needs you.", href: "/docs/devices#browsing-the-web" },
   { art: ["ab_computer"], title: "Your Mac's apps", text: "It exports the Keynote deck or answers the mail in your Mac's own apps, in the background, with Stop in reach.", href: "/docs/devices#tasks-in-your-macs-apps" },
   { art: ["ab_phone", "android"], title: "A phone of its own, or yours", text: "An Android phone that runs on your Mac, for things that only happen in an app. Or a task borrows your own Android phone for a while.", href: "/docs/devices#ducters-phone" },

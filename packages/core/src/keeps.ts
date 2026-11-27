@@ -12,6 +12,7 @@
 //     the person did (pause, resume, stop). Whether a goal holds or a round is news is the model's
 //     to judge (principle 21); nothing here reads meaning from words.
 import type { Bodies, HelperItem, KeepAction, KeepsApi, KeepMakeInput, KeepChange, KeepChanged, KeepBody, KeepCard, KeepEdit, KeepField, KeepFrom, KeepItem, KeepPage, KeepProposal, KeepRound, KeepSheet, KeepWake, LangTag, LogEvent, OngoingItem, Place, RoutineTrigger, RoutineView, TaskCard, TaskLoopBody } from "@ducter/protocol";
+import { actingPersona } from "./acting.ts";
 import { BELL_ABOUT_MAX, BELL_COALESCE_MS, BELL_JOIN_MS, BELL_RATE_MAX, BELL_RATE_WINDOW_MS, fill, prWakeOf, words, KEEP_CAP_MAX, KEEP_CAP_MIN, KEEP_RULE_MAX, KEEP_SAID_MAX, KEEP_TITLE_MAX, type KeepBellUrl, type PrWake } from "@ducter/protocol";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -404,6 +405,23 @@ export function createKeeps(o: {
     byId.set(k.keepId, k);
     byFrom.set(keyOf(k.from), k.keepId);
   };
+
+  // D631 (#243): the two halves of an old Keep could disagree: its routine said a second
+  // partner, its Keep said the default (keep_make fell through to the default's handler). The
+  // routine has carried the acting partner since D312, so it decides once; the repair is written
+  // with the Keep, never silent, and a start that finds the owner right writes nothing.
+  function repairOwners() {
+    for (const k of [...byId.values()]) {
+      if (k.from.kind !== "routine") continue;
+      const owner = o.routines.get(k.from.routineId)?.persona;
+      // Only a current other partner's routine: the default's (absent, its id, or a removed
+      // partner's) never moves a Keep away from where it is.
+      if (!owner || isOf(owner, o.persona()) || isOf(k.persona, owner)) continue;
+      put({ ...k, persona: owner });
+      log.append({ stream: `keep:${k.keepId}`, origin: "system", kind: "keep_owner_repaired", body: { keepId: k.keepId, routineId: k.from.routineId, from: k.persona ?? o.persona(), to: owner, at: iso(clock.now()) }, persona: owner } as never);
+    }
+  }
+  repairOwners();
 
   // ---------- what each mechanism says a Keep is ----------
 
@@ -1002,7 +1020,10 @@ export function createKeeps(o: {
     const kinds = [input.wake?.at, input.wake?.watch, input.wake?.address].filter(Boolean).length;
     if (kinds !== 1) return { ok: false, error: "Give exactly one wake: at (times on the clock), watch (a fact to look at), or address (other agents hand it work)." };
     const firstEver = ![...byId.values()].some((k) => k.made === "keep_make");
-    const persona = input.persona;
+    // D631 (#243): the acting partner (the one routines.make stamps) is the owner, never a
+    // handler's captured default. A direct call with an explicit persona keeps it when nobody acts;
+    // with neither, the default partner is named as before.
+    const persona = actingPersona() ?? input.persona ?? o.persona();
     quiet = true;
     try {
       if (input.wake.address) {
@@ -1512,7 +1533,20 @@ const kindWord = { same: "task in rounds", fresh: "routine", perItem: "helper" }
  * receipt card): "我的循环任务都怎么样了" (keep_list), and "把 review 改成每小时" / "先停一下" /
  * "降到 1800 再告诉我" / "别看了" (keep_change). They replace routine_list and routine_change (D427).
  */
-export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts").McpHub, keeps: Keeps, persona: () => string, deviceId: (name: string) => string | undefined = (n) => n) {
+export function registerKeepTools(
+  mcp: import("@ducter/protocol/src/internal.ts").McpHub,
+  keeps: Keeps,
+  persona: () => string,
+  deviceId: (name: string) => string | undefined = (n) => n,
+  o: {
+    /** Whether a Keep's persona belongs to this caller (core passes its own isOf: absent and a removed partner are the default's). */
+    isOf?: (keepPersona: string | undefined, persona: string) => boolean;
+    /** The name to say for an owner (the model relays a plain refusal). */
+    nameOf?: (keepPersona: string | undefined) => string;
+  } = {},
+) {
+  const owns = o.isOf ?? ((p, want) => p === want);
+  const ownerName = o.nameOf ?? ((p) => p || persona());
   // D533: a computer the partner names (its [devices] name) as the id an edit on the page sends.
   const devices = (name: string) => (name === "auto" ? "auto" : (deviceId(name) ?? name));
   const find = (id: string) => keeps.get(id) ?? keeps.all().find((k) => fromId(k) === id);
@@ -1521,8 +1555,10 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
     "keep_list",
     "What Ducter looks after for the user (照看): reviews every 45 min, routines, watches, helpers other agents hand work to. Always call it for \"这个循环怎么样了\", \"is my review loop still running?\" (never answer from memory). Each has say: its ready line in the user's language; reply with that line word for word.",
     { type: "object", properties: {} },
-    async () =>
-      keeps.sheets(persona()).map((s) => {
+    async () => {
+      // D631 (#243): only the caller's own Keeps.
+      const me = persona();
+      return keeps.sheets(me).map((s) => {
         const k = keeps.get(s.id)!;
         return {
           id: s.id,
@@ -1540,7 +1576,8 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
           ...(k.speaks ? { speaks: k.speaks } : {}),
           ...(s.health ? { health: s.health.state, ...(s.health.fix ? { fix: s.health.fix } : {}) } : { health: "on time" }),
         };
-      }),
+      });
+    },
   );
   mcp.register(
     "partner",
@@ -1568,8 +1605,12 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
       required: ["id"],
     },
     async (a: { id?: string; action?: string; minutes?: number; until_iso?: string; until?: string; next_round?: string; also?: string; speaks?: string; title?: string; cap?: number; computer?: string; agent?: string; address?: string; hand?: string; doorbell?: boolean }) => {
+      const me = persona();
       const k = find(String(a.id ?? ""));
       if (!k) return { ok: false, error: `nothing called ${a.id} is looked after; see keep_list` };
+      // D631 (#243): a partner changes its own Keeps only. The person's own page calls
+      // keeps.change directly, so this guard never takes their hand off any Keep.
+      if (!owns(k.persona, me)) return { ok: false, error: `that one is ${ownerName(k.persona)}'s; ask in its conversation` };
       // D598: handed, not taken: the line says it is handed over and waits to be taken, never that it is on it.
       if (typeof a.hand === "string") {
         const r = await keeps.change(k.keepId, { hand: a.hand }, { by: "partner" });
@@ -1598,7 +1639,7 @@ export function registerKeepTools(mcp: import("@ducter/protocol/src/internal.ts"
       }, { by: "partner" });
       if (!r.ok) return { ok: false, error: r.error };
       if (bell) return { ok: true, doorbell: r.keep.bell ? "on" : "off", tell: r.keep.bell ? "Say in one line that its doorbell is on. The URL is on its page, under How it runs; never put it in chat yourself, and never guess it." : "Say in one line that its doorbell is off, and the old URL stopped working at once." };
-      const s = keeps.sheets(persona()).find((x) => x.id === k.keepId);
+      const s = keeps.sheets(me).find((x) => x.id === k.keepId);
       // D540: where the one-off ask went: its round under way has it now, or its next round's wake carries it first.
       // D540: the ask echoed with where it went, so the line back says what happens to it this round.
       const ask = typeof a.next_round === "string" ? a.next_round.trim() : "";

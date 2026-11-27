@@ -721,7 +721,10 @@ func (a *App) listSection(c *ui.Context, key, name string, n int, body func()) {
 				}
 			}
 		})
-		body()
+		// The section's cards share one air: a card's clay ledge stands on a
+		// surface, so the gap is the spacing scale's S5 (24), not an ad-hoc
+		// margin on each card (needs cards, sheets, helper sheets all alike).
+		ui.Column(c.Key("body:" + key)).Gap(t.S5).Children(body)
 	})
 }
 

@@ -578,9 +578,12 @@ func (a *App) keepMain(c *ui.Context, k *protocol.KeepPage, w float32) {
 		a.keepH2(c, "waiting", a.L.T("keep.waiting"))
 		prev := a.oh.listW
 		a.oh.listW = w
-		for _, task := range asking {
-			a.needsCard(c.Key("ask:"+task.ID), task)
-		}
+		// The asks share the board's card gap: S5, the air a card's ledge needs.
+		ui.Column(c.Key("keep-asking")).Gap(t.S5).Children(func() {
+			for _, task := range asking {
+				a.needsCard(c.Key("ask:"+task.ID), task)
+			}
+		})
 		a.oh.listW = prev
 	}
 	// A Keep in rounds is its one task, never an item: it holds something

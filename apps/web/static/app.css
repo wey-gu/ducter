@@ -8244,7 +8244,7 @@ dl.call-summary dd { margin: 0; }
 .onhand-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--s6);
   min-width: 0;
 }
 .onhand-list .tools {
@@ -8291,7 +8291,15 @@ dl.call-summary dd { margin: 0; }
 .tsec {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--s1);
+}
+/* A section's cards share one air: 4 under the label, 24 between cards, so a card's clay ledge
+   clears the next with visible air. */
+.tsec > .tbody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  min-width: 0;
 }
 /* D270: a section's name small and quiet, its count fainter. */
 .tsec h3 {
@@ -8338,7 +8346,7 @@ dl.call-summary dd { margin: 0; }
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
 }
-.tsec > .trow.loose + .trow.loose {
+.tsec > .tbody > .trow.loose + .trow.loose {
   margin-top: 2px;
 }
 .trow .tmain {
@@ -20339,7 +20347,7 @@ html[data-text-size="large"] .brand-mark > svg {
   display: none;
 }
 .onhand-list:not(.room-rail) .tsec {
-  gap: 8px;
+  gap: var(--s1);
 }
 /* D498 (research/216): at work, a pebble that beats once when a step lands (keyed by the newest
    step, so it moves only when the task does) and rests between; dimmed once no step has come for a
@@ -21332,9 +21340,6 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .onhand-list:not(.room-rail) .ocards:has(> .ocard.stopped, > .ocard.a-failed) {
   box-shadow: 0 2px 0 var(--needs-ledge), var(--drop);
-}
-.onhand-list:not(.room-rail) .ocards + .ocards {
-  margin-top: 8px;
 }
 .onhand-list:not(.room-rail) .ocard {
   display: grid;

@@ -1377,7 +1377,7 @@ function Section({ name, n, children, end, fold }: { name: string; n?: number; c
           {fold.shut && fold.mark && <StatusFace s={fold.mark} title={fold.counts} />}
           {end && <span class="end">{end}</span>}
         </h3>
-        {children}
+        <div class="tbody">{children}</div>
       </section>
     );
   }
@@ -1388,7 +1388,7 @@ function Section({ name, n, children, end, fold }: { name: string; n?: number; c
         <span class="nm">{name}</span>
         {end && <span class="end">{end}</span>}
       </h3>
-      {children}
+      <div class="tbody">{children}</div>
     </section>
   );
 }

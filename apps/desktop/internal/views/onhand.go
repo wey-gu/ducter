@@ -95,7 +95,7 @@ func (a *App) onHand(c *ui.Context) {
 					a.oh.listW = max(min(float32(onHandMeasure+80), avail), 420)
 				}
 				ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
-					ui.Column(c.Key("list")).Gap(t.S5).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
+					ui.Column(c.Key("list")).Gap(t.S6).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
 						if !column && lensOn(groups) {
 							a.lensTabs(c, groups, lens)
 						}
@@ -381,7 +381,7 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, basis float32) {
 	t := a.T
 	names := [...]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
-	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S3).Children(func() {
+	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S5).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.heading(c, a.L.T(names[lane]), t.XL)
 			n := len(tasks)
@@ -498,8 +498,8 @@ func firstClause(s string) string {
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	// D493: 8 under each card, so its ledge never touches the next one.
-	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+	// D632: the section's S5 body gap separates cards; the card carries no bottom margin (was D493's 8).
+	card := ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
 	a.doorCard(c, card, "t:"+task.ID) // D535
 	card.Children(func() {
@@ -796,11 +796,11 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	if d.Call != nil {
-		ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 			Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callBody(c, d) })
 		return
 	}
-	card := ui.Column(c).Padding(t.S5, t.S5).Margin(0, 0, t.S2, 0).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+	card := ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge)
 	a.doorCard(c, card, "d:"+d.DecisionID) // D535
 	card.Children(func() {

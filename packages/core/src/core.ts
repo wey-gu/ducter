@@ -705,8 +705,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const mcpSecret = loadSecret(dataDir);
   const mcp = createMcpHub({ secret: mcpSecret });
   registerCoreTools(mcp, log, tasks, partners.on() ? whose : undefined);
-  // D486: make, pass to and rename partners from the conversation.
-  if (partners.on()) registerPartnerTool(mcp, { log, partners });
+  // D486: make, pass to and rename partners from the conversation; D649: switch in a chat app.
+  if (partners.on()) registerPartnerTool(mcp, { log, partners, now: () => clock.now() });
   // D312: a task's tool calls carry the partner it is for (its memory_search is that partner's).
   mcp.setTaskPersona((taskId) => {
     const p = whose.ofTask(taskId);

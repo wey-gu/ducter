@@ -680,8 +680,34 @@ export const puzzles: Scenario[] = [
     rubric:
       "The partner under test is Home; the person asks it to tell their work partner, Ducter, that the release can wait until Monday. Pass if the words go to Ducter, nothing is opened here, and one short English line says it went to Ducter. Fail if Home acts on the release itself, claims Ducter's answer, or asks anything.",
   },
+  // D649: asking for someone is switching. The person in a chat app asks for another partner
+  // by name, or asks who they can talk to; the partner tool hands the thread over (do=switch), so
+  // that partner answers there first, and the old way of teaching 「小玛，」 no longer stands alone.
+  {
+    id: "wp-partner-ask-switch-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [{ name: "小玛", about: "GTM growth hacker，增长和投放" }],
+    seed: [{ user: "hi" }, { ai: "嗨，我是 Ducter。比如，我能帮你查清一个测试为什么时好时坏。" }],
+    steps: [{ user: "我想和小玛聊下周的投放", via: "telegram" }],
+    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 100, called: [{ tool: "partner", args: { do: "switch", to: /小玛/ } }], notCalled: ["task_open", "task_send"], outcome: { passedTo: { name: "小玛", require: [/投放/] } } },
+    rubric:
+      "The person, in Telegram with their work partner Ducter, says they want to talk to 小玛 about next week's ad placements. Pass if the partner switches the chat to 小玛 (partner do=switch with 小玛), their words go with it, and at most one short Chinese line says 小玛 is coming or answers them here; 小玛 answers there under her name. Fail if it only explains how to switch, teaches 「小玛，」 without switching, plans the placements itself, opens a task, or says it can't.",
+  },
+  {
+    id: "wp-partner-ask-switch-en",
+    category: "puzzle",
+    lang: "en",
+    defaultAbout: "work, code and releases",
+    others: [{ name: "Mia", about: "growth, launches and ads" }],
+    steps: [{ user: "Can I talk to Mia about the launch?", via: "telegram" }],
+    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 160, called: [{ tool: "partner", args: { do: "switch", to: /Mia/i } }], notCalled: ["task_open", "task_send"], outcome: { passedTo: { name: "Mia", require: [/launch/i] } } },
+    rubric:
+      "The person, in Telegram with their work partner, asks to talk to Mia (another of their partners) about the launch. Pass if the partner switches the chat to Mia (partner do=switch with Mia), their words (the launch) go with it, and at most one short English line says Mia is here or answers them (a few words on what she looks after are fine); Mia answers there under her name. Fail if it only says how to switch, teaches “Mia,” without switching, plans the launch itself, opens a task, or says it can't.",
+  },
   // D571: live on hel, in a Slack thread: 「你能切换 role 么？比如 小玛」 got 「不能在这个对话里直接切成小玛…说「转给小玛：……」」,
-  // which is untrue there: in a chat app, starting with 「小玛，」 talks to 小玛 (D516), and the thread is with her.
+  // which is untrue there: in a chat app asking for 小玛, or starting with 「小玛，」, is talking to her (D516, D649).
   {
     id: "wp-partner-switch-how-slack-zh",
     category: "puzzle",
@@ -690,9 +716,9 @@ export const puzzles: Scenario[] = [
     others: [{ name: "小玛", about: "GTM growth hacker，增长和投放" }],
     seed: [{ user: "hi" }, { ai: "嗨，我是 Ducter。比如，我能帮你查清一个测试为什么时好时坏。" }],
     steps: [{ user: "你能切换 role 么？比如 小玛", via: "slack" }],
-    expect: { lines: 1, opens: 0, noAsk: true, msgs: [1, 1], maxChars: 90, require: [/小玛[，,]/], proseForbid: [/转给小玛|不能.{0,8}切|切不了/] },
+    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 90, called: [{ tool: "partner", args: { do: "switch", to: /小玛/ } }], notCalled: ["task_open", "task_send"], outcome: { passedTo: { name: "小玛", require: [/小玛/] } }, proseForbid: [/转给小玛|不能.{0,8}切|切不了|开头写/] },
     rubric:
-      "The person, in a Slack thread with their work partner Ducter, asks whether it can switch to 小玛 (another of their partners). In a chat app, starting a message with 「小玛，」 talks to 小玛 there, and the thread is with her from then on. Pass if the answer says exactly that way in one short Chinese line (e.g. 「开头写「小玛，」就是跟小玛说。」); passing the words to 小玛 so she says hello is fine too. Fail if it says it can't switch, invents another way (a command, 「转给小玛：」, settings, the app's list), explains partners at length, or opens a task.",
+      "The person, in a Slack thread with their work partner Ducter, asks whether it can switch to 小玛 (another of their partners). Asking for her is switching: pass if the partner uses partner do=switch with 小玛, so the thread is with her and she answers there first (at most one short Chinese line here; she speaks under her own name), or if it says yes in one short line and makes her come. Fail if it says it can't switch, only teaches 「小玛，」 or invents another way (a command, 「转给小玛：」, settings), explains partners at length, or opens a task.",
   },
   {
     id: "wp-partner-switch-do-slack-zh",
@@ -702,9 +728,9 @@ export const puzzles: Scenario[] = [
     others: [{ name: "小玛", about: "GTM growth hacker，增长和投放" }],
     seed: [{ user: "hi" }, { ai: "嗨，我是 Ducter。比如，我能帮你查清一个测试为什么时好时坏。" }],
     steps: [{ user: "让小玛来吧，我想跟她聊聊下周的投放", via: "slack" }],
-    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 80, outcome: { passedTo: { name: "小玛", require: [/投放/] } } },
+    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 80, called: [{ tool: "partner", args: { do: "switch", to: /小玛/ } }], notCalled: ["task_open", "task_send"], outcome: { passedTo: { name: "小玛", require: [/投放/] } } },
     rubric:
-      "The person, in a Slack thread with Ducter, wants 小玛 brought in to talk about next week's ad placements. Pass if their words go to 小玛 (passed on, with the placements), nothing is opened, nothing is asked, and at most one short Chinese line says 小玛 is coming (she answers in the same thread). Fail if Ducter plans the placements itself, claims 小玛's answer, or only explains how to switch without passing anything.",
+      "The person, in a Slack thread with Ducter, wants 小玛 brought in to talk about next week's ad placements. Pass if the partner switches the thread to her (partner do=switch with 小玛), their words go to her (passed on, with the placements), nothing is opened, nothing is asked, and at most one short Chinese line says 小玛 is coming (she answers in the same thread). Fail if Ducter plans the placements itself, claims 小玛's answer, or only explains how to switch without switching.",
   },
   {
     id: "wp-partner-switch-how-telegram-en",
@@ -713,9 +739,38 @@ export const puzzles: Scenario[] = [
     defaultAbout: "work, code and releases",
     others: [{ name: "Mia", about: "growth, launches and ads" }],
     steps: [{ user: "can I talk to Mia here?", via: "telegram" }],
-    expect: { lines: 1, opens: 0, noAsk: true, msgs: [1, 1], maxChars: 120, require: [/Mia,/] },
+    expect: { lines: 1, opens: 0, noAsk: true, msgs: [0, 1], maxChars: 120, called: [{ tool: "partner", args: { do: "switch", to: /Mia/i } }], notCalled: ["task_open", "task_send"], outcome: { passedTo: { name: "Mia", require: [/Mia/i] } } },
     rubric:
-      "The person, in Telegram with their work partner, asks whether they can talk to Mia (another of their partners) there. Pass if one short English line says yes: start a message with “Mia,” and it goes to Mia (passing a hello to Mia as well is fine). Fail if it says no, invents another way, explains partners at length, or opens a task.",
+      "The person, in Telegram with their work partner, asks whether they can talk to Mia (another of their partners) there. Asking for her is switching: pass if the partner uses partner do=switch with Mia, so the chat is with her and she answers there first (at most one short English line here), or if it says yes in one short line and makes her come. Fail if it says no, only teaches “Mia,”, invents another way, explains partners at length, or opens a task.",
+  },
+  // D649: "who can I talk to" lists them once, in plain words, and switches nothing.
+  {
+    id: "wp-partner-who-zh",
+    category: "puzzle",
+    lang: "zh",
+    defaultAbout: "工作、代码和发布",
+    others: [
+      { name: "小玛", about: "GTM growth hacker，增长和投放" },
+      { name: "多比", about: "读书和跑步" },
+    ],
+    steps: [{ user: "我都能和谁聊？", via: "telegram" }],
+    expect: { lines: 3, opens: 0, noAsk: true, msgs: [1, 3], maxChars: 220, require: [/Ducter/, /小玛/, /多比/], proseForbid: [/不能.{0,8}聊|做不到|命令/] },
+    rubric:
+      "The person, in Telegram, asks who they can talk to. They have Ducter (the work partner), 小玛 and 多比. Pass if the answer names all three, in one to three short Chinese lines, and opens nothing; the one line saying how to switch comes from Ducter itself in the chat app, so the partner need not teach it. Fail if it leaves one out, says it can't, teaches a command or Settings, or opens a task.",
+  },
+  {
+    id: "wp-partner-who-en",
+    category: "puzzle",
+    lang: "en",
+    defaultAbout: "work, code and releases",
+    others: [
+      { name: "Mia", about: "growth, launches and ads" },
+      { name: "Home", about: "home, the kids, the doctor" },
+    ],
+    steps: [{ user: "Who can I talk to here?", via: "telegram" }],
+    expect: { lines: 6, opens: 0, noAsk: true, msgs: [1, 6], maxChars: 320, require: [/Mia/, /Home/], proseForbid: [/can't.{0,10}talk|not possible|command/i] },
+    rubric:
+      "The person, in Telegram, asks who they can talk to. They have Ducter (the work partner, the one answering), Mia and Home. Pass if the answer names Mia and Home (calling itself \"me\" is fine), in a few short English lines, and opens nothing; the one line saying how to switch comes from Ducter itself in the chat app, so the partner need not teach it. Fail if it leaves one out, says it can't, teaches a command or Settings, or opens a task.",
   },
   // D580: live on hel (0.1.74). A colleague posted a PR link and 「@Ducter …你帮我 review 下，没问题就帮我合下」 in a
   // channel; the author's 「@Ducter 你帮忙交给我的 review loop 看下，然后再给 pr babysitter 吧」 in its thread.

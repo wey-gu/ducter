@@ -70,7 +70,8 @@ iMessage speaks for the partner that Mac shows: its iMessage words keep `via` (c
 second partner's socket), the bridge takes them for its turn and answers there; in the partner's own
 Apple ID another partner than the default leads with its name (**小家：… / Home: …**, `Label`), as
 Message yourself always leads with the shown one's. The one-thread rules of `channels.md` §10 (a
-name first, a reply keeps, the thread holds) need the bridge's own connection to the home; owed.
+name first, a reply keeps, asking switches, the thread stays until they move it) need the bridge's own
+connection to the home; owed.
 
 ## Mechanism (decided from evidence)
 

@@ -192,5 +192,8 @@ test("D571: [partners] says how the user talks to another one, the chat app's wa
   expect(app).not.toContain("This message came from");
   const slack = renderPartners({ me: "default", list }, undefined, "slack");
   expect(slack).toContain('This message came from Slack: there the user talks to one by starting a message with its name ("小玛，…"');
-  expect(slack).toContain("do=pass their words; it says hello right where they wrote, in this same chat or thread.");
+  expect(slack).toContain("do=switch, and that partner answers there first under its name");
+  const feishu = renderPartners({ me: "default", list }, undefined, "feishu");
+  expect(feishu).toContain("This message came from Feishu / Lark");
+  expect(feishu).toContain("do=switch");
 });

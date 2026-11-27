@@ -373,6 +373,37 @@ test("a question in a second partner's conversation counts for every client, and
   expect(home.frames.slice(h0).some((x) => x.t === "events" && x.events.some((e) => e.kind === "decision"))).toBe(false);
 });
 
+test("D649: the partner tool switches a chat-app thread, and only from a chat app; a real partner, the person's own words", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, partners: true });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger: () => {} });
+  core.setPartnerFactory(() => ({ onTrigger: () => {} }));
+  core.partners.add({ name: "小家", about: "家里的事" });
+  const call = (args: object, persona?: string) => core.mcp.call({ role: "partner", ...(persona ? { persona } : {}) }, "partner", args) as Promise<Record<string, unknown>>;
+
+  // Not from a chat app: no switch, and no words moved.
+  expect(await call({ do: "switch", to: "小家" })).toMatchObject({ ok: false });
+  expect(core.log.read({ stream: "channel:p2", kinds: ["user_msg"], limit: 5 })).toEqual([]);
+  expect(await call({ do: "switch", to: "nobody" })).toMatchObject({ ok: false });
+
+  // A Telegram turn: the person's own words go to 小家, marked passed from this partner.
+  const u = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "我想和小家聊", via: "telegram" } });
+  expect(await call({ do: "switch", to: "小家" })).toMatchObject({ ok: true, with: "小家" });
+  const passed = core.log.read({ stream: "channel:p2", kinds: ["user_msg"], limit: 5 }).at(-1)!;
+  expect(passed.body).toMatchObject({ text: "我想和小家聊", passed: { from: "default" } });
+  expect(passed.seq).toBeGreaterThan(u.seq);
+
+  // 小家 switches back to the default the same way.
+  core.log.append({ stream: "channel:p2", origin: "user", kind: "user_msg", body: { text: "回到 Ducter", via: "telegram" } });
+  expect(await call({ do: "switch", to: "Ducter" }, "p2")).toMatchObject({ ok: true, with: "Ducter" });
+  expect(core.log.read({ stream: "channel", kinds: ["user_msg"], limit: 5 }).at(-1)!.body).toMatchObject({ text: "回到 Ducter", passed: { from: "p2" } });
+
+  // Already here: an answer, not a move.
+  expect(await call({ do: "switch", to: "小家" }, "p2")).toMatchObject({ ok: true, with: "小家" });
+});
+
 test("push: with more than one partner a notification says whose; with one it reads as before", () => {
   const d = { decisionId: "d1", question: "Send it?", reversible: true, taskId: "t1" } as Bodies["decision"];
   const base = { persona: "Ducter", locale: "en" as const, platform: "mac", now: 0 };

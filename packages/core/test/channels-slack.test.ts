@@ -281,11 +281,11 @@ test("D571: switching to another partner in a thread: passed on, it says hello i
   const t = sl.mentions("UWEY", "C0TIME", "hi");
   const u = await waitFor(() => rig!.userMsgs()[0]);
   rig.say("嗨，我是 Ducter。", u.seq);
-  await waitFor(() => sl.sent("chat.postMessage").find((m) => m.text === "嗨，我是 Ducter。"));
+  await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).startsWith("嗨，我是 Ducter。")));
   // The person asks, in the thread, no @, to switch. The default partner judges it and passes it on (D486).
   sl.inChannel("UWEY", "切换到小玛", { thread_ts: t }, "C0TIME");
   const ask = await waitFor(() => rig!.userMsgs()[1]);
-  const passed = log.append({ stream: "channel:p4", origin: "user", kind: "user_msg", persona: "p4", body: { text: "切换到小玛", passed: { from: "default" } } });
+  const passed = log.append({ stream: "channel:p4", origin: "user", kind: "user_msg", persona: "p4", body: { text: "切换到小玛", passed: { from: "default", via: "slack", seq: ask.seq } } });
   rig.say("好，小玛来了。", ask.seq);
   log.append({ stream: "channel:p4", origin: "partner", kind: "ai_msg", persona: "p4", body: { text: "嗨，我是小玛。想聊增长还是投放？", replyTo: passed.seq } });
   const hello = await waitFor(() => sl.sent("chat.postMessage").find((m) => String(m.text).includes("我是小玛")));

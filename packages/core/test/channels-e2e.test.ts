@@ -124,3 +124,49 @@ test("D301: Settings puts up WeChat's QR over the socket; the scan links it; a m
   await waitFor(() => frames.some((f) => f.t === "events" && f.events.some((e) => e.kind === "user_msg" && (e.body as Bodies["user_msg"]).via === "wechat")));
   expect(JSON.stringify(frames)).not.toContain(wx.token);
 });
+
+test("D649: in Telegram, asking for another partner through the partner tool switches the thread, and it answers there under its name", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const tg = fakeTelegram();
+  stops.push(() => tg.stop());
+  const core = startCore({
+    dataDir: t.dir,
+    port: 0,
+    batchMs: 5,
+    partners: true,
+    channels: {
+      gapMs: 0,
+      sleep: async () => {},
+      make: (kind, rec, store) => createTelegram({ token: rec.token, api: tg.api, pollSeconds: 1, backoffMs: 20, offset: () => store.get("telegram")?.offset, setOffset: (n) => store.patch("telegram", { offset: n }) }),
+    },
+  });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger: () => {} });
+  core.setPartnerFactory(() => ({ onTrigger: () => {} }));
+  const made = core.partners.add({ name: "小家", about: "家里的事" });
+  if (!made.ok) throw new Error("no second partner");
+  const home = made.partner.id;
+
+  expect((await core.channels.connect("telegram", { token: tg.token })).ok).toBe(true);
+  const c = core.channels.code("telegram");
+  if (!c.ok) throw new Error("no code");
+  tg.says(PERSON, `/start ${c.link!.split("start=")[1]}`);
+  await waitFor(() => core.channels.view().find((v) => v.kind === "telegram")?.state === "linked");
+
+  // Before the person writes: not a chat-app turn, so nothing moves.
+  expect(await core.mcp.call({ role: "partner" }, "partner", { do: "switch", to: "小家" })).toMatchObject({ ok: false });
+
+  tg.says(PERSON, "我想和小家聊");
+  await waitFor(() => (core.log.read({ stream: "channel", kinds: ["user_msg"], limit: 5 }).length ? true : undefined));
+  const switched = (await core.mcp.call({ role: "partner" }, "partner", { do: "switch", to: "小家" })) as { ok: boolean; with?: string };
+  expect(switched).toMatchObject({ ok: true, with: "小家" });
+  const passed = core.log.read({ stream: `channel:${home}`, kinds: ["user_msg"], limit: 5 }).at(-1)!;
+  expect(passed.body).toMatchObject({ text: "我想和小家聊", passed: { from: "default" } });
+  // 小家 answers in the Telegram thread, led by its name.
+  core.log.append({ stream: `channel:${home}`, origin: "partner", kind: "ai_msg", body: { text: "在，想聊什么？", replyTo: passed.seq } });
+  await waitFor(() => tg.sent("sendMessage").some((m) => String(m.text).startsWith("小家：在，想聊什么？")));
+  // The thread stays with it: the next words without a name are 小家's.
+  tg.says(PERSON, "这周跑了几次步？");
+  await waitFor(() => core.log.read({ stream: `channel:${home}`, kinds: ["user_msg"], limit: 10 }).some((e) => (e.body as Bodies["user_msg"]).text === "这周跑了几次步？"));
+});

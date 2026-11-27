@@ -18,10 +18,11 @@
 //    platform's long connection; a direct chat only, no buttons or files, a typed 好 / 先等等 for a
 //    card, and an edit for the status line.
 //  - D516, several partners: one thread per chat app carries them all. The bot is the default
-//    partner's; another partner's words there lead with its name. The person's words go to the
-//    partner whose message they reply to, else the one named at their start (an address, like an
-//    @: the model still judges the rest and passes on, D486), else the one they are talking with
-//    (TURN_MS), else the default. Every partner's asks and results reach the one place.
+//    partner's; with several partners every partner's words lead with its name. The person's words
+//    go to the partner whose message they reply to, else the one named at their start (an address,
+//    like an @: the model still judges the rest and passes on, D486), else the one the thread is
+//    with (chosen, and kept until they change it), else the default. Asking for one switches
+//    (the partner tool, D649); every partner's asks and results reach the one place.
 import { CHANNEL_KINDS } from "@ducter/protocol";
 import type { Bodies, ChannelKind, ChannelView, ChatThread, LangTag, LogEvent, ReplyWant, ServerFrame } from "@ducter/protocol";
 import { fill, THREAD_CHARS, THREAD_MESSAGES, words as wordsIn } from "@ducter/protocol";
@@ -79,7 +80,8 @@ const HUB_WORDS = {
     reply: "回「好」就{label}，回「先等等」就先放着。",
     openAt: "在 Ducter 里看看：{url}",
     as: "{name}：{text}",
-    hint: "想直接跟{name}说，开头写「{name}，」就行。",
+    hint: "这里能跟 {names} 聊。想跟谁说，开头写它的名字，比如「{one}，…」，或者说「切到{one}」。",
+    listSep: "、",
     always: "以后这类直接做",
     alwaysPost: "以后直接发",
     often: "这类你已经点过两次了，以后直接做？",
@@ -102,7 +104,8 @@ const HUB_WORDS = {
     reply: "Reply “ok” to {label}, or “wait” to hold it.",
     openAt: "Open in Ducter: {url}",
     as: "{name}: {text}",
-    hint: "To talk to {name} directly, start with “{name},”.",
+    hint: "You can talk to {names} here. To talk to one, start with its name (“{one}, …”) or just say “switch to {one}”.",
+    listSep: ", ",
     always: "Always do this",
     alwaysPost: "Always post",
     often: "You've said go to this twice. Do it without asking from now on?",
@@ -247,18 +250,33 @@ export function createChannels(deps: ChannelDeps): Channels {
 
   const partnerList = () => deps.partners?.() ?? [];
   const many = () => partnerList().length > 1;
+  /** The chat apps the person has written in this run (the one-line hint waits for their first words). */
+  const heardIn = new Set<ChannelKind>();
+  /** A partner that is still the home's (one removed falls back to the default). */
+  const still = (id: string) => partnerList().some((p) => p.id === id);
   /** Whose conversation an event is in (a stream that is no conversation, or a partner gone: the default's). */
   const whoseOf = (stream: string): string => {
     const p = partnerOfStream(stream);
-    return p && p !== DEFAULT_PARTNER && partnerList().some((x) => x.id === p) ? p : DEFAULT_PARTNER;
+    return p && p !== DEFAULT_PARTNER && still(p) ? p : DEFAULT_PARTNER;
   };
-  /** The partner the person is talking with in each chat app now: the one they last addressed, or
-   *  the one that last spoke into a quiet thread; it holds for TURN_MS. */
+  /** The partner each chat app's thread is with: the one the person last addressed, chose or was
+   *  handed; it stays until they change it (D649), across a restart, never a quiet fall-back. */
   const withOf = new Map<ChannelKind, { id: string; at: number }>();
+  // What the store kept from before this run: the thread is where the person left it.
+  for (const kind of CHANNEL_KINDS) {
+    const rec = store.get(kind)?.with;
+    if (rec && still(rec.id)) withOf.set(kind, { id: rec.id, at: Date.parse(rec.at) || 0 });
+  }
+  /** The thread is with this partner from now on: the person's choice, or one handed the thread. */
+  const setThread = (kind: ChannelKind, id: string) => {
+    withOf.set(kind, { id, at: clock.now() });
+    if (store.get(kind)) store.patch(kind, { with: { id, at: new Date(clock.now()).toISOString() } });
+  };
   const holdThread = (kind: ChannelKind, id: string) => {
     const cur = withOf.get(kind);
-    // A partner speaking never takes the thread from another the person is talking with now.
-    if (!cur || cur.id === id || clock.now() - cur.at >= TURN_MS) withOf.set(kind, { id, at: clock.now() });
+    // A partner speaking never takes the thread from another the person is talking with, and a
+    // thread already chosen never falls back on its own.
+    if (!cur || cur.id === id || !still(cur.id)) setThread(kind, id);
   };
   /** The partner named at the start of the person's words ("小家，…", "@Home …"): an address, like an @. */
   const addressed = (text: string): string | undefined => {
@@ -276,24 +294,28 @@ export function createChannels(deps: ChannelDeps): Channels {
     const l = live.get(kind);
     return !!deps.face && !!l?.ch.caps.as && l.bot?.customize !== false;
   };
-  /** Another partner's name, when the one thread carries more than one (the default is the bot's own). */
-  const otherName = (id: string) => (many() && id !== DEFAULT_PARTNER ? partnerList().find((p) => p.id === id)?.name : undefined);
-  /** A partner's words as they read in the one thread: another partner's lead with its name. */
+  /** Another partner's name, when the one thread carries more than one (the default's too: D649). */
+  const nameOf = (id: string) => (many() ? partnerList().find((p) => p.id === id)?.name : undefined);
+  /** A partner's words as they read in the one thread: with several partners, every one's lead with its name. */
   const labelled = (kind: ChannelKind, id: string, text: string, hold = true): string => {
     // D571: words in a channel thread hold that thread only, never the DM's.
     if (hold) holdThread(kind, id);
-    const name = shows(kind) ? undefined : otherName(id);
+    const name = shows(kind) ? undefined : nameOf(id);
     return name ? fill(w().as, { name, text }) : text;
   };
-  /** The first time another partner speaks in a chat app, one line says how to talk to it there. */
-  const hintOf = (kind: ChannelKind, id: string): string => {
-    const name = otherName(id);
-    const hinted = store.get(kind)?.hinted ?? [];
-    if (!name || hinted.includes(id)) return "";
-    store.patch(kind, { hinted: [...hinted, id] });
-    return `\n\n${fill(w().hint, { name })}`;
+  /** The first time the person writes with several partners here, one line lists them and how to switch. */
+  const hintOf = (kind: ChannelKind): string => {
+    if (!many() || !heardIn.has(kind)) return "";
+    const rec = store.get(kind);
+    // An old per-partner array counts as said once it has a partner in it; an empty one never said it.
+    if (!rec || (Array.isArray(rec.hinted) ? rec.hinted.length > 0 : rec.hinted)) return "";
+    store.patch(kind, { hinted: true });
+    const names = partnerList().map((p) => p.name).filter(Boolean);
+    if (!names.length) return "";
+    const one = partnerList().find((p) => p.id !== DEFAULT_PARTNER)?.name ?? names[0]!;
+    return `\n\n${fill(w().hint, { names: names.join(w().listSep), one })}`;
   };
-  const voiced = (kind: ChannelKind, id: string, text: string, hold = true): string => labelled(kind, id, text, hold) + hintOf(kind, id);
+  const voiced = (kind: ChannelKind, id: string, text: string, hold = true): string => labelled(kind, id, text, hold) + hintOf(kind);
 
   // ---------- D571: the channel threads a partner answers in ----------
 
@@ -427,9 +449,12 @@ export function createChannels(deps: ChannelDeps): Channels {
       bot: { id: r.ilink_bot_id, name: "ClawBot" },
       linked: { id: r.ilink_user_id, chat: r.ilink_user_id, name: "", at: same ? before!.linked!.at : new Date(clock.now()).toISOString() },
       ...(same && before?.buf ? { buf: before.buf } : {}),
+      ...(same && before?.hinted ? { hinted: before.hinted } : {}),
+      ...(same && before?.with ? { with: before.with } : {}),
       ...(same && before?.ctx ? { ctx: before.ctx, ...(before.heardAt ? { heardAt: before.heardAt } : {}), sentSince: before.sentSince ?? 0 } : {}),
     };
     store.set("wechat", rec);
+    if (!same) withOf.delete("wechat"), heardIn.delete("wechat");
     endScan();
     await bring("wechat", rec).catch((err) => console.warn(`[channels] wechat didn't start: ${(err as Error).message}`));
   };
@@ -709,7 +734,7 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (!buttoned) text += `\n\n${W.reply(d.goLabel)}`;
       buttons = [{ label: W.go(d.goLabel), data: tapData("go", d.decisionId), style: "primary" }, ...(d.always && deps.always ? [{ label: W.always(d), data: tapData("always", d.decisionId) }] : []), { label: W.hold(), data: tapData("hold", d.decisionId) }];
     }
-    text += hintOf(kind, who);
+    text += hintOf(kind);
     void say(kind, text, { buttons, seq, who }).then((ids) => {
       card.ids = ids;
       // Settled while it was on its way: show the end state at once.
@@ -810,12 +835,18 @@ export function createChannels(deps: ChannelDeps): Channels {
           // to answers in that chat app too, and the person is talking with it there now.
           if (b.passed) {
             const t = lastUser;
-            if (t?.via && clock.now() - t.at < TURN_MS) {
-              users.set(e.seq, { seq: e.seq, via: t.via, at: clock.now() });
+            // D649: a switch carries the chat app it was asked in, so a later message in another
+            // chat app can't move the wrong thread; a plain pass (D486) reads the turn as before.
+            const via = b.passed.via && (CHANNEL_KINDS as readonly string[]).includes(b.passed.via) ? b.passed.via : t?.via;
+            const turnSeq = b.passed.seq ?? t?.seq;
+            const at = turnSeq !== undefined ? mentionOf.get(turnSeq) : undefined;
+            const now = b.passed.via ? true : !!t && clock.now() - t.at < TURN_MS;
+            if (via && now) {
+              users.set(e.seq, { seq: e.seq, via, at: clock.now() });
               // D571: passed during a turn in a channel thread: it answers in that thread, which is with it now.
-              const at = mentionOf.get(t.seq);
-              if (at) mentionOf.set(e.seq, at), keepThread(t.via, at.chat, at.thread, whoseOf(e.stream));
-              else withOf.set(t.via, { id: whoseOf(e.stream), at: clock.now() });
+              const id = whoseOf(e.stream);
+              if (at) mentionOf.set(e.seq, at), keepThread(via, at.chat, at.thread, id, { caught: true });
+              else setThread(via, id);
             }
             return;
           }
@@ -971,9 +1002,13 @@ export function createChannels(deps: ChannelDeps): Channels {
     } else if (many()) {
       const replied = replySeq !== undefined ? log.read({ fromSeq: replySeq, limit: 1 })[0] : undefined;
       const cur = withOf.get(kind);
-      to = (replied?.seq === replySeq && replied ? whoseOf(replied.stream) : undefined) ?? (m.forwarded ? undefined : addressed(text)) ?? (cur && clock.now() - cur.at < TURN_MS ? cur.id : DEFAULT_PARTNER);
-      withOf.set(kind, { id: to, at: clock.now() });
+      to = (replied?.seq === replySeq && replied ? whoseOf(replied.stream) : undefined) ?? (m.forwarded ? undefined : addressed(text)) ?? (cur && still(cur.id) ? cur.id : DEFAULT_PARTNER);
+      // The person's words keep the thread where it is, or move it by name or by a reply (D649):
+      // written down, so a restart doesn't hand them back to the default.
+      setThread(kind, to);
     }
+    // D649: the one line that lists the partners waits for their first words here.
+    heardIn.add(kind);
     // D580: first in a thread someone else started (an @ in a reply), or back in one it missed words
     // in: the thread so far comes along, as outside data with who said each part.
     const before = threadTs && m.replyTo && !m.forwarded ? await readThread(kind, m.chat, threadTs, m.id.replace(/#\d+$/, ""), acc.id, known) : undefined;
@@ -1078,6 +1113,7 @@ export function createChannels(deps: ChannelDeps): Channels {
     live.get(kind)?.ch.stop();
     live.delete(kind);
     store.set(kind, undefined);
+    withOf.delete(kind), heardIn.delete(kind);
     if (store.lastRoute() === kind) store.setLastRoute("app");
     changed();
   }
@@ -1102,7 +1138,9 @@ export function createChannels(deps: ChannelDeps): Channels {
             ...(same && before?.linked ? { linked: before.linked } : {}),
             ...(same && before?.strangerAt ? { strangerAt: before.strangerAt } : {}),
             ...(same && before?.hinted ? { hinted: before.hinted } : {}),
+            ...(same && before?.with ? { with: before.with } : {}),
           });
+          if (!same) withOf.delete(kind), heardIn.delete(kind);
           changed();
           return { ok: true };
         } catch (err) {
@@ -1141,7 +1179,8 @@ export function createChannels(deps: ChannelDeps): Channels {
         const bot = await bring(kind, rec);
         // The same bot again keeps its linked account and its place in the updates.
         const same = before?.bot?.id === bot.id;
-        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}), ...(bot.teamId ? { teamId: bot.teamId } : {}), ...(bot.appId ? { appId: bot.appId } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}), ...(same && before?.strangerAt ? { strangerAt: before.strangerAt } : {}), ...(same && before?.hinted ? { hinted: before.hinted } : {}) });
+        store.set(kind, { ...rec, bot: { id: bot.id, name: bot.name, ...(bot.handle ? { handle: bot.handle } : {}), ...(bot.team ? { team: bot.team } : {}), ...(bot.teamId ? { teamId: bot.teamId } : {}), ...(bot.appId ? { appId: bot.appId } : {}) }, ...(same && before?.linked ? { linked: before.linked } : {}), ...(same && before?.offset ? { offset: before.offset } : {}), ...(same && before?.strangerAt ? { strangerAt: before.strangerAt } : {}), ...(same && before?.hinted ? { hinted: before.hinted } : {}), ...(same && before?.with ? { with: before.with } : {}) });
+        if (!same) withOf.delete(kind), heardIn.delete(kind);
         changed();
         return { ok: true };
       } catch (err) {
@@ -1175,7 +1214,9 @@ export function createChannels(deps: ChannelDeps): Channels {
       if (!store.get(kind)?.linked) return false;
       // WeChat's ClawBot is bound to the one who scanned: unlinking it is disconnecting it.
       if (kind === "wechat") return forget(kind), true;
-      store.patch(kind, { linked: undefined, strangerAt: undefined });
+      // A fresh account gets the default and the one line again, not the old person's thread.
+      store.patch(kind, { linked: undefined, strangerAt: undefined, hinted: undefined, with: undefined });
+      withOf.delete(kind), heardIn.delete(kind);
       if (store.lastRoute() === kind) store.setLastRoute("app");
       changed();
       return true;

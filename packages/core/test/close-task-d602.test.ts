@@ -75,7 +75,7 @@ describe("D602: a PR let go holds nothing open", () => {
     const core = boot();
     heldTask(core, "working");
     letGoPr(core.log, ID, PR, "duplicate", "2026-11-26T08:26:50.000Z");
-    expect(items(core).map((x) => x.said)).toEqual([{ phase: "duplicate", draft: true }]);
+    expect(items(core).map((x) => x.said)).toEqual([{ phase: "duplicate", draft: true, sha: "8248c67" }]);
   });
 
   test("the Keep's item is released when its task is dropped", () => {

@@ -234,7 +234,7 @@ func (a *App) taskCards(c *ui.Context, tasks []*store.Task) {
 	a.oh.actsCol, a.oh.needsSheet = acts, ledge == t.NeedsYou.Ledge
 	defer func() { a.oh.actsCol, a.oh.needsSheet = prev, prevNeeds }()
 	ui.Column(c.Key("cards:"+tasks[0].ID)).Width(w).Radius(16).Background(t.Surface).Clip().
-		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
+		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Children(func() {
 		for i, task := range tasks {
 			a.oh.rowFirst = i == 0
 			a.taskCard(c.Key(task.ID), task, w)

@@ -49,7 +49,7 @@ func (a *App) helperSheet(c *ui.Context, h protocol.HelperWork) {
 		ledge = t.NeedsYou.Ledge
 	}
 	ui.Column(c.Key("helper:"+h.ID)).Width(w).Radius(16).Background(t.Surface).Clip().
-		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Margin(2, 0, 6, 0).Children(func() {
+		Shadow(0, 2, 0, 0, ledge).Shadow(0, 6, 14, -10, t.Ink.Alpha(0.16)).Children(func() {
 		prev, prevIn, prevActs, prevNeeds := a.oh.rowFirst, a.oh.inHelper, a.oh.actsCol, a.oh.needsSheet
 		a.oh.needsSheet = you > 0 // D529: its rows' hover warms within the sheet's ledge
 		defer func() { a.oh.needsSheet = prevNeeds }()

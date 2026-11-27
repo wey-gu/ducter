@@ -96,6 +96,9 @@ components and tokens; a value not in the scales below needs a token first.
   rests on a solid 4pt base in `line`: `0 4 0 #E8D9C4`. It never moves or presses. A tinted
   card's base is its own ledge color (needs you: `#F0C29E`). A sheet over the page adds
   `Floating` (0 10 32, ink at 14%). Inline parts (a file list, a diff, a proof line) are flat.
+  Cards stacked in one lane stand `S5` apart, so the 4pt base clears the next card with 20pt of
+  air, and the next lane's head starts `S6` after the last card. A card carries no vertical margin
+  of its own: its section's one gap sets the rhythm for decision cards, sheets and helper sheets.
 - A **button** stands on a 3pt ledge in a darker shade of its fill, with a soft drop (`0 7 12 −4`,
   ink at 28%) and a 1.5pt inner top highlight; pressed, it sinks (translate 3, ledge 0, drop
   `0 1 3` at 22%, 70 ms). The drop and the highlight are what keep an ink button standing on

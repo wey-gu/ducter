@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.1.97 - 2026-11-27
+
+<!-- whats-new
+zh: Cursor 能用了；等结果的数对了；看守归对伙伴；搬家能直接发
+en: Cursor works; waits count only what's waiting; move straight to a new computer
+-->
+
+**Agents**
+- Cursor takes tasks now. Add it from a computer's card: Ducter installs Cursor's SDK into its own
+  folder, and you sign in with a cursor.com link. If Ducter's own Node.js is too old, the card
+  offers to update it. Dim has its own clay coin and stays coming soon.
+
+**What's waiting**
+- A task whose pull request was merged no longer waits for anyone to say they took it over: the
+  hand-off ends, the task is done, and the count at the top drops. Merged, closed and let-go pull
+  requests never show as waiting for you to merge. A wait that keeps coming back empty checks less
+  often, and your partner says so once. Waiting is now called 等结果 in Chinese.
+
+**Partners**
+- A Keep belongs to the partner whose conversation made it: only that partner lists or changes it,
+  and Keeps recorded under the wrong partner are put right once.
+
+**Moving**
+- ducter move --receive --listen on the new computer and ducter move --to on the old one send your
+  Ducter across with a one-time code. The old computer pauses new work while it sends and stays
+  the one in charge; ducter move --unfreeze resumes it. Switching over comes later.
+
+**Look**
+- Cards in Tasks stand further apart, so each one reads on its own.
+
+**Website**
+- Every agent is named by what it does, and the site works on a phone: a menu, a roomier footer,
+  bigger tap targets.
+
 ## 0.1.96 - 2026-11-27
 
 <!-- whats-new

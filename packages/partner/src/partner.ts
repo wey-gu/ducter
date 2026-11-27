@@ -4598,7 +4598,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             return {
               ok: true,
               handed: r.handed,
-              ...(r.groupId ? { group: g?.name ?? r.groupId } : {}),
+              ...(r.groupId ? { group: g?.name ?? r.groupName ?? r.groupId } : {}),
               ...(r.shape ? { shape: r.shape } : {}),
               ...(g?.hand?.where ? { where: g.hand.where.name } : {}),
               note: `${

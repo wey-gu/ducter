@@ -400,7 +400,7 @@ export interface Handover {
    * D415: commented: the comment the note asked for already went (or was declined: refs empty), so
    * it isn't asked again; asked: the hand-over waits on that card (nothing started yet).
    */
-  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string; planning?: boolean }>;
+  hand(o: { refs: string[]; note?: string; notes?: Record<string, string>; shape?: HandShape; group?: string; device?: string; harness?: string; subject?: string; bySubject?: boolean; setId?: string; commented?: { refs: string[]; text: string } }): Promise<{ ok: boolean; groupId?: string; taskId?: string; handed: number; shape?: HandShape; error?: string; asked?: string; planning?: boolean; groupName?: string }>;
   /** D415: 先在这几个下面留一句，再开始？ answered. */
   answerComment(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void>;
   /** The conversation's find: a set card under the partner's line. */
@@ -942,7 +942,7 @@ export function createHandover(d: HandoverDeps): Handover {
     save();
     settle({ ...job, kind: "group", g });
     console.debug(`[handover] hand reply ${took(tReply)}ms: ${items.length} to-dos, ${shape}, "${name}"${prep ? ", how cached" : ", how after the reply"}`);
-    return { ok: true, handed: items.length, groupId: g.id, shape: shape!, planning: shape === "plan" };
+    return { ok: true, handed: items.length, groupId: g.id, groupName: g.name, shape: shape!, planning: shape === "plan" };
   }
 
   /** D638: what Go creates first (its reply already sent) and finishes after it. */

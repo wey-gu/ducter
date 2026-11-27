@@ -66,6 +66,7 @@ test("do=hand set= with #405 and the note: one group, plan first, the note kept;
   // Nothing was said before the call: code says the plan-first line, before any card the hand-over raises.
   const after = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
   expect(after.filter((t) => t === "好，我先看一遍，出个方案给你，你点头再做。").length).toBe(1);
+  await core.taskSources.handover?.idle(); // D638: the group fills after Go's reply
   const g = core.taskGroups.list().find((x) => x.name === "memory distill")!;
   expect(g.hand!.items.map((i) => i.ref).sort()).toEqual(["acme/mem#398", "acme/mem#405", "acme/mem#412"]);
   expect(g.hand!.note).toBe("#405 也加上。先别动数据库迁移，验证都去 haswell 上跑。");

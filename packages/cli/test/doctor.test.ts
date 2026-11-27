@@ -11,6 +11,7 @@ const opts = { port: 7783, dataDir: "/tmp/ducter-test" };
 interface Machine {
   tools?: string[];
   out?: Record<string, RunResult>;
+  read?: Record<string, string>;
   port?: "free" | "ducter" | "busy";
   writable?: boolean;
   compiled?: boolean;
@@ -42,6 +43,7 @@ function fake(m: Machine = {}): Host & { calls: string[] } {
       if (!tools.has(cmd[0]!)) throw new Error(`forbidden: ${k} is not installed`);
       return out[k] ?? { code: 1, stdout: "" };
     },
+    read: (p) => m.read?.[p],
     port: async () => m.port ?? "free",
     writable: () => m.writable ?? true,
     compiled: m.compiled ?? false,
@@ -281,6 +283,18 @@ describe("doctor on a Linux server", () => {
     expect(byId(r, "claude").detail).toContain("long-lived sign-in");
     expect(byId(r, "service").status).toBe("ok");
     expect(byId(r, "devices").detail).toBe("1 connected");
+  });
+
+  test("a Claude key in keys.env counts as signed in even when auth status says logged out", async () => {
+    const r = await runDoctor(
+      server(
+        { read: { "/tmp/ducter-test/keys.env": "ANTHROPIC_AUTH_TOKEN=sk-ant-fake\n" }, out: { "claude auth status": { code: 1, stdout: JSON.stringify({ loggedIn: false, authMethod: "none" }) } } },
+        svc("active", "yes"),
+      ),
+      en,
+      opts,
+    );
+    expect(byId(r, "claude")).toMatchObject({ status: "ok", detail: "signed in (2.1.319)" });
   });
 
   // D549 (hel, 2026-11-24): Ducter as root. It works, but Claude Code won't take a task there.

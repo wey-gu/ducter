@@ -1,0 +1,66 @@
+// D642 (design/calendar.md §6.2): the one drawn mark each Go card carries at its leading edge,
+// so the person knows what kind of thing they are approving before reading. One family with Done
+// for you's pictures (D314): SVG path data on a 20-point grid, stroked 1.6 with round ends, never
+// filled, never emoji (D211). The calendar's own mark is its date leaf (a richer piece, because a
+// date is the thing); this table is every other kind.
+//
+// Shared with the Mac (apps/desktop/internal/views/askkind.go) through
+// fixtures/ask-kind-glyphs.json, held equal by askkind_test.go.
+
+/** The 20-grid stroke width every mark is drawn with. */
+export const ASK_KIND_STROKE = 1.6;
+
+/** One mark per card kind. Keys are the view's own names, never a protocol field. */
+export const ASK_KIND_GLYPHS: Record<string, string> = {
+  // A generic task ask with no structural kind: a question in a ring (honest about not knowing).
+  ask: "M10 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8.2 8.2a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.3v.4M10 14.1h.01",
+  // A mail to send or answer.
+  mail: "M3.5 5.5h13v9h-13zM3.8 6.1 10 10.8l6.2-4.7",
+  // A message in a chat app, or one agent asking another.
+  message: "M4.2 4.8h11.6a1.7 1.7 0 0 1 1.7 1.7v6a1.7 1.7 0 0 1-1.7 1.7H9.3l-3.6 2.7v-2.7H4.2a1.7 1.7 0 0 1-1.7-1.7v-6a1.7 1.7 0 0 1 1.7-1.7z",
+  // A call.
+  call: "M6.2 3.8h2.1l1.1 3.3-1.7 1.2a8 8 0 0 0 4 4l1.2-1.7 3.3 1.1v2.1a1.7 1.7 0 0 1-1.9 1.7A12.3 12.3 0 0 1 4.5 5.7a1.7 1.7 0 0 1 1.7-1.9z",
+  // A payment by card.
+  pay: "M3.5 6h13v8.6h-13zM3.5 8.9h13M6 12.1h3.2",
+  // A checkout: a basket.
+  cart: "M4.8 7h10.4l-.9 9.4H5.7zM7.5 7V5.9a2.5 2.5 0 0 1 5 0V7",
+  // GitHub: a pull request (two commits and a branch).
+  pr: "M6 6.6v6.8M6 3.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM6 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM14 13.4V8.1a2.6 2.6 0 0 0-2.6-2.6H8.8M10.7 3.6 8.8 5.5l1.9 1.9",
+  // A comment: the message mark's speech shape, quieter.
+  comment: "M4.2 4.8h11.6a1.7 1.7 0 0 1 1.7 1.7v6a1.7 1.7 0 0 1-1.7 1.7H9.3l-3.6 2.7v-2.7H4.2a1.7 1.7 0 0 1-1.7-1.7v-6a1.7 1.7 0 0 1 1.7-1.7zM6.6 8.4h6.8M6.6 11.2h4.6",
+  // Closing a thing: a check in a ring.
+  close: "M10 3.2a6.8 6.8 0 1 0 0 13.6 6.8 6.8 0 0 0 0-13.6zM6.7 10.1l2.2 2.2 4.4-4.4",
+  // A file or document to send.
+  file: "M5 3.5h6.4L15 7.1v9.4H5zM11.4 3.5v3.6H15M7.6 10.6h4.8M7.6 13.4h3.2",
+  // A task source write-back: a checklist.
+  todo: "M4 5.2h3.2v3.2H4zM9.5 6.8h6.5M4 11.6h3.2v3.2H4zM9.5 13.2h6.5",
+  // A reminder or a wake: an alarm clock.
+  reminder: "M10 4.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2zM10 7.4V10l1.9 1.2M5.7 3.4 3.8 5.1M14.3 3.4l1.9 1.7M7.4 17.6h5.2",
+  // A sign-in: a door with an arrow in.
+  signin: "M4.5 3.5h8v13h-8zM12.5 10h5M15 7.5 17.5 10 15 12.5",
+  // A key (give it, or copy it to a computer).
+  key: "M12.6 11.2a3.6 3.6 0 1 0-3.4-2.4L4 14v2.2h2.4v-1.6H8v-1.6h1.6l1.3-1.3a3.6 3.6 0 0 0 1.7-.5zM13 6.6h.01",
+  // A phone (Ducter's Android, or the person's own).
+  phone: "M6.5 3h7v14h-7zM9 14.8h2",
+  // A computer (a task's where, or a change moved to another).
+  computer: "M4 5.5h12v7H4zM2.8 14.5h14.4M8 14.5h4",
+  // A plugin (Nowledge Mem, into an agent).
+  plugin: "M7 3.5v3M13 3.5v3M5.5 6.5h9v3.2a4.5 4.5 0 0 1-9 0zM10 14.2v3",
+  // A standing trust rule: a shield.
+  trust: "M10 3.2 15.5 5v5.1c0 3.2-2.2 5.5-5.5 6.7-3.3-1.2-5.5-3.5-5.5-6.7V5z",
+  // A routine or a loop: two arrows.
+  repeat: "M4.2 8.4a5.8 5.8 0 0 1 10.3-2.6M15.8 11.6A5.8 5.8 0 0 1 5.5 14.2M14.5 3.5v3.2h-3.2M5.5 16.5v-3.2h3.2",
+  // A tunnel in the person's Cloudflare account.
+  tunnel: "M3.5 12.5h13M5 12.5V9a5 5 0 0 1 10 0v3.5",
+  // A reply already written.
+  draft: "M4.5 15.5l1-3.5 7.6-7.6a1.6 1.6 0 0 1 2.3 2.3L7.8 14.3zM11.8 5.7l2.4 2.4",
+  // A thing sent out, when no sharper mark is known.
+  send: "M3.6 9.6 16.2 4l-4.6 12.4-2.9-5.1zM8.7 11.3 16.2 4",
+  // An offer, not an ask.
+  offer: "M10 3.2l1.7 4.4 4.4 1.7-4.4 1.7L10 15.4l-1.7-4.4L3.9 9.3l4.4-1.7z",
+};
+
+/** The picture for a kind; an unknown kind gets the honest ask mark. */
+export function askKindGlyph(kind: string): string {
+  return ASK_KIND_GLYPHS[kind] ?? ASK_KIND_GLYPHS.ask!;
+}

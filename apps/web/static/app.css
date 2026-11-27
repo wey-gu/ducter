@@ -9455,36 +9455,73 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cal-now .dot { position: absolute; left: -1.5px; top: -4.25px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .cal-card, .cal-now { animation: none; } }
 
-/* 6.2 the change card: one sunken block under the question, then the tray. */
-.cal-change { display: flex; flex-direction: column; gap: 5px; width: min(88%, var(--bubble-measure)); box-sizing: border-box; padding: var(--s3) var(--s3) var(--s3) 14px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-soft); }
-.cal-change > * { font-size: var(--sm); line-height: 1.5; }
+/* 6.2 the change card: one calendar entry under the short ask (D642). The date leaf stands on
+   the left; the calendar's colour is its band dot, never a status bar. */
+.cal-change { width: min(88%, var(--bubble-measure)); box-sizing: border-box; padding: var(--s3) var(--s3) var(--s3) var(--s4); border-radius: var(--r-md); background: var(--sunken); color: var(--ink-soft); }
 .decision .cal-change { width: 100%; margin: var(--s2) 0; }
-.cc-title { display: flex; align-items: stretch; gap: 10px; margin-bottom: 2px; }
-.cc-title .cal-rail { min-height: 20px; flex: none; }
-.cc-title b { font-size: var(--md); font-weight: 700; color: var(--ink); line-height: 1.4; }
-.cc-when { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-.cc-when.move { display: flex; flex-direction: column; gap: 1px; }
-.cc-move { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.cc-main { display: flex; align-items: flex-start; gap: var(--s3); min-width: 0; }
+.cc-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.cc-title { font-size: var(--md); font-weight: 700; color: var(--ink); line-height: 1.4; overflow-wrap: anywhere; }
+.cc-when { color: var(--ink); font-size: var(--sm); font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cc-when.move { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.cc-new { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .cc-was { color: var(--ink-muted); font-weight: 500; }
 .cc-was s { text-decoration-thickness: 1px; }
 .cal-arrow { flex: none; color: var(--ink-muted); }
-.cc-their { color: var(--ink-soft); }
-.cc-line { display: flex; align-items: center; gap: 6px; }
+.cc-zone { color: var(--ink-soft); font-size: var(--xs); line-height: 1.45; overflow-wrap: anywhere; }
+.cc-where { display: flex; align-items: flex-start; gap: 5px; min-width: 0; color: var(--ink-muted); font-size: var(--xs); line-height: 1.45; }
+.cc-where .cal-pin { flex: none; margin-top: 1px; }
+.cc-where span { min-width: 0; overflow-wrap: anywhere; }
+.cc-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: var(--xs); line-height: 1.45; }
+.cc-line.in { margin-top: 2px; }
 .cc-k { color: var(--ink-muted); }
+.cc-cal { color: var(--ink-soft); font-weight: 600; }
 .cc-whose { color: var(--ink-muted); }
+.cc-line.notify, .cc-line.online { color: var(--ink-muted); }
 .cc-line.clash { color: var(--failed-ink); font-weight: 600; }
 .cal-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+
+/* The date leaf: a small clay tile on its own 2-pt base. */
+.cal-leaf { --cal-color: var(--faint); position: relative; display: flex; flex-direction: column; align-items: center; flex: none; width: 56px; border-radius: var(--r-sm); background: var(--surface-raised); box-shadow: 0 2px 0 var(--line); overflow: hidden; }
+.cal-leaf-band { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 17px; box-sizing: border-box; padding: 0 5px; background: color-mix(in srgb, var(--cal-color) 16%, var(--surface-raised)); color: var(--ink-muted); font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.cal-leaf-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cal-color); flex: none; }
+.cal-leaf-day { margin-top: 2px; color: var(--ink); font-size: 20px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.cal-leaf-wd { margin-bottom: 3px; color: var(--ink-muted); font-size: 11px; line-height: 1.3; }
+.cal-leaf.cancel .cal-leaf-day { color: var(--ink-muted); }
+.cal-leaf.cancel .cal-leaf-wd { color: var(--ink-muted); }
+.cal-leaf-badge { position: absolute; right: 3px; bottom: 3px; display: flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; }
+.cal-leaf-badge.done { background: var(--done-surface); color: var(--done-ink); }
+.cal-leaf-badge.failed { background: var(--failed-surface); color: var(--failed-ink); }
+.cal-leaf-strike { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; color: var(--ink-muted); opacity: 0.55; pointer-events: none; }
+.cal-leaf-strike line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+/* A change's kind mark in the question line: one drawn mark, the same spot on every card. */
+.ask-line { display: flex; align-items: flex-start; gap: 8px; }
+.ask-line > .kind-mark { flex: none; margin-top: 2px; opacity: 0.72; }
+.ask-line > .ask-words { min-width: 0; }
+.decision .q > .kind-mark { vertical-align: -3px; margin-inline-end: 8px; color: var(--needs-ink); opacity: 0.7; }
+
 /* After Go or Hold: the card settles in place. */
-.cal-settle { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 32px; padding-left: 14px; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); animation: settle 320ms var(--spring); }
-.cal-settle .mark { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; }
-.cal-settle.done .mark { background: var(--done-surface); color: var(--done-ink); }
+.cal-settle { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 32px; padding-inline-start: var(--s4); font-size: var(--sm); font-weight: 700; color: var(--ink-soft); animation: settle 320ms var(--spring); }
+.cal-settle.done { color: var(--ink); }
 .cal-settle.done .btn { margin-left: -4px; }
 .cal-settle.failed { color: var(--failed-ink); }
-.cal-settle.failed .mark { background: var(--failed-surface); color: var(--failed-ink); }
+.cal-settle.failed .mark { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--failed-surface); color: var(--failed-ink); }
 .cal-settle.failed .why { display: block; font-weight: 500; font-size: var(--xs); }
 .cal-settle.quiet { font-weight: 500; color: var(--ink-muted); }
 .cal-settle.said { align-self: flex-end; font-weight: 500; color: var(--ink-muted); }
-.decision .cal-settle { padding-left: 0; }
+.cal-settle .taking { flex-basis: 100%; padding-left: 22px; font-weight: 500; font-size: var(--xs); color: var(--ink-muted); }
+
+/* §4 Accounts: the calendars inside a calendar account, and the lines under the tray. */
+.tile-detail .td-cals { display: flex; flex-direction: column; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.tile-detail .td-cals .td-k { margin-bottom: 2px; font-size: var(--sm); font-weight: 700; color: var(--ink-muted); }
+.tile-detail .td-cals .switch { min-height: 0; padding: 10px 0; align-items: flex-start; font-size: var(--sm); font-weight: 600; }
+.tile-detail .td-cals .switch input { margin-top: -4px; }
+.tile-detail .td-cals .switch > span.cal-dot { margin-top: 5px; }
+.switch.lead > span.cal-dot { flex: none; width: 8px; height: 8px; margin-right: -2px; }
+.cal-line { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 4px; }
+.cal-line .small.soft { color: var(--ink-soft); line-height: 1.5; }
+.cal-line .btn.text { margin-left: -10px; }
+.cal-line.nudge .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 
 /* 6.3 the greeting's today line: quiet, one row, a drawn calendar. */
 .hello-today { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; margin-top: 2px; padding: 8px 14px; border: 0; border-radius: var(--pill); background: var(--sunken); color: var(--ink-soft); font: inherit; font-size: var(--sm); font-weight: 600; line-height: 1.4; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform var(--t-press) ease-out; }

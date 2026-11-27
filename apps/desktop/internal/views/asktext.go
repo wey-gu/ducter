@@ -303,18 +303,37 @@ func (a *App) askWords(c *ui.Context, d *store.DecisionState, q string, lines in
 	}
 }
 
-// partnerAskWords is an ask in the partner's bubble (D599): as partnerWords,
-// but a link or a code in it is real (askText's Markdown at the bubble's size).
-func (a *App) partnerAskWords(c *ui.Context, key, text string) {
+// partnerAskWords is an ask in the partner's bubble (D599): as partnerWords, but a link or a code
+// in it is real, and the card's one kind mark leads its words (D642). A calendar card answers
+// kind "" — its date leaf is the mark.
+func (a *App) partnerAskWords(c *ui.Context, key, text, kind string) {
+	t := a.T
+	mark := func() {
+		if kind != "" {
+			a.kindMark(c, kind, 16, t.OnPartnerBubble.Alpha(0.72))
+		}
+	}
 	if !askHasPieces(text) {
-		a.partnerWords(c, text)
+		if kind == "" {
+			a.partnerWords(c, text)
+			return
+		}
+		a.partnerBubble(c, a.takeJoin(), func() {
+			ui.Row(c.Key("ask-mark")).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+				mark()
+				uiText(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).
+					LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble).Grow(1).Basis(0).MinWidth(0)
+			})
+		})
 		return
 	}
-	t := a.T
 	a.partnerBubble(c, a.takeJoin(), func() {
 		a.askCopied(c)
-		ui.Column(c.Key("ask-bubble:" + key)).MinWidth(0).Children(func() {
-			markdown.View(c, askMarkdown(mdSpace(text), false), a.askOptions(t.PartnerSize, 400, leadingFor(text, 1.5)))
+		ui.Row(c.Key("ask-mark")).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+			mark()
+			ui.Column(c.Key("ask-bubble:" + key)).Grow(1).Basis(0).MinWidth(0).Children(func() {
+				markdown.View(c, askMarkdown(mdSpace(text), false), a.askOptions(t.PartnerSize, 400, leadingFor(text, 1.5)))
+			})
 		})
 	})
 }

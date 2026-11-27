@@ -6,8 +6,8 @@ import type { CalChange, CalDay, CalEvent, CalGlance, CalToday } from "@ducter/p
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { shortAccount } from "./accounts.tsx";
-import { Btn, Facts } from "./controls.tsx";
-import { andList, dateRun, dayHead, daysBetween, hmOf, minutesOf, nameList, nowMinutesIn, offsetOf, otherZoneLine, peopleWords, theirSide, todayIn, whenWords, ymdOf, type CalLang } from "./cal-format.ts";
+import { Btn, CalLeaf, Facts } from "./controls.tsx";
+import { andList, dateRun, dayHead, daysBetween, hmOf, leafParts, minutesOf, nameList, nowMinutesIn, offsetOf, otherZoneLine, peopleWords, placeTimeLine, todayIn, whenWords, ymdOf, type CalLang } from "./cal-format.ts";
 import type { DecisionState } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -230,16 +230,51 @@ const goWent = (d: DecisionState) => d.resolved?.option === "go" || (!d.resolved
 /** Hold, by what would change: a cancel's dismiss never reads 取消 (D212). */
 export const calHold = (c: CalChange) => t(`cal.hold.${c.kind}`);
 
+/** The bubble above the card: the ask in a few words, never the title again (D642). */
+export function calAsk(c: CalChange): string {
+  if (c.kind === "respond") return t(`cal.ask.respond.${c.response ?? "accepted"}`);
+  return t(`cal.ask.${c.kind}`);
+}
+
 /** The person's date for a change: from the offset its times carry. */
 const todayFor = (c: CalChange) => todayIn(undefined, Date.now(), offsetOf(c.start));
 
-/** What will change, where, when (and the other side's time), who hears, a clash, a video link. */
-export function CalFacts({ c }: { c: CalChange }) {
+/** The leaf's own sign after Go: a check, a cross, a quiet strike for a cancel. */
+export function calLeafState(d: DecisionState): "open" | "done" | "failed" | "cancel" {
+  const opt = d.resolved?.option ?? d.pending;
+  if (!d.cal) return "open";
+  const run = A.S.calRuns.get(d.decisionId);
+  if (run && (run.state === "failed" || run.state === "denied")) return "failed";
+  if (d.cal.kind === "cancel") return "cancel";
+  if (opt !== "go") return "open";
+  if (run?.state === "done") return "done";
+  return "open";
+}
+
+/** A change's notification line, only when someone actually hears: a change to someone else's event
+ *  (an answer) or an event with people on it. Adding a quiet event to one's own day is silent. */
+function notifyShown(c: CalChange): boolean {
+  return c.kind === "respond" || c.notify.length > 0;
+}
+
+/** The drawn pin before a place. */
+const Pin = () => (
+  <svg class="cal-pin" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M6 10.8S2.3 7.4 2.3 5.1a3.7 3.7 0 0 1 7.4 0C9.7 7.4 6 10.8 6 10.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+    <circle cx="6" cy="5" r="1.3" fill="currentColor" />
+  </svg>
+);
+
+/** What will change: the date leaf, its name, when, where, the calendar, the other side and who
+ *  hears. One calendar entry, not a status stripe (D642). */
+export function CalFacts({ d }: { d: DecisionState }) {
+  const c = d.cal!;
   const L = lang();
   const today = todayFor(c);
   const allDayWord = t("cal.allday");
-  const sameDay = c.was && ymdOf(c.was.start) === ymdOf(c.start) && !c.allDay;
-  const their = c.theirZone && !c.allDay ? theirSide(L, c.theirZone, c.start) : undefined;
+  const leaf = leafParts(L, c.start);
+  const sameDay = !!c.was && ymdOf(c.was.start) === ymdOf(c.start) && !c.allDay;
+  const their = c.theirZone && !c.allDay ? placeTimeLine(L, c.theirZone, c.start) : "";
   const cal = c.calendar || t("cal.main");
   const whose = c.account ? shortAccount(c.account, [c.account]) : "";
   const notify = !c.notify.length
@@ -251,57 +286,70 @@ export function CalFacts({ c }: { c: CalChange }) {
         : t(c.notify.length === 1 ? "cal.notify.told.one" : "cal.notify.told", andList(L, c.notify));
   return (
     <div class={`cal-change ${c.kind}`}>
-      <div class="cc-title">
-        <span class="cal-rail" style={tint(c.color)} aria-hidden="true" />
-        <b>{c.title}</b>
-      </div>
-      {c.was ? (
-        <div class="cc-when move">
-          {sameDay && <span class="cc-date">{whenWords(L, c.start, c.end, false, today, allDayWord).replace(/,? ?\d\d:\d\d–\d\d:\d\d$/, "")}</span>}
-          <span class="cc-move">
-            <span class="cc-was">
-              {t("cal.was")} <s>{sameDay ? `${hmOf(c.was.start)}–${hmOf(c.was.end)}` : whenWords(L, c.was.start, c.was.end, false, today, allDayWord)}</s>
-            </span>
-            <MoveArrow />
-            <span class="cc-new">{sameDay ? `${hmOf(c.start)}–${hmOf(c.end)}` : whenWords(L, c.start, c.end, c.allDay, today, allDayWord)}</span>
-          </span>
+      <div class="cc-main">
+        <CalLeaf month={leaf.month} day={leaf.day} weekday={leaf.weekday} color={c.color} state={calLeafState(d)} />
+        <div class="cc-body">
+          <div class="cc-title">{c.title}</div>
+          {c.kind === "move" && c.was ? (
+            <div class="cc-when move">
+              <span class="cc-was">
+                {t("cal.was")}{" "}
+                <s>{sameDay ? `${hmOf(c.was.start)}–${hmOf(c.was.end)}` : whenWords(L, c.was.start, c.was.end, false, today, allDayWord)}</s>
+              </span>
+              <span class="cc-new">
+                <MoveArrow />
+                {sameDay ? `${hmOf(c.start)}–${hmOf(c.end)}` : whenWords(L, c.start, c.end, c.allDay, today, allDayWord)}
+              </span>
+            </div>
+          ) : (
+            <div class="cc-when">{whenWords(L, c.start, c.end, c.allDay, today, allDayWord)}</div>
+          )}
+          {their && <div class="cc-zone">{their}</div>}
+          {c.where && (
+            <div class="cc-where">
+              <Pin />
+              <span>{c.where}</span>
+            </div>
+          )}
+          <div class="cc-line in">
+            <span class="cal-dot" style={tint(c.color)} aria-hidden="true" />
+            <span class="cc-cal">{cal}</span>
+            {whose && <span class="cc-whose">{whose}</span>}
+          </div>
+          {notifyShown(c) && <div class="cc-line notify">{notify}</div>}
+          {c.clash && <div class="cc-line clash">{t("cal.clash", c.clash)}</div>}
+          {c.online && c.kind === "create" && <div class="cc-line online">{t("cal.online.add")}</div>}
         </div>
-      ) : (
-        <div class="cc-when">{whenWords(L, c.start, c.end, c.allDay, today, allDayWord)}</div>
-      )}
-      {their && <div class="cc-their">{c.theirName ? t("cal.their", c.theirName, their.when, their.city) : t("cal.their.anon", their.when, their.city)}</div>}
-      <div class="cc-line">
-        <span class="cc-k">{t(c.kind === "create" ? "cal.in.create" : "cal.in")}</span>
-        <span class="cal-dot" style={tint(c.color)} aria-hidden="true" />
-        <span>{cal}</span>
-        {whose && <span class="cc-whose">{whose}</span>}
       </div>
-      <div class="cc-line notify">{notify}</div>
-      {c.clash && <div class="cc-line clash">{t("cal.clash", c.clash)}</div>}
-      {c.online && c.kind === "create" && <div class="cc-line">{t("cal.online.add")}</div>}
     </div>
   );
 }
 
-/** How a change card settles, in place: under way, done (with its link), didn't go through, or held. */
+/** How a change card settles, in place: under way (with the shared spinner, and words once it is
+ *  taking long), done (its link), didn't go through, or held. */
 export function CalSettle({ d }: { d: DecisionState }) {
   const c = d.cal!;
   const opt = d.resolved?.option ?? d.pending;
+  const run = A.S.calRuns.get(d.decisionId);
+  const going = goWent(d) && !run;
+  const [mount] = useState(() => Date.now());
+  const [, set] = useState(0);
+  useEffect(() => {
+    if (!going) return;
+    const h = setInterval(() => set((n) => n + 1), 1000);
+    return () => clearInterval(h);
+  }, [going]);
   if (opt === "reply") return <div class="cal-settle said">{t("decision.resolved.reply", d.resolved?.text ?? "")}</div>;
-  if (!goWent(d))
+  if (!goWent(d) || run?.state === "held")
     return (
       <div class="cal-settle quiet" role="status">
         {t("cal.held")}
       </div>
     );
-  const run = A.S.calRuns.get(d.decisionId);
   const kind = c.kind;
   if (run?.state === "done")
     return (
       <div class="cal-settle done" role="status">
-        <span class="mark">
-          <Tick />
-        </span>
         <span>{t(kind === "respond" ? `cal.done.${c.response ?? "accepted"}` : `cal.done.${kind}`)}</span>
         {run.link && kind !== "cancel" && <Btn kind="text" size="sm" chev label={t("cal.open")} about={c.title} onClick={() => window.open(run.link, "_blank", "noopener")} />}
       </div>
@@ -316,12 +364,16 @@ export function CalSettle({ d }: { d: DecisionState }) {
           {t(`cal.fail.${kind}`)}
           {run.error && <span class="why">{shortReason(run.error)}</span>}
         </span>
+        {d.reversible && <Btn kind="text" size="sm" label={t("cal.retry")} about={c.title} onClick={() => A.decide(d.decisionId, "go")} />}
       </div>
     );
+  const started = d.answeredAt ?? mount;
+  const takingLong = Date.now() - started >= 20_000;
   return (
-    <div class="cal-settle going" role="status">
+    <div class={`cal-settle going${takingLong ? " long" : ""}`} role="status">
       <span class="spin" aria-hidden="true" />
       <span>{t(`cal.going.${kind}`)}</span>
+      {takingLong && <span class="taking">{t("cal.going.long")}</span>}
     </div>
   );
 }

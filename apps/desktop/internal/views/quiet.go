@@ -412,6 +412,8 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	words := a.questionOf(d)
 	if d.Said != "" && !inTask {
 		words = d.Said
+	} else if d.Cal != nil {
+		words = a.calAsk(d.Cal) // D642: the ask in a few words, never the title again
 	}
 	if !inTask && openAsk(d) {
 		// D587: the one waiting line at the conversation's end stands for it.
@@ -439,8 +441,12 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
+<<<<<<< HEAD
 		a.partnerAskWords(c, d.DecisionID, words) // D599: its links and codes real
 		a.askFiles(c, d, "conv")                  // D640 (#254): what came with the question
+=======
+		a.partnerAskWords(c, d.DecisionID, words, askKind(d)) // D599: its links and codes real; D642: its kind mark
+>>>>>>> origin/dsh-calcard
 		// D437: what another AI still found in what this Go sends.
 		if d.Look != nil && openAsk(d) {
 			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })

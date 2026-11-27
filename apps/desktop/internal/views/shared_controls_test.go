@@ -47,6 +47,8 @@ var sharedControls = map[string]bool{
 	"editRow": true, "numberField": true,
 	// D521: a quiet tray's dense row (the opened task's background work)
 	"trayRow": true,
+	// D642: the Go cards' kind marks and the calendar's date leaf
+	"kindMark": true, "dateLeaf": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

@@ -33,12 +33,13 @@ import { ago, behind, cjkPad, day, deviceLabel, duration, harnessName, inPlaceTu
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, TextLink, Toggle, UpdatePebble } from "./controls.tsx";
+import { AddRow, AppsMark, Btn, Chev, Choice, CountDoor, DevicesMark, Facts, Gear, KindMark, NavBtn, NeedsDoor, OnHandMark, PlaceSeg, PlacesMenu, PlusMark, Seg, TextLink, Toggle, UpdatePebble } from "./controls.tsx";
 import { deviceArt, deviceCardShown, DevicesSection } from "./devcard.tsx";
 import { CallsSection, ProactiveChips, QuietDay, SourceCards } from "./accounts.tsx";
 import { OwnPhoneCard } from "./own-phone.tsx";
 import { GRow, Said, say, Waiting } from "./set-grid.tsx";
 import { AskText, BackGlyph, DangerButton, Notice, TaskLink } from "./controls.tsx";
+import { askKind } from "./ask-kind.ts";
 import { DeviceSignInBody } from "./device-signin.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
@@ -51,7 +52,7 @@ import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
 import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip } from "./voice.tsx";
 import { TalkPanel, talkIfAny, useTalkFeed } from "./talk.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
-import { CalFacts, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
+import { CalFacts, calAsk, calHold, CalSettle, DayCard, TodayRow } from "./calendar.tsx";
 import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { DocLine } from "./doc-line.tsx";
 import { FileLinkSheet, FileViewer } from "./fileview.tsx";
@@ -513,7 +514,7 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
   const open = !d.resolved && !d.pending;
   const about = (() => {
     const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
-    return task && title(task) ? title(task) : d.question.slice(0, 40);
+    return task && title(task) ? title(task) : d.cal ? calAsk(d.cal) : d.question.slice(0, 40);
   })();
   // D436: the errand's stop, and a step on a page that's the person's: both open the task's tab live.
   if (d.checkout) return <CheckoutBody d={d} />;
@@ -538,12 +539,17 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
   if (d.draft && d.findId) return <DraftAskBody d={d} about={about} open={open} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
+  const q = d.said || (d.cal ? calAsk(d.cal) : d.question);
   // D382: put off: the question, when it asks again, and Decide now; nothing else until it is back.
   if (open && d.later)
     return (
       <>
+<<<<<<< HEAD
         <div class="q">{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question}</div>
         <AskFiles d={d} inTask={inTask} />
+=======
+        <div class="q">{!d.cal && askKind(d) && <KindMark kind={askKind(d)} size={16} />}{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : q}</div>
+>>>>>>> origin/dsh-calcard
         <LaterAway d={d} about={about} />
       </>
     );
@@ -551,11 +557,18 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
     <>
       {open && <LaterBack d={d} />}
       {/* D599: a task's own words keep their links and codes real (AskText); the card's own words are plain. */}
+<<<<<<< HEAD
       <div class="q">{wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={d.question} />}</div>
       <AskFiles d={d} inTask={inTask} />
+=======
+      <div class="q">
+        {!d.cal && askKind(d) && <KindMark kind={askKind(d)} size={16} />}
+        {wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={q} />}
+      </div>
+>>>>>>> origin/dsh-calcard
       {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
-      {d.cal && <CalFacts c={d.cal} />}
+      {d.cal && <CalFacts d={d} />}
       {d.src && <SourceCardBody src={d.src} />}
       {/* D157: a where ask says its own lines (what waiting means, what moving does) in place of the default. */}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
@@ -1148,6 +1161,17 @@ const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Inf
 
 /** One ask in the partner's words (D104): the question as it speaks, its default in one muted
  *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
+<<<<<<< HEAD
+=======
+/** The Go card's one kind mark, at the leading edge of its words (D642). The calendar's own
+ *  mark is its date leaf, so it answers no mark here. */
+function AskHeadMark({ d }: { d: DecisionState }) {
+  const kind = askKind(d);
+  return kind ? <KindMark kind={kind} size={16} /> : null;
+}
+const askLine = (d: DecisionState) => `bubble ask-line${askKind(d) ? " has-kind" : ""}`;
+
+>>>>>>> origin/dsh-calcard
 export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?: string; buttons?: boolean; rk?: string; seq?: number }) {
   useTick(1000);
   const ref = useRef<HTMLDivElement>(null);
@@ -1162,7 +1186,8 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   const task = id ? A.S.tasks.get(id) : undefined;
   const open = openAsk(d);
   const k = `d${d.decisionId}`;
-  const about = task && title(task) ? title(task) : d.question.slice(0, 40);
+  const q = d.said || (d.cal ? calAsk(d.cal) : d.question);
+  const about = task && title(task) ? title(task) : d.cal ? calAsk(d.cal) : d.question.slice(0, 40);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   const wait = open ? relayDueIn(d) : 0;
   useEffect(() => {
@@ -1188,14 +1213,20 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.handset)
     return (
       <div ref={ref} class={`partner askq pay handset${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || handsetAskTitle(d)}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || handsetAskTitle(d)}</span>
+        </div>
         {(buttons || !open) && <HandsetAskBody d={d} compact />}
       </div>
     );
   if (d.phone)
     return (
       <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || d.question}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || d.question}</span>
+        </div>
         {(buttons || !open) && <PhoneAskBody d={d} compact />}
       </div>
     );
@@ -1203,21 +1234,30 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.checkout)
     return (
       <div ref={ref} class={`partner askq pay checkout${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || t("co.title", d.checkout.site)}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || t("co.title", d.checkout.site)}</span>
+        </div>
         {(buttons || !open) && <CheckoutBody d={d} compact />}
       </div>
     );
   if (d.signIn?.step)
     return (
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || t("step.title", d.signIn.site)}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || t("step.title", d.signIn.site)}</span>
+        </div>
         {(buttons || !open) && <StepBody d={d} compact />}
       </div>
     );
   if (d.signIn)
     return (
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || t("signin.title", d.signIn.site)}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || t("signin.title", d.signIn.site)}</span>
+        </div>
         {(buttons || !open) && <SignInBody d={d} compact />}
       </div>
     );
@@ -1225,7 +1265,10 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.pay || d.fill)
     return (
       <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</span>
+        </div>
         {(buttons || !open) && (d.pay ? <PayBody d={d} compact /> : <FillBody d={d} compact />)}
       </div>
     );
@@ -1233,7 +1276,10 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.key)
     return (
       <div ref={ref} class={`partner askq pay key${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
-        <div class="bubble" dir="auto">{t("key.title", keyTask(d))}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{t("key.title", keyTask(d))}</span>
+        </div>
         {(buttons || !open) && <KeyBody d={d} compact />}
       </div>
     );
@@ -1241,7 +1287,10 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.copyKey)
     return (
       <div ref={ref} class={`partner askq pay key copykey${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
-        <div class="bubble" dir="auto">{copyKeyTitle(d)}</div>
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">{copyKeyTitle(d)}</span>
+        </div>
         {(buttons || !open) && <CopyKeyBody d={d} compact />}
       </div>
     );
@@ -1249,8 +1298,11 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   if (d.deviceSignIn)
     return (
       <div ref={ref} class={`partner askq dsi-ask${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
-        <div class="bubble" dir="auto">
-          <AskText text={d.said || t("dsi.title", d.deviceSignIn.service)} />
+        <div class={askLine(d)} dir="auto">
+          <AskHeadMark d={d} />
+          <span class="ask-words">
+            <AskText text={d.said || t("dsi.title", d.deviceSignIn.service)} />
+          </span>
         </div>
         {open && buttons && (
           <div class="tray dk-card">
@@ -1269,13 +1321,16 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
       {d.asker && <PeerAsker d={d} />}
       {/* D599: a link or a code in the words is real. */}
-      <div class="bubble" dir="auto">
-        <AskText text={d.said || d.question} />
+      <div class={askLine(d)} dir="auto">
+        <AskHeadMark d={d} />
+        <span class="ask-words">
+          <AskText text={q} />
+        </span>
       </div>
       {/* D640 (#254): what the task showed with its question, on the card under its words. */}
       <AskFiles d={d} />
       {/* D222: a calendar change: what, when, where and who hears, before one Go. */}
-      {d.cal && <CalFacts c={d.cal} />}
+      {d.cal && <CalFacts d={d} />}
       {/* D341: a write-back to a to-do's app: the comment whole, as it goes out. */}
       {d.src && <SourceCardBody src={d.src} />}
       {/* D437: what another AI still found in what this Go sends. */}

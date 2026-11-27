@@ -25,7 +25,7 @@ export const agentsToday = join(agents.today, "or");
 /** "Claude Code, Codex, pi and DeepSeek Harness": the partner-capable agents in a sentence. */
 export const agentsTodayAnd = join(agents.today, "and");
 
-/** "Devin CLI": the agent that takes any task but never the partner. */
+/** "Devin CLI and Cursor": the agents that take any task but never the partner. */
 export const agentsTasksAnd = join(agents.tasks, "and");
 
 /** "Antigravity, Kimi Code CLI and OpenCode": the agents that work only when asked by name. */

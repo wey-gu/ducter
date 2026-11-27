@@ -26,7 +26,7 @@ export const homeFaq: Faq[] = [
   },
   {
     q: "Which AI agents does it work with?",
-    a: `${agentsTodayAnd} can be your partner, signed in as you; you need at least one. ${agentsTasksAnd} takes any task, but never your partner. ${agentsByNameAnd} take a task only when you ask for them by name, because their terms keep those sign-ins interactive. ${agentsSoonAnd} are coming soon.`,
+    a: `${agentsTodayAnd} can be your partner, signed in as you; you need at least one. ${agentsTasksAnd} take any task, but never your partner. ${agentsByNameAnd} take a task only when you ask for them by name, because their terms keep those sign-ins interactive. ${agentsSoonAnd} is coming soon.`,
     more: { href: "/docs/faq#which-ai-agents-does-it-work-with", label: "Which AI agents" },
   },
   {

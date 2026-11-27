@@ -54,6 +54,34 @@ const forYou = [
   "You want to read every line of the software that holds your keys and your mail.",
 ];
 
+// D639: the fifth way in, beside the four device cards. Official simple marks, drawn in the
+// site's ink (not brand colours); Feishu / Lark has no Simple Icons mark, so a plain drawn speech
+// bubble instead of an invented logo.
+const chatApps = [
+  {
+    name: "iMessage",
+    mark: `<path d="M5.285 0A5.273 5.273 0 0 0 0 5.285v13.43A5.273 5.273 0 0 0 5.285 24h13.43A5.273 5.273 0 0 0 24 18.715V5.285A5.273 5.273 0 0 0 18.715 0ZM12 4.154a8.809 7.337 0 0 1 8.809 7.338A8.809 7.337 0 0 1 12 18.828a8.809 7.337 0 0 1-2.492-.303A8.656 7.337 0 0 1 5.93 19.93a9.929 7.337 0 0 0 1.54-2.155 8.809 7.337 0 0 1-4.279-6.283A8.809 7.337 0 0 1 12 4.154"/>`,
+  },
+  {
+    name: "WeChat",
+    mark: `<path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/>`,
+  },
+  {
+    name: "Feishu\u00A0/ Lark",
+    // No Feishu / Lark mark in Simple Icons: a plain drawn speech bubble, not an invented logo.
+    mark: `<path fill-rule="evenodd" d="M4 2.25h16A2.75 2.75 0 0 1 22.75 5v9A2.75 2.75 0 0 1 20 16.75h-6.4l-4.36 3.55c-.63.51-1.57.06-1.57-.75v-2.8H4A2.75 2.75 0 0 1 1.25 14V5A2.75 2.75 0 0 1 4 2.25Zm3.3 5.15a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 0 0 0-2.7Zm5.05 0a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 0 0 0-2.7Zm5.05 0a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 0 0 0-2.7Z"/>`,
+  },
+  {
+    name: "Telegram",
+    mark: `<path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>`,
+  },
+  {
+    name: "Slack",
+    // Slack's own mark, from Simple Icons 15 (CC0), the last release that carried it.
+    mark: `<path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>`,
+  },
+];
+
 // D558: the pain first, then what Ducter does about it. Every right-hand side is built today.
 const beforeWith = [
   ["Ten terminal tabs, and no idea which one is waiting on you.", "One conversation. On hand shows every task, and what needs you comes to the top with what it would do."],
@@ -281,8 +309,8 @@ const reach: Reach[] = [
       </ul>
     </div>
     <div class="phone-shot reveal">
-      <Shot name="onhand-phone" width={780} height={1688} sizes="(min-width: 980px) 320px, 72vw"
-        alt="Tasks on a phone: 2 things need you. ducter.dev expires on Nov 16 and isn't renewed yet, with Open the renewal page, Not now and Reply. You land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Find a place to stay, Not now and Reply. Below them, Done today." />
+      <Shot name="onhand-phone" width={780} height={1600} sizes="(min-width: 980px) 320px, 72vw"
+        alt="Tasks on a phone: 2 things need you. ducter.dev expires on Nov 16 and isn't renewed yet, with Open the renewal page, Not now and Reply. You land in Tokyo on Nov 21 but the hotel starts on the 22nd, with Find a place to stay, Not now and Reply." />
     </div>
   </div>
 </section>
@@ -330,8 +358,21 @@ const reach: Reach[] = [
       </li>
     </ul>
     <div class="chats reveal">
-      <p><b>And in the chat apps you already use.</b> Message your partner in <b>iMessage</b>, <b>WeChat</b>, <b>Feishu / Lark</b>, <b>Telegram</b> or <b>Slack</b> (Feishu and Lark in direct messages). It's the same conversation, and only you can talk to it there.</p>
-      <p class="links"><a href="/docs/chat-apps">Chat apps</a><a href="/docs/imessage">iMessage</a><a href="/docs/phone">Your phone</a></p>
+      <div class="chats-copy">
+        <h3>And in the chat apps you already use.</h3>
+        <p>Message your partner there: the same conversation, and only you can talk to it.</p>
+      </div>
+      <ul class="chat-apps" aria-label="Chat apps">
+        {chatApps.map((app) => (
+          <li class="chat-app">
+            <span class="chat-tile" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" focusable="false" set:html={app.mark} />
+            </span>
+            <span class="chat-name">{app.name}</span>
+          </li>
+        ))}
+      </ul>
+      <a class="chats-link" href="/docs/chat-apps">Set one up</a>
     </div>
   </div>
 </section>

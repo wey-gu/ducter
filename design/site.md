@@ -15,7 +15,8 @@ user docs rendered from `docs/` at `/docs`. What it says was audited in
   rest of your day: a partner that looks out for you**, **On your computers, and as far as you let
   it reach** (the Isles, still drawn, then **Everything it can reach**: twelve cards into the docs),
   **It only asks when it matters** (On hand on a phone), **Reach it from anywhere** (Mac, iPhone and
-  iPad, Android, a server; iMessage, WeChat, Telegram, Slack), **It remembers you** (Memory),
+  iPad, Android, a server, then a fifth card for the chat apps: iMessage, WeChat, Feishu / Lark,
+  Telegram, Slack), **It remembers you** (Memory),
   **Nothing goes out without your OK** (Done for you, and what it never does), **Open source, and
   yours** with a Get started card, **Questions people ask** (folds, the same words as the page's
   `FAQPage` data, `src/lib/faq.ts`), then the film. How it's built is not on the page: it's the
@@ -89,7 +90,7 @@ system). They are real screens of the web client: headless Chrome against a demo
 `localStorage["ducter.notify.asked"]="1"` before load so the notification ask stays out of frame,
 and loaded once more so the conversation is read (no New messages line) and starts at the top; the
 clock is set with a time zone override so the note says a morning time.
-`many` (D414: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 844 at 2×, `#onhand`) come from
+`many` (D414: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 800 at 2×, `#onhand`, ending on the space under the two Needs-you cards) come from
 `DEMO_LANG=en bun apps/web/demo-site.ts`; `memory` (`#settings=memory`, the sheet clipped) and
 `done-for-you` (Done for you opened from On hand, clipped) from `DEMO_LANG=en DEMO_MEM=ready
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them
@@ -280,3 +281,15 @@ evidence is [research/227](../research/227-similar-project-framing.md).
   70 ms, and are links (the whole card) to the page that says how.
 - **Shots:** `.shots/site-polish/` (every page at 390, 768, 1024 and 1440, light and dark, with 2x
   crops of the new sections and the before of the hero).
+
+## 2026-11-27: the phone shot ends on whitespace, and the chat apps are a fifth card (D639)
+
+The author's three notes on ducter.ai 0.1.98. **No text is cut by a device frame:** `onhand-phone` is
+retaken at 390 × 800 (2×) so the last thing in the frame is the space under the second Needs-you
+card, and the alt says only what is shown. **The chat apps are a sibling of the device cards:**
+`.chats` is one full-width surface card; the heading and sentence sit left with a quiet **Set one
+up**, and the five apps sit right as 60 px clay wells, their marks in the site's ink. Feishu / Lark
+has no Simple Icons mark, so it gets a plain drawn speech bubble; its DMs-only fact lives in
+`/docs/chat-apps`. Under 900 px the copy leads, the five tiles follow, and the link closes; at 320
+they wrap 3 + 2. **Footer:** `con` (con.nowledge.co) sits beside Nowledge Mem as one family. Shots:
+`.shots/site-chat/{before,after}/`.

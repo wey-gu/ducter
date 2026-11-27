@@ -25628,6 +25628,8 @@ button.fd-link,
   min-width: 44px;
   min-height: 44px;
   justify-content: center;
+}
+
 /* ---------- D636: the web polish pass (On hand's source rows, the rail, the locator, the
    reminder divider and the opened task's bar) ---------- */
 /* 1. 待办来源: the source row's one action sits in the row's trailing column, the same `.ocol`

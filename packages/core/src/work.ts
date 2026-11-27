@@ -20,6 +20,8 @@ import { createRoutines, type Routines } from "./routines.ts";
 import { createUntils, type Untils } from "./until.ts";
 import { createLoops, type Loops } from "./loops.ts";
 import { createOwned, type Owned } from "./owned.ts";
+import { endTaskByPerson } from "./end-task.ts";
+import { restAttention } from "./attention.ts";
 import { createWaiters, kindOf, type Judge, type WaiterDeps, type Waiters } from "./waiters.ts";
 import type { WorkFrames } from "./ws.ts";
 
@@ -47,6 +49,8 @@ export interface Work {
   setAppNote(f: ((taskId: string) => string | undefined) | undefined): void;
   /** D628: the true state of a hand-off whose PR merged or closed, told to the task when it wakes anyway. */
   setSettledNote(f: ((taskId: string, lang: import("@ducter/protocol").LangTag) => string | undefined) | undefined): void;
+  /** D633: one path for the person ending a task (结束任务, 不用跟了, keep_change stop). */
+  endTask(taskId: string, reason?: string): Promise<import("./end-task.ts").EndTaskOutcome>;
   stop(): void;
 }
 
@@ -278,6 +282,21 @@ export function createWork(o: WorkOptions): Work {
     return more ? `${text}\n\n${more}` : text;
   };
 
+  /**
+   * D633: a wait ended and no turn runs. The card says what is true: its work finished (done),
+   * else where it stood before its rounds (never "working": 78620's parked 在做 came from here).
+   * A loop that is still on is left to its keeper, which arms its next round.
+   */
+  const restAfterWait = (taskId: string) => {
+    const now = tasks.get(taskId);
+    if (!now || now.attention !== "blocked") return;
+    if (waiters.views().some((v) => v.taskId === taskId && v.state === "armed")) return; // another wait holds it
+    const loop = loops.get(taskId);
+    if (loop?.state === "on" || loop?.state === "paused") return; // its keeper arms the next round (or the person paused it)
+    const to = restAttention(now, loop?.state === "ended" ? loop.before : undefined);
+    if (to !== now.attention || now.residency !== "parked") tasks.setState(taskId, to, "parked");
+  };
+
   // A task's own wait: it rests on Waiting while armed, and carries on when the wait is over.
   const unsubscribe = log.subscribe((e) => {
     if (e.kind !== "waiter") return;
@@ -339,12 +358,17 @@ export function createWork(o: WorkOptions): Work {
           deadline();
         });
     } else if (w.state === "cancelled" && card.attention === "blocked" && !w.replacedBy) {
-      tasks.setState(w.taskId, "working", card.residency);
-      // D144: it can no longer come true: the task hears why and decides what is next.
+      // D633: a wait that ended is not a turn. It used to set "working" here, which is where
+      // hel's two merged tasks sat parked at 在做 for ever (78620/78625). A real wake sets working
+      // when its turn actually starts (the runner, residency hot); this branch only settles the card.
       if (w.unmet && e.origin === "waiter") {
+        // D144: it can no longer come true: the task hears why and decides what is next.
         const text = withPRs(w.taskId, fill(wordsOf(w.reason).wont, { reason: w.reason, unmet: w.unmet }));
-        void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
-      }
+        void o.runner()?.send(w.taskId!, text, undefined, "partner").catch((err) => {
+          console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`);
+          restAfterWait(w.taskId!);
+        });
+      } else restAfterWait(w.taskId!);
     }
   });
 
@@ -693,11 +717,13 @@ export function createWork(o: WorkOptions): Work {
     setKeepRules: (f) => void (keepRules = f),
     setAppNote: (f) => void (appNote = f),
     setSettledNote: (f) => void (settledNote = f),
+    endTask: (taskId, reason) => endTaskByPerson({ log, tasks, waiters, loops, ...(o.runner() ? { drop: async (id: string) => { await o.runner()?.drop(id); } } : {}) }, taskId, reason),
     frames: {
       zone: (tz) => routines.setUserZone(tz),
       waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : action === "handoff" ? Promise.resolve(false) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
       routine: (id, action) => (action === "pause" ? routines.pause(id, "user", "asked") : action === "resume" ? routines.resume(id) : routines.end(id)),
       until: (id) => untils.stop(id, "user"),
+      end: (taskId) => endTaskByPerson({ log, tasks, waiters, loops, ...(o.runner() ? { drop: async (id: string) => { await o.runner()?.drop(id); } } : {}) }, taskId),
     },
     decorate(on) {
       const views = new Map(waiters.views().map((v) => [v.waiterId, v]));

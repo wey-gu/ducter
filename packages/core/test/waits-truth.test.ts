@@ -79,7 +79,7 @@ describe("D628: a PR's hand-off ends with the PR", () => {
     expect(core.tasks.onHand().counts.waiting).toBe(0);
     // Its transcript says why, in the task's own language, once.
     const line = core.log.read({ stream: "task:t-dev", kinds: ["task_event"], limit: 100 }).map((e) => e.body as Bodies["task_event"]).find((b) => b.from === "ducter");
-    expect(line?.text).toContain("用不着了");
+    expect(line?.text).toContain("已合并，这件结束");
   });
 
   test("a real wait survives: a check on a release keeps the task waiting while the hand-off settles", async () => {

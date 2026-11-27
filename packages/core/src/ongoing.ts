@@ -18,6 +18,7 @@ import type { CoreRegistry } from "./registry.ts";
 import type { Routines } from "./routines.ts";
 import type { Waiters } from "./waiters.ts";
 import type { Loops } from "./loops.ts";
+import { endTaskByPerson } from "./end-task.ts";
 
 const RUNS = 12;
 const ACTIVE = new Set(["queued", "working", "done_claimed"]);
@@ -54,6 +55,8 @@ export function createOngoing(o: {
   loops?: Loops;
   /** D427: a computer's name for the card's "where" ("local" is this home). */
   deviceName?: (device: string) => string | undefined;
+  /** D633: put the task's agent down when the person ends a task still at work (the runner's drop). */
+  drop?: (taskId: string) => Promise<void>;
 }): Ongoing {
   const clock = o.clock ?? realClock;
   const file = join(o.dataDir, "paused.json");
@@ -313,10 +316,11 @@ export function createOngoing(o: {
         return { ok: true };
       }
       case "end": {
-        // D427: the person ends it: the keeper first, so nothing brings it back.
-        if (loop) o.loops!.end(id, "user");
+        // D633: the person ends it. One path with the task's own 结束任务: a finished task is
+        // done (its open PRs let go), one still at work is put down; the rounds end first, so
+        // nothing brings it back, and the card is settled before its waits are cancelled.
         if (paused[id]) delete paused[id], save();
-        for (const w of o.waiters.views().filter((x) => x.taskId === id && x.state === "armed")) o.waiters.cancel(w.waiterId, { by: "user" });
+        await endTaskByPerson({ log: o.log, tasks: o.tasks, waiters: o.waiters, ...(o.loops ? { loops: o.loops } : {}), ...(o.drop ? { drop: o.drop } : {}) }, id);
         return { ok: true };
       }
       case "retime":

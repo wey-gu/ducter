@@ -19,8 +19,6 @@ import { PROJECTED_KINDS, isActive, taskStream } from "./registry.ts";
 import { briefOf, placeForRepo } from "./task-sources/index.ts";
 import { sessionIndexes } from "./session-index.ts";
 import { indexFrom } from "@ducter/protocol/src/session.ts";
-import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
-import { letGoPr } from "@ducter/protocol/src/owned.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
 import { placeRuleText, type RulesStore } from "./rules.ts";
@@ -256,6 +254,8 @@ export interface WorkFrames {
   waiter(waiterId: string, action: "look" | "cancel" | "rearm" | "handoff"): Promise<boolean>;
   routine(routineId: string, action: "pause" | "resume" | "end"): boolean;
   until(taskId: string, action: "stop"): boolean;
+  /** D633: the person's end (结束任务, 不用跟了, keep_change stop): finished → done, at work → put down. */
+  end?(taskId: string): Promise<import("./end-task.ts").EndTaskOutcome>;
 }
 
 /** Drops living_msg revisions that a later event in the same batch supersedes. */
@@ -1228,24 +1228,11 @@ export function createWsHandler(deps: WsDeps) {
               return result(true);
             }
             case "end": {
-              // D602: 结束任务 / End task, on a finished task an open PR still holds on the board: it
-              // lets each PR go (Ducter stops following it; it stays open on GitHub, closing it there is
-              // the person's), so the task is done as it is and its Keep's item goes. Never a close.
-              // From a Keep's 不用跟了 on a task still open, ending it puts it down (its PR stays open).
-              if (card.attention === "dropped" || card.attention === "superseded") return result(true);
-              if (card.attention !== "done" && card.attention !== "done_claimed" && card.attention !== "failed") {
-                try {
-                  await r?.drop(f.taskId);
-                } catch (err) {
-                  console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
-                }
-                const now = tasks.get(f.taskId)!;
-                if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency, "you stopped following it");
-                return result(true);
-              }
-              const at = new Date().toISOString();
-              const prs = prsCarried(card.prs);
-              for (const p of prs) letGoPr(log, f.taskId, p.pr, "ended", at, card.persona);
+              // D633/D602: 结束任务 / End task, and a Keep's 不用跟了, mean the task is done if its
+              // work finished (its open PRs let go, never closed) and put down if it is still at work.
+              // One path with the partner's keep_change stop and the task's own report (core/end-task.ts).
+              if (!deps.work?.end) return result(false, "Ending a task isn't available here.");
+              await deps.work.end(f.taskId);
               return result(true);
             }
             case "undrop": {

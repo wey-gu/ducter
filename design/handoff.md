@@ -89,6 +89,15 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
   leaves 等结果; when it wakes anyway for something else, its wake says the hand-off is over and to
   report done, never to wait for an acknowledgement. An issue hand-off settles when GitHub says the
   issue is closed (the usual way is the merged PR); that look runs only for an issue a helper got.
+- **Everything held about an outside thing settles when it ends (D633).** The one path is
+  `packages/core/src/holdings.ts` (`settleRef`). A PR or an issue is read from GitHub itself (`gh api …`,
+  the same read-only reader the owned look uses), on start and then hourly, grouped by repository, and
+  the facts Ducter already knows (`owned_news`, a new hand-off) settle at once. Every holder settles
+  from that state: a task (its own PR, the item it was handed, the ref its report names, the wait it
+  armed), the hand-off, a Keep's held item (a helper's, a loop's, a routine's watch) and a wait.
+  Why: other agents open PRs and hand them over, so Ducter never watched them (hel: #11441,
+  mem-backbone#378, #11389, #11408). Nothing is written to GitHub: the read is a read. The person hears
+  one quiet summary (`ai_msg.settled`) when holders actually changed, never one line per item.
 
 ## 4. What the person sees
 
@@ -116,7 +125,8 @@ handoff  { id, from: {task | agent+Space}, to: helper, item: {kind: pr|issue|tas
 | **The sending task's one line, and 手上的事 grouped by state** | built (D616): the task's one line under its last report follows the record; the helper's page draws one card grouped by state on the web and the Mac, with 让它现在接 / 不用跟了 on a waiting row and the withdrawn state said back |
 | **Bridge mail classified by our outbox (did this helper ask?), never by `inReplyTo`** | built (D614), replacing D598's "a reply under the helper's own old message counts as new": `helperQuestions` reads the messages one of the helper's tasks sent |
 | A replay test over hel's real 11-24→26 sequence: every row of §1 ends taken or said | built (D614): `packages/partner/test/handoff-d609-replay.test.ts` (the muted dev-team hand-off, the two 3× resends, the 11-25 one, and the 10-minute line) |
-| **A PR's hand-off settles when the PR merges or closes; the task that gave it is done, its timers cancelled** | built (D628): `core/src/settled-handoffs.ts`, `core/test/waits-truth.test.ts`, the `settled` state and words on both clients |
+| **A PR's hand-off settles when the PR merges or closes; the task that gave it is done, its timers cancelled** | built (D628, now the one path in D633's `core/src/holdings.ts`): `core/test/waits-truth.test.ts`, the `settled` state and words on both clients |
+| **Everything held about an outside thing settles when it ends; the person hears one quiet summary** | built (D633): `core/src/holdings.ts` (`settleRef`), `core/src/handoffs.ts` `observeGithub`, `core/test/close-loop-dpending.test.ts` |
 
 **Alternative not taken:** keep mail, and add more heuristics for "is this work". That's the
 path that failed five times. The record makes the failure state visible by construction.

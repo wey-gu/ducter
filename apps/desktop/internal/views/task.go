@@ -426,6 +426,27 @@ func headline(s string) (head, rest string) {
 	return s, ""
 }
 
+// settledOf is D633's line: the task's latest step is the record of an outside thing ending
+// ("#11389 已合并，这件结束。"), so its row and head say that, not an older report.
+func settledOf(task *store.Task) string {
+	if task == nil || task.Card == nil || task.Card.Latest == nil || task.Card.Latest.Kind != "task_event" {
+		return ""
+	}
+	var te protocol.TaskEvent
+	if err := json.Unmarshal(task.Card.Latest.Body, &te); err != nil || te.Role != "system" {
+		return ""
+	}
+	var raw struct {
+		Settled *struct {
+			Text string `json:"text"`
+		} `json:"settled"`
+	}
+	if err := json.Unmarshal(te.Raw, &raw); err != nil || raw.Settled == nil {
+		return ""
+	}
+	return raw.Settled.Text
+}
+
 // outcome is the task's result, said once: its first sentence at 34/800,
 // the rest of its report in the partner's size, how it knows on one quiet
 // line, what went out, then what to do next (Open draft PR / Merge; for
@@ -433,12 +454,21 @@ func headline(s string) (head, rest string) {
 func (a *App) outcome(c *ui.Context, task *store.Task) {
 	t := a.T
 	rep := task.Report()
+	// D633: the last word may be the outside thing ending; the head says that, not the report
+	// written while it still waited.
+	text := ""
+	if rep != nil {
+		text = rep.Summary
+	}
+	if s := settledOf(task); s != "" {
+		text = s
+	}
 	ui.Column(c.Key("outcome")).Gap(t.S3).Selectable().CopyData(autospaceCopy).Children(func() {
-		if rep == nil || rep.Summary == "" {
+		if text == "" {
 			a.heading(c, autospace(task.Title()), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
 		}
-		if rep != nil && rep.Summary != "" {
-			head, rest := headline(redact.Text(rep.Summary))
+		if text != "" {
+			head, rest := headline(redact.Text(text))
 			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
 			if rest != "" {
 				uiText(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)

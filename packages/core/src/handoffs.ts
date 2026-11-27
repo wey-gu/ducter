@@ -35,6 +35,9 @@ export interface Handoffs {
   unclaim(handoffId: string, at?: string): boolean;
   /** Given records past HELPER_TAKE_MS that were never said unclaimed. */
   dueUnclaimed(now: number): HandoffBody[];
+  /** D633: a PR's or an issue's true state read from GitHub by the holdings path: merged/closed settles
+   *  its open hand-offs exactly as D628 does, whether or not Ducter ever watched the PR itself. */
+  observeGithub(ref: string, state: "open" | "merged" | "closed", kind: "pr" | "issue"): void;
   /** The partner's way back to the agent a record came from (its Space and D595 reply route). */
   setTellAgent(fn: ((h: HandoffBody, text: string) => Promise<boolean>) | undefined): void;
 }
@@ -313,6 +316,19 @@ export function createHandoffs(o: {
     },
     dueUnclaimed(now) {
       return [...byId.values()].filter((h) => h.state === "given" && !h.unclaimedAt && !h.taskId && now - Date.parse(h.at) >= HELPER_TAKE_MS && now - Date.parse(h.at) <= DAY);
+    },
+    observeGithub(ref, state, kind) {
+      const r = ref.trim().toLowerCase();
+      if (kind === "pr") {
+        prState.set(r, { state });
+        if (state === "merged" || state === "closed") settleAll();
+        return;
+      }
+      if (state !== "closed") return;
+      for (const h of [...byId.values()]) {
+        if (h.item.kind !== "issue" || h.item.ref.trim().toLowerCase() !== r) continue;
+        if (!HANDOFF_TERMINAL.has(h.state)) settle(h, "closed");
+      }
     },
     setTellAgent(fn) {
       tellAgent = fn;

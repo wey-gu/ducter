@@ -423,7 +423,7 @@ export interface Bodies {
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
   // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
   // this line in place of their folded quiet line, so it is said once.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string; /** D623: the day after the first run: the true facts, each a link, under these words. */ dayAfter?: DayAfter; /** D628: a wait that re-armed with nothing new: this line is said once per task and reason. */ waitSlow?: { taskId: string; reason: string } };
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string; /** D623: the day after the first run: the true facts, each a link, under these words. */ dayAfter?: DayAfter; /** D628: a wait that re-armed with nothing new: this line is said once per task and reason. */ waitSlow?: { taskId: string; reason: string }; /** D633: the one quiet summary of outside things that just ended (counts, for tests and clients that want the facts). */ settled?: { prs: number; issues: number; refs: string[] } };
   // D623: the day after the first run. Code logs the true facts it found; the partner is
   // woken by it and says one short recap in its own words, carrying the same items as links. A
   // separate `finds` note then asks the one offer (two chips, no card). Logged once in a home's life.
@@ -1445,6 +1445,10 @@ export interface TaskLoopBody {
   since: string;
   /** How Ducter knew it repeats: the person's words in its brief, or its own rounds (it re-armed after a wake). */
   by: "brief" | "rounds";
+  /** D633: where the task stood before its rounds took it (not working/queued: those were a
+   *  turn, and a loop ending without a turn must never fall back to one). Read when the rounds end
+   *  with the work unfinished, so the card says what is true instead of 在做. */
+  before?: Attention;
   endedBy?: "user" | "partner" | "condition";
   /** Ducter brought it back: a round's done read as the loop's end, a failed round, a lost wait, a restart. */
   back?: { at: string; from: "done" | "failed" | "lost" | "restart"; stoppedAt?: string };

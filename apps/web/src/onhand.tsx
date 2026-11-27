@@ -90,6 +90,14 @@ export function nowLine(task: Task): { mark: string; words: string; code: string
   return { mark: bad ? "error" : (l.row.step?.kind ?? "thought"), words, code, bad };
 }
 
+/** D633: the line that settled an outside thing, when it is the task's last step: its row and
+ *  head say this, not the report it wrote before the thing ended. */
+export function settledLine(task: Task): string | undefined {
+  const b = task.card?.latest?.body;
+  const raw = b?.raw as { settled?: { text?: string } } | undefined;
+  return b?.role === "system" && raw?.settled?.text ? raw.settled.text : undefined;
+}
+
 /** The second line of a row: what it is on, waits for, asks, or came to. */
 export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" } {
   const a = attention(task);
@@ -125,6 +133,10 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     if (said) return { mark: said.bad ? "error" : said.k === "voice" ? "" : said.k, words: said.words };
     return { words: task.card?.turnAt && task.events.some((e) => e.kind === "task_event") ? t("onhand.turn.fresh") : stateLabel(a) };
   }
+  // D633: the last word about it was the outside thing ending: its row says that, not the
+  // report written while it still waited.
+  const settled = settledLine(task);
+  if (settled) return { words: settled };
   const failed = a === "failed";
   // D472: a task that couldn't start says why in its row too (the page's own words, cant.tsx).
   const cant = failed ? cantOf(task) : undefined;

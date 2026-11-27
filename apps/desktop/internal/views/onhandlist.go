@@ -230,6 +230,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 	if k := task.Cant(); att == protocol.Failed && k != nil {
 		return rowStory{words: a.cantClause(k), tone: "failed"}
 	}
+	// D633: its last word may be the outside thing ending; the row says that.
+	if s := settledOf(task); s != "" {
+		return rowStory{words: s}
+	}
 	s := rowStory{}
 	if rep != nil {
 		s.words = strings.SplitN(rep.Summary, "\n", 2)[0]

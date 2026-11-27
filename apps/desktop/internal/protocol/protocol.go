@@ -174,6 +174,15 @@ type AIMsg struct {
 	Shelf bool `json:"shelf,omitempty"`
 	// DayAfter (D623): what was set up the day before, each a link under these words.
 	DayAfter *DayAfter `json:"dayAfter,omitempty"`
+	// Settled (D633): the one quiet summary of outside things that just ended.
+	Settled *SettledNote `json:"settled,omitempty"`
+}
+
+// SettledNote is the counts behind one quiet summary (D633).
+type SettledNote struct {
+	PRs    int      `json:"prs"`
+	Issues int      `json:"issues"`
+	Refs   []string `json:"refs,omitempty"`
 }
 
 type Ack struct {

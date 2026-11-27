@@ -91,7 +91,7 @@ import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, rep
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
 import { isImage, plainWords, type MediaRef } from "@ducter/protocol";
 import { FillButton, FullTop } from "./board.tsx";
-import { barDoorPartner, centerIn, doorItems, L as OnHandState, OnHandList, storyOf, taskNext } from "./onhand.tsx";
+import { barDoorPartner, centerIn, doorItems, L as OnHandState, OnHandList, settledLine, storyOf, taskNext } from "./onhand.tsx";
 import { dateOf, PastSheet } from "./past.tsx";
 import { Palette } from "./palette.tsx";
 import { PV, RedoSheet } from "./past-preview.tsx";
@@ -2853,7 +2853,10 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const watchable = watchesBrowser(task, finished(task));
   // D217: it is using Ducter's phone: watch it from here (D220: in the workbench's Phone page).
   const phoning = !finished(task) ? A.S.onHand?.tasks.find((c) => c.taskId === id)?.phoning : undefined;
-  const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
+  // D633: when the outside thing ending was its last word, the head says that, not the report
+  // it wrote while it still waited.
+  const settled = finished(task) ? settledLine(task) : undefined;
+  const [headline, lede] = settled ? [settled, ""] : finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
   const blocks = taskBlocks(task);
   // Waiting on you with nothing to answer (its turn ended on a question in its own words, or a
   // wait ran out): say so, never a mystery (D152).

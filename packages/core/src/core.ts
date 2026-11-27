@@ -82,7 +82,8 @@ import { callAbility, createDevicesView, publicAddress, qrRows, homeName as save
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { createHelpers, HELPER_RETRY_MS, helperItems, helperSaidWords, type Helpers } from "./helpers.ts";
 import { createHandoffs } from "./handoffs.ts";
-import { createSettledHandoffs, settledHandoffNote } from "./settled-handoffs.ts";
+import { createHoldings, HOLDINGS_EVERY_MS, type Holdings } from "./holdings.ts";
+import { createCloseLoopRepair } from "./close-loop-repair.ts";
 import { isHelperWork } from "@ducter/protocol/src/helpers.ts";
 import { helperQuestions } from "@ducter/protocol/src/handoff.ts";
 import { createKeeps, keepEndAsk, keepRoundAsk, keepRulesAsk, nextRoundLine, registerKeepTools, type Keeps } from "./keeps.ts";
@@ -374,7 +375,7 @@ export interface CoreOptions {
   keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk; rulesAsk?: import("./keeps.ts").KeepRulesAsk };
   /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
   branchAsk?: (prompt: string) => Promise<string>;
-  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
+  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; /** D633: how often outside things are read from GitHub (0/absent in tests: none). */ holdingsEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
   /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
   proactive?: { triage?: Triage; judge?: FindJudge; drafter?: import("./proactive/reply.ts").Drafter; spotter?: import("./proactive/wider.ts").Spotter; cross?: import("./proactive/cross.ts").CrossAsk; monthTokens?: number; zone?: string };
   /** D458 test seam: a fake Mem the offers read (the partner sets the real one with setMemLook). */
@@ -400,6 +401,8 @@ export interface Core extends CoreApi {
   waiters: Waiters;
   /** Waiters, until loops and routines (D112-D114). */
   work: Work;
+  /** D633: open hand-offs' PRs and issues read from GitHub (start, hourly; tests call sweep). */
+  holdings: Holdings;
   /** D627: freeze this home for a move, ask how it stands, lift the freeze. */
   move: MoveControl;
   /** D627: the New task path (the freeze refuses it; the app and tests use it). */
@@ -1422,14 +1425,27 @@ export function startCore(opts: CoreOptions = {}): Core {
           },
         }),
   });
-  // D628: a merged or closed PR settles its hand-offs, and a task whose work was that PR and
-  // whose only waits are timers is done: its waiters are cancelled, it leaves 等结果.
-  const settledHandoffs = createSettledHandoffs({ log, handoffs, tasks, waiters: work.waiters, onChange: () => onHandChanged() });
-  // D628: a task that wakes anyway after its hand-off's PR merged hears the truth once.
-  work.setSettledNote((taskId, lang) => {
-    const h = [...handoffs.all()].reverse().find((x) => x.from.task === taskId && x.state === "settled" && x.settledBy);
-    return h ? settledHandoffNote(h, lang) : undefined;
+  // D633: one settle path for everything Ducter holds about an outside thing (a task, a
+  // hand-off, a Keep's item and a wait). Its own looks (owned_news) and a new hand-off settle at
+  // once; GitHub is read on start and hourly for the rest. Tests enable the read with holdingsEveryMs.
+  const holdings = createHoldings({
+    log,
+    tasks,
+    handoffs,
+    waiters: work.waiters,
+    loops: work.loops,
+    look: (spec, taskId) => work.look(spec, taskId),
+    clock: workClock,
+    lang: () => langNow(),
+    ...(opts.work?.holdingsEveryMs !== undefined ? { everyMs: opts.work.holdingsEveryMs } : process.env.NODE_ENV === "test" ? {} : { everyMs: HOLDINGS_EVERY_MS }),
   });
+  // D633: the first start of this version repairs hel's stale 在做 / 等结果 cards once (a
+  // marker file), logged on each task; absent in ordinary unit tests unless enabled.
+  const closeLoopRepair = createCloseLoopRepair({ dataDir, log, tasks, waiters: work.waiters, loops: work.loops, holdings, onChange: () => onHandChanged() });
+  // DUCTER_CLOSE_LOOP_REPAIR=0 is a demo's seam to draw the old board; never a person's setting.
+  if (process.env.DUCTER_CLOSE_LOOP_REPAIR !== "0" && (opts.work?.holdingsEveryMs !== undefined || process.env.NODE_ENV !== "test")) void closeLoopRepair.run().catch((err) => console.warn(`[core] the close-loop repair failed: ${(err as Error).message}`));
+  // D628: a task that wakes anyway after its hand-off's ref ended hears the truth once.
+  work.setSettledNote((taskId, lang) => holdings.noteFor(taskId, lang));
   /** D494: a helper's work on hand (its tasks it still holds, D507) and what it took in the last 7 days, from the Log. */
   const helperCount = (id: string) => {
     const since = Date.now() - 7 * 86_400_000;
@@ -1901,7 +1917,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D591: "这周谁用掉了我的额度" from the conversation: D588's count, with each agent's limit as last read.
   registerUsageTool(mcp, { report: (days, tz) => usageDays(log, { now: clock.now(), days, tzOffsetMin: tz, top: 5 }), limits: (h) => accountUsage.peek(h)?.usage, zone: callZone, now: () => clock.now() });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(appFill.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
+  const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(appFill.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)), drop: async (taskId) => { await runner?.drop(taskId); } }));
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
   // migration: their own records stay as they are), and whatever becomes one later is kept at once.
   const keeps = (keepsRef = createKeeps({
@@ -3228,6 +3244,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...api,
     move,
     newTask,
+    holdings,
     handoffs,
     channelUp: (via: string) => ws.channelUp(via),
     log,
@@ -3389,7 +3406,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       ownNumber.stop();
       decisions.stop();
       living.stop();
-      settledHandoffs.stop();
+      holdings.stop();
+      closeLoopRepair.stop();
       work.stop();
       limitWaits.stop();
       brainHold.stop();

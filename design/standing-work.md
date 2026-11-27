@@ -75,6 +75,12 @@
   still gets says the hand-off is over. A wait that keeps re-arming the same words with nothing
   new backs off after six same-reason re-arms (30–45 min → hours), says so once to the person, and never polls
   for ever at the old pace.
+- **D633, a finished Keep's task is done.** A loop's end or a wait's end is not a turn: with
+  nothing running, the task's card says what is true (its report said done, or its PR merged/closed/let
+  go → done; otherwise where it stood), and the partner's 别跑了 / the card's 结束任务 ends the task
+  rather than only its loop. A Keep whose task finished is 已完成, never 已停止. Everything a Keep holds
+  about an outside thing (a helper's item, a loop's PR, a routine's watch) settles from its true state in
+  `core/src/holdings.ts`; the person hears one quiet line for the batch, never one per item.
 - **D620, the doorbell.** A Keep that runs a round (a task in rounds or a routine) can be rung
   from outside by a secret URL (`/doorbell/<token>`): a CI job, a GitHub webhook, a cron on another
   server or a phone shortcut says "something changed, look now". The event is only a doorbell: its

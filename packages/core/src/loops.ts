@@ -229,7 +229,11 @@ export function createLoops(o: {
   function start(taskId: string, w: Bodies["waiter"], at: number, by: TaskLoopBody["by"]): State {
     const brief = briefOf(taskId);
     const until = untilIn(brief);
-    const s: State = { b: { taskId, state: "on", reason: w.reason, since: iso(at), by, rhythmBy: "task", ...(until ? { until } : {}) } as TaskLoopBody, fails: 0 };
+    // D633: where the task stood before its rounds took it: a loop that ends without a turn
+    // falls back to this, never to the turn's "working".
+    const a = tasks.get(taskId)?.attention;
+    const before: TaskLoopBody["before"] = a && a !== "working" && a !== "queued" ? (a === "done_claimed" ? "done" : a) : undefined;
+    const s: State = { b: { taskId, state: "on", reason: w.reason, since: iso(at), by, rhythmBy: "task", ...(before ? { before } : {}), ...(until ? { until } : {}) } as TaskLoopBody, fails: 0 };
     loops.set(taskId, s);
     write(s, specOf(w, at));
     return s;

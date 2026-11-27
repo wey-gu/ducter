@@ -131,6 +131,13 @@ task in {name}** where the bare ＋ stood.
    muted, a little tracking), no count. D471's type scale, four sizes on the page: the lead 22/700, a
    title 15/600, every line and time 13, a label 12. 等结果
    D628: a task whose work was a merged PR and whose only remaining waits are timers leaves this section for 今天做完 when its hand-off settles; a timer that keeps coming back with the same words backs off, and says so once.
+   D633: a loop or a wait ending is never a turn: with no turn running, a finished task is done (its
+   report said done, or its PR merged/closed/let go) and an unfinished one goes back to where it stood
+   (blocked/needs you), never 在做. The person's 结束任务 / keep_change stop is the same path. Anything
+   Ducter holds about a PR or an issue (a task, a hand-off, a Keep's item, a wait) settles from the true
+   state in `core/src/holdings.ts`; the person hears one quiet line for the batch, never one per item.
+   When the settle line is the task's last word, its row and the opened task's head say it, not the
+   report written while it still waited.
    D471: no time axis; each wait's time stands on its row's right edge, so the times read down one
    line. State is said by the small glyph, never a bar at the edge.
 5. D467, D471: **one row shape** for every task, and **each section one clay sheet** (white, radius

@@ -55,6 +55,39 @@ describe("On hand rows (D216)", () => {
     expect(o.storyOf(A.S.tasks.get("t1")!).words).not.toBe(s.words);
   });
 
+  test("a row settled by an outside thing says the settle line, not the report written while it waited", async () => {
+    const { A, o } = await home();
+    const line = "#11389 已合并，这件结束。";
+    const latest = {
+      seq: 20,
+      ts: now,
+      persona: "default",
+      stream: "task:t4",
+      origin: "system",
+      kind: "task_event",
+      body: { taskId: "t4", role: "system", from: "ducter", text: line, raw: { settled: { ref: "nowledge-co/mem#11389", state: "merged", text: line } } },
+    };
+    A.receive({
+      t: "on_hand",
+      onHand: {
+        tasks: [
+          card("t4", "接手 mem#11389 的收尾", "mem", "done", {
+            latest,
+            lastReport: { taskId: "t4", state: "done", summary: "已交回，等 #11389 合并。", questions: [], evidence: [] },
+            prs: [{ pr: "nowledge-co/mem#11389", url: "https://github.com/nowledge-co/mem/pull/11389", state: "merged", at: now }],
+          }),
+        ],
+        counts: { needs_you: 0, working: 0, waiting: 0, done_today: 1 },
+        waiters: [],
+      },
+    } as any);
+    const task = A.S.tasks.get("t4")!;
+    expect(o.settledLine(task)).toBe(line);
+    expect(o.storyOf(task).words).toBe(line);
+    // A done task with no settle line still says its result.
+    expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe("Added three benchmarks.");
+  });
+
   test("a done row says its result; Find and the switcher match every word", async () => {
     const { A, o } = await home();
     expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe("Added three benchmarks.");

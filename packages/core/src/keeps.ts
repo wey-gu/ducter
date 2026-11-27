@@ -627,6 +627,11 @@ export function createKeeps(o: {
       const prs = tool && /(^|__)review_report$/.test(tool.name) ? (tool.input as { prs?: { changed?: unknown }[] } | undefined)?.prs : undefined;
       return Array.isArray(prs) && prs.some((x) => x?.changed === true);
     });
+    // D633: an outside thing that ended is the round's own line ("#11389 已合并，这件结束").
+    const settled = log.read({ stream: `task:${taskId}`, kinds: ["task_event"], limit: READ_MAX }).filter((e) => {
+      const raw = (e.body as Bodies["task_event"]).raw as { settled?: { text?: string } } | undefined;
+      return !!raw?.settled?.text;
+    });
     const seen = new Set<number>();
     const silent = () => {
       if (!wake) return;
@@ -634,7 +639,7 @@ export function createKeeps(o: {
       out.push({ at: wake.at, woke: wake.woke, ...(wake.what ? { wokeWhat: wake.what } : {}), ...(wake.met ? { wokeMet: true as const } : {}), ...(wake.pr ? { wokePr: wake.pr } : {}), ...(progress ? { report: progress.slice(0, REPORT_MAX), key: `${taskId}:${progressSeq}` } : {}), spoke: asked ? "asked" : "silent", state: "done", ...(changed ? { changed: true as const } : {}), taskId });
       n++;
     };
-    for (const e of [...own, ...shared, ...changes].sort((a, b) => a.seq - b.seq)) {
+    for (const e of [...own, ...shared, ...changes, ...settled].sort((a, b) => a.seq - b.seq)) {
       if (seen.has(e.seq)) continue;
       seen.add(e.seq);
       if (e.kind === "waiter") {
@@ -650,8 +655,22 @@ export function createKeeps(o: {
         progress = undefined;
         changed = false;
       } else if (e.kind === "decision") asked = true;
-      else if (e.kind === "task_event") changed = true;
-      else {
+      else if (e.kind === "task_event") {
+        // D633: an outside thing that ended is the round's own line ("#11389 已合并，这件结束").
+        const b = e.body as Bodies["task_event"];
+        const settled = (b.raw as { settled?: { text?: string } } | undefined)?.settled;
+        if (!settled?.text) changed = true;
+        else {
+          const woke: KeepRound["woke"] = wake?.woke ?? (n === 0 && opts.first !== false ? "first" : opts.change ? "change" : "time");
+          const what = wake?.what ?? (woke === "change" ? opts.change : undefined);
+          out.push({ at: wake?.at ?? e.ts, woke, ...(what ? { wokeWhat: what } : {}), ...(wake?.met ? { wokeMet: true as const } : {}), ...(wake?.pr ? { wokePr: wake.pr } : {}), report: settled.text.slice(0, REPORT_MAX), spoke: "silent", state: "done", ...(changed ? { changed: true as const } : {}), taskId });
+          wake = undefined;
+          asked = false;
+          progress = undefined;
+          changed = false;
+          n++;
+        }
+      } else {
         const r = e.body as Bodies["report"];
         if (r.state === "progress") {
           if (r.summary?.trim()) (progress = r.summary.trim()), (progressSeq = e.seq);
@@ -998,7 +1017,11 @@ export function createKeeps(o: {
           delete bells[k.keepId];
           saveBells();
         }
-        put({ ...k, life: "stopped", endedAt: iso(clock.now()), pausedUntil: undefined, bell: undefined });
+        // D633: the partner must not say 已结束 of a task that isn't done. When the task's
+        // work finished, its Keep is 已完成 (done); one still at work was put down, so 已停止.
+        const c = f.kind === "loop" ? tasks.get(f.taskId) : undefined;
+        const life = c && (c.attention === "done" || c.attention === "done_claimed") ? "done" : "stopped";
+        put({ ...k, life, endedAt: iso(clock.now()), pausedUntil: undefined, bell: undefined });
       }
     }
     sync();

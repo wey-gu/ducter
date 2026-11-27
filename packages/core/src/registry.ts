@@ -12,7 +12,11 @@ export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.att
 export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news", "folder_moved", "handoff"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
-export const isStepEvent = (b: Bodies["task_event"]) => b.role === "tool" || (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length));
+export const isStepEvent = (b: Bodies["task_event"]) =>
+  b.role === "tool" ||
+  (b.role === "assistant" && (!!b.text?.trim() || !!b.thinking?.length)) ||
+  // D633: the line that records an outside thing ending is the task's last word (its row and head say it).
+  (b.role === "system" && !!(b.raw as { settled?: { text?: string } } | undefined)?.settled?.text);
 
 const cut = (s: string | undefined, n: number) => (s && s.length > n ? s.slice(0, n) : s);
 
@@ -35,6 +39,8 @@ export function slimStep(e: LogEvent): LogEvent<"task_event"> {
   if (b.text) body.text = cut(b.text, 400);
   if (b.thinking?.length) body.thinking = b.thinking.slice(-2);
   if (b.tool) body.tool = { name: b.tool.name, ...(slimIn !== undefined ? { input: slimIn } : {}), ...(b.tool.output ? { output: cut(b.tool.output, 300) } : {}), ...(b.tool.ok !== undefined ? { ok: b.tool.ok } : {}) };
+  const settled = (b.raw as { settled?: { ref?: string; state?: string; text?: string } } | undefined)?.settled;
+  if (settled?.text) body.raw = { settled: { ...settled, text: cut(settled.text, 400) } };
   return { seq: e.seq, ts: e.ts, persona: e.persona, stream: e.stream, origin: e.origin, kind: "task_event", body };
 }
 
@@ -428,6 +434,12 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
     },
     setState(taskId: string, attention: Attention, residency: Residency, reason?: string, cant?: import("@ducter/protocol").CantStart) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);
+      const c = cards.get(taskId)!;
+      // D633: "working" is a turn's state. Parked means no session is alive, so a transition into
+      // working from a rest (blocked/needs_you/done) is a wait ending, not work: keep the attention it
+      // had (hel 06:45: 78620's task_state working/parked right after a loop's end). A warm or hot card
+      // still has its session, and progress/report/card transitions there are left as they were.
+      if (attention === "working" && (residency === "parked" || residency === "archived") && c.attention !== "working" && c.attention !== "queued") attention = c.attention;
       const body: Bodies["task_state"] = { taskId, attention, residency };
       if (reason) body.reason = reason;
       if (cant) body.cant = cant;

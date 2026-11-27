@@ -441,12 +441,8 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker) // X1: who asks, before the question
 		}
-<<<<<<< HEAD
-		a.partnerAskWords(c, d.DecisionID, words) // D599: its links and codes real
-		a.askFiles(c, d, "conv")                  // D640 (#254): what came with the question
-=======
 		a.partnerAskWords(c, d.DecisionID, words, askKind(d)) // D599: its links and codes real; D642: its kind mark
->>>>>>> origin/dsh-calcard
+		a.askFiles(c, d, "conv")                              // D640 (#254): what came with the question
 		// D437: what another AI still found in what this Go sends.
 		if d.Look != nil && openAsk(d) {
 			a.underBubble(c, func() { a.lookLine(c, "ask:"+d.DecisionID, d.Look.Left) })

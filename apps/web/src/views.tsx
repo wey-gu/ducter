@@ -544,12 +544,8 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
   if (open && d.later)
     return (
       <>
-<<<<<<< HEAD
-        <div class="q">{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question}</div>
-        <AskFiles d={d} inTask={inTask} />
-=======
         <div class="q">{!d.cal && askKind(d) && <KindMark kind={askKind(d)} size={16} />}{d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : q}</div>
->>>>>>> origin/dsh-calcard
+        <AskFiles d={d} inTask={inTask} />
         <LaterAway d={d} about={about} />
       </>
     );
@@ -557,15 +553,11 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
     <>
       {open && <LaterBack d={d} />}
       {/* D599: a task's own words keep their links and codes real (AskText); the card's own words are plain. */}
-<<<<<<< HEAD
-      <div class="q">{wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={d.question} />}</div>
-      <AskFiles d={d} inTask={inTask} />
-=======
       <div class="q">
         {!d.cal && askKind(d) && <KindMark kind={askKind(d)} size={16} />}
         {wa ? wa.question : d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : <AskText text={q} />}
       </div>
->>>>>>> origin/dsh-calcard
+      <AskFiles d={d} inTask={inTask} />
       {open && <LookLine left={d.look?.left} at={`go:${d.decisionId}`} />}
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {d.cal && <CalFacts d={d} />}
@@ -1161,8 +1153,6 @@ const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Inf
 
 /** One ask in the partner's words (D104): the question as it speaks, its default in one muted
  *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
-<<<<<<< HEAD
-=======
 /** The Go card's one kind mark, at the leading edge of its words (D642). The calendar's own
  *  mark is its date leaf, so it answers no mark here. */
 function AskHeadMark({ d }: { d: DecisionState }) {
@@ -1171,7 +1161,6 @@ function AskHeadMark({ d }: { d: DecisionState }) {
 }
 const askLine = (d: DecisionState) => `bubble ask-line${askKind(d) ? " has-kind" : ""}`;
 
->>>>>>> origin/dsh-calcard
 export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; taskId?: string; buttons?: boolean; rk?: string; seq?: number }) {
   useTick(1000);
   const ref = useRef<HTMLDivElement>(null);

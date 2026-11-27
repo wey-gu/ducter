@@ -39,7 +39,7 @@ one's conversation.
 | Devices, projects, places | yes (D31) | |
 | Accounts (connections), keys, subscriptions | yes: they are the person's | which accounts a partner may use: later (below) |
 | Settings | notifications, quiet hours, look and sound, devices; **默认用什么想事情 / What partners think with by default** (D536) | its name, look, what it looks after (D486); what it thinks with when the person gives it its own (D536); later its own talk and memory switches |
-| Chat apps (Telegram, Slack, WeChat, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one they are talking with); its words there lead with its name |
+| Chat apps (Telegram, Slack, WeChat, Feishu / Lark, iMessage) | one thread per chat app, the default's contact (D516) | who the person's words are for (a reply, its name first, the one the thread is with — kept until they change it — or a switch by asking); with several, every partner's words lead with its name |
 | Notifications | one stream, one quiet hours | each says whose it is |
 
 **A Keep is its conversation's.** A Keep made from a partner's words records that partner as its
@@ -411,17 +411,23 @@ Built:
   folder; until then it neither recalls nor saves.
 - **On hand** shows whose (above).
 
-## In chat apps (D516)
+## In chat apps (D516, D649)
 
-One thread per chat app carries every partner (`channels.md` §10). The bot, WeChat's ClawBot and
-the partner's own Apple ID are the default's; another partner's words there lead with its name,
-**小家：… / Home: …**. The person's words go to the partner whose message they reply to, else the one
-named at their start (**小家，…**), else the one they are talking with there now (15 minutes),
-else the default; the first time another partner speaks in a chat app, one line says how to talk
-to it there. Every partner's asks and results reach the person's one place, with whose they are;
-the needs-you count stays the person's. iMessage, for now, speaks for the partner the Mac shows,
-with its name when it isn't the default. Why one thread and not a bot per partner: WeChat and
-iMessage have one identity, and a bot per partner on Telegram is an upgrade for the few (owed).
+One thread per chat app carries every partner (`channels.md` §10). The bot, WeChat's ClawBot,
+Feishu / Lark's Custom App and the partner's own Apple ID are the default's; with several partners
+every partner's words there lead with its name, **小家：… / Home: …**, the default's too. The person's
+words go to the partner whose message they reply to, else the one named at their start (**小家，…**),
+else the one the thread is with, else the default. **Asking for someone is switching** — 「我想和小玛
+聊」「切到小玛」「小玛呢」, or the name alone: the model judges it and the partner tool
+(`do=switch`) hands the thread over, so that partner answers there first under its name. **The thread
+stays with the person's choice until they change it**; there is no quiet 15-minute fall-back, and
+back to the default is the same way (「回到 Ducter」). Switching in the Mac or web app never moves a
+chat-app thread. The first time the person writes with several partners, one line lists them and
+says how to switch, once per chat app. Every partner's asks and results reach the person's one
+place, with whose they are; the needs-you count stays the person's. iMessage, for now, speaks for the
+partner the Mac shows, with its name when it isn't the default. Why one thread and not a bot per
+partner: WeChat and iMessage have one identity, and a bot per partner on Telegram is an upgrade for
+the few (owed).
 
 ## What's left
 

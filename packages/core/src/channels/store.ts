@@ -37,8 +37,13 @@ export interface ChannelRec {
   /** D301: when the person last wrote there, and how many messages went out since (the window). */
   heardAt?: string;
   sentSince?: number;
-  /** D516: the other partners already told how to talk to them in this chat app (once each). */
-  hinted?: string[];
+  /** D649: the one line that lists the partners and how to switch was said in this chat app (once). */
+  hinted?: boolean;
+  /**
+   * D649: the partner this chat app's thread is with now, until the person changes it. A chat
+   * app's DM is one thread; a Slack channel thread keeps its own in `threads`.
+   */
+  with?: { id: string; at: string };
   /**
    * D571, Slack: the channel threads a partner answers in (an @-mention started or joined them):
    * the person's words there are for it without an @. `with` is the partner the thread is with now.

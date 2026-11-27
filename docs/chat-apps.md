@@ -185,26 +185,33 @@ from someone else is read as their words, not yours: your partner never takes in
 
 ## When you have more than one partner
 
-Your bot or app (or WeChat's ClawBot) is your first partner's. Your other partners talk to you in the
-same chat, each with its name in front: **小家：…** / **Home: …**.
+Your bot or app (or WeChat's ClawBot, or your Feishu / Lark app) is your first partner's. Your other
+partners talk to you in the same chat, each with its name in front: **小家：…** / **Home: …**. Your
+first partner's messages carry its name too, so you can always tell who is answering.
 
-- **To talk to one of them, start with its name:** "小家，周六提醒我交房租" or "Home, remind me
-  about the rent on Saturday". "@Home …" works too.
-- **Reply to one of its messages** (Telegram's Reply, or a Slack thread under it) and that
-  partner answers.
-- **Or just ask to switch:** "让小家来" or "can I talk to Home?" and your partner brings it in;
-  it says hello right there, and the chat (in a Slack channel, that thread) is with it.
-- **In a Slack channel thread,** the thread stays with the partner you last talked to there,
-  until you start with another one's name.
-- **Keep talking and it stays with you.** Once you've started with a partner, what you say next
-  goes to it too, until you name someone else or leave the chat quiet for 15 minutes. Then it's
-  your first partner again.
+- **Just ask for one:** "我想和小家聊", "让多比来", "小玛呢", or "can I talk to Mia?" The chat switches
+  to that partner at once, and it answers you there.
+- **Or start with its name:** "小家，周六提醒我交房租" or "Home, remind me about the rent on
+  Saturday". "@Home …" works too. The name alone is enough.
+- **Reply to one of its messages** (Telegram's Reply, or a Slack thread under it) and that partner
+  answers.
+- **Go back to your first partner** the same way: "回到 Ducter", "switch back to Ducter", or start
+  with its name.
+- **It stays with the partner you chose** until you name another one or ask for another. It doesn't
+  quietly go back to your first partner after a while.
+- **In a Slack channel thread,** the thread stays with the partner you last talked to there, until
+  you ask for another one or start with its name. Your direct messages keep a partner of their own.
 - **Every partner's questions and results come to the one place you last talked from**, each with
   its partner's name. Answer them there as usual.
 - If you tell one partner something that's another's, it passes it on, and the other one answers
   you in the same chat.
 
-The first time another partner writes to you in a chat app, it says how to talk to it directly.
+The first time you write in a chat app when you have more than one partner, one line lists them by
+name and tells you how to switch between them. It says it once, and never again.
+
+**Switching partner in the Ducter app doesn't move your chat app.** The app and the chat app are
+different places; choosing 小玛 in the app shows 小玛 there, while your chat app stays with whoever
+you last chose there.
 
 ## Who else can see it
 

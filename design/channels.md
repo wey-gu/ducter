@@ -1,7 +1,7 @@
 # Chat apps: Telegram, Slack, Feishu / Lark and WeChat as more windows on the one conversation
 
 > Design note for principles 6, 7 (one conversation, jobs and the living message) · Decisions:
-> D276, D301 (WeChat, §9), D516 (several partners, §10), D531 (Slack as it is today, faces, @ in a channel, §11), D622 (Feishu / Lark, §14) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
+> D276, D301 (WeChat, §9), D516 (several partners, §10), D649 (asking switches, §10), D531 (Slack as it is today, faces, @ in a channel, §11), D622 (Feishu / Lark, §14) · Evidence: `research/88` (the recommendation built here), `research/79` §1 and §6
 > (Telegram, which cards may be buttons), `research/77` §1 (an outbox, linking), `research/235` §4 (Feishu / Lark).
 > Status: **built 2026-11-16 (core, the web client, the Mac app), checked against fake servers
 > only.** No real Telegram bot or Slack workspace was used; see "What is not verified". Feishu /
@@ -230,36 +230,56 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
   the 24 h / 10-message limits as WeChat really enforces them, `ret` codes beyond -14 and -2, the
   CDN's real answers, whether WeChat accepts a client that says it is Ducter. See `todo.md`.
 
-## 10. Several partners in one thread (D516)
+## 10. Several partners in one thread (D516, D649)
 
-**Built 2026-11-24, checked against the fakes only** (`packages/core/test/channels-partners.test.ts`).
+**Built 2026-11-24 (D516); D649 rebuilt the asking, the stickiness, the names and the first-time line on 2026-11-28. Checked against the fakes only** (`packages/core/test/channels-partners.test.ts`, `channels-e2e.test.ts`).
 
 - **Who, and the moment.** The heavy developer with Ducter, 小家, 多比 and 小新 who lives in
   Telegram on the phone; the consumer in China who made 小家 for home and lives in WeChat; the fresh
   user with one partner, for whom nothing here exists. Before: only the default answered in a chat
   app, and another partner's results and asks arrived there under the default's name. After: any
-  partner is one name away in the contact the person already has, and every message says whose.
+  partner is a name or a plain request away in the contact the person already has, every message says
+  whose, and the thread stays where they put it until they move it.
 - **One thread, the default's contact.** A chat app keeps one bot (Telegram, Slack), one ClawBot
-  (WeChat) or one Apple ID (iMessage), and it is the default partner's. Another partner's words lead
-  with its name: **小家：… / Home: …** (`as` in the hub's words); the default's carry none.
+  (WeChat), one Custom App (Feishu / Lark) or one Apple ID (iMessage), and it is the default partner's.
+  With several partners **every** partner's words lead with its name, the default's too: **Ducter：… /
+  Ducter: …**, **小家：… / Home: …** (`as` in the hub's words). In Slack, where each message carries its
+  sender's own name and face (D531), that name is the name in front.
 - **Who the person's words are for** (`inbound`, in order):
   1. a reply to a partner's message (Telegram's reply, a Slack thread under it in the DM): that
      partner; in a Slack channel thread (§12) the thread's own: its name at the start, else the
      partner the thread is with, else the default;
   2. a partner's name at the start, exact (case folded), after an optional `@`, then a space,
      punctuation or nothing (**小家，…**, **@多比 …**, **Ducter, …**); 「小家里的灯」 is no address;
-     the longest name wins;
-  3. the partner the person is talking with in that thread now (`withOf`): the one they last
-     addressed, or the one that last spoke into a quiet thread; it holds `TURN_MS` (15 minutes),
-     and a partner speaking never takes the thread from another the person is talking with;
+     the longest name wins. This stays the fast path;
+  3. the partner the thread is with: the one they last addressed, replied to or asked for. **It stays
+     there until they change it** — no quiet 15-minute fall-back. It is written in `channels.json`
+     `with` (id and when), so a restart keeps it; a Slack channel thread keeps its own in `threads`;
   4. the default.
   The words are logged as typed, in that partner's conversation (`channelOf`), with their `via`,
-  so D276's rules (§3) send its answers back. A forwarded message never addresses anyone. An
-  address is structure, like an @; the meaning stays the model's (a partner that gets words meant
-  for another passes them on, D486).
-- **How it starts.** The first time another partner speaks in a chat app, its message ends with
-  **想直接跟{name}说，开头写「{name}，」就行。/ To talk to {name} directly, start with “{name},”.**,
-  once per partner and chat app (`channels.json` `hinted`).
+  so D276's rules (§3) send its answers back. A forwarded message never addresses anyone. An address
+  is structure, like an @; the meaning stays the model's.
+- **Asking for someone is switching** (D649). 「我想和小玛聊」「切到小玛」「让多比来」「小玛呢」, or
+  the name alone: the partner answers by calling `partner` with `do=switch` and the name. The model
+  judges what the person asked (no phrase lists); code guards that the name is a real partner and that
+  the newest user message in the caller's conversation came from a chat app just now (the same
+  `TURN_MS` window that makes a turn "now"; a turn woken by a timer is refused). The tool passes the
+  person's own words into that partner's conversation as theirs (`user_msg.passed.from`, with the
+  chat app and the person's message it came from: `via`, `seq`), so a later message in another chat
+  app can't move the wrong thread. The chat (in Slack, the thread) is with it from then on, and that
+  partner answers first there under its name
+  (**小玛：在，想聊什么？**). The switching partner says at most one short line and never answers for it.
+  A plain `pass` (D486) keeps its old meaning: words meant for another partner's own conversation,
+  not a switch. **Back to the default the same way** (「回到 Ducter」, or its name): the tool switches
+  to it, and it answers under its name.
+- **Different places, different moments.** Switching partner in the Mac or web app (a tap on the
+  person's list) changes what that app shows; it never moves a chat-app thread, and a chat-app switch
+  never changes what the Mac or web app shows. They are different places, at different moments.
+- **How it starts.** The first time the person writes in a chat app while there is more than one
+  partner (or asks who they can talk to), one line lists them by name and says how to switch in plain
+  words, once per chat app and never again (`channels.json` `hinted`): **这里能跟 Ducter、小家、多比
+  聊。想跟谁说，开头写它的名字，比如「小家，…」，或者说「切到小家」。 / You can talk to Ducter, Home,
+  Dobby here. To talk to one, start with its name (“Home, …”) or just say “switch to Home”.**
 - **Everything reaches the one place.** Every partner's acks, answers, late results, asks and
   notes follow §3 (whose it is is the event's conversation, `partnerOfStream`); cards keep §4's
   policy with the name in front, and the end-state edit keeps it. A tap or a typed 好 answers
@@ -276,8 +296,8 @@ Evidence: `research/105`. **Built 2026-11-17, checked against a fake iLink and C
 - **Not built (owed):** a bot of its own per partner on Telegram and Slack (its own contact in
   the chat app's list); WeChat's QR, redirect and upload hosts held to Tencent's; a live check of
   iLink's text limit (one reference says it cuts at 1,800; Ducter splits at 4,000).
-- **Not verified:** any of it on a real Telegram bot, Slack workspace or WeChat; whether naive
-  people find the name address without the one line.
+- **Not verified:** any of it on a real Telegram bot, Slack workspace, WeChat or Feishu / Lark;
+  whether naive people find the address or ask for a partner without the one line.
 
 ## 11. Slack as it is today; faces; @ in a channel (D531)
 
@@ -341,12 +361,14 @@ hel needs the new manifest before it is seen live.
   newest 200), so a restart keeps them. A channel thread's words carry on the thread: no D236 reply
   to its first message. A thread never takes the DM's partner (`withOf`), nor the DM a thread's.
 - **Switching.** The `[partners]` line says how the user talks to another partner where they are:
-  in Ducter's apps a tap on it, in a chat app its name first; when the turn came from Telegram,
-  Slack or WeChat it says so, that the chat (in Slack, the thread) is then with that partner, to say
-  that in one line when asked whether it can switch (**开头写「小玛，」就是跟小玛说**), and to pass the
-  words (D486) when asked to switch or bring one in. Passed during a channel-thread turn, the other
-  partner answers in that thread under its own name and face, and the thread is with it. The model
-  judges what was asked; no phrase decides it.
+  in Ducter's apps a tap on it, in a chat app its name first or by asking for it; when the turn came
+  from Telegram, Slack, WeChat or Feishu / Lark it says so, that the chat (in Slack, the thread) is
+  with that partner from then on (§10), and that asking is `do=switch`: it passes the words and that
+  partner answers there first under its own name (and face, in Slack). The name at the start
+  (**小玛，…**) stays the fast path; a plain `pass` is for words meant for another's own conversation.
+  Asked whether it can switch, it says yes in one line and does not teach a command or
+  「转给小玛：…」. Looking at another partner's message in a thread, or asking for it, moves that
+  thread only; the DM's partner is its own. The model judges what was asked; no phrase decides it.
 - **Not verified:** a real workspace sending `message.channels` for thread replies over Socket
   Mode; Slack's install screen for the two read scopes; naive people finding 「小玛，」 from the one
   line. (D580: hel, 0.1.74, saw a thread reply without an @ arrive: this part works live.)

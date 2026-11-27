@@ -381,6 +381,8 @@ interface RunResult {
   /** D499: asks Ducter said Go to for the person, on their word (by "said"). */
   wentOnWord: number;
   rulesNow: { harness: string; never?: boolean; kinds?: string[]; text: string }[];
+  /** D649: words handed to another partner, from the Log (a plain pass or a chat-app switch). */
+  handed: { to: string; text: string }[];
 }
 
 // ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
@@ -1232,13 +1234,17 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   await partner.close().catch(() => {});
   const shelf = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 400 }).some((ev) => (ev.body as Bodies["ai_msg"]).shelf === true);
+  const handed = core.log
+    .read({ kinds: ["user_msg"], limit: 400 })
+    .filter((ev) => (ev.body as Bodies["user_msg"]).passed)
+    .map((ev) => ({ to: core.partners.nameOf(ev.stream.startsWith("channel:") ? ev.stream.slice("channel:".length) : "default"), text: (ev.body as Bodies["user_msg"]).text }));
   await core.stop().catch(() => {});
   tuwa?.stop();
   const boundRefs = new Map(core.tasks.list().filter((c) => c.source).map((c) => [c.taskId, c.source!.ref] as [string, string]));
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, wentOnWord, rulesNow, linesNow: asksNow?.lines.length ?? 0 };
+  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, wentOnWord, rulesNow, linesNow: asksNow?.lines.length ?? 0, handed };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1650,14 +1656,17 @@ function checkOutcome(r: RunResult, o: NonNullable<Expect["outcome"]>): string[]
   }
   // D486: what went to another partner, by the partner tool.
   const partnerCalls = r.tools.filter((t) => /(^|__)partner$/.test(t.name)).map((t) => (t.input ?? {}) as { do?: string; to?: string; name?: string; about?: string; text?: string });
-  const passes = partnerCalls.filter((c) => c.do === "pass");
+  const passes = partnerCalls.filter((c) => c.do === "pass" || c.do === "switch");
+  const switches = partnerCalls.filter((c) => c.do === "switch");
+  // D649: a switch hands the thread over too, and its words are the person's own (not a tool
+  // argument), so what was handed over is read from the Log, whichever verb did it.
+  const handedTo = (name: string) => r.handed.filter((h) => h.to.trim().toLowerCase() === name.trim().toLowerCase());
   if (o.passedTo) {
-    const want = o.passedTo.name.toLowerCase();
-    const to = passes.filter((c) => String(c.to ?? "").trim().toLowerCase() === want);
-    if (!to.length) fails.push(`nothing passed to ${o.passedTo.name} (passes: ${JSON.stringify(passes)})`);
-    for (const re of o.passedTo.require ?? []) if (!to.some((c) => re.test(String(c.text ?? "")))) fails.push(`what was passed to ${o.passedTo.name} lacks ${re}`);
+    const to = handedTo(o.passedTo.name);
+    if (!to.length) fails.push(`nothing passed to ${o.passedTo.name} (passes: ${JSON.stringify(passes)}; switches: ${JSON.stringify(switches)})`);
+    for (const re of o.passedTo.require ?? []) if (!to.some((c) => re.test(c.text))) fails.push(`what was passed to ${o.passedTo.name} lacks ${re}`);
   }
-  if (o.noPass && passes.length) fails.push(`passed to another partner: ${JSON.stringify(passes)}`);
+  if (o.noPass && (passes.length || r.handed.length)) fails.push(`passed to another partner: ${JSON.stringify(passes)}`);
   if (o.made) {
     const m = partnerCalls.filter((c) => c.do === "make" && String(c.name ?? "").trim() === o.made!.name);
     if (!m.length) fails.push(`no partner made called ${o.made.name} (calls: ${JSON.stringify(partnerCalls)})`);

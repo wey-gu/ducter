@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.1.96 - 2026-11-27
+
+<!-- whats-new
+zh: 飞书来了；搬家能打包带走；不再推荐看板；手机上的设置更整齐
+en: Feishu and Lark; carry Ducter to a new computer; no more board offers
+-->
+
+**Chat apps**
+- Feishu and Lark: talk to your partner from your own Feishu or Lark app, set up from Settings ›
+  Chat apps in a few steps, with no public address needed. Direct messages only for now.
+
+**Moving**
+- ducter move --bundle packs your Ducter into one file locked with a passphrase shown once, and
+  ducter move --receive checks every piece and unpacks it on the new computer. Switching over
+  comes in a later version; until then the old computer stays the one that runs.
+
+**Looking after**
+- Ducter no longer offers board apps. The Looking after page is the one page that stays current,
+  and each pull request on it now shows its checks, whether it is a draft, a conflict or a change
+  request, and which commit was looked at. Boards you already have stay as they are.
+
+**The day after**
+- The day after you first set Ducter up, your partner sums up what you set up yesterday in one
+  short message, and asks once whether you'd like a line each morning.
+
+**Agents**
+- New coins for Cursor, Devin, Kimi Code and OpenCode in the clay style. Dim shows as coming soon.
+
+**Settings**
+- On a phone, no line starts with a comma, the marks under an account sit in their tiles, and the
+  words read more naturally.
+
 ## 0.1.95 - 2026-11-27
 
 <!-- whats-new

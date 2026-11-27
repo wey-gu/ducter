@@ -21,12 +21,12 @@
     },
     "packages/cli": {
       "name": "@ducter/cli",
-      "version": "0.1.95",
+      "version": "0.1.97",
       "bin": {
         "ducter": "src/main.ts",
       },
       "dependencies": {
-        "@botiverse/oar": "0.137.0",
+        "@botiverse/oar": "0.138.1",
         "@ducter/core": "workspace:*",
         "@ducter/partner": "workspace:*",
         "@ducter/protocol": "workspace:*",
@@ -41,7 +41,7 @@
       "name": "@ducter/core",
       "version": "0.0.1",
       "dependencies": {
-        "@botiverse/oar": "0.137.0",
+        "@botiverse/oar": "0.138.1",
         "@ducter/protocol": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.32.2",
         "qrcode": "1.5.4",
@@ -62,7 +62,7 @@
       "name": "@ducter/runner",
       "version": "0.0.1",
       "dependencies": {
-        "@botiverse/oar": "0.137.0",
+        "@botiverse/oar": "0.138.1",
         "@ducter/protocol": "workspace:*",
       },
       "devDependencies": {
@@ -79,7 +79,7 @@
     },
   },
   "patchedDependencies": {
-    "@botiverse/oar@0.137.0": "patches/@botiverse%2Foar@0.137.0.patch",
+    "@botiverse/oar@0.138.1": "patches/@botiverse%2Foar@0.138.1.patch",
   },
   "packages": {
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.9.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-saCOTPYBK1iqWqJFAYHXbg3+zCoFXyZZFoqQAwdTWkbrZZPpAETr80QOnYr2l+dzPwL0jpNhn3eDY8MoEIDbUA=="],
@@ -126,7 +126,7 @@
 
     "@babel/runtime": ["@babel/runtime@7.29.13", "", {}, "sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ=="],
 
-    "@botiverse/oar": ["@botiverse/oar@0.137.0", "", { "dependencies": { "@agentclientprotocol/sdk": "^1.4.0", "cross-spawn": "^7.0.6", "dotenv": "^17.4.2", "gray-matter": "4.0.3", "js-yaml": "3.15.2", "jsonc-parser": "3.3.1", "strip-json-comments": "^5.0.3", "undici": "8.12.4", "which": "^2.0.2" }, "optionalDependencies": { "@earendil-works/pi-ai": "~1.6.0", "@earendil-works/pi-coding-agent": "~1.6.0" }, "peerDependencies": { "@cursor/sdk": "1.4.1", "@earendil-works/chord": "~1.6.0", "@earendil-works/pi-durable": "~1.6.0" }, "optionalPeers": ["@cursor/sdk", "@earendil-works/chord", "@earendil-works/pi-durable"] }, "sha512-vNCHJpsy8DkK3su1fZpS/3P165WnmDia7O+zxqT9B72TDcjR8A0O3rpSfl4kOstaeekd1P4ZNWfvmZubVhNVTQ=="],
+    "@botiverse/oar": ["@botiverse/oar@0.138.1", "", { "dependencies": { "@agentclientprotocol/sdk": "^1.4.0", "cross-spawn": "^7.0.6", "dotenv": "^17.4.2", "gray-matter": "4.0.3", "js-yaml": "3.15.2", "jsonc-parser": "3.3.1", "strip-json-comments": "^5.0.3", "undici": "8.12.4", "which": "^2.0.2" }, "optionalDependencies": { "@earendil-works/pi-ai": "~1.6.1", "@earendil-works/pi-coding-agent": "~1.6.1" }, "peerDependencies": { "@cursor/sdk": "1.4.1", "@earendil-works/chord": "~1.6.1", "@earendil-works/pi-durable": "~1.6.1" }, "optionalPeers": ["@cursor/sdk", "@earendil-works/chord", "@earendil-works/pi-durable"] }, "sha512-C+mJgkwLXXcH6Vfi1bCIZuU6Aj1Lgkq7EfDyECYy1GFt85BcZ6sYAw5I4IZzMqk8MxdPtSSwI5Mx5FpfwbQzjg=="],
 
     "@ducter/cli": ["@ducter/cli@workspace:packages/cli"],
 

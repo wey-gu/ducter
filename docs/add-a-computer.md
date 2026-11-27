@@ -91,9 +91,11 @@ provider's subscription sign-in; don't use a Claude subscription sign-in there, 
 doesn't allow other apps to use plan credentials that way. If you're unsure, use an API key.
 **Cursor** runs through the SDK Ducter installs into its own folder, so its card offers **安装**
 the first time; then **登录** gives you a cursor.com link, and the key stays with Cursor's SDK
-(not in Ducter). A Cursor API key already in that computer's keys file works too. **Dim** is
-coming soon: this version of Ducter can't run it yet, so its card says that and offers no install
-or sign-in.
+(not in Ducter). A Cursor API key already in that computer's keys file works too. **Dim** comes
+from its own npm package (`npm install -g dimcode-alpha`), so Ducter doesn't install it for you:
+once `dima` is on that computer, its card shows Dim. Dim signs in inside `dima` (`/login`, or
+`/connect` for a key), which Ducter can't see, so the card says it's ready on presence; a missing
+sign-in shows up on the first task.
 
 **Your memory there too.** If you use [Nowledge Mem](https://mem.nowledge.co) with Ducter, tasks
 on every computer you add remember you with nothing to set up there: they use the one Nowledge Mem

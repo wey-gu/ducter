@@ -19,7 +19,7 @@
 | Devin CLI | 3000.12.57–3000.14.30821 (D600; not run by Ducter) | none: no window reported | none: Devin's own | n/a |
 | Kimi Code CLI | 2.3.3–2.6.3 (D600; not run by Ducter) | none: the model's own (`usage_update.size`) | none: Kimi's own | n/a |
 | OpenCode | 2.2.7–2.3.0 (D600; not run by Ducter) | none: `usage_update.used` / `.size` | none per session: its config `compaction.buffer`; about 85% of the window by default | n/a |
-| Dim | `dimcode 0.1.0-alpha.29` (D625; OAR's community runtime, not run by Ducter) | none: `usage_update.size` | none: Dim's own | n/a |
+| Dim | `dimcode 0.1.0-alpha.29` (D625; OAR's community runtime since 0.138.0, not run live) | none: `usage_update.size` | none: Dim's own | n/a |
 
 ## Claude Code 2.1.319–2.1.322
 
@@ -202,11 +202,11 @@ or sign-in has run on any of them yet; `todo.md` carries the checks.
 Dim (DimAgent) is a Rust coding agent; its command is `dima` from the npm package `dimcode-alpha`
 (the `dim`/`dimcode` commands of the earlier package are a different CLI and are not candidates;
 OAR also accepts the nightly's `dim-nightly`/`dimn`). OAR added it as a **community** runtime:
-`createDimRuntime` is exported from `@botiverse/oar/community`, not `defaultRuntimes`, and it is
-not in any published release yet (it landed in OAR commit c8792876, after 0.137.0). Ducter loads
-that entry dynamically and feature-detects the export; until a release carries it the setup card
-says **即将支持 / Coming soon** and no start is attempted. No `dima` was run and no home was read:
-the facts below are OAR's adapter and docs, read-only.
+`createDimRuntime` is exported from `@botiverse/oar/community`, not `defaultRuntimes`, and OAR
+0.138.0 is the first published release that carries it (it landed in commit c8792876, after
+0.137.0). Ducter loads that entry dynamically and feature-detects the export, so this build runs
+Dim as a task agent and a build with no export still says **即将支持 / Coming soon**. No `dima` was
+run and no home was read: the facts below are OAR's adapter and docs, read-only.
 
 - **One home, one App Server.** State lives in a home (`--home`, default `~/.dimcode-alpha` for
   the alpha). Every client of a home shares one `dimcode-server` daemon started by whichever

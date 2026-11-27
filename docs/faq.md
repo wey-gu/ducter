@@ -39,15 +39,17 @@ your partner. You need at least one. Your partner thinks with Claude Code; when 
 signed in, it picks the first that is of Codex, DeepSeek Harness and pi, so a server with just one
 of them works.
 
-**Devin CLI** and **Cursor** take any task, but they can never be your partner. Cursor runs
-through the SDK Ducter installs into its own folder when you add it from its card, and signs in
-with a cursor.com link (or a Cursor API key already in that computer's keys file). **Antigravity**,
-**Kimi Code CLI** and **OpenCode** take a task only when you ask for them by name: their terms keep
-those sign-ins to interactive use, so they never wait, wake on a timer or run a routine or a Keep.
-Devin CLI, Kimi Code CLI and OpenCode are installed with their own installers or from the
-computer's card, and signed in there.
-
-**Dim** is coming soon: this version of Ducter can't run it yet; a coming Ducter update will.
+**Devin CLI**, **Cursor** and **Dim** take any task, but they can never be your partner. Cursor
+runs through the SDK Ducter installs into its own folder when you add it from its card, and signs
+in with a cursor.com link (or a Cursor API key already in that computer's keys file). Dim comes
+from its own npm package (`npm install -g dimcode-alpha`): Ducter doesn't install it for you, and
+once `dima` is on that computer its card shows Dim. Dim signs in inside `dima` (`/login`, or
+`/connect` for a key), which Ducter can't see, so its card says it's ready once `dima` is there; a
+missing sign-in shows up on the first task. **Antigravity**, **Kimi Code CLI** and **OpenCode**
+take a task only when you ask for them by name: their terms keep those sign-ins to interactive
+use, so they never wait, wake on a timer or run a routine or a Keep. Devin CLI, Kimi Code CLI and
+OpenCode are installed with their own installers or from the computer's card, and signed in
+there.
 
 Ducter also works with **pi** and **DeepSeek Harness**, which run on an API key you pay for by
 use rather than a plan. If one of them is installed and signed in, ask your partner to use it

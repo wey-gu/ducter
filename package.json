@@ -21,6 +21,6 @@
     "@types/bun": "latest"
   },
   "patchedDependencies": {
-    "@botiverse/oar@0.137.0": "patches/@botiverse%2Foar@0.137.0.patch"
+    "@botiverse/oar@0.138.1": "patches/@botiverse%2Foar@0.138.1.patch"
   }
 }

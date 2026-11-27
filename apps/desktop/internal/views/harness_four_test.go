@@ -67,7 +67,7 @@ func TestHarnessFourNamesAndLogin(t *testing.T) {
 				t.Errorf("%s: missing %q", l, k)
 			}
 		}
-		for _, k := range []string{"ag.login.kimi.1", "ag.login.kimi.2", "ag.login.cursor.1", "ag.login.cursor.2", "ag.login.wait.cursor", "ag.kimi.where", "ag.kimi.terms", "ag.devin.where", "ag.devin.terms", "ag.opencode.where", "ag.opencode.terms", "ag.cursor.where", "ag.cursor.terms", "ag.node.update", "ag.node.install", "ag.dim.where", "ag.dim.coming", "ag.coming"} {
+		for _, k := range []string{"ag.login.kimi.1", "ag.login.kimi.2", "ag.login.cursor.1", "ag.login.cursor.2", "ag.login.wait.cursor", "ag.kimi.where", "ag.kimi.terms", "ag.devin.where", "ag.devin.terms", "ag.opencode.where", "ag.opencode.terms", "ag.cursor.where", "ag.cursor.terms", "ag.node.update", "ag.node.install", "ag.dim.where", "ag.coming"} {
 			if got := i18n.New(l).T(k); got == k || got == "" {
 				t.Errorf("%s: missing %q", l, k)
 			}

@@ -2541,8 +2541,9 @@ export interface DeviceHarness {
  *  - broken: its command line is there but doesn't answer (a damaged file); 安装 puts a fresh one there;
  *  - app_only: only its desktop app (`app`) is there, which carries no command line (or only a
  *    link an older app left, pointing at nothing); 安装 puts the command line beside it;
- *  - coming (D625): this Ducter build cannot run it yet (Dim needs an @botiverse/oar release
- *    that exports createDimRuntime); said as 即将支持 / Coming soon, never a crash.
+ *  - coming (D625): an older home's Ducter cannot run it yet; said as 即将支持 / Coming soon,
+ *    never a crash. This build runs Dim (OAR 0.138.0 exports createDimRuntime); the kind stays
+ *    so a newer client reads an older home's row without guessing.
  *  - node_old (D630): the runtime needs a newer Node than the one the probe read (`have`,
  *    `need` the floor, `via` where it came from: Ducter's own tools folder, or the system's).
  *    Ducter can update its own Node through the same install flow; it says nothing about updating

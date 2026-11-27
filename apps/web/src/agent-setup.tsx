@@ -271,8 +271,7 @@ export function AgentRow({ dv, h, pick }: { dv: DeviceView; h: DeviceHarness; pi
         ) : (
           <div class="ag-detail">{t("ag.trouble.root.why", name)}</div>
         ))}
-      {/* D625: Dim before the OAR release that exports createDimRuntime: said, never a button. */}
-      {look === "coming" && <div class="ag-detail">{t("ag.dim.coming")}</div>}
+      {/* D625: an older home can't run it yet; the row's word says so, with no button. */}
       {/* D371: its command line is big; say so before the tap. */}
       {(look === "install" || look === "queued") && h.harness === "deepseek-harness" && <div class="ag-detail">{t("ag.dsh.size")}</div>}
       {/* D416: where agy goes (its own installer's place, not Ducter's folder), before the tap. */}

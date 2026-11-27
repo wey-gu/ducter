@@ -11,12 +11,11 @@ export function isHarnessId(s: unknown): s is HarnessId {
 }
 /**
  * D625: the agents the partner's own tools name (`task_open`, `task_fork`, `task_switch`,
- * `rule_save`, `new_tasks`). Dim is left out until the D175 partner eval can judge the list with
- * it: adding one id changes the partner's tools/list JSON, and that eval is a real-model run this
- * pass could not make. The app's New task picker, Tasks and the runner still take `dim`; lifting
- * this one filter is the whole change once the eval is run (see todo.md).
+ * `rule_save`, `new_tasks`). Dim joined them once OAR 0.138.0's community runtime made it run
+ * (D637): naming one more id changes the partner's tools/list JSON, so the D175 eval is the
+ * lead's to run.
  */
-export const PARTNER_NAMED_HARNESS_IDS: readonly HarnessId[] = HARNESS_IDS.filter((h) => h !== "dim");
+export const PARTNER_NAMED_HARNESS_IDS: readonly HarnessId[] = HARNESS_IDS;
 
 /**
  * D448: the agents whose Nowledge Mem plugin carries Bridge (its `bridge` skill), so a session of

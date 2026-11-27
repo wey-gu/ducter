@@ -12,10 +12,10 @@ export type AgentRowLook =
   | "install" // not there, Ducter can put it there: 安装
   | "missing" // not there, and Ducter can't (an older Ducter there, an agent it doesn't install)
   | "cant" // D549: there, but it won't run here (it refuses root, and Ducter runs as root there): why, no button
-  | "coming"; // D625: this Ducter build can't run it yet (Dim before the next OAR release)
+  | "coming"; // D625: an older home can't run it yet (this build runs Dim; OAR 0.138.0)
 
 export function agentRowLook(h: Pick<DeviceHarness, "installed" | "loggedIn" | "installable" | "setup" | "login" | "trouble">): AgentRowLook {
-  // D625: said before installed/installable: nothing to install, no sign-in Ducter can keep.
+  // D625: said before installed/installable: an older home has nothing to install or sign in.
   if (h.trouble?.kind === "coming") return "coming";
   if (h.setup?.phase === "installing") return "installing";
   if (h.setup?.phase === "queued") return "queued";
@@ -44,7 +44,7 @@ export function troubleWords(h: Pick<DeviceHarness, "trouble" | "version">): { w
   if (tr.kind === "too_old") return { word: "ag.trouble.too_old", args: [h.version ?? "?", tr.need], button: "update" };
   if (tr.kind === "broken") return { word: "ag.trouble.broken", args: [], button: "reinstall" };
   if (tr.kind === "root") return undefined; // D549: its own look ("cant"), not an install
-  if (tr.kind === "coming") return undefined; // D625: its own look ("coming"), nothing to install
+  if (tr.kind === "coming") return undefined; // D625: its own look ("coming"), for an older home
   if (tr.kind === "node_old") return undefined; // D630: its own look ("cant"), not an install
   return { word: "ag.trouble.app_only", args: [tr.app], button: "install" };
 }

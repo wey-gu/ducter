@@ -164,7 +164,9 @@ export type Step =
   | { startFailed: { task: string; why: import("../../protocol/src/index.ts").CantStart["why"]; path?: string; detail?: string } }
   // D481: the seeded task, in rounds, has been on this round a long time: its steps are logged (oldest
   // first, minutes ago), then core's loop keeper hands it to the partner with these facts.
-  | { longRound: { task: string; sinceMin: number; everyMin: number; reason: string; earlier: number[]; steps: { minAgo: number; text: string; kind?: "state" | "said" }[]; waits?: string[] } };
+  | { longRound: { task: string; sinceMin: number; everyMin: number; reason: string; earlier: number[]; steps: { minAgo: number; text: string; kind?: "state" | "said" }[]; waits?: string[] } }
+  // D623: the day after the first run: code found what was set up yesterday; the partner says it.
+  | { dayAfter: { items: import("../../protocol/src/index.ts").DayAfterItem[] } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -4291,6 +4293,45 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "用 gpt-9 跟我聊" }],
     expect: { notCalled: ["task_switch"], opens: 0, msgs: [1, 1], maxChars: 140, forbid: [/(已|换)(经)?(切|换)(到|成)\s*gpt-?9|从你下一句起.*gpt-?9/i] },
     rubric: "Codex on this home has no GPT-9 (it offers GPT-6.2-Sol, GPT-6.2-Astra, GPT-6.1-Terra, GPT-6-Luna). The partner may try brain_switch, which says so; it must NOT claim it switched. A short Chinese reply that there is no GPT-9 here; naming what it does have, or offering them as a choice (a plain question or a choices card with those models) is fine. No task; never a claim that it switched.",
+  },
+  // D623: the day after the first run. Code gives three true facts; the partner says one short
+  // recap in its own words, never a feature tour, and the app carries the one offer card.
+  {
+    id: "day-after-zh",
+    category: "onboarding",
+    lang: "zh",
+    steps: [
+      {
+        dayAfter: {
+          items: [
+            { kind: "task", id: "t_login", title: "修好登录页的跳转" },
+            { kind: "keep", id: "kp_ci", title: "每天早上看一眼 CI" },
+            { kind: "account", id: "conn_gmail", title: "Gmail" },
+          ],
+        },
+      },
+    ],
+    expect: { msgs: [1, 1], maxChars: 200, opens: 0, noSend: true, require: [/昨天|这几件|弄好/], forbid: [/功能|以下|tour|还能/] },
+    rubric:
+      "The app has just shown the user what they set up yesterday (a task that finished, a Keep, a Gmail account) and an offer card for a morning line is below the message. The partner says one short recap in Chinese, in its own voice: these are what they set up together yesterday (or a close, natural way of saying it). It must not list them one by one (the app's links do), not ask a question, not offer anything else, not explain a feature or add a feature tour, and not invent a fact. One or two sentences; no greeting.",
+  },
+  {
+    id: "day-after-en",
+    category: "onboarding",
+    lang: "en",
+    steps: [
+      {
+        dayAfter: {
+          items: [
+            { kind: "task", id: "t_login", title: "Fix the login redirect" },
+            { kind: "app", id: "a_expenses", title: "Trip expenses" },
+          ],
+        },
+      },
+    ],
+    expect: { msgs: [1, 1], maxChars: 200, opens: 0, noSend: true, require: [/yesterday|these are|set up/i], forbid: [/feature|tour|you can also|here's what I can/i] },
+    rubric:
+      "The app has just shown the user what they set up yesterday (a finished task and an app they made) and an offer card for a morning line is below the message. The partner says one short recap in English, in its own voice: these are what they set up together yesterday. It must not list them one by one (the app's links do), not ask a question, not offer anything else, not explain a feature or add a feature tour, and not invent a fact. One or two sentences; no greeting.",
   },
   // D477: world puzzles (puzzles.ts), graded on outcome.
   ...puzzles,

@@ -145,13 +145,16 @@ export const SEND_UNDO_MS = 30_000;
  *   keep_note   保留 / Keep (default) · 不再需要 / No more (= 只说急的; D250: offered back once later)
  *   note_again  好 / Yes · 不用 / No thanks: the morning note offered back once (D250); no answer
  *               keeps 只说急的
+ *   day_after   the day after's one offer of a morning line: 好，每天早上 / Yes, each morning ·
+ *               不用了 / No thanks; no default, no timer; ignored settles on the person's next
+ *               message
  * D250: the first morning note said on the default (never chosen) carries `cadence` too.
  */
-export type FindRung = "morning" | "fold" | "now" | "meeting" | "first";
-export type ProactiveAsk = "first_look" | "cadence" | "keep_note" | "note_again";
+export type FindRung = "morning" | "fold" | "now" | "meeting" | "first" | "day_after";
+export type ProactiveAsk = "first_look" | "cadence" | "keep_note" | "note_again" | "day_after";
 /** The asks answered with yes or no (the cadence ask is answered by the chips). */
-export type ProactiveYesNo = "first_look" | "keep_note" | "note_again";
-export const isProactiveYesNo = (a: unknown): a is ProactiveYesNo => a === "first_look" || a === "keep_note" || a === "note_again";
+export type ProactiveYesNo = "first_look" | "keep_note" | "note_again" | "day_after";
+export const isProactiveYesNo = (a: unknown): a is ProactiveYesNo => a === "first_look" || a === "keep_note" || a === "note_again" || a === "day_after";
 
 /** One state change of a find (core writes it; clients fold it into the note). */
 /**

@@ -502,6 +502,41 @@ a normal message quoting the card (never a second answer); still in the box, the
 under its answer with **作为消息发给我 / Send it to me as a message** and **不发了 / Discard**. Go
 or Hold on such a card does nothing but bring this window the home's answer.
 
+## The day after the first run (D623)
+
+*Who:* the fresh user who set Ducter up yesterday and opens it today. *Feel:* before, a blank
+conversation that could be any day, so yesterday's work is only a memory; after, 放心 (it remembers
+what we did, and says only what is true) and 顺滑 (one tap settles how the mornings go). *First time:*
+the first open on the day after the first run; nothing to set up.
+
+1. **One honest return, once.** The first time the person reads the conversation (a read receipt,
+   not a background reconnect) on the calendar day after the day Ducter first ran, and only if
+   something was set up yesterday, code logs one `day_after` with at most three true facts, and
+   the partner is woken to say it. It is in the Log, so every device sees the same message and a
+   restart never repeats it; a home that first ran two days ago gets nothing. Nothing was set up:
+   nothing at all. No push: it waits for the person to open Ducter. Why not the morning note's
+   finds or the `first` starts: both are code's templates, and this one must be the partner's own
+   words, so it is a partner message woken by code's facts at the first open.
+
+2. **What counts as set up** (each from the Log or the home's own record, never a guess): a task
+   that finished yesterday, a Keep that started looking after something, an account they
+   connected, a chat app they linked, an app they made. At most three, newest first; an
+   OpenConnector names its accounts (Gmail), never the connector itself. Each is a link to the
+   task, the Keep's page, Accounts, Chat apps or the app.
+3. **The words are the partner's.** Code gives the facts and one line of instruction; the
+   partner's model says one or two sentences in its own voice about what they set up together,
+   and the app shows the facts under its words as quiet links. Never a template, never a feature
+   tour, never an invented fact.
+4. **One offer, never a need.** Under the words, one quiet `finds` note asks **要不要我每天早上给
+   你一句话？ / Want me to say one line each morning?** with two chips, **好，每天早上 / Yes,
+   each morning** and **不用了 / No thanks** (the shape of D453's offers and the first-look offer,
+   never a decision card). It has no needs count, no default and no timer: it never appears in
+   待你处理, and an untouched offer changes nothing. Go keeps the morning note on (a home on 只有
+   急事 turns it on; a home on 每天最多 3 条 keeps 3) and the partner says one short line; No
+   changes nothing. The answer is the note's own `answered` revision in the Log: `yes`, `no`, or
+   `ignored` when the person's next message arrives without a tap. The chips go once settled;
+   only Go adds the partner's one line. Asked once in a home's life, never again.
+
 ## The living message (principle 7)
 
 | State | Meaning |

@@ -1264,6 +1264,7 @@ function describeStep(st: Step): string {
   if ("user" in st && st.via) return `user says, in ${{ telegram: "Telegram", slack: "Slack", wechat: "WeChat" }[st.via]} (a chat app the partner answers in): ${st.user}`;
   if ("user" in st && st.refs?.length) return `user says: ${st.user} (picked in the composer: ${st.refs.map((r) => ("task" in r ? `@ the task "${r.task}"` : "skill" in r ? `/ their skill ${r.skill}` : `/ Ducter's action ${r.action}`)).join(", ")})`;
   if ("user" in st) return `user says: ${st.user}${st.images?.length ? ` (with ${st.images.length === 1 ? "a picture" : `${st.images.length} pictures`}: ${st.images.map((p) => p.split("/").pop()).join(", ")})` : ""}`;
+  if ("dayAfter" in st) return `Ducter opens on the day after it was first set up; code found these true facts of what was set up yesterday: ${st.dayAfter.items.map((i) => `${i.kind} "${i.title}"`).join(", ")} (the app shows each as a link and one offer of a morning line below)`;
   if ("report" in st) return `${st.report.told?.length ? `the user typed straight into task "${st.report.task}"'s own box: ${st.report.told.map((t) => `"${t}"`).join(", ")}; then ` : ""}task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
   if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
@@ -1358,6 +1359,9 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
     return places.cantStart(taskId, { why: st.startFailed.why, path: st.startFailed.path ?? "", device }).then(({ line, ...cant }) => {
       core.tasks.setState(taskId, "failed", "archived", line, { ...cant, ...(st.startFailed.detail ? { detail: st.startFailed.detail } : {}) });
     });
+  } else if ("dayAfter" in st) {
+    // D623: the first open on the day after the first run: code's true facts wake the partner.
+    core.log.append({ stream: "channel", origin: "system", kind: "day_after", body: { items: st.dayAfter.items, at: new Date().toISOString() } });
   } else if ("report" in st) report(st.report);
   else if ("reports" in st) st.reports.forEach(report);
   else if ("resolve" in st) {

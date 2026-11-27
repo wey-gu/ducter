@@ -50,8 +50,10 @@ import { createWork, type Work } from "./work.ts";
 import { createHarnessAsk, createHarnessJudge, type LookUsed } from "./judge.ts";
 import { createWebLook } from "./web-look.ts";
 import { createProactive, type Proactive } from "./proactive/engine.ts";
+import { dayAfterFacts } from "./day-after.ts";
 import { replayProactive } from "./proactive/replay.ts";
 import { readShadowEvents, readWeekEvents, weekReport, weeksSince, WEEKS_DEFAULT, WEEKS_MAX } from "./proactive/week.ts";
+import { W } from "./proactive/words.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelDrafter } from "./proactive/reply.ts";
 import { modelJudge, type FindJudge } from "./proactive/judge.ts";
@@ -515,6 +517,8 @@ export const directDone = (r: Bodies["report"]): boolean => r.state === "done" &
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg") return true;
+  // D623: code found what was set up on the day after; the partner says it in its own words.
+  if (e.kind === "day_after") return true;
   // D380: a quick web look came back (its answer, or why a browsing task should take it).
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
   // D236: a question answered by a reply wakes it through the reply, which says so.
@@ -2948,6 +2952,27 @@ export function startCore(opts: CoreOptions = {}): Core {
     workingMemory,
     // D388: a question a said find left open (a public plan's day or time) may be looked up on the web.
     webLook: () => api.webLook,
+    // D623: the day after the first run: code's true facts; the partner says them.
+    dayAfter: {
+      facts: ({ now, tz }) =>
+        dayAfterFacts(
+          {
+            log,
+            task: (id) => tasks.get(id),
+            keeps: keeps.all(),
+            connections: connections.view(),
+            channels: channels.view(),
+            apps: apps.list(persona.id),
+            persona: persona.id,
+          },
+          now,
+          tz,
+        ),
+      canSpeak: () => {
+        const hs = devicesView?.harnessesNow();
+        return !hs || hs.some((x) => x.loggedIn && x.installed !== false && !!(HARNESSES as Record<string, { partner?: boolean } | undefined>)[x.harness]?.partner);
+      },
+    },
     // D458: offers from past the accounts: the default partner's finished tasks, what it was told, Mem.
     wider: (c) => {
       const mine = tasks.list().filter((t) => !isOther(t.persona));
@@ -2962,6 +2987,27 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(opts.proactive?.cross ? { cross: opts.proactive.cross } : {}),
   });
   proactiveRef = proactive;
+  // D623: the day after's one offer of a cadence. It appears only once the partner's recap is
+  // in the Log (so it stands under those words, never before them), and it is a quiet `finds` note
+  // with two chips: no decision, no needs count, no default, no timer. Taken turns the morning note
+  // on (and the partner says one short line); declined or ignored changes nothing. Ignored settles
+  // on the person's next message (the engine's `answer`/`onEvent`), so it is never asked again.
+  const ensureDayAfterOffer = () => {
+    const said = log.read({ stream: "channel", kinds: ["ai_msg"], limit: 500 }).some((e) => !!(e.body as Bodies["ai_msg"]).dayAfter);
+    if (!said) return;
+    const asked = log.read({ stream: "channel", kinds: ["finds"], limit: 500 }).some((e) => (e.body as Bodies["finds"]).ask === "day_after");
+    if (asked) return;
+    log.append({
+      stream: "channel",
+      origin: "partner",
+      kind: "finds",
+      body: { noteId: `n_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`, rung: "day_after", opening: W.dayAfterAsk(langNow()), finds: [], ask: "day_after" },
+    });
+  };
+  ensureDayAfterOffer();
+  log.subscribe((e) => {
+    if (e.kind === "ai_msg" && (e.body as Bodies["ai_msg"]).dayAfter) ensureDayAfterOffer();
+  });
   // D388: the dry replay: a second engine on a scratch folder, the same sources and agent, nothing sent.
   let replaying = false;
   replayRef = async (o) => {

@@ -76,6 +76,11 @@ compaction test' in hawdb. Want me to pick it up?"*. **How I know** under each o
 came from, and **Leave this folder out** keeps a folder out for good. **Stop looking** turns it all
 off and makes your partner forget what it saw.
 
+**The next day,** the first time you open Ducter, your partner says one short recap of what you set
+up yesterday — at most three true things, each a link — and asks once, in two quiet choices,
+whether to say one line each morning. Nothing was set up, nothing is said. If you don't tap, nothing
+changes; it never asks twice, and it never turns into a tour.
+
 Tap one to put it in the box (it never sends by itself), change it if you like, and
 press Return. Or write anything of your own:
 

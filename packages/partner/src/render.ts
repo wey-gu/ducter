@@ -792,6 +792,13 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const al = a && a.lines.length >= 2 ? ` (the lines under the user's message, as they see them now: ${asksLines(a, ctx)})` : "";
       return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}${told}${al}`;
     }
+    case "day_after": {
+      // D623: code found what the person set up yesterday. Say it in the partner's words;
+      // the app draws each fact as a link and carries the one offer of a morning line below.
+      const b = e.body as Bodies["day_after"];
+      const facts = b.items.map((i) => `${i.kind}: "${clip(i.title, 80)}"`).join("; ");
+      return `[${t} the day after they set Ducter up] Yesterday they set up: ${facts}. Say it in one short message in their language: one or two sentences that these are what you set up together yesterday, in your own voice, and nothing else. The app shows each one under your words as a link, so do not list them one by one, repeat their titles, ask a question, offer anything or explain a feature: the app carries the one offer of a morning line below. Never invent a fact: only what is here.`;
+    }
     case "finds": {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.
       const b = e.body as Bodies["finds"];

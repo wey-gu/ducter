@@ -45,6 +45,8 @@ const T = {
     firstLater: "好，先不看。",
     keepNote: "早上那条还要吗？",
     noteAgain: "现在我能提前告诉你航班、维护、扣费这些了。要每天早上说几条吗？",
+    dayAfterAsk: "要不要我每天早上给你一句话？",
+    dayAfterTaken: "好，每天早上给你一句话。",
     budget: "{name} 这个月的额度用完了，这个月剩下的日子我只说急的。",
     ooAccounts: "oo 里的账号",
     calendar: "日历",
@@ -73,6 +75,8 @@ const T = {
     firstLater: "OK, not now.",
     keepNote: "Keep the morning note?",
     noteAgain: "I can now tell you about flights, maintenance and billing changes ahead of time. Want a few each morning?",
+    dayAfterAsk: "Want me to say one line each morning?",
+    dayAfterTaken: "Good — one line each morning.",
     budget: "{name} used this month's budget; for the rest of the month I'll only say what's urgent.",
     ooAccounts: "Accounts in oo",
     calendar: "calendar",
@@ -115,6 +119,9 @@ export const W = {
   keepNote: (lang: LangTag) => words(T, lang).keepNote,
   /** D250: the morning note offered back once, after the notes got better (NOTES_REV). */
   noteAgain: (lang: LangTag) => words(T, lang).noteAgain,
+  /** D623: the day after's one question and the one line a yes gets. */
+  dayAfterAsk: (lang: LangTag) => words(T, lang).dayAfterAsk,
+  dayAfterTaken: (lang: LangTag) => words(T, lang).dayAfterTaken,
   budget: (lang: LangTag, name: string) => fill(words(T, lang).budget, { name }),
   /** The name said for the accounts kept in oo. */
   ooAccounts: (lang: LangTag) => words(T, lang).ooAccounts,

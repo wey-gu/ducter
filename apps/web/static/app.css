@@ -25555,3 +25555,21 @@ button.fd-link,
 .trust.without small.tapped { display: block; }
 .trust.without small.tapped > span { display: inline; margin: 0; }
 .trust.without small.tapped > .when { margin-inline-start: var(--s2); white-space: nowrap; }
+
+/* D623: the day after the first run: what was set up yesterday, each a quiet link under
+   the partner's recap. Never wider than the bubble; a long title wraps inside its row. */
+.day-after {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.day-after .tlink {
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}

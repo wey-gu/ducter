@@ -149,8 +149,13 @@ not interviewed. *How it starts:* by itself, within a second of the first window
    under them (A key instead, below).
 6. **Nowledge Mem** (D329): with the person's Mem answering on the home, one line says it is there and one
    start asks what it remembers; nothing in Mem is read for them (`FirstWordsInput.mem`).
+7. **The day after (D623).** The first read on the day after the first run carries one short
+   recap of what the person set up yesterday — at most three true facts from the Log and the
+   home's records, each a link — and one quiet offer of a morning line (two chips, no needs
+   count, no default), taken or dismissed in one tap; untouched it changes nothing. Nothing when
+   nothing was set up, never twice, never a feature tour; the words are the partner's. `conversation.md` "The day after the first run"; `core/src/day-after.ts`.
 
-Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`; D327: `.shots/d327/mac/mac-first-*.png`, `.shots/d327/web/{wide-en,phone-zh,wide-zh}-*.png`.
+Shots: `.shots/d298/mac/first-words-*.png`, `.shots/d298/web/first-words-{wide,phone}-{zh,en}.png`; D327: `.shots/d327/mac/mac-first-*.png`, `.shots/d327/web/{wide-en,phone-zh,wide-zh}-*.png`; D623: `.shots/day-after/{web,mac}/` (web 390, Mac 1150, zh light and dark).
 
 ## A key instead (D298)
 

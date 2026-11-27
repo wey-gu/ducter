@@ -2140,8 +2140,10 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
             </span>
           </span>
         </span>
-        <span class="oacts on">
-          <Btn kind="secondary" size="sm" label={t("onhand.src.review.go")} about={t("onhand.src.review", review)} onClick={() => ((srcOpen = true), A.changed())} />
+        <span class="ocol">
+          <span class="oacts on">
+            <Btn kind="secondary" size="sm" label={t("onhand.src.review.go")} about={t("onhand.src.review", review)} onClick={() => ((srcOpen = true), A.changed())} />
+          </span>
         </span>
       </div>
     )}
@@ -2170,7 +2172,11 @@ function SourceSummary({ pile, kind, review }: { pile: PileView; kind: string; r
           )}
         </span>
       </span>
-      {act && <span class="oacts on">{act}</span>}
+      {act && (
+        <span class="ocol">
+          <span class="oacts on">{act}</span>
+        </span>
+      )}
     </div>
     </div>
   );

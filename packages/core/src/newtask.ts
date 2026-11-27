@@ -466,9 +466,21 @@ export function titleFromWords(words: string, max = TITLE_WIDTH): string {
   }
   if (cut < 0) return s;
   let head = s.slice(0, cut);
-  // English: back to the last whole word, when there is one past the middle.
-  const sp = head.lastIndexOf(" ");
-  if (!CJK.test(head) && sp > max / 2) head = head.slice(0, sp);
+  const cols = (x: string) => [...x].reduce((n, ch) => n + wide(ch), 0);
+  if (!CJK.test(head)) {
+    // English: back to the last whole word, when there is one past the middle.
+    const sp = head.lastIndexOf(" ");
+    if (sp > max / 2) head = head.slice(0, sp);
+  } else {
+    // A Han title has no spaces: cut at the last clause's end (，；：、 or their Latin twins),
+    // never inside a phrase; "…后，" says the same thing as "…" with a whole clause before it.
+    let at = -1;
+    for (const mark of ["，", ",", "；", ";", "：", ":", "、"]) at = Math.max(at, head.lastIndexOf(mark));
+    if (at > 0 && cols(head.slice(0, at)) >= max / 2) {
+      head = head.slice(0, at);
+      head = head.replace(/(?:之后|以后|之前|以前|后|时|则|就|并|且|而)$/u, "");
+    }
+  }
   return head.replace(/[，,;；:：、\s]+$/, "") + "…";
 }
 

@@ -984,7 +984,7 @@ func build(harness string, events []protocol.LogEvent, working bool, ctx buildCt
 						continue
 					}
 				}
-				full, outFull := clipText(strings.TrimRight(b.Tool.Output, " \t\r\n"), outputMax)
+				full, outFull := clipText(strings.TrimRight(terminalText(b.Tool.Output), " \t\r\n"), outputMax)
 				row := StepRow{Seq: ev.Seq, Step: &st, N: 1, Outcome: outcome}
 				if !trivialOutput(full) {
 					row.Output = redact.Text(clipLines(full, 40))

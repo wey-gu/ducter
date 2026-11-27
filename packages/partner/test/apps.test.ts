@@ -218,3 +218,28 @@ test("[apps] says each app's own line and whether it is pinned", () => {
   const line = renderApps([{ id: "a1", name: "北京出差 11/20–21", persona: "p1", made: "2026-11-20T02:00:00Z", updated: "2026-11-20T02:00:00Z", version: 1, size: 10, summary: "2 笔，合计 ¥1,698", pinned: true }], () => ({}), Date.parse("2026-11-20T03:00:00Z"));
   expect(line).toContain('pinned; shows "2 笔，合计 ¥1,698"');
 });
+
+test("an app the partner keeps filling posts its card once, and again only when the person asked for it", async () => {
+  let turn = 0;
+  const { fc, apps, partner, user, said } = setup(async (_i, s) => {
+    const id = apps.list("p1")[0]!.id;
+    turn++;
+    await call(fc, { id, data: { n: turn } });
+    s.say(`ok ${turn}`);
+    s.end();
+  });
+  const made = apps.make("p1", { name: "PR Babysitter 看板", html: KIT_TRIP });
+  if (!made.ok) throw new Error(made.error);
+  user("把这两条 PR 填进看板"); // the first fill: the card is its moment
+  await partner.idle();
+  user("继续盯着这两个 PR"); // a later fill the person did not ask about: silent
+  await partner.idle();
+  user("PR Babysitter 看板再加一条"); // they named it this turn: its card says so
+  await partner.idle();
+  const outs = said();
+  expect(outs).toHaveLength(3);
+  expect(outs[0]!.app).toMatchObject({ id: made.app.id, change: "data" });
+  expect(outs[1]!.app).toBeUndefined();
+  expect(outs[2]!.app).toMatchObject({ id: made.app.id, change: "data" });
+  expect(apps.get(made.app.id)!.filled).toBeTruthy();
+});

@@ -100,7 +100,8 @@ async function client(core: Core, kind?: "cli" | "desktop") {
 test("a title is the first sentence of the words, short", () => {
   expect(titleFromWords("修一下 tinycart 里失败的测试。顺便看看 CI。")).toBe("修一下 tinycart 里失败的测试");
   expect(titleFromWords("Fix the flaky login test. Then look at CI.")).toBe("Fix the flaky login test");
-  expect(titleFromWords("  把结账页的按钮颜色统一成主题色，然后把所有用到旧颜色的地方都替换掉，再跑一遍截图对比")).toBe("把结账页的按钮颜色统一成主题色，然后把所有用到旧…");
+  expect(titleFromWords("  把结账页的按钮颜色统一成主题色，然后把所有用到旧颜色的地方都替换掉，再跑一遍截图对比")).toBe("把结账页的按钮颜色统一成主题色…");
+  expect(titleFromWords("设置页为 OpenAI 配置自定义 Base URL 与模型后，切换模型时请求还是发到旧地址，麻烦把这个修好")).toBe("设置页为 OpenAI 配置自定义 Base URL 与模型…");
   expect(titleFromWords("Rename every use of the old checkout color token across the web and desktop apps")).toBe("Rename every use of the old checkout color…");
   expect(titleFromWords("first line\nsecond line")).toBe("first line");
   expect(titleFromWords("v1.2 release notes")).toBe("v1.2 release notes"); // a dot inside a word isn't a full stop

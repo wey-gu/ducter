@@ -38,10 +38,13 @@ import { DocLine } from "./doc-line.tsx";
 import { attention, effortOf, endable, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 import { rangeOf, topsOf } from "./vlist.ts";
-import { Menu, MenuItem } from "./menu.tsx";
+import { Menu, MenuItem, MenuSep } from "./menu.tsx";
+import { benchable, toggleBench } from "./workbench.tsx";
+import { useCanFill, useFill } from "./wide.ts";
 import { GConfirm } from "./set-grid.tsx";
 import { prsCarried } from "@ducter/protocol/src/pr-state.ts";
 import { providerError, providerErrorKey } from "./task-words.ts";
+import { terminalText } from "@ducter/protocol/src/terminal.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
@@ -283,7 +286,8 @@ function fullText(seq: number): string {
   const ev = task?.events[lowerBound(task.events, seq)];
   if (!ev || ev.seq !== seq) return "";
   const b = ev.body as { text?: string; summary?: string; brief?: string; tool?: { output?: string } };
-  return redact(b.tool?.output ?? b.text ?? b.summary ?? b.brief ?? "");
+  if (b.tool?.output !== undefined) return terminalText(redact(b.tool.output));
+  return redact(b.text ?? b.summary ?? b.brief ?? "");
 }
 
 function ShowAll({ seq, n }: { seq: number; n: number }) {
@@ -303,11 +307,14 @@ function ShowAll({ seq, n }: { seq: number; n: number }) {
 
 function Output({ text }: { text: string }) {
   const [all, setAll] = useState(false);
-  const lines = text.split("\n");
+  // D636: a progress bar's frames and ANSI tints are the terminal's, not the page's: last state
+  // per line, escapes stripped, then the "n more lines" note.
+  const clean = terminalText(text);
+  const lines = clean.split("\n");
   const cut = !all && lines.length > OUTPUT_LINES;
   return (
     <div class="raw">
-      <pre>{cut ? lines.slice(0, OUTPUT_LINES).join("\n") : text}</pre>
+      <pre>{cut ? lines.slice(0, OUTPUT_LINES).join("\n") : clean}</pre>
       {cut && (
         <button class="qlink more" onClick={() => setAll(true)}>
           {t("step.lines.more", lines.length - OUTPUT_LINES)}
@@ -1831,9 +1838,23 @@ export function EndAsk({ task }: { task: Task }) {
  *  End task, when it is finished and an open PR still holds it. */
 export function TaskMore({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
+  // D636: when the whole-screen bar runs out of room (the title's 9 em first), the two
+  // secondary marks go into this one menu rather than taking the title's line (D421).
+  const [tight, setTight] = useState(false);
+  useEffect(() => {
+    const el = document.querySelector(".top.crumbs");
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setTight((e?.contentRect.width ?? 0) < 1100));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const fill = useFill();
+  const canFill = useCanFill("task");
   const a = attention(task);
   const droppable = !finished(task) && !["dropped", "superseded", "done"].includes(a);
   const ends = endable(task);
+  const bench = benchable(task);
+  const overflow = tight && (bench || canFill);
   useEffect(() => {
     if (!open) return;
     const close = (e: Event) => !(e.target as Element)?.closest?.(".more-menu") && setOpen(false);
@@ -1842,7 +1863,7 @@ export function TaskMore({ task }: { task: Task }) {
     addEventListener("keydown", esc, true);
     return () => (removeEventListener("pointerdown", close, true), removeEventListener("keydown", esc, true));
   }, [open]);
-  if (!droppable && !ends) return null;
+  if (!droppable && !ends && !overflow) return null;
   return (
     <span class="more-menu">
       <button class="plus more-btn" aria-label={t("task.more")} title={t("task.more")} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
@@ -1860,6 +1881,13 @@ export function TaskMore({ task }: { task: Task }) {
             </MenuItem>
           ) : (
             <MenuItem onClick={() => (setOpen(false), (A.ending = task.id), A.changed())}>{t("task.action.end")}</MenuItem>
+          )}
+          {overflow && <MenuSep />}
+          {tight && bench && (
+            <MenuItem onClick={() => (setOpen(false), toggleBench(task.id))}>{t("wb.toggle")}</MenuItem>
+          )}
+          {tight && canFill && (
+            <MenuItem onClick={() => (setOpen(false), A.fill(!fill))}>{t(fill ? "pane.beside" : "pane.fill")}</MenuItem>
           )}
         </Menu>
       )}

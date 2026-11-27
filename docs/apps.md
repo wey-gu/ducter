@@ -103,26 +103,22 @@ into the app. Your partner treats what an app asks as a question, not as you say
 that goes out (sending an email, paying, posting) still waits for your own **Go** in the
 conversation, whatever the app says.
 
-## A board that keeps itself up to date
+## An app a task keeps up to date
 
-Some things your partner does again and again: reviewing the pull requests waiting on you, checking
-train fares every morning, running a benchmark every night. After a few rounds that look the same,
-your partner asks once: **Keep these on a board?** Say **Make a board** and you get a small app that
-each round updates by itself, so there's nothing to read in the conversation between rounds. You can
-also just ask: "make these into a board".
+Some things your partner does again and again: checking train fares every morning, running a
+benchmark every night, watching pull requests. If you want a page for that, just ask: "make these
+into a board" or "make me a little app for my PRs". Your partner makes it like any other app, and
+each round writes the latest into it, so there's nothing to read in the conversation between
+rounds. Nothing is offered by itself.
 
-A review board is only for work whose job is reviewing other people's pull requests. A task that fixes
-code and opens its own pull request is followed by the Babysitter, not a board.
-
-For pull request reviews it's the **Review board**: only the pull requests *that review* reported,
-each with its CI, what the review found, and whether the draft is waiting for your Go or already
-posted. **Read draft** opens the draft itself; nothing goes to GitHub until you say Go. You'll also
-find it from **Past tasks › Looking after**, on the review's card (**Open “Review board”**). There is
-one review board at a time: a second review joins the one you have rather than making a new one.
+For pull request work you may not need an app at all: **Tasks › Looking after** already shows each
+pull request a task is holding, with its CI, whether it is a draft, a conflict or changes asked
+for, and the commit it last looked at.
 
 If a board or app shows work it does not follow round by round, it is a snapshot: it says **截至** the
 time its numbers were read. When the task or Keep an app follows ends, the app says **已停止更新** and
-**截至** the last time it was updated, and promises nothing more.
+**截至** the last time it was updated, and promises nothing more. An app you already have stays
+yours; nothing deletes it or changes it because of this.
 
 ## What an app can't do
 

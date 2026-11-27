@@ -458,11 +458,6 @@ export interface Bodies {
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
     forApp?: AppAnswer; // D405: the card answers an app's ask (something outward it asked for waits for this Go)
-    // D407: 要不要把这些做成一个看板？/ Keep these on a board? Ducter's one offer for a repeating
-    // task whose rounds keep the same shape. Go (做成看板 / Make a board): "reviews" is made at once
-    // from the review board's template; "reports" wakes the partner to make the app and give it to
-    // the task. Hold (不用了 / No thanks, the default) keeps everything as it is. Never asked twice.
-    board?: { taskId: string; title: string; kind: "reviews" | "reports" };
     unsure?: boolean; // D245: with routineId: its watch saw something it isn't sure of; Go runs it once
     loop?: { taskId: string; move?: string }; // D427: the keeper's one word about a late or failing loop: Go runs a round now; D429: with move (a device id), Go runs it on that awake computer instead
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view

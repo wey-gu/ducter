@@ -224,14 +224,6 @@ type AppTask struct {
 	Title string `json:"title"`
 }
 
-// BoardAsk is Ducter's one offer to keep a repeating task's rounds on a
-// board (D407): kind "reviews" (the review board, made on Go) or "reports".
-type BoardAsk struct {
-	TaskID string `json:"taskId"`
-	Title  string `json:"title"`
-	Kind   string `json:"kind"`
-}
-
 // OngoingApp is the app an Ongoing card opens (D407).
 type OngoingApp struct {
 	ID   string `json:"id"`

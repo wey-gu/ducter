@@ -52,6 +52,9 @@ export function prFacts(s: PrSaid): string[] {
   if (s.phase === "failing" && s.failed?.length) out.push(t("onhand.prs.failed", s.failed.join(sep)));
   const c = s.checks;
   if (c && s.phase !== "failing" && s.phase !== "ready") out.push(c.passed === c.total ? t("onhand.prs.allpassed") : t("onhand.prs.passed", c.passed, c.total));
+  // D624: a draft whose phase is something else (changes, a conflict, failing CI) says it too.
+  if (s.draft && s.phase !== "draft" && s.phase !== "duplicate") out.push(t("onhand.prs.draft"));
+  if (s.sha) out.push(t("onhand.prs.head", s.sha));
   return out;
 }
 

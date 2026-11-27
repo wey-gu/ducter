@@ -41,10 +41,8 @@ var zhApps = Table{
 	"made.c.app":         "小应用",
 	"made.k.app":         "小应用",
 	// D407: a routine fills an app.
-	"app.kept":            "「%s」每一轮都会更新它",
-	"board.offer.what":    "「%s」的每一轮都写进同一个看板，随时打开都是最新的。",
-	"board.offer.reviews": "每个在等你的 PR、它的 CI、找到的问题和草稿，一直是最新的；轮次之间不再出声。",
-	"board.open":          "打开「%s」",
+	"app.kept":   "「%s」每一轮都会更新它",
+	"board.open": "打开「%s」",
 	// D410: 小应用 / Apps, the shelf (the same words as apps/web/src/i18n-apps.ts).
 	"apps.place":       "小应用",
 	"apps.place.about": "你的小应用",
@@ -130,10 +128,8 @@ var enApps = Table{
 	"made.c.app":         "Apps",
 	"made.k.app":         "App",
 	// D407: a routine fills an app.
-	"app.kept":            "“%s” updates it each round",
-	"board.offer.what":    "Each round of “%s” goes into one board, current whenever you open it.",
-	"board.offer.reviews": "Every PR waiting on you, its CI, what the review found and its draft, always current; nothing to read between rounds.",
-	"board.open":          "Open “%s”",
+	"app.kept":   "“%s” updates it each round",
+	"board.open": "Open “%s”",
 	// D410: 小应用 / Apps, the shelf.
 	"apps.place":       "Apps",
 	"apps.place.about": "Your apps",

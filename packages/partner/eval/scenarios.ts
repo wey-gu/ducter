@@ -52,10 +52,6 @@ export type Seed =
   | { todoSet: { query: string; ai: string } }
   // D385: that set handed over (core's default shape: plan first, its plan being made).
   | { handSet: { note?: string; subject?: string } }
-  // D407: the review board Ducter made for the seeded task with this key, its rows as given (the person's app).
-  | { board: { task: string; data: Record<string, unknown> } }
-  // D407: Ducter's one offer to keep that task's rounds on a board (its own card, open).
-  | { boardOffer: { task: string; kind: "reviews" | "reports" } }
   // D426: the lines under the last seeded user message, each done by the seeded task with that key.
   | { asks: { lines: { words: string; task: string }[] } }
   // D427: the seeded task with this key runs in rounds (its own timer, re-armed after a wake): Ducter keeps it as a loop.
@@ -88,27 +84,6 @@ document.getElementById("mail").onclick=async()=>{document.getElementById("mail"
 draw();
 </script>`;
 
-// D407: the review board's rows as the review routine's last round left them (synthetic text in hel's shape: nine requests across nowledge-co).
-const BOARD_ROWS = {
-  board: {
-    at: "2026-11-20T05:37:00.000Z",
-    waiting: 9,
-    again: 3,
-    same: 6,
-    drafted: 3,
-    prs: [
-      { ref: "nowledge-co/mem#10287", title: "Distill memories in batches of 50", head: "a1b2c3d", ci: "failing", changed: true, problems: 2, suggestions: 1, draft: "drafted" },
-      { ref: "nowledge-co/mem#10473", title: "Keep the pinned message when the window trims", head: "f098abc", ci: "passing", changed: true, problems: 1, suggestions: 0, draft: "drafted" },
-      { ref: "nowledge-co/hawdb#412", title: "Compaction: skip empty runs", head: "0c0ffee", ci: "pending", changed: true, problems: 0, suggestions: 2, draft: "drafted" },
-      { ref: "nowledge-co/mem#8528", title: "Search: rank exact titles first", head: "77e1d02", ci: "passing", changed: false, problems: 1, suggestions: 0, draft: "sent" },
-      { ref: "nowledge-co/mem#6497", title: "Docs: the CLI's export command", ci: "passing", changed: false, problems: 0, suggestions: 0, draft: "none" },
-      { ref: "nowledge-co/mem#7743", title: "Sync: retry on 409 with backoff", ci: "failing", changed: false, problems: 0, suggestions: 0, draft: "none" },
-      { ref: "nowledge-co/oomol-cli#211", title: "Login: keep the device code on screen", ci: "passing", changed: false, problems: 0, suggestions: 0, draft: "none" },
-      { ref: "nowledge-co/hawdb#398", title: "WAL: fsync the directory after rename", ci: "passing", changed: false, problems: 0, suggestions: 1, draft: "sent" },
-      { ref: "nowledge-co/mem#10332", title: "Importer: Notion databases", ci: "none", changed: false, problems: 0, suggestions: 0, draft: "none" },
-    ],
-  },
-};
 /** D598: hel's babysitter, as the person made it (its standing text after 2026-11-26 16:17). */
 const BABYSITTER = { name: "Nowledge Mem PR Babysitter", about: "PRs on nowledge-co/mem my agents hand over", brief: "Own each PR to the end: an independent review subagent, fix, or rework sent back to the dev task through Ducter; on Prow/Tide repos only /lgtm, never merge by hand." };
 
@@ -3083,63 +3058,6 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "save the visa PDF you made into my Nowledge Mem" }],
     expect: { opens: 0, msgs: [1, 1], maxChars: 240, called: [{ tool: "made_find" }], noMemKept: true, notCalled: ["task_open"], forbid: [/\b(it'?s|it is) (now )?(saved|in your)|\bsaved it\b|\bdone\b/i] },
     rubric: "Five days ago a task made the person's Japan visa application PDF. They ask to save it into their Nowledge Mem, but Mem's sign-in has lapsed, so it can't be kept. The partner tries (made_find keep) and says plainly, once, that it couldn't be saved because the Nowledge Mem sign-in has lapsed, that signing in again in Settings › Memory fixes it, and (optionally) that the file is still here. It never says or suggests the PDF was saved, opens no task, asks nothing.",
-  },
-  // ---------- D407: a routine fills a small app: the board offer, a silent round, a draft found on the board ----------
-  {
-    id: "board-offer-go-zh",
-    category: "apps",
-    lang: "zh",
-    seed: [
-      { user: "每天早上帮我看一下周五北京到上海的高铁票价，600 以下的告诉我。" },
-      { task: { key: "fares", title: "每天看周五京沪高铁票价", ack: "好，每天早上去看一次。", state: "working", report: { state: "done", summary: "第 3 天：周五 G1 553 元（二等座余 12 张），G3 553 元（余 4 张），G7 626 元；600 以下的有 2 班。", questions: [], evidence: [] } } },
-      { ai: "周五 600 以下的还有两班：G1 和 G3，都是 553 元，G3 只剩 4 张。" },
-      { boardOffer: { task: "fares", kind: "reports" } },
-    ],
-    steps: [{ resolve: { option: "go" } }],
-    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 80, called: [{ tool: "app" }], appCard: "made", appTask: "fares", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
-    rubric: "Ducter offered on its own card to keep the daily fare reports on a board, and the user said Go. The partner makes a small app for those fares now with the app tool, given to that task (task: its id), whose file reads the fares from its data (ducter.get/onChange) laid out per train with its price and seats; then at most one short Chinese line saying it's ready. The app's file is shown to you under its card (that is not the reply). The reply pastes no code and lists no features; no new task, no question.",
-  },
-  {
-    id: "board-offer-go-en",
-    category: "apps",
-    lang: "en",
-    seed: [
-      { user: "Run hawdb's write benchmark every night and tell me how it went." },
-      { task: { key: "bench", title: "Nightly hawdb write benchmark", repo: "~/dev/hawdb", ack: "On it: every night at 23:00.", state: "working", report: { state: "done", summary: "Night 3: 182k writes/s, p99 4.1 ms, level with last night (181k, 4.0 ms). Compaction stalls: 0.", questions: [], evidence: [] } } },
-      { ai: "Night 3: 182k writes/s at p99 4.1 ms, level with last night; no compaction stalls." },
-      { boardOffer: { task: "bench", kind: "reports" } },
-    ],
-    steps: [{ resolve: { option: "go" } }],
-    expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 160, called: [{ tool: "app" }], appCard: "made", appTask: "bench", appHtml: /ducter\.(get|onChange)\(/, notCalled: ["task_open"], forbid: [/```|<script|<div/i] },
-    rubric: "Ducter offered on its own card to keep the nightly benchmark reports on a board, and the user said Go. The partner makes a small app with the app tool, given to that task (task: its id), that reads each night's numbers (writes/s, p99, stalls) from its data, and says at most one short English line that it's ready (a few words of what it shows are fine). The app's file is shown to you under its card (that is not the reply). The reply pastes no code; no new task, no question.",
-  },
-  {
-    id: "board-round-silent-zh",
-    category: "apps",
-    lang: "zh",
-    seed: [
-      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
-      { task: REVIEW_TASK },
-      { board: { task: "rev", data: BOARD_ROWS } },
-      { ai: "做好了。每一轮都会更新它，不用再读一遍报告。" },
-    ],
-    steps: [{ report: { task: "rev", body: { state: "done", summary: "这一轮看完了：9 个 PR 在等你，3 个有新提交已复审，草稿 3 份没发；审查看板已更新。", questions: [], evidence: [] } } }],
-    expect: { opens: 0, msgs: [0, 0], noAsk: true, noAppCard: true, appKept: true, notCalled: ["task_open", "task_send"] },
-    rubric: "The review routine's round only updated the review board the user keeps (the board shows every PR, its CI, findings and drafts; the round card asks about posting on its own). The partner says nothing at all: no message restating the round, no new card, no task, no change to the app.",
-  },
-  {
-    id: "board-draft-zh",
-    category: "apps",
-    lang: "zh",
-    seed: [
-      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
-      { task: REVIEW_TASK },
-      { board: { task: "rev", data: BOARD_ROWS } },
-      { ai: "做好了。每一轮都会更新它，不用再读一遍报告。" },
-    ],
-    steps: [{ user: "mem#10287 的草稿在哪看？", app: "about" }],
-    expect: { sentences: 2, opens: 0, msgs: [1, 1], maxChars: 120, noAppCard: true, appKept: true, require: [/看草稿/], notCalled: ["task_open", "task_send"], forbid: [/batch_size|```/] },
-    rubric: "In their review board's sheet, the user asks where to read mem#10287's draft. The board already has a 看草稿 button on that PR's row that opens the draft. The partner says so in one or two short Chinese sentences (tap 看草稿 on #10287's row; adding that nothing goes to GitHub before their Go is fine); it doesn't change the app, invent the draft's content or where on screen the button is, post anything, or open a task.",
   },
   // ---------- D427: what keeps going, from the conversation: how it's doing, a new rhythm, a stop ----------
   {

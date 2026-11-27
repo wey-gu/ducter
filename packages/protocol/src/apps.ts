@@ -27,9 +27,6 @@ export const APP_ASK_MAX = 2000;
 export const APP_TASK_WRITES_PER_HOUR = 60;
 /** D407: keys one app_data call may set or remove. */
 export const APP_TASK_KEYS_PER_CALL = 40;
-/** D407: after this many rounds (a review task's review_report, another repeating task's reports), Ducter offers once to keep them in a small app. */
-export const BOARD_OFFER_AFTER = 3;
-
 /** D410: the one line an app says of itself on its shelf tile (ducter.summary), in characters. */
 export const APP_SUMMARY_MAX = 80;
 /** D410: a deleted app can be brought back for this long (its card's 撤销 / Undo, the shelf's toast). */
@@ -98,11 +95,11 @@ export interface AppMeta {
   back?: true;
   /** D407: the routine task that keeps it current (its rounds write the data). */
   task?: AppTask;
-  /** D612: every task whose work a reviews board shows (a second review task adds its work to the one board; `task` is the first). */
+  /** D612, legacy: every task whose work an old reviews board showed (`task` is the first); never written now. */
   tasks?: AppTask[];
   /** D612: the Keep whose rounds fill it (a task per round writes app_data; a board or any app may follow a Keep). */
   keep?: AppTask;
-  /** D407: made by Ducter from a template: "reviews" = 审查看板 / Review board (its data is the review task's rounds, written by the home). */
+  /** D407, legacy: an app made from the old review-board template (D624: no longer offered; kept as the person's app, its data untouched). */
   kind?: "reviews";
   /**
    * D612: it shows a task's or a Keep's work but is not given to it: a snapshot, never kept
@@ -258,41 +255,6 @@ export type AppsServerFrame =
 export function appShowRef(x: unknown): string | undefined {
   const d = x && typeof x === "object" ? (x as { draft?: unknown }).draft : undefined;
   return typeof d === "string" && /^[\w.-]+\/[\w.-]+#\d+$/.test(d) ? d : undefined;
-}
-
-/**
- * D407: 审查看板 / Review board's data (the key "board"), written by the home from the review
- * task's rounds (review_report) and the drafts' state: the same truth as the Ongoing card's line.
- */
-export interface ReviewBoard {
-  /** The task's last round (ISO). */
-  at: string;
-  waiting: number;
-  again: number;
-  same: number;
-  /** Drafts not yet sent. */
-  drafted: number;
-  prs: ReviewBoardPr[];
-}
-
-export interface ReviewBoardPr {
-  /** owner/repo#n */
-  ref: string;
-  title?: string;
-  url?: string;
-  /** The head it looked at last (short sha). */
-  head?: string;
-  /** The pull request's checks at that head, as the task saw them. */
-  ci?: "passing" | "failing" | "pending" | "none";
-  /** Its head moved and it was reviewed again in the last round. */
-  changed: boolean;
-  gist?: string;
-  problems: number;
-  suggestions: number;
-  /** drafted: written, waiting for the person's Go; sent: posted to GitHub; none: nothing to say yet. */
-  draft: "drafted" | "sent" | "none";
-  /** When its draft was written (ISO). */
-  reviewedAt?: string;
 }
 
 /** A key the bridge accepts: short, printable. */

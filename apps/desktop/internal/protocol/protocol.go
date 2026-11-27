@@ -290,9 +290,6 @@ type Decision struct {
 	// Src (D341): a card about a to-do bound to a task: a write-back to
 	// its app, that it was closed there, or the standing go offered.
 	Src *SourceAsk `json:"src,omitempty"`
-	// Board (D407): 要不要把这些做成一个看板？ the offer to keep a repeating
-	// task's rounds on a small app.
-	Board *BoardAsk `json:"board,omitempty"`
 	// Loop (D427): the keeper's one word about a late or failing task in
 	// rounds; Move (D429): Go runs it on that awake computer instead.
 	Loop *LoopAsk `json:"loop,omitempty"`
@@ -1293,8 +1290,12 @@ type PRSaid struct {
 	By     []string      `json:"by,omitempty"`
 	Failed []string      `json:"failed,omitempty"`
 	Checks *PRChecksSaid `json:"checks,omitempty"`
-	// Draft (D602): a duplicate that is still a draft (重复草稿).
+	// Draft (D602): a duplicate that is still a draft (重复草稿); also a PR
+	// still in draft whose phase is another one.
 	Draft bool `json:"draft,omitempty"`
+	// Sha is the head commit last read, short (the board's 看的是, now the
+	// Keep row's).
+	Sha string `json:"sha,omitempty"`
 }
 
 // PRChecksSaid is how many of a PR's checks passed, of how many, and how

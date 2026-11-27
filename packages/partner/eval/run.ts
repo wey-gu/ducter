@@ -902,12 +902,6 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       if (!set) throw new Error("handSet: no set seeded");
       const r = await core.taskSources.handover!.hand({ refs: set.ticked, setId: set.setId, bySubject: true, ...(s.handSet.note ? { note: s.handSet.note } : {}), ...(s.handSet.subject ? { subject: s.handSet.subject } : {}) });
       if (!r.ok) throw new Error(`handSet: ${r.error}`);
-    } else if ("board" in s) {
-      // D407: the review board, as Ducter makes it for a review task, with its rows.
-      const r = core.boards!.makeReviewBoard(idOf.get(s.board.task)!);
-      if (!r.ok) throw new Error(`board seed: ${r.error}`);
-      for (const [k, v] of Object.entries(s.board.data)) core.apps.put(r.app.id, k, v, "app");
-      appsSeeded.push({ id: r.app.id, html: core.apps.html(r.app.id) ?? "", name: r.app.name });
     } else if ("loop" in s) {
       // D427: the seeded task runs in rounds: two of its own timers, the first fired; Ducter keeps it as a loop.
       const taskId = idOf.get(s.loop.task)!;
@@ -938,8 +932,6 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       if (!h) throw new Error("helperMuted seed: no such helper");
       core.settings.setPeers({ muted: [...core.settings.get().peers.muted, s.helperMuted.from] });
       core.log.append({ stream: "channel", origin: "peer", kind: "bridge_msg", body: { direction: "in", messageId: crypto.randomUUID(), from: s.helperMuted.from, helper: h.id, space: s.helperMuted.space, spaceLabel: s.helperMuted.spaceLabel, text: "", state: "muted" } });
-    } else if ("boardOffer" in s) {
-      if (!core.boards!.offer(idOf.get(s.boardOffer.task)!, s.boardOffer.kind)) throw new Error("boardOffer seed: not offered");
     } else if ("asks" in s) {
       // D426: the lines under the last seeded user message, each with its seeded task.
       for (const l of s.asks.lines) core.asks.add(lastUser, idOf.get(l.task)!, [l.words]);
@@ -1117,8 +1109,6 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("helper" in s) lines.push(`(earlier) the user's helper "${s.helper.name}" exists on this home (takes: ${s.helper.about}; its rule: ${s.helper.brief})`);
     else if ("helperMuted" in s) lines.push(`(earlier) a message to "${s.helperMuted.helper}" from ${s.helperMuted.from} in "${s.helperMuted.spaceLabel}" came and was not read: the user had chosen 不理 for that sender`);
     else if ("handoff" in s) lines.push(`(earlier) task "${s.handoff.task}" handed this to "${s.handoff.helper}" on this home, and none of the helper's tasks has taken it yet: ${s.handoff.text}`);
-    else if ("board" in s) lines.push(`(earlier) Ducter made the review board for task "${s.board.task}"; it shows every PR waiting, filled from each round`);
-    else if ("boardOffer" in s) lines.push(`(earlier) Ducter offered on its own card: keep task "${s.boardOffer.task}"'s rounds on a board?`);
     else if ("bound" in s) lines.push(`(earlier) Ducter bound task "${s.bound.task}" to the GitHub issue ${s.bound.ref} (the user took it from their to-dos)`);
     else if ("todoSet" in s) lines.push(`(earlier) the partner found the to-dos about "${s.todoSet.query}" and said: ${s.todoSet.ai} (a set card under it shows them, the takeable ones ticked)`);
     else if ("asks" in s) lines.push(`(earlier) under that message the app shows its lines: ${s.asks.lines.map((l, i) => `${i + 1}. ${l.words} (task "${l.task}")`).join("; ")}`);

@@ -10,7 +10,6 @@ import { join } from "node:path";
 import type { LogEvent } from "@ducter/protocol";
 import { startCore, stubRunner } from "./demo-core.ts";
 import { noOo } from "./demo-oo.ts";
-import { REVIEW_BOARD_HTML, REVIEW_BOARD_NAME } from "../../packages/core/src/review-board.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const core = startCore({
@@ -71,8 +70,10 @@ const w = zh
       task: "Review my requests in nowledge-co",
     };
 
-// Made earlier: the review board a routine keeps (pinned), a habit app whose page broke, a list never opened.
-const board = core.apps.make(persona, { name: REVIEW_BOARD_NAME[zh ? "zh" : "en"], html: REVIEW_BOARD_HTML, kind: "reviews", task: { id: "t_reviews", title: w.task }, summary: zh ? "9 个 PR 在等你，3 份草稿" : "9 PRs wait on you, 3 drafts" });
+// Made earlier: the review board a routine keeps (pinned; an app the person already has, left as it
+// is), a habit app whose page broke, a list never opened.
+const boardHtml = (name: string, line: string) => `<main class="k-app"><section class="k-sum"><span class="k-sum-label">${name}</span><span class="k-sum-value">${line}</span></section></main>`;
+const board = core.apps.make(persona, { name: zh ? "审查看板" : "Review board", html: boardHtml(zh ? "9 个 PR 在等你" : "9 PRs wait on you", zh ? "3 份草稿" : "3 drafts"), kind: "reviews", task: { id: "t_reviews", title: w.task }, summary: zh ? "9 个 PR 在等你，3 份草稿" : "9 PRs wait on you, 3 drafts" });
 const habit = core.apps.make(persona, { name: w.habit.name, html: tiny(w.habit.name, w.habit.summary), icon: "flame", summary: w.habit.summary });
 const shop = core.apps.make(persona, { name: w.shop.name, html: tiny(w.shop.name, zh ? "还剩 4 样" : "4 things left"), icon: "cart" });
 if (!board.ok || !habit.ok || !shop.ok) throw new Error("demo apps");

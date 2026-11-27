@@ -99,7 +99,7 @@ import { openRules, type RulesStore } from "./rules.ts";
 import { openPins, type PinsStore } from "./pins.ts";
 import { openApps, type AppsStore } from "./apps.ts";
 import { appIconResponse } from "./app-icon.ts";
-import { APP_DATA_SCHEMA, createBoards } from "./boards.ts";
+import { APP_DATA_SCHEMA, createAppFill } from "./app-fill.ts";
 import { createLoadout, isRuleHint, registerRuleTools, registerSwitchTool, registerBrainSwitchTool, registerNewTasksTool, type Loadout } from "./loadout.ts";
 import { createKindRetry, type KindRetry } from "./kind-retry.ts";
 import { createMender } from "./mend.ts";
@@ -1037,7 +1037,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let replayRef: ((o: { days?: number; web?: boolean }) => Promise<import("@ducter/protocol").ReplayReport>) | undefined;
   let calendarRef: Calendar | undefined;
   let taskSourcesRef: TaskSources | undefined;
-  // D407: a routine fills a small app: the review board written from review_report, app_data for others, the offer once.
+  // D624: a small app can still be filled by a task's app_data; no board is offered.
   let isReview: (taskId: string) => boolean = () => false;
   /** D540: the standing permission to post reviews, as a fact with its means, for a review task (or nothing). */
   function reviewAsksLine(taskId: string, l: LangTag): string {
@@ -1056,15 +1056,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     const where = s.orgs?.length ? fill(w.where, { orgs: s.orgs.join(w.sep) }) : w.any;
     return fill(w.line, { where, said: s.text.slice(0, 200) });
   }
-  const boards = createBoards({
-    log,
+  const appFill = createAppFill({
     apps,
     persona: () => persona.id,
-    lang: () => (langNow().startsWith("zh") ? "zh" : "en"),
-    title: (id) => tasks.get(id)?.title,
-    pile: () => taskSourcesRef?.pile,
-    repeats: (id) => work.waiters.views().some((w) => w.taskId === id && w.wakes === "task" && w.state === "armed" && !w.limit),
-    isReview: (id) => isReview(id),
     keepOf: (id) => {
       const k = keepsRef?.ofTask(id);
       return k ? { id: k.id, title: k.name } : undefined;
@@ -1196,7 +1190,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   asksRef = asks;
   log.subscribe((e) => asks.onEvent(e));
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !boards.wakes(e)) return;
+    if (!triggersPartner(e) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !appFill.wakes(e)) return;
     wake(e);
   });
 
@@ -1491,7 +1485,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, boards: { makeReviewBoard: (id: string) => boards.makeReviewBoard(id), isReview: (id: string) => isReview(id), offer: (id: string, k: "reviews" | "reports") => boards.offer(id, k) }, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -1861,7 +1855,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D591: "这周谁用掉了我的额度" from the conversation: D588's count, with each agent's limit as last read.
   registerUsageTool(mcp, { report: (days, tz) => usageDays(log, { now: clock.now(), days, tzOffsetMin: tz, top: 5 }), limits: (h) => accountUsage.peek(h)?.usage, zone: callZone, now: () => clock.now() });
   // D285: 一直在跑的 / Ongoing: routines and tasks that look again on their own, paused and resumed.
-  const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(boards.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
+  const ongoing = (ongoingRef = createOngoing({ dataDir, log, tasks, waiters: work.waiters, routines: work.routines, marks, clock, onChange: () => (ws.ongoingChanged(), apps.liveMoved()), reviews: (id) => taskSourcesRef?.pile.standing(id), asking: (id) => !!taskSourcesRef?.pile.asking(id), app: (id) => ((m) => (m ? { id: m.id, name: m.name } : undefined))(appFill.appOf(id)), loops: work.loops, deviceName: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev)) }));
   // D511: 照看 / Looking after. Every routine, task in rounds and helper becomes a Keep on start (the
   // migration: their own records stay as they are), and whatever becomes one later is kept at once.
   const keeps = (keepsRef = createKeeps({
@@ -1924,7 +1918,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     const k = keeps.ofTask(taskId);
     return k ? { id: k.id, title: k.name } : undefined;
   });
-  work.setAppNote((taskId) => boards.appNote(taskId));
+  work.setAppNote((taskId) => appFill.appNote(taskId));
   // D612: a task that opens under an app its Keep fills hears how to write it (a helper's task
   // arrives after the app was made; a loop's round hears it again in its wake).
   const appTold = new Set<string>();
@@ -1934,7 +1928,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (appTold.has(id) || !appFor(id).length) return;
     appTold.add(id);
     setTimeout(() => {
-      const text = boards.appNote(id);
+      const text = appFill.appNote(id);
       if (text) void runner?.send(id, text, undefined, "ducter").catch((err) => console.warn(`[core] couldn't tell ${id} about its Keep's app:`, (err as Error).message));
     }, 0);
   });
@@ -2734,8 +2728,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   );
   // D612: a task is a review task only when the partner said so once at task_open (needs.reviews,
   // judged from the brief), never by counting review_report calls or matching words in the brief. Code
-  // guards it: a task that opens its own PR is never a review task. The tools and the board offer read
-  // this one flag.
+  // guards it: a task that opens its own PR is never a review task. The tools read this one flag.
   const reviewTasks = new Map<string, boolean>();
   /** Tasks seen opening a PR of their own (`gh pr create`, read by its grammar, never by words). */
   const ownPr = new Set<string>();
@@ -2758,8 +2751,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (opens.some((e) => (e.body as Bodies["task_open"]).needs?.reviews === true)) return reviewTasks.set(taskId, true), true;
     if (!taskSourcesRef?.view().sources.some((x) => x.kind === "github")) return false;
     // D612: the partner's one judgment at open, recorded on the task; never what its words look like.
-    // A task in rounds that already has a review board keeps its review work from before this field
-    // existed (its Keep would otherwise lose review_report mid-life); no words are read for it.
+    // A task in rounds that already has one of the old review boards keeps its review work from
+    // before this field existed (its Keep would otherwise lose review_report mid-life); no words are read for it.
     const legacy =
       !opens.some((e) => (e.body as Bodies["task_open"]).needs !== undefined) &&
       log.read({ stream: `task:${taskId}`, kinds: ["task_loop"], limit: 1 }).length > 0 &&
@@ -2788,8 +2781,6 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
       const r = await taskSources.pile.round(ctx.taskId, args, { ...((k) => (k ? { round: k } : {}))(roundOf(ctx.taskId)) });
       if (!r.ok) return r.error ?? "Not kept.";
-      // D407: its board (when the person keeps one) is written now; after a few rounds, offered once.
-      boards.afterRound(ctx.taskId);
       // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";
@@ -2914,8 +2905,6 @@ export function startCore(opts: CoreOptions = {}): Core {
       })
       .catch((err) => console.warn("[standing] couldn't post what waits:", (err as Error).message));
   });
-  // D407: a round, a Go or a draft sent from its sheet: the review board shows it at once.
-  taskSources.pile.onBoard((id) => boards.write(id));
   if (opts.taskSources?.ask) taskSources.setAsk(opts.taskSources.ask);
   const proactive = createProactive({
     calendarIds: (a) => calendar.seenIds(a),

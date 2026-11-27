@@ -499,8 +499,9 @@ function ReleaseAsk({ x }: { x: KeepItem }) {
 
 function ItemRow({ x }: { x: KeepItem }) {
   const w = itemWords(x);
+  // D624: the facts a board used to show (CI, draft, a conflict or changes, the head) stand on
+  // the row through the same words On hand uses, each its own element.
   const facts = x.said ? prFacts(x.said) : [];
-  const checks = x.said?.checks;
   return (
     <div class="kp-item">
       <i class={`kp-dot big ${x.at}`} aria-hidden="true" />
@@ -510,14 +511,7 @@ function ItemRow({ x }: { x: KeepItem }) {
           <span>{noOrphan(x.title)}</span>
         </span>
         <span class={`st ${w.tone}`}>{w.text}</span>
-        {checks && checks.total > 0 && (
-          <span class="kp-checks" aria-label={facts.join(" ")}>
-            {Array.from({ length: Math.min(checks.total, 24) }, (_, j) => (
-              <i key={j} class={j < checks.passed ? "" : j < checks.passed + checks.pending ? "p" : "f"} />
-            ))}
-          </span>
-        )}
-        {x.said?.by && x.said.phase === "ready" && <span class="by">{t("onhand.prs.approved", x.said.by.join(t("onhand.prs.sep")))}</span>}
+        {facts.length > 0 && <Facts class="kp-item-facts" items={facts} />}
       </span>
       <span class="acts">
         {x.pr && <Btn kind="text" size="sm" label={t("keep.item.pr")} onClick={() => window.open(`https://github.com/${x.pr!.replace("#", "/pull/")}`, "_blank", "noopener")} />}

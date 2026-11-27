@@ -341,13 +341,6 @@ export interface CoreApi {
     /** D422: a new mark for an app the partner changes. */
     set?(id: string, c: { icon?: import("./apps.ts").AppIcon }): { ok: boolean };
   };
-  /** D407: a routine fills an app: the review board made from its template for a review task. */
-  boards?: {
-    makeReviewBoard(taskId: string): { ok: true; app: import("./apps.ts").AppMeta } | { ok: false; error: string };
-    isReview(taskId: string): boolean;
-    /** The offer, now (Ducter's own card; the eval seeds it this way). */
-    offer(taskId: string, kind: "reviews" | "reports"): string | undefined;
-  };
 }
 
 /** D380: what a quick web look came back with: typed and clipped by Ducter, never page text. */

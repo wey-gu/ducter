@@ -121,6 +121,13 @@ func (a *App) prFacts(s store.PRSaid) []string {
 			out = append(out, a.L.T("onhand.prs.passed", c.Passed, c.Total))
 		}
 	}
+	// D624: a draft whose phase is something else, and the head commit, each its own fact.
+	if s.Draft && s.Phase != store.PRDraft && s.Phase != store.PRDuplicate {
+		out = append(out, a.L.T("onhand.prs.draft"))
+	}
+	if s.Sha != "" {
+		out = append(out, a.L.T("onhand.prs.head", s.Sha))
+	}
 	return out
 }
 

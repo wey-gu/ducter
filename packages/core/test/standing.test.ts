@@ -139,9 +139,6 @@ test("kept → the open card's drafts go now → next round posts without a card
   expect(ts.pile.standing("swj3zc4w")).toMatchObject({ posted: 2, drafted: 1 });
   // After the first time: silence.
   expect(lines(core).filter((l) => l.startsWith("刚才等着的") || l.startsWith("按你说的"))).toHaveLength(1);
-  // The board shows it sent.
-  expect(ts.pile.board("swj3zc4w")!.prs.find((p) => p.ref === "nowledge-co/mem#10288")!.draft).toBe("sent");
-
   // Taken back: the next round asks again.
   core.standing.revoke(core.standing.list()[0]!.id);
   await call(core, { prs: [{ ref: "nowledge-co/mem#10591", head: "f60718a", changed: true, notes: [note("Still pinned at 0.6.2.")] }] });

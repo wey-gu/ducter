@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindHow, HandedState, LogEvent, ReviewBoard, ReviewBoardPr, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
+import type { Bodies, FindHow, HandedState, LogEvent, PileGroup, PileItem, PilePick, PileView, PreRead, PreReadNote, ReviewStanding, SourceItem, SourceItemRef, SourceOp, StandingView, TaskCard } from "@ducter/protocol";
 import { cutAtWord, PILE_CAP, PILE_GROUPS, SUBJECT_MIN, SUBJECT_NAME_MAX, SUBJECTS_PAST, SUBJECTS_SHOWN, type SubjectOp } from "@ducter/protocol";
 /** D415: at most this many subjects the person made are kept. */
 const SUBJECTS_KEPT = 60;
@@ -110,10 +110,10 @@ const noMine = (): MySubjects => ({ of: {}, as: {}, gone: [], made: [] });
  * later review_report in the same round replaces the earlier one), `was` the formal requests the
  * round before it ended with, `told` the requests (ref@head) already said once in the conversation.
  */
-type RoundState = ReviewStanding & { decisionId?: string; n?: number; prs?: RoundPr[]; round?: string; was?: string[]; told?: string[] };
+type RoundState = ReviewStanding & { decisionId?: string; n?: number; round?: string; was?: string[]; told?: string[] };
 
-/** D407: one pull request as the review task's last round saw it (the board's row). */
-type RoundPr = { ref: string; title?: string; head?: string; ci?: ReviewBoardPr["ci"]; changed: boolean; gist?: string; mention?: boolean };
+/** One pull request as the review task's last round saw it. */
+type RoundPr = { ref: string; title?: string; head?: string; ci?: "passing" | "failing" | "pending" | "none"; changed: boolean; gist?: string; mention?: boolean };
 /** D540: what a review sends: its body (when it has one) and its notes. */
 const reviewText = (x: { body?: string; notes: PreReadNote[] }) => JSON.stringify({ ...(x.body ? { body: x.body } : {}), notes: x.notes });
 /** D540: a draft with anything to post: notes, or a body alone (a review that found nothing to change). */
@@ -392,7 +392,7 @@ export function parseRound(raw: unknown): { ok: true; prs: (RoundPr & { notes: P
     const ci = x.ci === "passing" || x.ci === "failing" || x.ci === "pending" || x.ci === "none" ? x.ci : undefined;
     // D540: the review's own words, kept as written (a review with nothing to change is only this).
     const body = typeof x.body === "string" && x.body.trim() ? x.body.trim().slice(0, 2000) : undefined;
-    // D407: a PR that only mentions the person (didn't ask for their review), shown so on the board.
+    // D407: a PR that only mentions the person (didn't ask for their review).
     prs.push({ ref, ...(title ? { title } : {}), ...(head ? { head } : {}), ...(ci ? { ci } : {}), changed: x.changed === true, ...(gist ? { gist } : {}), ...(x.mention === true ? { mention: true } : {}), notes, ...(body ? { body } : {}) });
   }
   return { ok: true, prs };
@@ -441,12 +441,6 @@ export interface Pile {
   standing(taskId: string): ReviewStanding | undefined;
   /** D394: its round card waits on the person (Ongoing puts it under 等你 until it is answered). */
   asking(taskId: string): boolean;
-  /** D407: how many rounds this task has reported (the board is offered after BOARD_OFFER_AFTER). */
-  rounds(taskId: string): number;
-  /** D407: 审查看板 / Review board's data: the last round's rows with each draft's state, from the same state as standing(). */
-  board(taskId: string): ReviewBoard | undefined;
-  /** D407: something a board shows changed for this task (a round, a Go, a draft sent from its sheet). */
-  onBoard(fn: (taskId: string) => void): void;
   /** Pre-read the newest review requests by themselves (bounded a day). */
   readNewest(prs: SourceItem[]): Promise<void>;
   /** The morning note's to-dos find: its text, how-lines, and the Go card (inside the note). */
@@ -487,7 +481,6 @@ export const subjectKey = (s: string) => s.toLocaleLowerCase().replace(/[\s\u00b
 export function createPile(d: PileDeps): Pile {
   const file = join(d.dataDir, PILE_FILE);
   let st: State = fresh();
-  const boardSubs: ((taskId: string) => void)[] = [];
   if (existsSync(file))
     try {
       st = { ...fresh(), ...(JSON.parse(readFileSync(file, "utf8")) as Partial<State>) };
@@ -1098,7 +1091,6 @@ export function createPile(d: PileDeps): Pile {
       if (r.ok && read.byTask) {
         const s0 = st.rounds?.[read.byTask];
         if (s0) s0.drafted = Object.values(st.reads).filter((x) => x.byTask === read.byTask && x.state === "drafted").length;
-        boardSubs.forEach((fn) => fn(read.byTask!));
       }
       return r.ok ? { ok: true } : { ok: false, error: r.error ?? "couldn't send" };
     },
@@ -1141,7 +1133,7 @@ export function createPile(d: PileDeps): Pile {
       // D528: a second report in the same round (the end-of-round look found more) replaces the
       // first: the round's report is its final look's, and it is still one round.
       const same = !!(when?.round && prev?.round === when.round);
-      const was = same ? (prev?.was ?? []) : formalOf(prev?.prs);
+      const was = prev?.was ?? [];
       // D413: what the person said may go without asking goes now; the rest waits on one card.
       const posted = await postStanding(taskId);
       // Every draft of this task still unsent goes on the one card (an earlier round's too).
@@ -1162,13 +1154,8 @@ export function createPile(d: PileDeps): Pile {
         at,
         n: same ? (prev?.n ?? 1) : (prev?.n ?? 0) + 1,
         ...(when?.round ? { round: when.round } : {}),
-        was,
+        was: formalOf(r.prs),
         told: told.slice(-200),
-        // D407: the rows the board shows, as this round saw them (a title it didn't give: the last one known).
-        prs: r.prs.map(({ notes: _n, body: _b, ...p }) => {
-          const title = p.title ?? st.reads[p.ref]?.title ?? prev?.prs?.find((x) => x.ref === p.ref)?.title ?? st.items.find((x) => x.ref === p.ref)?.title;
-          return { ...p, ...(title ? { title } : {}) };
-        }),
       };
       const card = drafted.length || posted.length ? roundCard(taskId, prev?.decisionId, unsent) : prev?.decisionId;
       if (card) standing.decisionId = card;
@@ -1190,12 +1177,11 @@ export function createPile(d: PileDeps): Pile {
         const text = [reviewed.length ? say(reviewed, true) : "", waiting.length ? say(waiting, false) : ""].filter(Boolean).join("\n");
         d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text } } as never);
       }
-      boardSubs.forEach((fn) => fn(taskId));
-      const { decisionId: _d, n: _n, prs: _p, round: _r, was: _w, told: _t, ...out } = standing;
+      const { decisionId: _d, n: _n, round: _r, was: _w, told: _t, ...out } = standing;
       return { ok: true, drafted: drafted.length, posted, asking: unsent.length, standing: out, ...(same ? { replaced: true } : {}), ...(brought.length ? { told: brought.map((p) => p.ref) } : {}) };
     },
     reviewOrgs() {
-      const refs = Object.values(st.rounds ?? {}).flatMap((x) => (x.prs ?? []).map((p) => p.ref));
+      const refs = Object.values(st.rounds ?? {}).flatMap((x) => x.was ?? []);
       return [...new Set(refs.map((r) => r.split("/")[0]!.toLowerCase()))];
     },
     async postWaiting() {
@@ -1211,7 +1197,6 @@ export function createPile(d: PileDeps): Pile {
         s0.drafted = unsent.length;
         s0.posted = (s0.posted ?? 0) + posted.length;
         save();
-        boardSubs.forEach((fn) => fn(taskId));
         out.push({ taskId, posted });
       }
       return out;
@@ -1234,39 +1219,7 @@ export function createPile(d: PileDeps): Pile {
       const s0 = src.taskId ? st.rounds?.[src.taskId] : undefined;
       if (s0) s0.drafted = Object.values(st.reads).filter((x) => x.byTask === src.taskId && x.state === "drafted").length;
       save();
-      if (src.taskId) boardSubs.forEach((fn) => fn(src.taskId!));
       return { done, failed };
-    },
-    rounds(taskId) {
-      return st.rounds?.[taskId]?.n ?? 0;
-    },
-    board(taskId) {
-      const s0 = st.rounds?.[taskId];
-      if (!s0) return undefined;
-      const prs: ReviewBoardPr[] = (s0.prs ?? []).map((p) => {
-        const read = st.reads[p.ref];
-        const mine = read && read.byTask === taskId ? read : undefined;
-        const draft: ReviewBoardPr["draft"] = mine?.state === "drafted" ? "drafted" : mine?.state === "sent" ? "sent" : "none";
-        const url = mine?.url ?? st.items.find((x) => x.ref === p.ref)?.url ?? `https://github.com/${p.ref.replace("#", "/pull/")}`;
-        return {
-          ref: p.ref,
-          ...(p.title ? { title: p.title } : {}),
-          url,
-          ...((p.head ?? mine?.head) ? { head: (p.head ?? mine!.head!).slice(0, 7) } : {}),
-          ...(p.ci ? { ci: p.ci } : {}),
-          changed: p.changed,
-          ...((p.gist ?? mine?.gist) ? { gist: p.gist ?? mine!.gist! } : {}),
-          problems: mine && draft !== "none" ? mine.problems : 0,
-          suggestions: mine && draft !== "none" ? mine.suggestions : 0,
-          draft,
-          ...(mine && draft !== "none" ? { reviewedAt: mine.at } : {}),
-        };
-      });
-      const drafted = prs.filter((p) => p.draft === "drafted").length;
-      return { at: s0.at, waiting: s0.waiting, again: s0.again, same: s0.same, drafted, prs };
-    },
-    onBoard(fn) {
-      boardSubs.push(fn);
     },
     asking(taskId) {
       return !!st.rounds?.[taskId]?.decisionId;
@@ -1274,7 +1227,7 @@ export function createPile(d: PileDeps): Pile {
     standing(taskId) {
       const s0 = st.rounds?.[taskId];
       if (!s0) return undefined;
-      const { decisionId: _d, n: _n, prs: _p, round: _r, was: _w, told: _t, ...out } = s0;
+      const { decisionId: _d, n: _n, round: _r, was: _w, told: _t, ...out } = s0;
       return out;
     },
     async readNewest(prs) {

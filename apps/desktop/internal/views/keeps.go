@@ -622,22 +622,16 @@ func (a *App) keepItemRow(c *ui.Context, x protocol.KeepItem, w float32, first b
 			})
 			text, ink := a.keepItemWords(x)
 			uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
-			if x.Said != nil && x.Said.Checks != nil && x.Said.Checks.Total > 0 {
-				ch := x.Said.Checks
-				ui.Row(c.Key("checks")).Gap(3).Wrap().Margin(6, 0, 0, 0).AccessHidden(true).Children(func() {
-					for j := 0; j < ch.Total && j < 24; j++ {
-						col := t.Done.Dot
-						if j >= ch.Passed+ch.Pending {
-							col = t.Failed.Dot
-						} else if j >= ch.Passed {
-							col = t.Waiting.Dot
+			// D624: the facts a board used to show (CI, draft, a conflict or changes, the head)
+			// stand on the row through the same words On hand uses, each its own element.
+			if x.Said != nil {
+				if fs := a.prFacts(*x.Said); len(fs) > 0 {
+					ui.Row(c.Key("facts")).Gap(t.S3).Wrap().MinWidth(0).Children(func() {
+						for i, f := range fs {
+							uiText(c.Key(fmt.Sprint("fact", i)), f).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5)).Shrink(1).MinWidth(0)
 						}
-						ui.Box(c.Key(fmt.Sprint("c", j))).Size(10, 10).Radius(3).Background(col)
-					}
-				})
-			}
-			if x.Said != nil && x.Said.Phase == "ready" && len(x.Said.By) > 0 {
-				uiText(c.Key("by"), a.L.T("onhand.prs.approved", strings.Join(x.Said.By, a.L.T("onhand.prs.sep")))).FontSize(t.XS).TextColor(t.InkMuted)
+					})
+				}
 			}
 		})
 		ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {

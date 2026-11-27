@@ -51,10 +51,8 @@ test("an app's ducter.open({draft}) opens that PR's draft sheet, and closing it 
   expect(close).toContain("if (back) return back();");
 });
 
-test("the Ongoing card opens the app its task keeps current; the offer card says what goes in it", () => {
+test("the Ongoing card opens the app its task keeps current; no board offer is drawn", () => {
   expect(past).toMatch(/it\.app && <Btn[^>]*board\.open/);
-  expect(views.match(/d\.board && <BoardOfferFacts/g)?.length).toBe(2);
-  const mine = css.split("\n").filter((l) => l.startsWith(".board-offer"));
-  expect(mine.length).toBeGreaterThan(2);
-  for (const r of mine) expect(r).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
+  expect(views).not.toContain("BoardOfferFacts");
+  expect(views).not.toContain("d.board");
 });

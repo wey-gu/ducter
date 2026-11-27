@@ -736,14 +736,15 @@ None of these has run a live task or sign-in: the entries, facts, probes, cards 
 built from OAR 0.124's own declarations and the reports. Each check names what would make the
 fact wrong.
 
-- [ ] **Cursor: bundle the SDK and give it a Node sidecar.** `@cursor/sdk@1.4.1` is not in this
-  build, and in-process it refuses `SessionOptions.env`; `runner/oar.ts` therefore refuses a
-  Cursor start. Bundle the SDK with OAR's subprocess/child mode (or wait for OAR's `childProcess`),
-  pin the version, and check: a task opens, a turn runs, its tools cannot read Ducter's whole
-  environment, resume works in the same folder, and `CURSOR_API_KEY` is the only env key it sees.
-- [ ] **Cursor's sign-in, live.** Its own `Cursor.auth.login()` link (not `agent login`, a different
-  credential store), the 90-day expiry, and a local-only logout that does not revoke the key. The
-  card must not offer a Cursor OAuth app (its scopes exclude signing the CLI/SDK in).
+- [x] **Cursor: install the SDK on demand and give it a subprocess child.** (D630.) OAR
+  0.137.0's `childProcess` + `runCursorChild` run the SDK in a child of Ducter's own binary;
+  `@cursor/sdk@1.4.1` is installed from the card into `<data>/tools/node` and passed as
+  `sdkModule`; the session env is the D102 overlay. Checked without a live Cursor call: the child
+  wiring, the env overlay, and installation states (SDK missing, Node too old, ready).
+- [ ] **Cursor's sign-in, live.** The OAR login link is built (not `agent login`: a different
+  credential store), but no real sign-in has run. Check the 90-day expiry, a local-only logout
+  that does not revoke the key, and that the card never offers a Cursor OAuth app (its scopes
+  exclude signing the CLI/SDK in).
 - [ ] **Devin: install, sign in, one task.** Its own script, `devin auth login` (or
   `WINDSURF_API_KEY`), then a task that opens, runs a turn, resumes and reaches Ducter's MCP over
   the stdio bridge. Check whether ACP advertises `bypass`; probe images, `thought_level` and
@@ -764,9 +765,9 @@ fact wrong.
   commands are documented but unrun, and none of the four can turn Mem off per session. Check
   Cursor's `nmem context --source-app cursor`, Devin's and OpenCode's live plugin commands, and
   Kimi's plugin presence (no fact).
-- [ ] **The cards and the picker, with art.** The four show with the generic clay token until each
-  has a coin; take shots of a device card and the New task picker with each installed and signed
-  in, zh and en, both themes, before calling the visible change done.
+- [ ] **The cards and the picker, with art.** Cursor's coin exists; Devin, Kimi and OpenCode still
+  show the generic clay token. Take shots of a device card and the New task picker with each
+  installed and signed in, zh and en, both themes, before calling the visible change done.
 
 ## Dim, live (D625)
 
@@ -1013,7 +1014,7 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [x] Reach backed by Mem (`bridge contacts`, `mailbox_available` per agent) in the background. Done as D444: read when
       the pane was looked at and the last read is over 30 minutes old; a live read of the card fields is owed (below).
 - [x] Antigravity moves to Claude Code's rows once Mem's plugin carries `bridge`. Done as D555 (its plugin 0.1.4+,
-      research/226). Cursor (0.2.3) carries it too, but is no agent Ducter runs: no row.
+      research/226). Cursor (0.2.3) carries it too; once a Cursor task runs, its row is the next step.
 - [x] pi can talk to the partner once Mem's pi plugin carries a `bridge` skill. Done as D576 (nowledge-mem-pi 0.8.20,
       research/226 §5): its row stands from the plugin's version; 0.8.20 stands as the newer one out for its Update.
 - [ ] A fact that a person's pi heard back (D576). pi prepares no session and Mem lists no connection for it, and a

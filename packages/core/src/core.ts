@@ -2272,7 +2272,13 @@ export function startCore(opts: CoreOptions = {}): Core {
       ? createAgentSetup({
           dataDir,
           // D416: an agent's own sign-out runs through the runner's port (OAR), once a runner is set.
-          sys: opts.agentSetup?.sys ?? { ...realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }), logout: async (h: string) => (await runner?.harness.logout?.(h)) ?? { ok: false } },
+          // D630: Cursor's sign-in does too: OAR relays its cursor.com link, and the key stays
+          // in the SDK's own store (never in Ducter's Log or a frame).
+          sys: opts.agentSetup?.sys ?? {
+            ...realAgentSetupSys({ platform: process.platform, arch: process.arch, which: (c) => whichNow(c) }),
+            logout: async (h: string) => (await runner?.harness.logout?.(h)) ?? { ok: false },
+            login: async (h: string, i: { signal: AbortSignal; onUrl: (url: string) => void }) => (await runner?.harness.login?.(h, i)) ?? { ok: false },
+          },
           probe: async () => {
             widenAgentPath({ dataDir });
             devicesView?.refresh();

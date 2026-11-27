@@ -823,6 +823,12 @@ export interface HarnessPort {
   accountUsage?(harness: string): Promise<{ usage?: AccountUsage; why?: "unsupported" | "signed_out" | "unavailable" }>;
   /** D416: the agent's own sign-out (OAR runtime logout: Antigravity's ACP logout), confirmed by its own status. Never throws. */
   logout?(harness: string): Promise<{ ok: boolean; detail?: string }>;
+  /**
+   * D630: an agent's own sign-in Ducter can carry (Cursor's OAR login: a cursor.com link,
+   * no code pasted back). The link reaches `onUrl` as soon as the runtime has it; the promise
+   * settles when the person finishes or `signal` aborts. Never returns or logs a credential.
+   */
+  login?(harness: string, interaction: { signal: AbortSignal; onUrl: (url: string) => void }): Promise<{ ok: boolean; detail?: string }>;
   /** D534: the agent's own slash commands or skills in that folder (OAR's inventories, token-free),
    *  or undefined when it can't say (no catalog, not installed, signed out). Never throws. */
   inventory?(harness: string, kind: "commands" | "skills", cwd: string): Promise<NativeEntry[] | undefined>;

@@ -39,6 +39,7 @@ import { DSH_APP, DSH_KEY_PAGE, dshAppPaths, dshCredentialsFile, dshSignIns } fr
 import { ANTIGRAVITY, HARNESS_FACTS, agyPlatform } from "@ducter/protocol/src/harness-facts.ts";
 import { DSH_KEY_ENV, HARNESSES, isHarnessId, type HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys, writeKey } from "@ducter/protocol/src/keys.ts";
+import { CURSOR_MIN_NODE_VERSION, CURSOR_SDK_PACKAGE, CURSOR_SDK_VERSION } from "@ducter/protocol/src/cursor.ts";
 import { toolEnv } from "@ducter/protocol/src/tool-env.ts";
 import { spawnNow } from "@ducter/protocol/src/which.ts";
 import { toolsNodeBin } from "./agent-path.ts";
@@ -57,13 +58,16 @@ export const NODE_RELEASE = {
   } as Record<string, { file: string; sha256: string }>,
 };
 
-/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D416: Antigravity's agy). */
-export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity", "opencode"];
+/** The agents Ducter can put on a computer, in the order a sheet lists them (D371: DeepSeek Harness's command line too; D416: Antigravity's agy; D630: Cursor's SDK). */
+export const INSTALLABLE: readonly HarnessId[] = ["codex", "claude-code", "pi", "deepseek-harness", "antigravity", "opencode", "cursor"];
 /** Pre-checked on the lend sheet's 装上哪些 AI？ (pi's sign-in needs that computer's terminal). */
 export const SUGGESTED: readonly HarnessId[] = ["codex", "claude-code"];
 
 /** The npm package and version Ducter installs for an agent: the newest it verified. */
 export function agentPin(h: HarnessId): { pkg: string; version: string } | undefined {
+  // D630: Cursor is not a command line: its SDK is npm's, and OAR pins the exact version it
+  // was built against (runtimes/cursor/sdk-version.js). It goes in the same tools prefix.
+  if (h === "cursor") return (INSTALLABLE as readonly string[]).includes(h) ? { pkg: CURSOR_SDK_PACKAGE, version: CURSOR_SDK_VERSION } : undefined;
   const pkg = HARNESS_FACTS[h]?.channels.value.npm;
   return pkg && (INSTALLABLE as readonly string[]).includes(h) ? { pkg, version: HARNESS_FACTS[h].verified.to } : undefined;
 }
@@ -113,6 +117,8 @@ export interface AgentSetupSys {
   chmod?: (p: string) => void;
   /** D416: the agent's own sign-out (the runner's HarnessPort.logout); absent: none here. */
   logout?: (h: string) => Promise<{ ok: boolean; detail?: string }>;
+  /** D630: an agent's own sign-in Ducter can carry (the runner's HarnessPort.login, OAR's Cursor login). */
+  login?: (h: string, i: { signal: AbortSignal; onUrl: (url: string) => void }) => Promise<{ ok: boolean; detail?: string }>;
 }
 
 /** D416: Google's release manifest for agy on one platform. */
@@ -219,8 +225,15 @@ export function createAgentSetup(o: {
   };
 
   /** Ducter's own node, put there once. */
-  const ensureNode = async (onPct: (pct: number) => void): Promise<{ ok: true } | { ok: false; reason: AgentSetupReason; detail?: string }> => {
-    if (exists(join(nodeBin, "node")) && exists(join(nodeBin, "npm"))) return { ok: true };
+  const ensureNode = async (onPct: (pct: number) => void, floor?: string): Promise<{ ok: true } | { ok: false; reason: AgentSetupReason; detail?: string }> => {
+    if (exists(join(nodeBin, "node")) && exists(join(nodeBin, "npm"))) {
+      // D630: Cursor's SDK has a floor; a Node already in Ducter's folder that is below it is
+      // replaced with the pinned build (the same flow), never reported as "update Ducter".
+      if (!floor) return { ok: true };
+      const r = await sys.run([join(nodeBin, "node"), "--version"], { env: sys.env("node"), timeoutMs: 15_000 }).catch(() => undefined);
+      const v = r && r.code === 0 ? /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/.exec(r.out)?.[0] : undefined;
+      if (v && (compareVersions(v, floor) ?? -1) >= 0) return { ok: true };
+    }
     const asset = NODE_RELEASE.assets[`${sys.platform}-${sys.arch}`];
     if (!asset) return { ok: false, reason: "unsupported" };
     let bytes: Uint8Array;
@@ -344,7 +357,7 @@ export function createAgentSetup(o: {
       last = pct;
       setups.set(h, { phase: "installing", pct });
       o.changed();
-    });
+    }, h === "cursor" ? CURSOR_MIN_NODE_VERSION : undefined);
     if (!node.ok) return fail(h, node.reason, node.detail);
     const base = sys.env("npm");
     const env: Record<string, string> = {
@@ -438,6 +451,63 @@ export function createAgentSetup(o: {
     endLogin(h, { state: "done" });
     await o.probe().catch(() => {});
     o.changed();
+  };
+
+  /**
+   * D630: Cursor's sign-in through OAR's own path. `Cursor.auth.login()` makes a cursor.com
+   * link; the person opens it anywhere and the SDK mints and stores the user API key itself (in
+   * ~/.cursor/sdk/auth.json). No code is pasted back and no key passes through Ducter; an existing
+   * CURSOR_API_KEY in keys.env also signs it in (the probe reads presence only).
+   */
+  const cursorLogin = () => {
+    const h = "cursor";
+    const prev = logins.get(h);
+    if (prev && (prev.view.state === "starting" || prev.view.state === "waiting" || prev.view.state === "checking")) return;
+    if (!sys.login) {
+      logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" });
+      return o.changed();
+    }
+    const until = now() + waitMs;
+    const ctrl = new AbortController();
+    const entry: Login = { view: { state: "starting", until }, out: "" };
+    // What cancel and the deadline stop: the OAR login's signal (its child is ended with it).
+    entry.proc = { onOutput: () => {}, write: () => {}, kill: () => ctrl.abort(), exited: new Promise<number>(() => {}) };
+    logins.set(h, entry);
+    entry.timer = setTimer(() => {
+      if (logins.get(h) !== entry) return;
+      ctrl.abort();
+      endLogin(h, { state: "expired" });
+      o.changed();
+    }, waitMs);
+    o.changed();
+    void sys
+      .login(h, {
+        signal: ctrl.signal,
+        onUrl: (url) => {
+          if (logins.get(h) !== entry || entry.view.state !== "starting") return;
+          note(h, "its link is out; waiting for the person");
+          entry.view = { state: "waiting", url, until };
+          o.changed();
+        },
+      })
+      .then(async (r) => {
+        if (logins.get(h) !== entry) return;
+        if (entry.timer) clearTimer(entry.timer);
+        if (r.ok) {
+          endLogin(h, { state: "done" });
+          await o.probe().catch(() => {});
+        } else {
+          note(h, `ended: ${(r.detail ?? "its own sign-in did not finish").slice(0, 160)}`);
+          endLogin(h, { state: "failed", reason: "failed" });
+        }
+        o.changed();
+      })
+      .catch(() => {
+        if (logins.get(h) !== entry) return;
+        if (entry.timer) clearTimer(entry.timer);
+        endLogin(h, { state: "failed", reason: "failed" });
+        o.changed();
+      });
   };
 
   /**
@@ -602,6 +672,7 @@ export function createAgentSetup(o: {
       }
       if (h === "deepseek-harness") return dshLogin();
       if (h === "antigravity") return void agyLogin();
+      if (h === "cursor") return void cursorLogin();
       if (h === "kimi") {
         const bin = sys.which("kimi") ?? (sys.exists?.(join(sys.home ?? homedir(), ".kimi-code", "bin", "kimi")) ? join(sys.home ?? homedir(), ".kimi-code", "bin", "kimi") : null);
         if (!bin) return void (logins.set(h, { view: { state: "failed", reason: "failed" }, out: "" }), o.changed());
@@ -610,10 +681,9 @@ export function createAgentSetup(o: {
         const region = sys.env("kimi").KIMI_REGION;
         return runLogin(h, [bin, "login", ...(region ? ["--region", region] : [])], sys.env("kimi"));
       }
-      // D600: these three sign in from a terminal on that computer, with their own command; Cursor's
-      // SDK sign-in is not carried in this build (its CLI's login writes a different credential store).
+      // D600: Devin and OpenCode sign in from a terminal on that computer, with their own command.
       // D625: Dim's sign-in is its own (`dima` then /login, or /connect for a key).
-      const terminal = h === "devin" ? "devin auth login" : h === "opencode" ? "opencode auth login" : h === "cursor" ? "CURSOR_API_KEY" : h === "dim" ? "dima" : undefined;
+      const terminal = h === "devin" ? "devin auth login" : h === "opencode" ? "opencode auth login" : h === "dim" ? "dima" : undefined;
       if (terminal) return void (logins.set(h, { view: { state: "terminal", command: terminal }, out: "" }), o.changed());
       const argv = h === "codex" ? ["codex", "login", "--device-auth"] : h === "claude-code" ? ["claude", "auth", "login"] : undefined;
       const bin = argv ? sys.which(argv[0]!) : null;

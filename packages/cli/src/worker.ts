@@ -231,7 +231,12 @@ export async function cmdWorker(o: {
   const setup: AgentSetup = createAgentSetup({
     dataDir: o.dataDir,
     // D416: an agent's own sign-out through OAR (Antigravity's ACP logout), on this computer.
-    sys: { ...realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }), logout: async (h: string) => (await runnerMod.createOarHarnessPort({ dataDir: o.dataDir }).logout?.(h)) ?? { ok: false } },
+    // D630: Cursor's sign-in too (OAR's cursor.com link, the key kept in the SDK's store).
+    sys: {
+      ...realAgentSetupSys({ platform: platform(), arch: arch(), which: (c) => whichNow(c), env: (cmd) => probeEnv([cmd]) }),
+      logout: async (h: string) => (await runnerMod.createOarHarnessPort({ dataDir: o.dataDir }).logout?.(h)) ?? { ok: false },
+      login: async (h: string, i: { signal: AbortSignal; onUrl: (url: string) => void }) => (await runnerMod.createOarHarnessPort({ dataDir: o.dataDir }).login?.(h, i)) ?? { ok: false },
+    },
     probe: reprobe,
     changed: () => sendAgents(setup.decorate(rows)),
     // D518: a sign-in is done when the agent's own check, run now, says so.

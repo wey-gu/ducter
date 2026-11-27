@@ -506,7 +506,7 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       <>
         <AgentRow dv={dv} h={h} />
         <SetupAnswer dv={dv} />
-        {h.installed && !h.login && !root && <div class="ln">{t("coin.signin.why", dv.name)}</div>}
+        {h.installed && !h.login && !root && h.trouble?.kind !== "node_old" && <div class="ln">{t("coin.signin.why", dv.name)}</div>}
       </>
     );
   const others = (A.devices ?? []).filter((o) => o.id !== dv.id && o.harnesses.some((x) => x.harness === h.harness && x.installed && x.loggedIn)).map((o) => o.name);

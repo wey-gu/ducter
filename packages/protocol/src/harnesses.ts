@@ -225,9 +225,10 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     noWebTasks: true,
     signOut: true,
   },
-  // D600: Cursor's own SDK, embedded by OAR 0.124 (runtimes/cursor). Tasks only: the SDK refuses
-  // tool denial and a replaced prompt, and @cursor/sdk is not bundled in this build yet, so no
-  // session runs here until it is (research/239). Cursor's OAuth apps cannot sign the CLI or SDK in.
+  // D600/D630: Cursor's own SDK, embedded by OAR 0.137 (runtimes/cursor, subprocess mode).
+  // Tasks only: the SDK refuses tool denial and a replaced prompt. Ducter installs @cursor/sdk
+  // 1.4.1 in its own tools folder on demand and re-enters its binary as the SDK child
+  // (research/239). Cursor's OAuth apps cannot sign the CLI or SDK in.
   cursor: {
     id: "cursor",
     name: "Cursor",
@@ -245,7 +246,6 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     billing: "plan",
     cheapModel: "composer-2.5",
     modelForm: 'a Cursor catalog id or alias (e.g. composer-2.5, gpt-5.6-sol); "default" is Auto',
-    install: "curl https://cursor.com/install -fsS | bash",
     signIn: "a cursor.com sign-in link (open it anywhere; it completes on its own), or CURSOR_API_KEY",
     signOut: true,
     noWebTasks: true,

@@ -809,9 +809,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "DOCUMENTED", source: "OAR 0.124.0 runtimes/antigravity/{install,update}.js; https://antigravity.google/cli/install.sh (read 2026-11-20): the manifest, its sha512, ~/.local/bin/agy, \"automatically self-updates in the background\"" },
     },
   },
-  // D600: Cursor through its own SDK, embedded by OAR 0.124 (runtimes/cursor). The SDK refuses
-  // SessionOptions.env in process, and it is not bundled in this build, so every session fails
-  // closed before its first turn; the facts below are OAR's and Cursor's, not a live Ducter run.
+  // D600/D630: Cursor through its own SDK, embedded by OAR 0.137 (runtimes/cursor). Ducter
+  // runs it in subprocess mode with the D102 env overlay and re-enters its compiled binary as the
+  // SDK child; the SDK is installed on demand in Ducter's tools folder. The facts below are OAR's
+  // and Cursor's, not a live Ducter run (research/239).
   cursor: {
     harness: "cursor",
     root: { value: { as: "runs" }, evidence: { kind: "INFERRED", why: "the SDK runs inside Ducter's process and Cursor documents no root check (research/239)" } },
@@ -847,10 +848,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/docs/integrations/cursor; research/239 §4.5: the plugin's hooks do not load through OAR's SDK session, so Ducter's Mem steps stand in (the exact contextApp is INFERRED from `nmem t sync --from cursor`)" },
     },
     channels: {
-      // The person's Cursor CLI is not what Ducter runs; the SDK is bundled by whoever builds Ducter,
-      // so there is no copy here for Ducter to update (research/239 §4.2).
+      // The person's Cursor CLI is not what Ducter runs; Ducter installs the pinned SDK itself
+      // (@cursor/sdk 1.4.1, npm, in <data>/tools/node), so there is no CLI copy to update (research/239).
       value: {},
-      evidence: { kind: "INFERRED", why: "a Cursor CLI installer would install the wrong product; the SDK rides inside Ducter or its Node sidecar" },
+      evidence: { kind: "DOCUMENTED", source: "docs/runtimes/cursor.md at v0.137.0: the host installs @cursor/sdk 1.4.1 and passes sdkModule; OAR sdk-version.js" },
     },
   },
   // D600: Devin CLI over ACP, OAR 0.124 (runtimes/devin). Never run by Ducter yet: its facts are

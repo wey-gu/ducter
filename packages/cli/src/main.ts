@@ -559,6 +559,14 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
 export async function run(argv: string[]): Promise<number | "running"> {
   // Internal: a harness that takes stdio MCP only reaches Ducter through this (D85). Not in help.
   if (argv[0] === "mcp-bridge") return (await import("@ducter/runner/src/mcp-bridge.ts")).bridgeMain(argv[1]);
+  // D630: the compiled binary re-enters itself as OAR's Cursor SDK child (OAR #1188). Not in
+  // help; a checkout runs OAR's own `node -e` child instead.
+  if (argv[0] === "__cursor-child") {
+    const code = await (await import("./cursor-child.ts")).runCursorChildCommand(argv);
+    // runCursorChild takes the process over; a malformed call exits with its code, and a valid one
+    // must not fall through to the top-level process.exit(0) before the IPC child is set up.
+    return code === 0 ? "running" : code;
+  }
   // D463: the live-check kit, a maintainer's command (English only, not in help). Only reads, and
   // only this machine's Ducter: --port and --data-dir pick which.
   if (argv[0] === "check") return checkCmd(argv.slice(1));

@@ -2536,11 +2536,17 @@ type DeviceHarness struct {
 // AgentTrouble is an agent partly there (D416): too_old (Need: the version
 // it must reach), broken (its command line doesn't answer), app_only (only
 // its desktop app App, no command line), root (D549: it refuses to run as
-// root, and Ducter runs as root there).
+// root, and Ducter runs as root there), coming (D625: this build cannot run
+// it yet), node_old (D630: the runtime needs a newer Node than Ducter
+// runs; Need is the floor).
 type AgentTrouble struct {
 	Kind string `json:"kind"`
 	Need string `json:"need,omitempty"`
 	App  string `json:"app,omitempty"`
+	// Have is node_old's current Node version (D630), Need its floor, and Via where the
+	// probe read it: "ducter" (Ducter's own tools folder, which Ducter updates) or "system".
+	Have string `json:"have,omitempty"`
+	Via  string `json:"via,omitempty"`
 }
 
 // AgentSetupState is an agent being put on a device (D363): queued |

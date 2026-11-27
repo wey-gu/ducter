@@ -194,6 +194,9 @@ export function agentSignature(o: { dataDir: string; home?: string; env?: Record
     // D600: where the four keep their sign-ins (presence/mtime only, never read). Cursor's SDK and
     // its CLI are separate stores; Kimi's OAuth file is what its ACP status reads.
     join(home, ".cursor", "sdk", "auth.json"),
+    // D630: the pinned @cursor/sdk in Ducter's tools folder, so installing it moves the card.
+    join(o.dataDir, "tools", "node", "lib", "node_modules", "@cursor", "sdk", "package.json"),
+    join(o.dataDir, "tools", "node", "node_modules", "@cursor", "sdk", "package.json"),
     join(env.XDG_DATA_HOME || join(home, ".local", "share"), "opencode", "auth.json"),
     join(env.KIMI_CODE_HOME || join(home, ".kimi-code"), "credentials", "kimi-code.json"),
     // D625: Dim's default home (its sign-in and provider catalog live in one SQLite there).

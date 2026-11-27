@@ -2512,8 +2512,12 @@ export interface DeviceHarness {
  *    link an older app left, pointing at nothing); 安装 puts the command line beside it;
  *  - coming (D625): this Ducter build cannot run it yet (Dim needs an @botiverse/oar release
  *    that exports createDimRuntime); said as 即将支持 / Coming soon, never a crash.
+ *  - node_old (D630): the runtime needs a newer Node than the one the probe read (`have`,
+ *    `need` the floor, `via` where it came from: Ducter's own tools folder, or the system's).
+ *    Ducter can update its own Node through the same install flow; it says nothing about updating
+ *    Ducter itself, which would point at the wrong thing.
  */
-export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string } | { kind: "root" } | { kind: "coming" };
+export type AgentTrouble = { kind: "too_old"; need: string } | { kind: "broken" } | { kind: "app_only"; app: string } | { kind: "root" } | { kind: "coming" } | { kind: "node_old"; need: string; have: string; via: "ducter" | "system" };
 
 /** D363: what an agent_setup asks of a device. */
 export type AgentSetupAction = "install" | "login" | "code" | "cancel" | "look" | "logout";

@@ -5,8 +5,9 @@
 export const agents = {
   /** Can be the partner itself, so one of these must be installed and signed in. */
   today: ["Claude Code", "Codex", "pi", "DeepSeek Harness"],
-  /** Carry tasks but not yet the partner (none since D177: all four can be the partner). */
-  tasks: [] as string[],
+  /** Carry tasks but not yet the partner. Cursor runs through its own SDK, so it cannot replace
+   *  the partner's prompt: it takes tasks, never the partner. */
+  tasks: ["Cursor"],
   /** Take tasks only when the person names them (offered last; its sign-in warns about the
    *  provider's terms), so the site says them apart: "when you ask for it by name". */
   byName: ["Antigravity"],

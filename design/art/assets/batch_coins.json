@@ -7,5 +7,6 @@
  {"id": "coin_cursor", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_cursor.md"], "image": "raw/coin_cursor.png", "ar": "1:1", "ref": ["marks/cursor.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
  {"id": "coin_devin", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_devin.md"], "image": "raw/coin_devin.png", "ar": "1:1", "ref": ["marks/devin.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
  {"id": "coin_kimi", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_kimi.md"], "image": "raw/coin_kimi.png", "ar": "1:1", "ref": ["marks/kimi.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
- {"id": "coin_opencode", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_opencode.md"], "image": "raw/coin_opencode.png", "ar": "1:1", "ref": ["marks/opencode.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]}
+ {"id": "coin_opencode", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_opencode.md"], "image": "raw/coin_opencode.png", "ar": "1:1", "ref": ["marks/opencode.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_dim", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_dim.md"], "image": "raw/coin_dim.png", "ar": "1:1", "ref": ["marks/dim.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]}
 ]}

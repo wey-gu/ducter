@@ -13,8 +13,9 @@ import (
 // An AI agent's clay coin (tools/art/coins.py, D183): the agent's own mark
 // sculpted as a small clay object (Claude Code's starburst, Codex's knot,
 // DeepSeek's whale, pi's blocks, Antigravity's arch, Cursor's hexagon,
-// Devin's links, Kimi's K and bubble, OpenCode's frame); an unknown agent
-// gets the generic clay token. The agent's name and model are always text beside the coin.
+// Devin's links, Kimi's K and bubble, OpenCode's frame, Dim's loop); an
+// unknown agent gets the generic clay token. The agent's name and model
+// are always text beside the coin.
 
 // coinIDs maps a harness to its coin's art.
 var coinIDs = map[string]string{
@@ -27,6 +28,7 @@ var coinIDs = map[string]string{
 	"devin":            "devin",
 	"kimi":             "kimi",
 	"opencode":         "opencode",
+	"dim":              "dim",
 }
 
 // coinArt names an agent's coin; off: signed out or not installed (the same

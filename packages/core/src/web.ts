@@ -71,6 +71,8 @@ import coinKimiDark from "../../../apps/web/static/art/coin_kimi_dark.webp" with
 import coinOpencode from "../../../apps/web/static/art/coin_opencode.webp" with { type: "file" };
 import coinOpencodeOff from "../../../apps/web/static/art/coin_opencode_off.webp" with { type: "file" };
 import coinOpencodeDark from "../../../apps/web/static/art/coin_opencode_dark.webp" with { type: "file" };
+import coinDim from "../../../apps/web/static/art/coin_dim.webp" with { type: "file" };
+import coinDimOff from "../../../apps/web/static/art/coin_dim_off.webp" with { type: "file" };
 // Work over time (D112): Ducter waiting, and the clay things it waits for.
 import artWaiting from "../../../apps/web/static/art/waiting.webp" with { type: "file" };
 import waitPr from "../../../apps/web/static/art/wait_pr.webp" with { type: "file" };
@@ -162,6 +164,8 @@ const ASSETS: Record<string, [string, string]> = {
   "art/coin_opencode.webp": [coinOpencode, "image/webp"],
   "art/coin_opencode_off.webp": [coinOpencodeOff, "image/webp"],
   "art/coin_opencode_dark.webp": [coinOpencodeDark, "image/webp"],
+  "art/coin_dim.webp": [coinDim, "image/webp"],
+  "art/coin_dim_off.webp": [coinDimOff, "image/webp"],
   "art/waiting.webp": [artWaiting, "image/webp"],
   "art/wait_pr.webp": [waitPr, "image/webp"],
   "art/wait_ci.webp": [waitCi, "image/webp"],

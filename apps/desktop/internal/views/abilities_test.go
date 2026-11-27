@@ -144,7 +144,9 @@ func TestAbilitiesStates(t *testing.T) {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			seen := time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
+			// The harness renders on its own clock (h.tt.Now); real time here would drift under
+			// two hours by the time the card is drawn, and "2 h ago" would read as 1.
+			seen := h.tt.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
 			h.hub.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {
 				return append(list,
 					protocol.DeviceView{ID: "b71e04aa90", Name: "Mac mini", Kind: "mini", State: protocol.DeviceAsleep, LastSeen: seen,

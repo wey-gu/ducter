@@ -102,12 +102,16 @@ func TestHarnessFourCoins(t *testing.T) {
 	}
 }
 
-// D625: Dim has no coin of its own yet, so the picker draws the generic token.
-func TestDimCoinIsGeneric(t *testing.T) {
-	if coinKnown("dim") {
-		t.Errorf("dim has a coin art that doesn't exist")
+// D625: Dim has its own coin now (D183's pipeline), so the picker draws its mark instead of the
+// generic token.
+func TestDimCoin(t *testing.T) {
+	if !coinKnown("dim") {
+		t.Error("dim should have its own coin")
 	}
-	if got := coinArt("dim", false); got != "token_ink" {
-		t.Errorf("coinArt(dim) = %q", got)
+	if got := coinArt("dim", false); got != "coin_dim" {
+		t.Errorf("coinArt(dim) = %q, want coin_dim", got)
+	}
+	if got := coinArt("dim", true); got != "coin_dim_off" {
+		t.Errorf("coinArt(dim, off) = %q, want coin_dim_off", got)
 	}
 }

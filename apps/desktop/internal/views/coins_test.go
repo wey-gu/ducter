@@ -23,6 +23,8 @@ func TestCoinArt(t *testing.T) {
 		{"kimi", false, "coin_kimi"},
 		{"opencode", false, "coin_opencode"},
 		{"opencode", true, "coin_opencode_off"},
+		{"dim", false, "coin_dim"},
+		{"dim", true, "coin_dim_off"},
 		{"someone-new", false, "token_ink"},
 	}
 	for _, c := range cases {

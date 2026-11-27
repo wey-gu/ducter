@@ -17,6 +17,7 @@ that the owner endorses or partners with Ducter.
 | Devin CLI (D600) | Cognition's Devin mark, three interlocking hexagonal links in blue, green and cyan | LobeHub icons **1.106.0**, `devin-color.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.106.0/icons/devin-color.svg>, rendered with `rsvg-convert` (1.75.0 has no Devin mark); picked from two renders (the other lost the dumbbell waists; both in `.shots/agent-coins/new/`) |
 | Kimi Code CLI (D600) | Moonshot AI's Kimi mark, the K and its blue speech bubble | LobeHub icons **1.75.0**, `kimi-color.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.75.0/icons/kimi-color.svg>, rendered with `rsvg-convert`; picked from two renders (the other curled the K into a hook and gave the bubble no tail; both in `.shots/agent-coins/new/`) |
 | OpenCode (D600) | OpenCode's mark, the tall rectangular frame with its window | LobeHub icons **1.106.0**, `opencode.svg`, <https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.106.0/icons/opencode.svg>, rendered with `rsvg-convert` (1.75.0 has no OpenCode mark); picked from two renders (the other came out a thin, tilted frame; both in `.shots/agent-coins/new/`) |
+| Dim (D625) | DimAgent's mark, the green open loop with its round-headed pin rising inside and joined at the lower right | arcships/dim at `c6d0c834`, `web/src/components/BrandMark.vue` (the 45:32 path; the same mark as `web/index.html`'s favicon, white on Dim green `#70C70E`), <https://github.com/arcships/dim/blob/c6d0c834bbae7c14436ef3aeb410b40ab1c4b79c/web/src/components/BrandMark.vue>, rendered with `rsvg-convert`; picked `dim3-a` after the first pair read as a tilted hoop, from seven face-on re-renders (`dim3-a`'s silhouette overlays the 45:32 path; the others added a second hanging ball at the pin, zoomed in too far, or tilted the ring; all in `.shots/agent-coins/dim/`) |
 
 ## What the earlier rule was, and what changed
 
@@ -33,7 +34,7 @@ token (`token_ink`) with the name beside it, a one-line change in each client's 
 
 1. Put the owner's mark, rendered flat on white at 512 px, in `design/art/assets/marks/`
    (gitignored) as `claude.png`, `codex.png`, `deepseek.png`, `pi.png`, `antigravity.png`,
-   `cursor.png`, `devin.png`, `kimi.png`, `opencode.png`.
+   `cursor.png`, `devin.png`, `kimi.png`, `opencode.png`, `dim.png`.
 2. Generate from `design/art/assets/batch_coins.json` (style `prompts/_style_coins.md`, one
    prompt per coin, the mark as the first reference, the clay token and the clay character for
    the style); keep the raw renders in `.shots/` and pick by putting them side by side at 20–96

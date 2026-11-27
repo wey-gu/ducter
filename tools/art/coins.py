@@ -56,6 +56,7 @@ COINS = {
     "devin": 0.88,
     "kimi": 0.90,
     "opencode": 0.84,
+    "dim": 0.90,
 }
 
 # The unavailable coin's grey clay (the old coins' grey body).

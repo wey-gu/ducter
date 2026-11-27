@@ -164,7 +164,7 @@ func TestTodosPane(t *testing.T) {
 		t.Fatal("opening the pane doesn't subscribe to the sources")
 	}
 	todoFrames(tt, 4)
-	for _, want := range []string{"待办来源", "GitHub", "标给 lin-dev 的 issue 和 PR", "Life", "整个库", "3 个没做完", "1 个在做", "你接下过两次以后定的",
+	for _, want := range []string{"待办来源", "GitHub", "指派给 lin-dev 的 issue 和 PR", "Life", "整个库", "3 个没做完", "1 个在做", "你接下过两次以后定的",
 		"新的来了", "做完以后", "勾掉", "还能加上", "Work notes", "加上一个 Obsidian 库…", "Jira", "即将推出"} {
 		if !hasText(tt, want) {
 			t.Errorf("no %q in %q", want, tt.Texts())

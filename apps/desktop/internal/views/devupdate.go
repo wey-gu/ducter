@@ -587,7 +587,7 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 		case current && home:
 			// D399: said once, on the home's row; a computer that does tasks is current with it and
 			// says nothing (three rows of the same words were a wall).
-			words, _ := a.upToDate(u) // one phrase, 刚看过，已经是最新的 (D296)
+			words, _ := a.upToDate(u) // one phrase, 刚检查过，已是最新 (D296)
 			if a.aboutSaysCurrent() {
 				// D500: the pane's head already says every computer is current; the row says when it looked.
 				words = a.L.T("settings.versions.looked.now")

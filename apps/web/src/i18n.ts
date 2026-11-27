@@ -219,7 +219,7 @@ const zh: Record<string, string> = {
   "hello.back.afternoon": "下午好，%s 在呢。",
   "hello.back.evening": "晚上好，%s 在呢。",
   "hello.back.late": "这么晚还在忙，%s 陪着你。",
-  "hello.news.open": "查看",
+  "hello.news.open": "看看",
   "decision.go": "好",
   "decision.go.label": "好，%s",
   "decision.hold": "先不用",
@@ -2389,7 +2389,7 @@ const devup: Record<Lang, Record<string, string>> = {
     "memp.card.hold": "暂不安装",
     "memp.card.done": "已装好",
     // D466: a newer plugin out, several copies, and what each tap does.
-    "memp.update.to": "Nowledge Mem %[1]s，有新的 %[2]s 了",
+    "memp.update.to": "Nowledge Mem %[1]s，可更新到 %[2]s",
     "memp.review.two": "Nowledge Mem 装了两份：%[1]s 和 %[2]s",
     "memp.btn.tidy": "理成一份",
     "memp.ask.update": "要把 %[2]s 上 %[1]s 的 Nowledge Mem 更新到 %[3]s 吗？",
@@ -2443,8 +2443,8 @@ const devup: Record<Lang, Record<string, string>> = {
     "settings.versions.night.note": "凌晨 3 点到 5 点，没事时一台一台地更新。",
     "settings.versions.night.quiet": "免打扰时段（%s 到 %s）里，没事时一台一台地更新。",
     "settings.versions.night.how": "AI agent 只更新到 Ducter 验证过的版本。",
-    "settings.versions.current": "%s看过，已经是最新的",
-    "settings.versions.current.now": "刚看过，已经是最新的",
+    "settings.versions.current": "%s检查过，已是最新",
+    "settings.versions.current.now": "刚检查过，已是最新",
   },
   en: {
     "devices.title": "Your devices",
@@ -2654,7 +2654,7 @@ const signin: Record<Lang, Record<string, string>> = {
     "live.failed": "没能打开：%s",
     "live.replaced": "已经在另一个窗口里打开了",
     // D190: 看它上网 / Watch it browse, and taking turns.
-    "live.watch": "查看",
+    "live.watch": "看看",
     "live.watch.title": "看它上网",
     "live.using": "%s 正在用它",
     "live.myturn": "接手",

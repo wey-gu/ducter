@@ -87,7 +87,7 @@ export const phone: { zh: Record<string, string>; en: Record<string, string> } =
     "own.saw.allow": "看到手机，等你点「允许」",
     "own.cmd.distro": "不是 Debian 或 Ubuntu 的话，用系统自己的包管理器装 %s。",
     "own.away.lede": "你来打：要说的，我先写在通话单上。",
-    "own.away.why": "要我用你的号码替你在电话里说话，手机得接在你身边的一台电脑上；%s 是服务器，接不了。",
+    "own.away.why": "要我用你的号码替你通话，手机得插在你身边的一台电脑上；%s 是服务器，插不了。",
     "own.away.soon": "即将推出",
     "own.away.how": "一点就拨",
     "own.away.dial": "%s 上的 Ducter 替你拨号，第一次会在手机上问你。",

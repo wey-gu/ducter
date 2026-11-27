@@ -150,15 +150,21 @@ export function deviceLabel(L: Strings, d: string | undefined): string {
 export function keepClauses(s: string): string {
   const rs = [...keepTokens(s)];
   const han = (c: string | undefined) => !!c && /\p{Script=Han}/u.test(c);
+  const punct = "\uff0c\u3002\uff1b\uff1a\uff1f\uff01\u3001";
+  const gluePunct = "\uff0c\u3002\uff1b\uff1a\uff1f\uff01\u3001\uff09\u300d\u300f\u3011\u300b\u3009";
   let out = "";
   for (let i = 0; i < rs.length; ) {
     let j = i;
     while (j < rs.length && han(rs[j])) j++;
     if (j === i) {
-      out += rs[i++];
+      const ch = rs[i++]!;
+      out += ch;
+      // Glue CJK clause/closing punctuation to any preceding non-space character (Latin, digit, 」, ）),
+      // not only Han, so word-break: keep-all can never start a line with punctuation.
+      if (!/\s/.test(ch) && i < rs.length && gluePunct.includes(rs[i]!)) out += "\u2060";
       continue;
     }
-    const end = j === rs.length || "，。；：？！、".includes(rs[j]!);
+    const end = j === rs.length || punct.includes(rs[j]!);
     const n = j - i;
     // D583: Settings sets keep-all (D561), so a long run had no break inside it and Chrome's emergency
     // break fell anywhere: mid-word (\u7535 / \u8bdd) or before the clause's \u300c\u3002\u300d, alone on a line. A run over six
@@ -171,7 +177,7 @@ export function keepClauses(s: string): string {
       out += rs[i + k] + (k < n - 1 && k >= tail ? "\u2060" : "");
     }
     // D583: the clause's punctuation stays with its last character.
-    if (j < rs.length && "\uff0c\u3002\uff1b\uff1a\uff1f\uff01\u3001".includes(rs[j]!)) out += "\u2060";
+    if (j < rs.length && gluePunct.includes(rs[j]!)) out += "\u2060";
     i = j;
   }
   // Latin: the last two words together (a no-break space), never one word alone on the last line.

@@ -1098,7 +1098,7 @@ function exLine(x: PeerExchange): { text: string; tone?: "needs" | "bad" } {
   const tt = taskTitle(x.taskId) || "…";
   const args = x.way === "taskasked" ? [tt] : [];
   if (o.kind === "answered") return { text: t(head + "answered", ...args, clip(o.words)) };
-  if (o.kind === "notsent") return { text: t(head + "notsent", ...args), tone: "bad" };
+  if (o.kind === "notsent" && o.state !== "unknown") return { text: t(head + "notsent", ...args), tone: "bad" };
   return { text: t(head + "waiting", ...args) };
 }
 

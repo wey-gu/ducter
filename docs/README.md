@@ -84,8 +84,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   something needs you, keep your nights quiet, and let a task borrow your Android phone.
 - **[iMessage](imessage.md):** text your partner from Messages on your iPhone, through a Mac,
   and get its answers in the same thread, under its own name.
-- **[Chat apps](chat-apps.md):** talk to your partner from Telegram, Slack or WeChat, in
-  the same conversation, through a contact of your own.
+- **[Chat apps](chat-apps.md):** talk to your partner from Telegram, Slack, Feishu / Lark or
+  WeChat, in the same conversation, through a contact of your own.
 
 ## Stay in control
 

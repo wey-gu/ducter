@@ -49,9 +49,9 @@ Pinning is for your conversation with your main partner for now.
 
 The same reply reads fine wherever it goes:
 
-- **In your chat apps** (Telegram, Slack, WeChat, iMessage) and in **notifications**, a table is
-  one line per row, a chart is its sentence and its numbers, and a list or the answers are lines
-  starting with "-". Type your answer there as you would anyway.
+- **In your chat apps** (Telegram, Slack, Feishu / Lark, WeChat, iMessage) and in
+  **notifications**, a table is one line per row, a chart is its sentence and its numbers, and a
+  list or the answers are lines starting with "-". Type your answer there as you would anyway.
 - **Copy** copies those plain lines too, ready to paste anywhere.
 - **An older version of the app** shows the plain lines instead of the table or chart. Update to
   see them drawn.

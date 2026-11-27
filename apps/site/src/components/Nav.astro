@@ -2,6 +2,7 @@
 import Art from "./Art.astro";
 import GitHubMark from "./GitHubMark.astro";
 // D326: the button is Get started (one guided path); Download, the full list of files, is a link.
+// On a phone the sections and GitHub fold into a menu, so every page stays one tap away.
 interface Props { dl: { href: string; label: string }; gh: { href: string; label: string }; home?: boolean; current?: "docs" | "download" | "start" }
 const { gh, home = true, current } = Astro.props;
 const at = (hash: string) => (home ? hash : "/" + hash);
@@ -19,7 +20,36 @@ const at = (hash: string) => (home ? hash : "/" + hash);
       <a href="/docs" aria-current={current === "docs" ? "page" : undefined}>Docs</a>
       <a href="/download" aria-current={current === "download" ? "page" : undefined}>Download</a>
     </nav>
+    <details class="nav-menu">
+      <summary aria-label="Menu">
+        <span class="nav-menu-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      </summary>
+      <nav class="nav-sheet" aria-label="Sections">
+        <a href={at("#what")}>What it does</a>
+        <a href={at("#trust")}>Trust</a>
+        <a href="/docs" aria-current={current === "docs" ? "page" : undefined}>Docs</a>
+        <a href="/download" aria-current={current === "download" ? "page" : undefined}>Download</a>
+        <a href="/changelog">What's new</a>
+        <a href={gh.href} rel="noopener">GitHub</a>
+      </nav>
+    </details>
     <a class="nav-gh" href={gh.href} rel="noopener" aria-label="Ducter on GitHub"><GitHubMark /><span>{gh.label}</span></a>
     <a class="btn md nav-dl" href="/start" aria-current={current === "start" ? "page" : undefined}>Get started</a>
   </div>
 </header>
+
+<script>
+  // The menu closes on a link, an outside tap or Escape; a native <details> closes on none of them.
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>(".nav-menu")) {
+    menu.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => { menu.open = false; }));
+    document.addEventListener("click", (e) => {
+      if (menu.open && !menu.contains(e.target as Node)) menu.open = false;
+    });
+    document.addEventListener("keydown", (e) => {
+      if (menu.open && e.key === "Escape") {
+        menu.open = false;
+        menu.querySelector("summary")?.focus();
+      }
+    });
+  }
+</script>

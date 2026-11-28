@@ -62,7 +62,8 @@ test("the Seatbelt profile denies by default, reads only the declaration, writes
   expect(p).toContain('(subpath "/Users/me/Library/Notes")');
   expect(p).toContain('(literal "/etc/hosts")');
   expect(p).toContain('(allow file-write* (subpath "/tmp/ducter-plugin-tmp"))');
-  expect(p).toContain('(allow process-exec (literal "/usr/bin/true")');
+  // Seatbelt matches real paths, so a symlinked program is named by where it lands (Linux CI: gnutrue).
+  expect(p).toContain(`(allow process-exec (literal "${realpathSync("/usr/bin/true")}")`);
   expect(p).toContain('(literal "/opt/ducter/bun")');
   // The whole home is never granted: only the named glob's static root is.
   expect(p).not.toContain('(allow file-read* (subpath "/Users/me"))');
@@ -81,7 +82,7 @@ test("a declared online use gets outbound network and the command it starts, and
   // The command, its real path and its interpreter may exec; its package folder is readable.
   expect(p).toContain('(allow process-exec ');
   expect(p).toContain('(literal "/opt/bin/lody")');
-  expect(p).toContain('(literal "/bin/sh")');
+  expect(p).toContain(`(literal "${realpathSync("/bin/sh")}")`);
   expect(p).toContain('(allow file-read* (subpath "/opt/lib/lody"))');
   // The online flag is not a grant to the whole home.
   expect(p).not.toContain('(allow file-read* (subpath "/Users/me"))');
@@ -139,7 +140,8 @@ test("a use resolves to the program and its shebang interpreter", () => {
   const r = resolveUse("lody", { dir: t.dir, path: `${bin}:${process.env.PATH ?? ""}` })!;
   expect(r.path).toBe(lody);
   expect(r.real).toBe(realpathSync(lody));
-  expect(r.interpreter?.endsWith("/sh")).toBe(true);
+  // The shebang's /bin/sh, as its real program (dash on Linux CI).
+  expect(r.interpreter === "/bin/sh" || r.interpreter === realpathSync("/bin/sh")).toBe(true);
   expect(r.online).toBe(false);
   expect(resolveUse("no-such-command-here", { dir: t.dir, path: bin })).toBeUndefined();
   t.cleanup();

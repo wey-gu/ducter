@@ -65,6 +65,8 @@ type PastItem struct {
 	From       *PastFrom   `json:"from,omitempty"`
 	// Outside: D299, carried on from a session the person ran outside Ducter.
 	Outside *PastOutside `json:"outside,omitempty"`
+	// Imported: D651 (research/246), brought in from another app read only.
+	Imported *PastImported `json:"imported,omitempty"`
 	// D391: the agent's last words (one line), what it asks while it waits
 	// on the person, and how many steps it has.
 	LastWords string `json:"lastWords,omitempty"`
@@ -137,6 +139,17 @@ func decodePastSteps(data []byte, f ServerFrame) (ServerFrame, error) {
 type PastOutside struct {
 	Agent     string `json:"agent"`
 	StartedAt string `json:"startedAt"`
+}
+
+// PastImported is a past task copied in from another app, read only (research/246):
+// its app and the source's own last day, and whether its folder is gone.
+type PastImported struct {
+	App      string `json:"app"`
+	Account  string `json:"account,omitempty"`
+	ThreadID string `json:"threadId"`
+	At       string `json:"at"`
+	Folder   string `json:"folder,omitempty"`
+	Gone     bool   `json:"gone,omitempty"`
 }
 
 // OutsideAgents are the agents whose own sessions Past tasks lists (D299).

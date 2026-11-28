@@ -117,6 +117,13 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       case "task_event": {
         const b = e.body as Bodies["task_event"];
         if (b.taskId && isStepEvent(b)) latest.set(b.taskId, slimStep(e)), lookedUp.add(b.taskId);
+        // D651 (research/246): an imported task's day is the source's, not when this home
+        // happened to copy it in. A later grown thread moves it to its newest message's time.
+        const c = b.taskId ? cards.get(b.taskId) : undefined;
+        if (c?.imported && b.at && b.at > c.updatedAt) {
+          c.updatedAt = b.at;
+          c.imported = { ...c.imported, at: b.at };
+        }
         break;
       }
       case "job_status": {
@@ -146,14 +153,16 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           ...(b.effort ? { effort: b.effort } : {}),
           bodyReason: b.bodyReason,
           ...(prev?.body ? { body: prev.body, harness: prev.body.harness, model: prev.body.model, effort: prev.body.effort } : {}),
-          attention: prev?.attention ?? "queued",
-          residency: prev?.residency ?? "provisioning",
+          attention: prev?.attention ?? (b.imported ? "done" : "queued"),
+          residency: prev?.residency ?? (b.imported ? "archived" : "provisioning"),
           reason: prev?.reason,
           lastReport: prev?.lastReport,
           pendingDecisionId: prev?.pendingDecisionId,
           pendingDecision: prev?.pendingDecision,
-          openedAt: prev?.openedAt ?? e.ts,
-          updatedAt: e.ts,
+          // D651 (research/246): an imported thread keeps the day it had in its own app.
+          openedAt: b.imported?.createdAt ?? prev?.openedAt ?? e.ts,
+          updatedAt: b.imported?.at ?? e.ts,
+          ...(b.imported ? { imported: b.imported } : {}),
           ...(prev?.until ? { until: prev.until } : {}),
           ...((prev?.fromRoutine ?? runOf.get(b.taskId)) ? { fromRoutine: prev?.fromRoutine ?? runOf.get(b.taskId) } : {}),
           // D128: the user opened it themselves (a retitle copies the body, so it stays).
@@ -289,7 +298,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         // D395: why it couldn't start, until it is started again.
         if (b.cant) c.cant = b.cant;
         else delete c.cant;
-        c.updatedAt = e.ts;
+        // D651 (research/246): an imported task's day is its source's; copying it in is not
+        // work done that day, so the closing state never moves it.
+        if (!c.imported) c.updatedAt = e.ts;
         break;
       }
       case "body_selected": {
@@ -419,6 +430,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       for (const c of cards.values()) {
         // A speculative open the partner replaced before it was briefed never was a task (D120).
         if (neverStarted(c)) continue;
+        // D651 (research/246): what another app had is read in Past tasks, never On hand,
+        // never a needs-you count, never done today.
+        if (c.imported) continue;
         const age = now - Date.parse(c.updatedAt);
         // D508: a finished task whose PR is open is not done: it waits on that PR (ready: on the person).
         const pr = c.attention === "done" || c.attention === "done_claimed" ? prGoesOn(c.prs) : undefined;

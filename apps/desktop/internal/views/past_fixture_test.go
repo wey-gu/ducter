@@ -20,6 +20,7 @@ type pastSeed struct {
 	mark                        *protocol.PastMark
 	original                    string
 	hit                         *protocol.PastHit
+	imported                    *protocol.PastImported
 }
 
 const day = 24 * time.Hour
@@ -77,6 +78,10 @@ func pastSeeds() []pastSeed {
 		{id: "t_plan", title: "想想 v2 的路线图", project: "ducter", harness: "claude-code", ago: 44*day + 2*time.Hour, att: d, outcome: "三个阶段：先把手机做完整，再做团队共享，最后开放插件。", kind: "idea"},
 		{id: "t_pay", title: "交这个季度的物业费", project: "", harness: "pi", ago: 46*day + 3*time.Hour, att: d, outcome: "交了 1860 元，收据存在了文件夹里。", kind: "errand"},
 		{id: "t_raft", title: "读一遍 Raft 论文里的成员变更", project: "hawdb", harness: "codex", ago: 48*day + 5*time.Hour, att: d, outcome: "整理了 joint consensus 的要点和我们实现里缺的两步。", kind: "look"},
+		// D651 (research/246): brought in from another app, read only; its own day and app.
+		{id: "t_imp_wal", title: "WAL 尾部损坏时怎么回放", project: "hawdb", harness: "codex", ago: 3*day + 2*time.Hour, att: d, outcome: "", kind: "look", imported: &protocol.PastImported{App: "Lody", ThreadID: "S-8f2a", At: pastNow.Add(-(3*day + 2*time.Hour)).UTC().Format(time.RFC3339)}},
+		{id: "t_imp_kyoto", title: "京都酒店和机票一起看", project: "", harness: "", ago: 4*day + 5*time.Hour, att: d, outcome: "", kind: "errand", imported: &protocol.PastImported{App: "Lody", ThreadID: "S-91c0", At: pastNow.Add(-(4*day + 5*time.Hour)).UTC().Format(time.RFC3339)}},
+		{id: "t_imp_old", title: "试一下旧的 parser", project: "old-thing", harness: "", ago: 9*day + 1*time.Hour, att: d, outcome: "", kind: "look", imported: &protocol.PastImported{App: "Lody", ThreadID: "S-77aa", At: pastNow.Add(-(9*day + 1*time.Hour)).UTC().Format(time.RFC3339), Gone: true}},
 	}
 }
 
@@ -85,7 +90,7 @@ func pastItems(seeds []pastSeed) []protocol.PastItem {
 	for _, s := range seeds {
 		at := pastNow.Add(-s.ago).UTC().Format(time.RFC3339)
 		it := protocol.PastItem{TaskID: s.id, Title: s.title, Project: s.project, Harness: s.harness, OpenedAt: at, UpdatedAt: at,
-			Attention: s.att, Outcome: s.outcome, Kind: s.kind, Mark: s.mark, Hit: s.hit}
+			Attention: s.att, Outcome: s.outcome, Kind: s.kind, Mark: s.mark, Hit: s.hit, Imported: s.imported}
 		if s.mark != nil && s.mark.Name != "" {
 			it.Title, it.Original = s.mark.Name, s.original
 		}
@@ -111,10 +116,12 @@ func pastResult(items []protocol.PastItem, id string) protocol.ServerFrame {
 			po = append(po, it.Project)
 		}
 		pn[it.Project]++
-		if hn[it.Harness] == 0 {
-			ho = append(ho, it.Harness)
+		if it.Harness != "" {
+			if hn[it.Harness] == 0 {
+				ho = append(ho, it.Harness)
+			}
+			hn[it.Harness]++
 		}
-		hn[it.Harness]++
 		if it.Mark != nil {
 			for _, tg := range it.Mark.Tags {
 				if tn[tg] == 0 {

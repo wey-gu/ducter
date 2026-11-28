@@ -157,6 +157,8 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
     it.branch ? <span class="pv-mono">{it.branch}</span> : null,
     it.computer,
     it.model ? `${harnessName(it.harness)} ${it.model}` : harnessName(it.harness),
+    it.imported?.app ? <span class="pint">{t("past.imp.from", it.imported.app)}</span> : null,
+    it.imported?.gone ? <span class="pint">{t("past.out.gone")}</span> : null,
     acts.dateOf(it.updatedAt),
   ];
   return (
@@ -173,7 +175,7 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
         )}
         <section class="pv-sec">
           <h4>{t("pv.result")}</h4>
-          <p class={`pv-report${it.attention === "failed" ? " failed" : ""}`}>{report || t("pv.noreport")}</p>
+          <p class={`pv-report${it.attention === "failed" ? " failed" : ""}`}>{report || (it.imported ? t("past.imp.note") : t("pv.noreport"))}</p>
         </section>
         {last && (
           <section class="pv-sec">
@@ -211,9 +213,10 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
       </div>
       <div class="pv-foot">
         <Btn kind="primary" size="sm" label={t("pv.open")} onClick={acts.open} />
-        {!acts.active && <Btn kind="secondary" size="sm" label={t("past.continue")} onClick={() => acts.carryOn()} />}
-        <Btn kind="secondary" size="sm" label={t("pv.redo.any")} onClick={() => startRedo(it)} />
-        <AgentMenu it={it} acts={acts} />
+        {!acts.active && !it.imported && <Btn kind="secondary" size="sm" label={t("past.continue")} onClick={() => acts.carryOn()} />}
+        {it.imported && <Btn kind="secondary" size="sm" label={t("past.seed")} onClick={() => acts.seed()} />}
+        {!it.imported && <Btn kind="secondary" size="sm" label={t("pv.redo.any")} onClick={() => startRedo(it)} />}
+        {!it.imported && <AgentMenu it={it} acts={acts} />}
       </div>
     </aside>
   );

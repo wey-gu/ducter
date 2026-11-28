@@ -71,7 +71,8 @@ const (
 	OriginSystem   Origin = "system"
 	OriginWaiter   Origin = "waiter"
 	OriginSchedule Origin = "schedule"
-	OriginPeer     Origin = "peer" // another agent, via Nowledge Bridge
+	OriginPeer     Origin = "peer"   // another agent, via Nowledge Bridge
+	OriginImport   Origin = "import" // read from another app and copied in (research/246)
 )
 
 type EvidenceRef struct {

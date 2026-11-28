@@ -384,6 +384,9 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 	}
 	if len(res.Facets.Harnesses) > 1 {
 		for _, h := range res.Facets.Harnesses {
+			if h.Harness == "" {
+				continue
+			}
 			chips = append(chips, chip{pastFilter{"harness", h.Harness}, harnessName(h.Harness), h.N})
 		}
 	}
@@ -399,7 +402,7 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 			more = append(more, chip{pastFilter{"computer", pc.Name}, name, pc.N})
 		}
 	}
-	for _, e := range []struct{ v, key string }{{"done", "past.ended.done"}, {"failed", "past.ended.failed"}, {"cancelled", "past.ended.cancel"}, {"on_hand", "past.ended.onhand"}} {
+	for _, e := range []struct{ v, key string }{{"done", "past.ended.done"}, {"failed", "past.ended.failed"}, {"cancelled", "past.ended.cancel"}, {"on_hand", "past.ended.onhand"}, {"imported", "past.ended.imported"}} {
 		more = append(more, chip{pastFilter{"ended", e.v}, a.L.T(e.key), 0})
 	}
 	for i, tg := range res.Facets.Tags {
@@ -886,8 +889,20 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			// D299: carried on from a session the person ran outside Ducter.
 			uiText(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
+		if imp := it.Imported; imp != nil {
+			// D651: from another app, read only; the app is the one emphasised fact, said once.
+			if imp.App != "" {
+				uiText(c.Key("imported"), a.L.T("past.imp.from", imp.App)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			}
+			if imp.Gone {
+				uiText(c.Key("imp-gone"), a.L.T("past.out.gone")).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			}
+		}
 		end, ink := "", t.InkMuted
 		switch {
+		case it.Imported != nil && it.Imported.App == "":
+			// D651: Brought in is the end filter's word; on a card only when the app is unknown.
+			end = a.L.T("past.end.imported")
 		case it.Attention == protocol.Failed:
 			end, ink = a.L.T("past.end.failed"), t.Failed.Ink
 		case it.Attention == protocol.Dropped:
@@ -939,6 +954,14 @@ func (a *App) pastActs(c *ui.Context, it *protocol.PastItem) {
 		if a.buttonFor(c, a.L.T("past.seed"), it.Title, btnText, t.ControlSM, t.Surface) {
 			a.pastSeed(it)
 		}
+		// D651 (research/246): what another app had is read only: Open, never Continue.
+		if it.Imported != nil {
+			if a.buttonFor(c, a.L.T("past.open"), it.Title, btnSecondary, t.ControlSM, t.Surface) {
+				a.pastOpen(it)
+			}
+			a.pastMore(c, it)
+			return
+		}
 		label := a.L.T("past.continue")
 		if pastActive(it.Attention) {
 			label = a.L.T("past.open")
@@ -960,17 +983,19 @@ func (a *App) pastMore(c *ui.Context, it *protocol.PastItem) {
 	b.Draw(drawMore(fg))
 	starred := it.Mark != nil && it.Mark.Starred
 	a.menuButton(c, b, func(m *ui.Menu) {
-		m.Submenu(a.L.T("past.other.agent"), func(m *ui.Menu) {
-			for _, h := range pastHarnesses {
-				if h == it.Harness {
-					continue
+		if it.Imported == nil {
+			m.Submenu(a.L.T("past.other.agent"), func(m *ui.Menu) {
+				for _, h := range pastHarnesses {
+					if h == it.Harness {
+						continue
+					}
+					if m.Item(a.L.T("past.with", harnessName(h))).Chosen() {
+						a.pastContinue(it, h)
+					}
 				}
-				if m.Item(a.L.T("past.with", harnessName(h))).Chosen() {
-					a.pastContinue(it, h)
-				}
-			}
-		})
-		m.Separator()
+			})
+			m.Separator()
+		}
 		if m.Item(a.L.T("past.rename")).Chosen() {
 			a.openMarks(it, true)
 		}
@@ -1018,6 +1043,11 @@ func (a *App) pastOpen(it *protocol.PastItem) {
 // pastContinue is 接着做 / Continue (with another agent when harness is set):
 // the same task goes back to work, and opens. Still going: it opens.
 func (a *App) pastContinue(it *protocol.PastItem, harness string) {
+	// D651 (research/246): a brought-in task is read only; a key or a menu only opens it.
+	if it.Imported != nil {
+		a.pastOpen(it)
+		return
+	}
 	if !pastActive(it.Attention) || harness != "" {
 		a.send(protocol.PastContinue{T: "past_continue", TaskID: it.TaskID, Harness: harness})
 	}

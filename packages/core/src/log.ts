@@ -242,7 +242,10 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
     forgetIn(seq, body) {
       // D327: the one exception to append-only. The person told Ducter to forget what it read from
       // outside the conversation (their agents' records) and showed them; their words and the
-      // partner's are never rewritten. The search indexes forget it too.
+      // partner's are never rewritten. D651 (research/246): content brought in from another
+      // app is the one further case — it is the person's own words said elsewhere, read from
+      // outside, so removing that source forgets them too (phase 2's removal). The search
+      // indexes forget it too.
       db.transaction(() => {
         db.prepare("UPDATE events SET body = ? WHERE seq = ?").run(JSON.stringify(body), seq);
         db.prepare("DELETE FROM events_fts WHERE rowid = ?").run(seq);

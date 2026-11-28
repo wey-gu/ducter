@@ -869,7 +869,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   let lastUser = 0;
   const waiters = new Map<string, Bodies["waiter"]>();
   // D391: earlier tasks over six weeks, found by task_find and redone by task_fork; their keys as seeded tasks'.
-  if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"))) idOf.set(k, id), keyOf.set(id, k);
+  if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"), { imported: !!sc.importedHistory })) idOf.set(k, id), keyOf.set(id, k);
   for (const s of sc.seed ?? []) {
     if ("user" in s) {
       // D652: a 这条不对 tap's id, as the client carries it (the person's own claim).

@@ -65,7 +65,10 @@ A card, at a glance what it was and how it ended:
   words matched** instead: **你说过 / You said**, **它说过 / It said**, **文件 / File**,
   **分支 / Branch**, **标签 / Tag**, **最初的要求 / The ask**, **原名 / Was**, with the words marked;
 - line three, small: project · agent · date · **+a −d** · 已合并 / 草稿 PR, and an ending other
-  than done: **没做成 / Didn't work**, **取消了 / Cancelled**, **还在手头 / Still on hand**.
+  than done: **没做成 / Didn't work**, **取消了 / Cancelled**, **还在手头 / Still on hand**;
+  D651: a task brought in from another app adds **从 {app} 带进来的 / From {app}** and, when
+  its folder isn't here, **文件夹不在了 / Folder gone**; **带进来的 / Brought in** is the end
+  filter's word (and a card's when the app isn't known).
 
 Hover (or the keys on it) lifts the card 2 pt with a deeper drop, and shows its actions.
 
@@ -79,6 +82,10 @@ Hover (or the keys on it) lifts the card 2 pt with a deeper drop, and shows its 
 | **带着它开新任务 / New task from this** | New task opens at the same place with a chip **带着「{name}」的发现 / With what "{name}" found**; the new task's brief is the person's words, then that task's reports, branch and files. The chip can be removed |
 | **标记 / Mark** | The marks popover |
 | **从这一步开新任务 / New task from this step** (D391) | On a step in 停在哪儿 / Where it stopped, or 从某一步开新任务… in the foot: a new task does that step again from what led up to it, its code from the last commit before it, any agent; the original stays (`sessions.md`) |
+
+A task brought in from another app (D651, research/246) offers **打开 / Open** and
+**带着它开新任务 / New task from this** only: never Continue, Continue with another agent, or a
+redo, because Ducter holds a copy and the conversation lives in the other app.
 
 ## Marks
 
@@ -222,6 +229,41 @@ talking (`routine_change`: pause, resume, run now, every, end). `#ongoing` opens
 - **The Mac's ⋯ is the clay menu (D421)**: 多久跑一轮 a submenu of the rhythms with the current one
   marked; 改时间 opens its own small sheet at the ⋯ (a time field has no place in a menu); 打开,
   标记, then 结束 in the failed ink.
+
+## 从别的 app 带进来的 / Brought in from another app (D651, research/246)
+
+Leaving an agent app shouldn't mean leaving its months of conversations. A reader prints
+`ducter-import/1` (JSON lines: a source, threads, messages, what was skipped, an end) and
+`reader | ducter import -` copies them in as read-only past tasks. The format, its limits and how
+to write a reader are in `docs/import.md`; the evidence and the mapping are in `research/246`.
+
+- **Checked once.** The validator in `packages/core/src/imports/format.ts` is the only reader of
+  the format: types, order, 256 KB a message, 200 characters a title, 20,000 messages a thread a
+  run, valid times not in the future. Unknown fields are dropped, an unknown `t` stops the stream,
+  and every text passes `redact()` before anything exists. A crashed stream keeps every whole
+  thread before it and drops the last, possibly cut-off one.
+- **Only core writes it.** `packages/core/src/imports/service.ts` is the one place imported events
+  are appended. One thread is one task: a deterministic id from `(app, account, threadId)`, a
+  `task_open` carrying `imported`, one `task_event` per message with the source's own `at` and
+  `importedId`, and a closing `task_state` at Done. Importing again finds the task and appends
+  only messages whose `importedId` isn't there; an edited message isn't updated and is counted as
+  skipped. One `import_run` per run says what it did (or where it stopped).
+- **Never attention.** `Origin "import"` is outside every partner wake; an imported task never
+  enters On hand, needs-you or done today. It reaches the partner only through `task_find`, in a
+  turn the person asked.
+- **Its own day.** Past tasks, ⌘K, the sort and time words use `task_event.at` (the source's time),
+  not when the copy was made.
+- **Its project.** `repo` when the reader has it; else the folder's origin remote; else the
+  folder's name, marked **文件夹不在了 / Folder gone**. No row is made in `projects.json`.
+- **Read only.** The card offers **打开 / Open** and **带着它开新任务 / New task from this**; never
+  Continue, Continue with another agent or a redo. Its one provenance fact is **从 {app} 带进来的 /
+  From {app}**, said once; **带进来的 / Brought in** is the end filter's word, and on a card only
+  when the app isn't known. The partner may find it with `task_find` and names the app when citing
+  it ("你 10 月在 Lody 里……"), but never sends to it.
+- **The words.** **导入 / Import** (the Settings pane, phase 2), **带进来 / Bring them in**,
+  **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in** (the end filter), **没有人替你检查过 / Nobody has
+  checked it for you** (a source outside Ducter's curated list, phase 3). "Plugin" lives only in
+  the CLI and developer docs.
 
 ## Edge cases
 

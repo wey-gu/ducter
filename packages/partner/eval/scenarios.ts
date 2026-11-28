@@ -400,6 +400,8 @@ export interface Scenario {
   memFiles?: "on" | "signed_out";
   /** D391: seed a heavy developer's earlier tasks (seed-history.ts): last week's compaction PR, last month's Rust build on haswell, a WAL task with four steps, two bloom-filter tasks. */
   history?: true;
+  /** D651: this scenario also seeds the one thread brought in from another app. */
+  importedHistory?: true;
   /** D381: lists the person pinned (said by the partner earlier, then pinned by a tap), with their ticks. */
   pinned?: { title: string; items: string[]; ticks?: string[] }[];
   /** D405: the person's apps already made (the first is the one a step's app names). */
@@ -3043,8 +3045,18 @@ export const scenarios: Scenario[] = [
     lang: "en",
     history: true,
     steps: [{ user: "pick the bloom filter one from last week back up" }],
-    expect: { opens: 0, called: [{ tool: "task_find" }], noSend: true, notCalled: ["task_fork"], msgs: [0, 1], maxChars: 260 },
+    expect: { opens: 0, called: [{ tool: "task_find" }], noSend: true, notCalled: ["task_fork"], msgs: [0, 2], maxChars: 260 },
     rubric: "Last week there were two bloom filter tasks: hawdb's false-positive rate (6 days ago, pi) and mem search's bloom filter memory (5 days ago). The user's words fit both equally. The partner looks (task_find), carries neither on and opens nothing, and asks which in one short English question naming both by what they were about (a choice each, or a decision card with two choices, is fine).",
+  },
+  {
+    id: "past-imported-readonly-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    importedHistory: true,
+    steps: [{ user: "上个月在 Lody 里问的京都酒店，那个对话还能接着做吗？" }],
+    expect: { msgs: [1, 2], maxChars: 400, notCalled: ["task_send", "task_fork"] },
+    rubric: "A thread about a Kyoto hotel and flights, brought in from Lody last month, is in Past tasks read only (imported: {app: Lody, day}). The user asks whether it can be carried on. The partner answers in one or two short Chinese messages: no, it was brought in from Lody and is read only (or a copy that can't be worked on); it may offer a new task if they want work now. It never sends to it, never redoes it, and never claims it can carry the thread itself on.",
   },
   // ---------- D383: 给你做的 / Made for you: found again from the conversation, shown as it is ----------
   {

@@ -32,6 +32,7 @@ import { cmdWorker, pickWay } from "./worker.ts";
 import { cmdUpdate } from "./update.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
 import { cmdMove } from "./move.ts";
+import { cmdImport } from "./import.ts";
 import { osText, versionsText, writeReport } from "./report.ts";
 import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
@@ -88,6 +89,7 @@ export function helpText(t: T): string {
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
     cmd("move", t("help.move")),
+    cmd("import", t("help.import")),
     cmd("uninstall", t("help.uninstall")),
     cmd("report", t("help.report")),
     cmd("update", t("help.update")),
@@ -594,6 +596,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
   fixEnv();
   const style = ansiStyle(Boolean(process.stdout.isTTY) && !process.env.NO_COLOR && !args.json);
   const ctx: Ctx = { args, t, style, host, port, dataDir, target: { kind: "local", port } };
+  // D651 (research/246): --check only reads the stream; it never needs a running home.
+  if (args.command === "import" && args.check)
+    return cmdImport({ t, target: ctx.target, dataDir, json: args.json, check: true, ...(args.rest?.[0] ? { path: args.rest[0] } : {}) });
   // The CLI itself: which Ducter it follows (D147).
   if (args.command === "connect") return cmdConnect({ t, style, dataDir, json: args.json, rest: args.rest ?? [], ...(args.code ? { code: args.code } : {}) });
   if (args.command === "disconnect") return cmdDisconnect({ t, style, dataDir, json: args.json });
@@ -647,6 +652,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
         return { ...(agents ? { agents } : {}), github: gh };
       },
     });
+  // D651 (research/246): `ducter import` hands a reader's stream to the home.
+  if (args.command === "import")
+    return cmdImport({ t, target: ctx.target, dataDir, json: args.json, check: false, ...(args.rest?.[0] ? { path: args.rest[0] } : {}) });
   host.writable(dataDir); // creates it; doctor reports if it can't
   host.pairedDevices = () => {
     try {

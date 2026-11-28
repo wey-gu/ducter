@@ -172,7 +172,8 @@ function open(it: PastItem) {
 }
 
 function carryOn(it: PastItem, harness?: string) {
-  if (ACTIVE.has(it.attention) && !harness) return open(it);
+  // D651 (research/246): what another app had is read only: Open, never Continue.
+  if (it.imported || (ACTIVE.has(it.attention) && !harness)) return open(it);
   A.send({ t: "past_continue", taskId: it.taskId, ...(harness ? { harness } : {}) });
   A.toast(t("past.continued", it.title));
   open(it);
@@ -297,6 +298,9 @@ export function Marked({ text, q }: { text: string; q: string }) {
 }
 
 function endWord(it: PastItem): string {
+  // D651: Brought in is the end filter's word. On a card the app's name is the fact; the ending
+  // is said there only when the app isn't known (the app pill would otherwise repeat it).
+  if (it.imported) return it.imported.app ? "" : t("past.end.imported");
   if (ACTIVE.has(it.attention)) return t("past.end.active");
   if (it.attention === "failed") return t("past.end.failed");
   if (it.attention === "dropped") return t("past.end.dropped");
@@ -322,6 +326,7 @@ function Card({ it, wide }: { it: PastItem; wide: boolean }) {
   const marking = P.markFor === it.taskId;
   const more = P.moreFor === it.taskId;
   const active = ACTIVE.has(it.attention);
+  const openOnly = active || !!it.imported;
   const end = endWord(it);
   const ch = it.changes;
   const meta = [it.project || t("past.other"), harnessName(it.harness), it.computer, dateOf(it.updatedAt)].filter(Boolean) as string[];
@@ -367,6 +372,8 @@ function Card({ it, wide }: { it: PastItem; wide: boolean }) {
             ) : null}
             {it.integrated && <span class="pint">{t(it.integrated.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft")}</span>}
             {it.outside && <span class="pint">{t("past.out.from", harnessName(it.outside.agent))}</span>}
+            {it.imported?.app && <span class="pint">{t("past.imp.from", it.imported.app)}</span>}
+            {it.imported?.gone && <span class="pint">{t("past.out.gone")}</span>}
             {it.from?.step && <span class="pfrom">{t("past.from.step", it.from.title, it.from.step)}</span>}
             {end && <span class={`pend${active ? " live" : ""}`}>{end}</span>}
           </span>
@@ -376,7 +383,7 @@ function Card({ it, wide }: { it: PastItem; wide: boolean }) {
         <button class={`pstar-btn${it.mark?.starred ? " on" : ""}`} aria-pressed={!!it.mark?.starred} aria-label={t(it.mark?.starred ? "past.unstar" : "past.star")} title={t(it.mark?.starred ? "past.unstar" : "past.star")} onClick={() => star(it)}>
           <StarMark on={!!it.mark?.starred} />
         </button>
-        <Btn kind="secondary" size="sm" label={t(active ? "past.open" : "past.continue")} onClick={() => carryOn(it)} />
+        <Btn kind="secondary" size="sm" label={t(openOnly ? "past.open" : "past.continue")} onClick={() => carryOn(it)} />
         <button class={`more-btn${more ? " open" : ""}`} aria-label={t("past.mark")} aria-expanded={more} onClick={() => ((P.moreFor = more ? "" : it.taskId), (P.markFor = ""), A.changed())}>
           ⋯
         </button>
@@ -396,13 +403,18 @@ function More({ it }: { it: PastItem }) {
       <MenuItem onClick={() => (shut(), seedFrom(it))}>
         {t("past.seed")}
       </MenuItem>
-      <MenuItem onClick={() => (shut(), startRedo(it))}>
-        {t("pv.redo.any")}
-      </MenuItem>
-      <MenuItem expanded={others} onClick={() => setOthers(!others)}>
-        {t("past.other.agent")}
-      </MenuItem>
-      {others &&
+      {!it.imported && (
+        <MenuItem onClick={() => (shut(), startRedo(it))}>
+          {t("pv.redo.any")}
+        </MenuItem>
+      )}
+      {!it.imported && (
+        <MenuItem expanded={others} onClick={() => setOthers(!others)}>
+          {t("past.other.agent")}
+        </MenuItem>
+      )}
+      {!it.imported &&
+        others &&
         harnesses.map((h) => (
           <MenuItem class="sub" key={h} onClick={() => (shut(), carryOn(it, h))}>
             {t("past.with", harnessName(h))}
@@ -514,7 +526,7 @@ function Chips() {
   const f = P.filter;
   const chips: { key: string; label: string; f: Filter }[] = [{ key: "all", label: t("past.all"), f: { kind: "all" } }, { key: "starred", label: t("past.starred"), f: { kind: "starred" } }];
   for (const p of (r?.facets.projects ?? []).slice(0, 6)) chips.push({ key: `p:${p.name}`, label: p.name || t("past.other"), f: { kind: "project", v: p.name } });
-  if ((r?.facets.harnesses.length ?? 0) > 1) for (const h of r!.facets.harnesses) chips.push({ key: `h:${h.harness}`, label: harnessName(h.harness), f: { kind: "harness", v: h.harness } });
+  if ((r?.facets.harnesses.length ?? 0) > 1) for (const h of r!.facets.harnesses) if (h.harness) chips.push({ key: `h:${h.harness}`, label: harnessName(h.harness), f: { kind: "harness", v: h.harness } });
   for (const g of (r?.facets.tags ?? []).slice(0, 8)) chips.push({ key: `t:${g.tag}`, label: `#${g.tag}`, f: { kind: "tag", v: g.tag } });
   const keyOf = (x: Filter) => (x.kind === "all" || x.kind === "starred" ? x.kind : `${x.kind[0]}:${x.v}`);
   const cur = keyOf(f);
@@ -545,7 +557,7 @@ function Chips() {
 function Narrow() {
   const computers = P.res?.facets.computers ?? [];
   const home = A.homeName || t("past.c.home");
-  const endings: NonNullable<PastQuery["ended"]>[] = ["done", "failed", "cancelled", "on_hand"];
+  const endings: NonNullable<PastQuery["ended"]>[] = ["done", "failed", "cancelled", "on_hand", "imported"];
   return (
     <div class="pchips narrow" role="group">
       {computers.length > 1 &&

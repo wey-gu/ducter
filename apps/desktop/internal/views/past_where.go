@@ -226,6 +226,10 @@ func (a *App) pastWhereBody(c *ui.Context, it *protocol.PastItem) {
 		a.pastWhereSection(c, "result", a.L.T("past.result"), func() {
 			uiText(c, keepWords(autospace(result))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.55).MaxLines(10).MinWidth(0)
 		})
+	} else if it.Imported != nil {
+		a.pastWhereSection(c, "result", a.L.T("past.result"), func() {
+			uiText(c, keepWords(autospace(a.L.T("past.imp.note")))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MinWidth(0)
+		})
 	}
 	if lw := strings.TrimSpace(it.LastWords); lw != "" && !strings.Contains(result, lw) {
 		a.pastWhereSection(c, "last", a.L.T("past.lastwords"), func() {
@@ -276,6 +280,12 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 		pill("branch", it.Branch, true)
 		pill("computer", it.Computer, false)
 		pill("agent", agent, false)
+		if imp := it.Imported; imp != nil {
+			pill("imported", a.L.T("past.imp.from", imp.App), false)
+			if imp.Gone {
+				pill("imp-gone", a.L.T("past.out.gone"), false)
+			}
+		}
 		pill("when", a.pastDate(store.ParseTime(it.UpdatedAt)), false)
 		if ch := it.Changes; ch != nil && (ch.Adds > 0 || ch.Dels > 0) {
 			ui.Row(c.Key("stat")).Gap(t.S1+1).Padding(2, t.S2).Shrink(0).Children(func() {
@@ -304,6 +314,9 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 func (a *App) pastEndWord(it *protocol.PastItem) (string, ui.Color) {
 	t := a.T
 	switch {
+	case it.Imported != nil && it.Imported.App == "":
+		// D651: Brought in is the end filter's word; here only when the app is unknown.
+		return a.L.T("past.end.imported"), t.InkMuted
 	case it.Attention == protocol.Failed:
 		return a.L.T("past.end.failed"), t.Failed.Ink
 	case it.Attention == protocol.Dropped:
@@ -372,11 +385,16 @@ func (a *App) pastWhereActs(c *ui.Context, it *protocol.PastItem) {
 			ps.sheet = false
 			a.pastOpen(it)
 		}
-		if !pastActive(it.Attention) && a.buttonFor(c, a.L.T("past.continue"), it.Title, btnSecondary, t.ControlSM, t.Surface) {
+		// D651 (research/246): an imported task is read only: Open and New task from this.
+		if it.Imported != nil && a.buttonFor(c, a.L.T("past.seed"), it.Title, btnText, t.ControlSM, t.Surface) {
+			ps.sheet = false
+			a.pastSeed(it)
+		}
+		if it.Imported == nil && !pastActive(it.Attention) && a.buttonFor(c, a.L.T("past.continue"), it.Title, btnSecondary, t.ControlSM, t.Surface) {
 			ps.sheet = false
 			a.pastContinue(it, "")
 		}
-		if a.buttonFor(c, a.L.T("past.redo.pick"), it.Title, btnText, t.ControlSM, t.Surface) {
+		if it.Imported == nil && a.buttonFor(c, a.L.T("past.redo.pick"), it.Title, btnText, t.ControlSM, t.Surface) {
 			ps.pickSteps = !ps.pickSteps
 		}
 		b := ui.Box(c.Key("other")).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(spoken(a.L, a.L.T("past.more"), it.Title)).
@@ -388,14 +406,16 @@ func (a *App) pastWhereActs(c *ui.Context, it *protocol.PastItem) {
 				ps.sheet = false
 				a.pastSeed(it)
 			}
-			m.Separator()
-			for _, h := range pastHarnesses {
-				if h == it.Harness {
-					continue
-				}
-				if m.Item(a.L.T("past.with", harnessName(h))).Chosen() {
-					ps.sheet = false
-					a.pastContinue(it, h)
+			if it.Imported == nil {
+				m.Separator()
+				for _, h := range pastHarnesses {
+					if h == it.Harness {
+						continue
+					}
+					if m.Item(a.L.T("past.with", harnessName(h))).Chosen() {
+						ps.sheet = false
+						a.pastContinue(it, h)
+					}
 				}
 			}
 		})

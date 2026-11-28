@@ -19,10 +19,19 @@ export interface SubjectCard {
   /** The subject's title in words (the hand-off's title, else the task's title). */
   title: string;
   state: SubjectState;
-  /** Its current state in one line (the task's latest report summary, first line, cut). */
+  /**
+   * The state in one line. While it works, the newest report's line (the gist). Once the partner
+   * has said the result, the concrete artifact (a merged PR, the report's evidence) — never the
+   * task's report summary, which is the partner's speech (D653 polish).
+   */
   line: string;
   /** The newest real progress while it works; absent when the line already says it. */
   progress?: string;
+  /**
+   * How long the work took, in ms, from its task's open to the final result the partner said.
+   * Its own element (never joined to the line); absent before the result, or under a minute.
+   */
+  took?: number;
   /** The task that keeps the card, so a row can open it. */
   taskId?: string;
   /** When this revision was made. */

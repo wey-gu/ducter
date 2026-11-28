@@ -19069,6 +19069,13 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
+/* D653 polish: how long the work took, a fact of its own under the result line. */
+.subject-took {
+  font-size: var(--xs);
+  line-height: 1.0625rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
 .subject-progress {
   font-size: var(--xs);
   line-height: 1.0625rem;

@@ -22,8 +22,10 @@ type SubjectCard struct {
 	State    string `json:"state"`
 	Line     string `json:"line"`
 	Progress string `json:"progress,omitempty"`
-	TaskID   string `json:"taskId,omitempty"`
-	At       string `json:"at"`
+	// The work's span in ms, from its task's open to the final result; its own element.
+	Took   int64  `json:"took,omitempty"`
+	TaskID string `json:"taskId,omitempty"`
+	At     string `json:"at"`
 }
 
 // SubjectCardBody is the body of a subject_card Log event.

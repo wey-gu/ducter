@@ -556,6 +556,12 @@ joined and the PR it works on are one subject: keyed by the task id, the hand-of
 `repo#n`, or the PR ref. The card hangs from the message that started the work (D426's card
 extended to a single task) and says its title in words, its state in one line (**在做 / Working**,
 **等你 / Needs you**, **做完了 / Done**, **没做成 / Didn't work**) and the newest real progress.
+The card is state, the message is speech: while the partner has not spoken for the work, the line is
+the newest progress gist; once the result is said, it is the concrete artifact and facts — the
+merged PR (`PR #578 合并了 / PR #578 merged`) or the report's evidence line — with how long it
+took (**用时 17 分钟 / took 17 min**) as its own element, never the report summary the partner just
+said. Core decides the line from structured facts (`packages/core/src/subjects.ts`), never by
+comparing sentences.
 Every report revises that one card in place; a report never becomes a message of its own. The
 partner hears a subject only at a needs-you, a first failure and the final verified result — once:
 a progress report never wakes it, a done report from a task still watching (an open PR, an armed

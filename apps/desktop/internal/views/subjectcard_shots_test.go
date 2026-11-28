@@ -34,7 +34,12 @@ func TestSubjectCardShots(t *testing.T) {
 			app := subjectShotApp(t, lang, before)
 			for _, w := range []int{1000, 1400} {
 				for _, dark := range []bool{false, true} {
-					tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+					// The before stage is the wall of lines: a taller window holds all of it.
+					h := 900
+					if before {
+						h = 1200
+					}
+					tt := ui.NewTesterWith(app.View, w, h, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 					tt.SetScale(2)
 					tt.SetDark(dark)
 					tt.Frame()
@@ -116,7 +121,7 @@ func subjectShotApp(t *testing.T, lang i18n.Lang, before bool) *App {
 			protocol.NewEvent(4, at(6), "default", "channel", protocol.OriginPartner, protocol.KindAIMsg, protocol.AIMsg{Text: said("合并了，线上下载按钮好了。", "Merged. The download button works now."), ReplyTo: 1}),
 			protocol.NewEvent(5, at(6), "default", "channel", protocol.OriginSystem, protocol.KindSubjectCard, protocol.SubjectCardBody{Card: protocol.SubjectCard{
 				Key: "pr:acme/site#578", MsgSeq: 1, Title: said("官网下载页的下载按钮", "The download button on our site"), State: protocol.SubjectDone,
-				Line: said("合并了，线上下载按钮好了。", "Merged. The download button works now."), TaskID: "fix", At: at(6),
+				Line: said("PR #578 合并了", "PR #578 merged"), Took: 17 * 60 * 1000, TaskID: "fix", At: at(6),
 			}}),
 		)
 	}

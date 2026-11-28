@@ -1046,8 +1046,14 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
       an agent that never wrote to Ducter (Mem's `contacts` lists no native session by name), and an Antigravity
       task on the real agent rather than the fake runner.
 - [x] A Claude Code or Codex task gets `agent_message` too: done as D494 (every task; the home receives for it).
-- [ ] Follow-through when a task's message gets no answer (today the task waits, its card says 在等…回话): one line
-      to the task, or to the person, after a while. Trigger: a task waits more than a day once.
+- [x] Follow-through when a task's message gets no answer: done as D656 (research/243 Brief D). One line
+      to the person after S3's windows, naming the task and who it waits on; its wait is the outgoing op and
+      settles on the answer or the task's end (`taskWaits`, `design/bridge.md` "Tasks Ducter carries messages
+      for"). The live trial's T1 gained the 2 h case.
+- [ ] **One real `bridge follow --json` answer, read only.** nmem 0.10.125 lists `follow` and its flags
+      (VERIFIED in help); the JSON the branch reads is INFERRED (`design/bridge.md`), and one real answer's fields
+      go into research before the shape is called verified. Trigger: the next live Bridge pass, with the
+      author's go; nothing is sent or opened, and the answer's body is not kept.
 - [ ] A new message (not an answer) from another agent that names a task ("tell the agy task on the CI fix…")
       offered to that task by the partner without a turn of its own. Trigger: it happens in the author's use.
 - [ ] **在 Nowledge Mem 里打开** opens that conversation (a `nowledgemem://` thread link). Trigger: Mem names one.

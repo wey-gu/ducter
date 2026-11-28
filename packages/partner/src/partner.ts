@@ -68,7 +68,7 @@ import { bridgeFor, bridgeKeyFor, createNmemBridge, MEM_TTL_MS, type BridgeClien
 import { HELPER_DAILY, HELPER_TAKE_MS, LOCAL_MSG, isHelperWork, type Helper } from "../../protocol/src/helpers.ts";
 import { helperQuestions } from "../../protocol/src/handoff.ts";
 import { paneName } from "../../protocol/src/settings-panes.ts";
-import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
+import { claimText, fixedOutcome, followCandidates, followGroup, followLine, foldOut, taskWaits, inQuiet, langOfRequest, lostLine, mayHaveGone, namesForUser, overAsks, peerAnswer, pingLine, recipientKey, whoForModel, whoForUser, PING_LATE_MS, PING_SAID_MS, AFTER_SEND_MS, CHECK_EVERY_MS, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, WAIT_RETRY_MS, WATCH_BACKOFF_MAX_MS, WATCH_BACKOFF_MS, WATCH_TRIES, WAIT_S, WAITING_EVERY_MS, STUCK_EVERY_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, THREADS_MAX, type MemoryClient, type MemoryHit, type MemWhy, type Replaced, type ThreadHit, type ThreadOpts } from "./memory.ts";
 import { withOutbox } from "./outbox.ts";
 import { AI_TOOLS, memSource } from "../../protocol/src/mem-source.ts";
@@ -5603,6 +5603,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.log.append({ stream: "channel", origin: "system", kind: "bridge_read", body: { opId, messageId, receipt } });
     }
   }
+  /** D656: a task that ended holds no wait: its questions are never followed through. */
+  const taskOver = (taskId: string) => {
+    const c = core.tasks.get(taskId);
+    return !!c && (FINISHED.has(c.attention) || c.attention === "dropped" || c.attention === "superseded");
+  };
+  /** A task this home still has and hasn't ended: only its questions are held or said. */
+  const taskLive = (taskId: string) => {
+    const c = core.tasks.get(taskId);
+    return !!c && !taskOver(taskId);
+  };
   function followThrough() {
     if (!bridge || closed) return;
     const t = now();
@@ -5611,12 +5621,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const at = lastUser.length ? Date.parse(lastUser[lastUser.length - 1]!.ts) : NaN;
     if (!(t - at <= FOLLOW_ACTIVE_MS)) return;
     // One agent at a time, never a burst of lines; D412: one line covers all that agent hasn't answered.
-    const group = followGroup(followCandidates(loggedBridge(), t));
+    // D656: a task's question is a wait of its own (one line per task per agent), dropped once
+    // the task ended.
+    const group = followGroup(followCandidates(loggedBridge(), t, taskLive));
     const due = group.at(-1);
     if (!due) return;
     // The user's own words that led to each card, when the Log has them.
     const cards = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 });
     const items = group.map((op) => {
+      if (op.last.by === "task") return { op, task: op.last.taskId ? core.tasks.get(op.last.taskId)?.title : undefined };
       const card = cards.find((e) => (e.body as Bodies["decision"]).decisionId === op.last.decisionId);
       const asked = card ? core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: card.seq, limit: 1 })[0] : undefined;
       return { op, asked: (asked?.body as Bodies["user_msg"] | undefined)?.text };
@@ -5626,6 +5639,92 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...due.last, direction: "out", state: "followed", text: line, ...(also.length ? { alsoFollowed: also } : {}) } });
     tellUser(line);
     stats.bridgeFollowed = (stats.bridgeFollowed ?? 0) + 1;
+    syncTaskWaits();
+  }
+
+  /**
+   * D656: the card's side of a task's wait record. While a task still holds an unanswered
+   * question and it rests, its card says 「在等{who}回话」; when the answer is logged or the task
+   * ends, the line goes. Read from the ops every check, so it settles by itself: nothing re-arms.
+   */
+  const waitLineBy = new Map<string, string>();
+  function syncTaskWaits() {
+    const waits = taskWaits(loggedBridge(), now(), taskLive);
+    const holding = new Set(waits.map((o) => o.last.taskId!));
+    // One line per task even with several questions to several agents: the oldest says who it
+    // waits on, and the one that answers next moves it on (no churn between them each check).
+    const byTask = new Map<string, OutOp>();
+    for (const op of waits) if (!byTask.has(op.last.taskId!)) byTask.set(op.last.taskId!, op);
+    for (const op of byTask.values()) {
+      const taskId = op.last.taskId!;
+      const c = core.tasks.get(taskId);
+      if (!c || c.attention !== "blocked" || c.residency === "hot") continue;
+      const lang = userLang() ?? NO_WORDS_YET;
+      const line = relayWaiting(lang, whoForUser({ ...op.last, label: op.last.to }, lang));
+      if (c.reason && c.reason !== line && c.reason !== waitLineBy.get(taskId)) continue; // another reason stays
+      waitLineBy.set(taskId, line);
+      if (c.reason !== line) core.tasks.setState(taskId, "blocked", c.residency, line);
+    }
+    // A line this code set, in either language, is the one to clear; after a restart the map is
+    // empty, so the task's own sent messages say whether the reason is ours (the answer arrived, or
+    // the task ended, while Ducter was down).
+    const evs = loggedBridge();
+    const ours = (taskId: string, reason: string) => {
+      for (const e of evs) {
+        const b = e.body;
+        if (b.direction !== "out" || b.by !== "task" || b.taskId !== taskId || !b.to) continue;
+        for (const lang of ["zh", "en"] as const) if (relayWaiting(lang, whoForUser({ ...b, label: b.to }, lang)) === reason) return true;
+      }
+      return false;
+    };
+    for (const [taskId, line] of waitLineBy) {
+      if (holding.has(taskId)) continue;
+      const c = core.tasks.get(taskId);
+      if (c && c.attention !== "working" && c.reason && (c.reason === line || ours(taskId, c.reason))) core.tasks.setState(taskId, c.attention, c.residency);
+      waitLineBy.delete(taskId);
+    }
+    for (const c of core.tasks.list()) {
+      if (c.attention !== "blocked" || !c.reason || holding.has(c.taskId) || waitLineBy.has(c.taskId)) continue;
+      if (ours(c.taskId, c.reason)) core.tasks.setState(c.taskId, c.attention, c.residency);
+    }
+  }
+
+  /**
+   * D656: the answers a waiting task's own original got, by `bridge follow` where the CLI
+   * lists it (nmem 0.10.125's help). One original a check, and only while the task rests on it:
+   * a task at work reads its answer on the inbox check as before. The answer's shape is INFERRED
+   * (`design/bridge.md`): when it isn't the one this branch reads, nothing is taken from it and the
+   * inbox finds the answer as it always did.
+   */
+  async function followTaskReplies(): Promise<BridgeMessage[]> {
+    if (!bridge?.follow || !bridge.canFollow) return [];
+    const waiting = taskWaits(loggedBridge(), now(), taskLive).filter((o) => {
+      const c = o.last.taskId ? core.tasks.get(o.last.taskId) : undefined;
+      return !!c && c.residency !== "hot" && !!o.last.operation;
+    });
+    const op = waiting[0];
+    if (!op) return [];
+    if (!(await bridge.canFollow().catch(() => false))) return [];
+    const got = await bridge.follow(op.last.operation!, op.last.space).catch(() => undefined);
+    if (!got?.ok || !got.adopted) return [];
+    // `follow` is one original: a reply that names the message it answers is taken, and the identity
+    // it came from is the one the task asked (the op's own record), so a sparse follow answer still
+    // names the agent as the person knows it. A message with no parent (the original itself, or a
+    // shape this branch doesn't know) is left alone: the inbox reads mail, not this.
+    const out: BridgeMessage[] = [];
+    for (const m of got.messages) {
+      const inReplyTo = m.inReplyTo;
+      if (!inReplyTo || !taskSentAs(inReplyTo)) continue;
+      out.push({
+        ...m,
+        inReplyTo,
+        from: op.last.to ?? m.from ?? op.last.contact ?? "another agent",
+        agent: m.agent ?? op.last.agent,
+        host: m.host ?? op.last.host,
+        mine: m.mine ?? op.last.mine,
+      });
+    }
+    return out;
   }
 
   let lastCheck = 0;
@@ -5777,8 +5876,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await recoverOutbox().catch(onError);
       const start = await startMark();
       if (!start || closed) return 0;
+      // D656: a task's answer is followed on the task's own wait where nmem has `bridge follow`
+      // (0.10.125+): one original a check, read without opening it. The inbox stays the path, and a
+      // follow that is missing or whose shape differs leaves the answer to the check below.
+      const followMsgs = await followTaskReplies();
       const known = new Set([...loggedBridge().filter((e) => e.body.direction === "in" && !mutedThenHeard(e.body, peers)).map((e) => e.body.messageId), ...start.skip]);
-      const r = await bridge.check(known);
+      const forInbox = new Set([...known, ...followMsgs.map((m) => m.messageId)]);
+      const r = await bridge.check(forInbox);
       if (!r.ok) setStuck(r.stuck ? r.code : undefined);
       if (!r.ok || closed) return 0;
       setStuck(undefined, r.stuckIn?.code);
@@ -5806,7 +5910,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       let first = r.messages.length > 0 && !loggedBridge().some((e) => e.body.direction === "in" && (!e.body.state || e.body.state === "held" || e.body.state === "ping"));
       const pings: { m: (typeof r.messages)[number]; body: Bodies["bridge_msg"]; reply: string }[] = [];
       const forTasks: { b: Bodies["bridge_msg"]; asked: Bodies["bridge_msg"] }[] = []; // D448
-      for (const m of [...r.messages, ...helperMail] as (BridgeMessage & { helper?: string })[]) {
+      for (const m of [...followMsgs, ...r.messages, ...helperMail] as (BridgeMessage & { helper?: string })[]) {
         if (known.has(m.messageId)) continue;
         known.add(m.messageId);
         // D418: an own agent named by its own words, and Mem's reply route for it, on every event about it.
@@ -5885,6 +5989,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (pings.length) await answerPings(pings).catch(onError);
       for (const x of forTasks) await intoTask(x.b, x.asked).catch(onError);
       if (!n) followThrough();
+      syncTaskWaits();
       await notYetPeers().catch(onError);
       return n;
     })().finally(() => {

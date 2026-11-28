@@ -147,8 +147,12 @@ describe("a task's message out: a card first, then Ducter sends it with the task
     // The task's own transcript says it went; its card waits for the answer, in the person's words.
     expect(fc.events.some((e) => e.kind === "task_event" && /sent to Codex/.test((e.body as Bodies["task_event"]).text ?? ""))).toBe(true);
     expect(card.attention).toBe("blocked");
-    // Not a claim, not owed, never followed through with the person (the task waits for it).
-    expect(followCandidates(fc.events, Date.parse("2026-11-09T14:00:00Z"))).toHaveLength(0);
+    // Not a claim and not owed; D656 (research/243 Brief D): the task's question now joins S3's
+    // follow-through, due at 2 h and never a moment before it (the task still waits for its answer).
+    const due = Date.parse("2026-11-09T14:00:00Z");
+    const question = followCandidates(fc.events, due)[0]!;
+    expect(question.last.taskId).toBe("t1");
+    expect(followCandidates(fc.events, Date.parse(question.sentTs!) + 2 * 3_600_000 - 1)).toHaveLength(0);
   });
 
   test("the answer goes into the task as a follow-up and never wakes the partner", async () => {

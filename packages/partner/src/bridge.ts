@@ -203,6 +203,20 @@ export interface BridgeClient {
   /** D400: whether this CLI's `bridge inbox` takes `--watch` (nmem 0.10.121: JSON lines, never acknowledges). */
   canWatch?(): Promise<boolean>;
   /**
+   * D656: whether this CLI lists `bridge follow` (nmem 0.10.125; read from its own `--help`
+   * once per nmem version, like `--wait` and `--watch`). False on every older CLI.
+   */
+  canFollow?(): Promise<boolean>;
+  /**
+   * D656: one original's replies by `bridge follow <operation>` (one scan, no `--wait`; it
+   * opens and acknowledges nothing). `space` is the Space it went out in: the follow runs with that
+   * Space's context when the home reads it, else the home's own (the CLI follows the operation's
+   * exact Space itself). `adopted: false` when the answer is not a shape this branch
+   * reads: the caller then keeps the inbox path. The JSON shape is INFERRED (`design/bridge.md`)
+   * until one real answer is read.
+   */
+  follow?(operation: string, space?: string): Promise<BridgeResult<{ messages: BridgeMessage[]; adopted: boolean }>>;
+  /**
    * D400: one `inbox --watch` child with that context (the home's when none is given), running until
    * `stop()`. Each JSON line it prints calls `onChange` (the caller runs its usual check; nothing is
    * opened here). `ended` resolves when the child exits: ok after `stop()`, else why it ended.
@@ -454,6 +468,46 @@ export function inboxShapeIn(help: string): InboxShape {
 export function waitBoundIn(text: string): number | undefined {
   const m = /\b\d+ is not in (\d+)\s*\.\.=?\s*(\d+)/.exec(text);
   return m ? Number(m[2]) : undefined;
+}
+
+/** D656: whether `bridge follow --help` answered as a real verb (nmem 0.10.125). */
+export const canFollowIn = (help: string): boolean => /follow/i.test(help);
+
+/**
+ * D656: the replies in one `bridge follow --json` answer. INFERRED: no real answer has been
+ * read yet (design/bridge.md, "The answer, read where nmem can follow it"). The shape this branch
+ * reads is `{ replies: [{message, in_reply_to, body, sender: {agent, host}, created_at_us}] }`,
+ * with `messages`/`incoming` as the same list under another name. Any answer with no reply whose
+ * body is there yields nothing and leaves the inbox path alone: an unseen shape is never guessed at.
+ */
+export function followMessagesIn(j: any): BridgeMessage[] {
+  const list = [j?.replies, j?.messages, j?.incoming].find((x) => Array.isArray(x)) as any[] | undefined;
+  if (!list) return [];
+  const out: BridgeMessage[] = [];
+  for (const it of list) {
+    const o = it && typeof it === "object" ? it : undefined;
+    if (!o) continue;
+    const nested = o.message && typeof o.message === "object" ? o.message : undefined;
+    const messageId = str(o.message) ?? str(o.message_id) ?? str(o.id) ?? str(nested?.id);
+    const text = str(o.body) ?? str(o.text) ?? str(o.message?.body) ?? str(nested?.body);
+    if (!messageId || !text) continue;
+    const inReplyTo = str(o.in_reply_to) ?? str(o.message?.in_reply_to) ?? str(o.reply_to) ?? str(nested?.in_reply_to);
+    const us = typeof o.created_at_us === "number" ? o.created_at_us : typeof nested?.created_at_us === "number" ? nested.created_at_us : undefined;
+    const sentAt = (us ? new Date(Math.floor(us / 1000)).toISOString() : undefined) ?? str(o.sent_at) ?? str(o.created_at) ?? str(nested?.created_at);
+    const agent = agentOf(o);
+    const space = str(o.space_id) ?? str(o.space?.id);
+    out.push({
+      messageId,
+      from: str(o.from) ?? agent ?? "another agent",
+      text: clip(text, MAX_TEXT),
+      ...(agent ? { agent } : {}),
+      ...(hostOf(o) ? { host: hostOf(o)! } : {}),
+      ...(inReplyTo ? { inReplyTo } : {}),
+      ...(sentAt ? { sentAt } : {}),
+      ...(space ? { space } : {}),
+    });
+  }
+  return out;
 }
 
 /**
@@ -973,6 +1027,24 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     })());
   };
   let waitCap: number | undefined; // D400: the bound a refused wait named
+  // D656: whether this nmem lists `bridge follow` (0.10.125), per version; the version is looked at again after 5 min.
+  const followBy = new Map<string, boolean>();
+  let followNow: Promise<boolean> | undefined;
+  let followAt = -Infinity;
+  const canFollowNow = (): Promise<boolean> => {
+    if (followNow && Date.now() - followAt < 5 * 60_000) return followNow;
+    followAt = Date.now();
+    return (followNow = (async () => {
+      const v = await run(["--version"], { whole: true });
+      if ("missing" in v || v.code !== 0) return false;
+      const version = (v.out || v.err).trim();
+      if (!followBy.has(version)) {
+        const h = await run(["follow", "--help"]);
+        followBy.set(version, !("missing" in h) && h.code === 0 && canFollowIn(`${h.out}\n${h.err}`));
+      }
+      return followBy.get(version)!;
+    })());
+  };
   const replyBy = new Map<string, string[]>(); // D400: Mem's reply argv prefix per message handle (this run)
   /** D418: Mem's reply argv for a message, from a fresh read of the inbox (its entry stays listed until it expires). */
   const routeFor = async (messageId: string): Promise<string[] | undefined> => {
@@ -1221,6 +1293,19 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     async canWatch() {
       const sh = await inboxShape();
       return !!sh && sh.watch && (sh.identity || !wideNow);
+    },
+    // D656: `follow <operation>` (nmem 0.10.125): one original, one scan, no `--wait`.
+    async canFollow() {
+      return canFollowNow();
+    },
+    async follow(operation, space) {
+      const r = await run(["follow", operation, "--max-pages", "3"], { ctx: ctxFor(space) });
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer." };
+      const messages = followMessagesIn(j);
+      // An answer whose shape this branch doesn't know is not adopted: the inbox finds the reply as before.
+      return { ok: true, messages, adopted: messages.length > 0 };
     },
     // D335 with D334: one long-poll per place's context, or (wide) one on the home's for every Space.
     waitContexts() {

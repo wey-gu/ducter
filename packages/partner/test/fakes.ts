@@ -68,9 +68,14 @@ export function fakeCore(clock: FakeClock, dataDir: string) {
       get: (id) => cards.get(id),
       list: () => [...cards.values()],
       onHand: () => ({ tasks: [...cards.values()], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 } }),
-      setState(id, attention, residency) {
+      setState(id, attention, residency, reason, _cant, waitsFor) {
         const c = cards.get(id);
-        if (c) Object.assign(c, { attention, residency });
+        if (!c) return;
+        c.attention = attention;
+        c.residency = residency;
+        c.reason = reason;
+        if (waitsFor) c.waitsFor = waitsFor;
+        else delete c.waitsFor;
       },
     },
     mcp: {

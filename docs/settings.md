@@ -412,7 +412,10 @@ your partner, in plain words, with when it last came at the right:
 
   A task your partner runs on pi can ask your other agents something either way: the first time it does,
   a card in your conversation shows which task, who it's for and the words, with **Send**; nothing goes
-  before you tap it, and the answer goes back into the task.
+  before you tap it, and the answer goes back into the task. While the task waits, its card says it is
+  waiting for that agent; if no answer comes, after two hours (only while you're around, never
+  during quiet hours) your partner says once that the task is still waiting, naming it. When the answer
+  comes, it goes into the task.
 
 **Your helpers** lists each helper's address, with **Open** to its page under **Tasks › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull

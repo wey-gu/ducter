@@ -37,6 +37,9 @@ func (a *App) stoppedWait(task *store.Task) bool {
 	if strings.HasPrefix(task.Reason(), "device:asleep:") {
 		return false // a computer that said it would sleep wakes by itself (D157)
 	}
+	if a.S.BridgeWaitFor(task.ID) != nil {
+		return false // D656: another agent's answer will come into it
+	}
 	// D467 round 4: one that went away (device:unreachable) for half an hour needs the person.
 	at := task.FinishedAt()
 	return !at.IsZero() && a.Now().Sub(at) >= stopAfter

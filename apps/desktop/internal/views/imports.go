@@ -580,8 +580,14 @@ func (a *App) importRepositories(c *ui.Context) {
 		for _, r := range v.Repositories {
 			a.importRepoRow(c, r)
 		}
-		a.textBlock(c, "import-repo-add", func() {
-			if st.addRepo {
+		// 加一个插件仓库 is the shared add row (a ＋ in the tile column, as every group's add, D273);
+		// pressed, the field opens in its place.
+		if !st.addRepo {
+			if a.addRow(c, "repo-add", a.L.T("imports.repo.add"), "") {
+				st.addRepo = true
+			}
+		} else {
+			a.textBlock(c, "import-repo-add", func() {
 				url := st.repoURL
 				ui.Column(c.Key("add")).Gap(t.S2).Children(func() {
 					uiText(c.Key("label"), a.L.T("imports.repo.field")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
@@ -598,16 +604,18 @@ func (a *App) importRepositories(c *ui.Context) {
 						}
 					})
 				})
-			} else if a.quietButton(c, "repo-add", a.L.T("imports.repo.add"), a.L.T("imports.repo.title"), false, 0) {
-				st.addRepo = true
-			}
-			if st.repoNotice != "" {
-				uiText(c.Key("repo-notice"), st.repoNotice).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Role(ui.RoleStatus)
-			}
-			if st.err["source"] != "" {
-				uiText(c.Key("err"), st.err["source"]).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
-			}
-		})
+			})
+		}
+		if st.repoNotice != "" || st.err["source"] != "" {
+			a.textBlock(c, "import-repo-said", func() {
+				if st.repoNotice != "" {
+					uiText(c.Key("repo-notice"), st.repoNotice).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Role(ui.RoleStatus)
+				}
+				if st.err["source"] != "" {
+					uiText(c.Key("err"), st.err["source"]).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Failed.Ink).Role(ui.RoleStatus)
+				}
+			})
+		}
 	})
 }
 
@@ -623,9 +631,14 @@ func (a *App) importRepoRow(c *ui.Context, r protocol.ImportRepository) {
 	}
 	a.textBlock(c, "repo:"+r.ID, func() {
 		if r.Official {
-			uiText(c.Key("name"), a.L.T("imports.repo.official")).FontSize(t.SM).FontWeight(700).LineHeight(a.leading(1.5))
-			uiText(c.Key("url"), r.URL).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Selectable()
-			uiText(c.Key("count"), count).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			// As the web: the name and its address as one row's words, the count at the right edge.
+			ui.Row(c.Key("official")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+					uiText(c.Key("name"), a.L.T("imports.repo.official")).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+					uiText(c.Key("url"), r.URL).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Selectable()
+				})
+				uiText(c.Key("count"), count).FontSize(t.SM).FontWeight(600).TextColor(t.InkMuted).Shrink(0)
+			})
 			return
 		}
 		uiText(c.Key("url"), r.URL).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.Ink).Selectable()

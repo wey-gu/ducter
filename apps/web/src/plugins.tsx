@@ -6,8 +6,8 @@ import { PEBBLE_TOKENS, type ThemesServerFrame, type ThemesView, type ThemeRow }
 import { words } from "@ducter/protocol/src/lang.ts";
 import { useEffect } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn } from "./controls.tsx";
-import { GRow, Waiting } from "./set-grid.tsx";
+import { Btn, LinkBtn } from "./controls.tsx";
+import { GFoot, GRow, Waiting } from "./set-grid.tsx";
 import { applyThemeTokens, currentMode } from "./theme.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -114,29 +114,62 @@ function ThemeRowRow({ r }: { r: ThemeRow }) {
   );
 }
 
-/** The installed themes, Pebble first (换回 Pebble always one tap away). */
-export function LookThemes() {
-  useEffect(() => {
-    if (A.S.welcomed) A.send({ t: "themes" });
-  }, [A.S.welcomed]);
-  const f = TH.frame;
-  const pebbleOn = f?.active === "pebble";
+/** The docs page that says how a look is added (`ducter plugin add`), for the pane's one way forward. */
+const PLUGINS_DOCS = "https://ducter.ai/docs/plugins";
+
+/** Pebble's row: in use, or 换回 Pebble / Back to Pebble as the one tap. */
+function PebbleRow({ on }: { on: boolean }) {
   return (
-    <section class="set">
-      <div class="set-card">
-        <GRow cls="flat" title={t("settings.look.themes")} line={t("settings.look.themes.note")}>
-          <span />
-        </GRow>
-        <GRow cls="flat" tile={<PebbleTile />} title="Pebble" line={pebbleOn ? t("theme.active") : t("settings.look.back.note")}>
-          {!pebbleOn && <Btn kind="secondary" size="sm" label={t("settings.look.back")} onClick={() => A.send({ t: "theme_set", id: "pebble" })} />}
-        </GRow>
-        {f?.themes.map((r) => <ThemeRowRow key={r.id} r={r} />)}
+    <GRow cls="flat" tile={<PebbleTile />} title="Pebble" line={on ? t("theme.active") : t("settings.look.back.note")}>
+      {!on && <Btn kind="secondary" size="sm" label={t("settings.look.back")} onClick={() => A.send({ t: "theme_set", id: "pebble" })} />}
+    </GRow>
+  );
+}
+
+/** The looks as one group (D673), titled above its card as every group is (D582, the Mac's
+ *  Look): Pebble first, then each installed look; with none installed, the card's foot says where
+ *  one will appear and how one is added. */
+function ThemesGroup({ foot, title }: { foot: boolean; title: string }) {
+  const f = TH.frame;
+  const rows = f?.themes ?? [];
+  return (
+    <section class="set themes-set">
+      <h3>{t(title)}</h3>
+      <p class="g-note">{t("settings.look.themes.note")}</p>
+      <div class="set-card chat-app g-group themes-card">
+        <PebbleRow on={!f || f.active === "pebble"} />
+        {rows.map((r) => (
+          <ThemeRowRow key={r.id} r={r} />
+        ))}
+        {foot && rows.length === 0 && (
+          <GFoot note={t("plugins.none")}>
+            <LinkBtn kind="text" size="sm" href={PLUGINS_DOCS} label={t("plugins.how")} />
+          </GFoot>
+        )}
       </div>
     </section>
   );
 }
 
-/** Settings › 插件 / Plugins: the lede and the looks as plugin rows. */
+/** The installed themes, Pebble first (换回 Pebble always one tap away). */
+export function LookThemes() {
+  useEffect(() => {
+    if (A.S.welcomed) A.send({ t: "themes" });
+  }, [A.S.welcomed]);
+  return <ThemesGroup foot={false} title="settings.look.themes" />;
+}
+
+/** What is true on Plugins now (D475: the head is the state, never what the pane is for). */
+export function pluginsSay(): string {
+  const f = TH.frame;
+  if (!f) return "";
+  const n = f.themes.length;
+  if (n === 0) return t("say.plugins.none");
+  return n === 1 ? t("say.plugins.one", activeThemeName()) : t("say.plugins.n", n, activeThemeName());
+}
+
+/** Settings › 插件 / Plugins: the head says what is installed (PaneSays); what plugins may do is
+ *  the pane's note; then the looks, Pebble first, with a way to add one when there are none. */
 export function PluginsSettings() {
   useEffect(() => {
     if (A.S.welcomed) A.send({ t: "themes" });
@@ -144,15 +177,9 @@ export function PluginsSettings() {
   const f = TH.frame;
   if (!f) return <Waiting text={t("imports.state.looking")} />;
   return (
-    <section class="set plugins">
-      <p class="small sub">{t("plugins.lede")}</p>
-      <div class="set-card">
-        <GRow cls="flat" title={t("plugins.theme.group")} line={t("settings.look.themes.note")}>
-          <span />
-        </GRow>
-        {f.themes.map((r) => <ThemeRowRow key={r.id} r={r} />)}
-        {f.themes.length === 0 && <p class="small muted">{t("settings.look.back.note")}</p>}
-      </div>
-    </section>
+    <>
+      <p class="small lede-note">{t("plugins.lede")}</p>
+      <ThemesGroup foot title="plugins.theme.group" />
+    </>
   );
 }

@@ -57,6 +57,8 @@ export const BRIDGE_CONNECTION_FILE = "bridge-connection.json";
 /** The first nmem with `bridge connections` (Mem PR #9996, in 0.10.118). */
 export const BRIDGE_CONNECT_SINCE = [0, 10, 118] as const;
 const PROBE_TTL_MS = 5 * 60_000;
+/** D664: a look again from Settings reads nmem at most this often (a pane opened twice in a row reads once). */
+export const LOOK_AGAIN_MS = 10_000;
 const ID = /^[a-z0-9][a-z0-9_.:-]{0,119}$/; // Mem's canonical Agent id (valid_agent_id)
 
 /** One kept connection: what Mem returned for the connect Ducter ran on the user's tap. */
@@ -401,6 +403,11 @@ export interface BridgeLink extends BridgeLinkApi {
   onlyHere(): Promise<void>;
   /** D324: reads Mem's list again (read-only) and drops this home's connection if another home ended it. */
   recheck(): Promise<void>;
+  /**
+   * D664: look at the home's Nowledge Mem again now (read-only: --version, status, passive setup,
+   * the connection list), past the probe's cache, at most once in LOOK_AGAIN_MS; a change is told.
+   */
+  lookAgain(): Promise<void>;
   disconnect(): Promise<void>;
   /** D225: puts in (or updates) the home's `nmem` with Mem's official route, on the user's tap. */
   installMem(): Promise<void>;
@@ -1048,6 +1055,13 @@ export function createBridgeLink(opts: {
         busy = undefined;
         changed();
       }
+    },
+    async lookAgain() {
+      if (busy || (probe && now() - probe.at < LOOK_AGAIN_MS) || (!probe && probeAt && now() - probeAt < LOOK_AGAIN_MS)) return;
+      const seen = () => JSON.stringify(probe ? { ...probe, at: 0 } : null);
+      const before = seen();
+      await look(true).catch(() => undefined);
+      if (seen() !== before) changed();
     },
     async recheck() {
       // D324: a connection another home ended (改由这台收 there) stops this home's checks at the next recheck.

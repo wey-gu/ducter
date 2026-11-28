@@ -199,7 +199,7 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   (the home connects by itself), what came and went first, one switch; identity, place and raw ids never shown
   (`bridge.md` "Simple, by who").
 
-North star: 好用 (one switch, one tap to forget, two setup steps); 顺滑 (asks in place, no dialogs);
+North star: 好用 (one switch, one tap to forget, one setup whose steps say what is true now, D664); 顺滑 (asks in place, no dialogs);
 赏心悦目 (the clay grid, small marks in the tile column, no hero card); 放心 (forget asks first and says
 whether Mem forgets or the line only leaves the list; nothing another tool saved can be deleted here);
 惊喜 (the memory is shared: what Claude Code saved shows up, by name).

@@ -26426,3 +26426,27 @@ button.fd-link,
   .filter-bar { gap: var(--s1); }
   .view-save-wrap { margin-left: 0; }
 }
+/* ---------- D664: one Nowledge Mem setup, its steps live (SetupStep, mem-setup.tsx) ---------- */
+.setup-steps { list-style: none; margin: 0; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4) var(--set-in, var(--s4)); }
+.setup-step .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.setup-step .grow { gap: 2px; }
+.setup-step .grow > :not(p):not(small):not(.sr-only) { margin-top: var(--s2); }
+.setup-step p { font-weight: 600; }
+.setup-step .grow small { display: block; font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); text-wrap: pretty; }
+.setup-step .grow > .btn { align-self: flex-start; }
+.setup-step .grow > .btn.text { margin-inline-start: -10px; }
+.setup-step .setup-mark { transition: background-color var(--snappy, 120ms) var(--ease), color var(--snappy, 120ms) var(--ease); }
+.setup-step.look-done .setup-mark { background: var(--done-surface); color: var(--done-ink); box-shadow: 0 2px 0 color-mix(in srgb, var(--done-ink) 22%, var(--done-surface)); }
+.setup-step.look-failed .setup-mark { background: var(--failed-surface); color: var(--failed-ink); box-shadow: 0 2px 0 color-mix(in srgb, var(--failed-ink) 22%, var(--failed-surface)); }
+.setup-step.look-now .setup-mark { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line-2), inset 0 0 0 1.5px var(--accent); }
+.setup-step.look-later p, .setup-step.look-later .setup-mark { color: var(--ink-muted); }
+.setup-step.look-later .setup-mark { box-shadow: none; }
+.setup-step.look-done p { color: var(--ink); }
+.setup-step.look-failed small.setup-why { color: var(--failed-ink); }
+.setup-step .setup-field { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s2); width: 100%; }
+.setup-step .setup-field > :first-child { flex: 1 1 14rem; min-width: 0; }
+.setup-step .setup-acts { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s2); width: 100%; }
+/* A quiet link in a step lines its words up with the step's text (its padding is for the hover, D554). */
+.setup-step .grow .btn.text { margin-inline-start: -10px; }
+.chat-head .setup-checking { display: inline-flex; align-items: center; gap: var(--s2); }
+@media (prefers-reduced-motion: reduce) { .setup-step .setup-mark { transition: none; } }

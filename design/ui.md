@@ -581,6 +581,7 @@ A new control is added to the set (and to this table) before it is used.
 | An agent's coin in a tray, and the socket | `coinTile`, `socketTile` (`devicecard.go`); `trayToken` (`loadout.go`) | `CoinButton`, `SocketButton` |
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
 | A card's foot that folds what can wait: how it's connected, its addresses, the one 断开 (D398) | `sheetFold` (`devguard.go`) | `Fold` |
+| A live step of a setup checklist (Nowledge Mem's setup, D664): its mark on the step number's sunken disc says how it stands (the number while next or later, the next one ringed in the accent; a drawn check on the done tint; the shared spinner while it runs or is looked at again; a drawn cross on the failed tint), its title, one line, then the next step's one action under the words; a later step muted with nothing to tap; its state also said in words for a screen reader | `setupStep` (`components.go`) | `SetupStep` |
 | An optional step as one framed row that opens in place (锁屏时也能借给任务 ›; D398) | `extraStep` (`devguard.go`) | `StepRow` |
 | A step's number in a short numbered sequence, a sunken disc (the lend sheet's three steps; a sign-in's two, D518) | `stepNumber` (`components.go`) | `StepNumber`; the lend sheet's `.lend-steps li::before` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |

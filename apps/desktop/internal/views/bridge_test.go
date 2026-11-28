@@ -55,7 +55,8 @@ func TestBridgeRow(t *testing.T) {
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.connect")} }},
 		{"install-need-pipx", TabMemory, protocol.BridgeView{State: "install_mem", Identity: "ducter", Home: "hel", Need: "pipx"},
 			func(L *i18n.Strings) []string {
-				return []string{L.T("bridge.mem.install.need.below", "hel"), L.T("bridge.retry")}
+				// D664: the setup's install step: the one step to do there, then 再看一次.
+				return []string{L.T("memsetup.nmem.how", "hel"), L.T("mem.health.again")}
 			},
 			func(L *i18n.Strings) []string { return []string{L.T("bridge.mem.install.go")} }},
 		{"update-pip", TabMemory, protocol.BridgeView{State: "update_mem", Identity: "ducter", Home: "hel", Version: "0.10.116", CanRun: true},

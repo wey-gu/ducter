@@ -471,6 +471,43 @@ export function StepRow({ mark, title, sub, open, onClick }: { mark: ComponentCh
 }
 
 /**
+ * D664: one live step of a setup checklist (Nowledge Mem's). Its mark on the step number's sunken
+ * disc says how it stands: the number while it is next or later, a drawn check when a fact says it
+ * is done, the shared spinner while it runs or is looked at again, a drawn cross in the failed ink.
+ * Its title, one line in its tone, then the next step's one action (children). A later step is
+ * muted and carries nothing. The state is said in words too (`state`), for a screen reader.
+ */
+export function SetupStep(p: { n: number; look: "done" | "now" | "failed" | "busy" | "later"; title: string; line?: string; state: string; children?: ComponentChildren }) {
+  return (
+    <li class={`chat-step setup-step look-${p.look}`} aria-busy={p.look === "busy" || undefined}>
+      <span class="chat-mark setup-mark" aria-hidden="true">
+        {p.look === "done" ? (
+          <svg width="14" height="14" viewBox="0 0 14 14">
+            <path d="M3 7.4l2.6 2.6L11 4.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        ) : p.look === "busy" ? (
+          <span class="spin sm" />
+        ) : p.look === "failed" ? (
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        ) : (
+          p.n
+        )}
+      </span>
+      <span class="grow">
+        <p>
+          <span class="sr-only">{p.state} </span>
+          {p.title}
+        </p>
+        {p.line && <small>{p.line}</small>}
+        {p.children}
+      </span>
+    </li>
+  );
+}
+
+/**
  * One line in a list of devices: clay, the name alone, and under it one short line: what it is
  * doing (14 小时前在线 / Online 14 hours ago), or a state word in its color with its dot; 有更新 a
  * fact of its own beside it (D291: never "iPhone · 14 小时前"). Each line ellipsizes on its own.

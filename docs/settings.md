@@ -319,15 +319,25 @@ What your partner remembers about you has its own section, **Memory**.
   quiet row under Nowledge Mem says so, with **Connect**. Nowledge Mem itself still reads as working:
   your partner's memory doesn't need it.
 - Without [Nowledge Mem](https://mem.nowledge.co), your partner still remembers your
-  conversation on its own. This section then says what Nowledge Mem adds and walks you through it
-  in two steps: **Install Nowledge Mem** (one tap puts it on the computer Ducter runs on) and
-  **Sign in to your Nowledge Mem**, which needs a Nowledge Mem account (**Sign up for Nowledge Mem**
-  takes you to its site if you don't have one yet): paste what Nowledge Mem copies when you click **Generate
-  connect link & copy prompt** under its **Settings › Connectors › Any AI agent**. Already use the Nowledge Mem app?
-  Open it on that computer and your partner finds it.
-- When the Nowledge Mem app on that computer is closed, the section says **Nowledge Mem isn't open**.
-  On a Mac, **Open Nowledge Mem** opens it for you; anything your partner noted meanwhile waits and
-  goes in once it's back.
+  conversation on its own. The **Nowledge Mem** group then says what Nowledge Mem adds and shows its
+  setup as a short list of steps, each saying how it stands right now: **Nowledge Mem is installed**
+  (on which computer, which version), **Signed in** (and where it keeps things), **Kept where only you
+  can see it**, and **In Nowledge Mem I'm** your partner's name. The next step not done has the one
+  thing to do on it: **Install** (one tap puts it on the computer Ducter runs on), a line to copy and
+  run when a small tool is missing, or the sign-in: paste what Nowledge Mem copies when you click
+  **Generate connect link & copy prompt** under its **Settings › Connectors › Any AI agent**, and tap
+  **Sign in** (it needs a Nowledge Mem account; **Sign up for Nowledge Mem** takes you to its site).
+  The steps after it stay grey until their turn. Already use the Nowledge Mem app? Open it on that
+  computer and your partner finds it.
+- The steps look again by themselves when you open the page and when you come back to it, so
+  something you did in Nowledge Mem or in a terminal shows at once; **Check again** looks right away.
+  When everything is done the group is one line, **Connected, on** the computer's name, with **Steps**
+  to see them again.
+- When the Nowledge Mem app on that computer is closed, the first step says **Nowledge Mem isn't
+  open**. On a Mac, **Open Nowledge Mem** opens it for you; anything your partner noted meanwhile waits
+  and goes in once it's back. A sign-in that stopped working, a Nowledge Mem that can't be reached or
+  is too old shows the same way, on its step, with its one fix.
+- **Agent messaging** shows the same group, with one more step: **Your agents can reach me**.
 
 ### What it remembered, in the conversation
 

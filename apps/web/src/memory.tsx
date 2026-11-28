@@ -19,10 +19,10 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
 import { ago, harnessName, keepClauses, receiptWords, spoken } from "./format.ts";
-import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memStateView, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type MemStateView, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
-import { CopyLine } from "./lend.tsx";
+import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memStateView, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemUpdate, type Thread } from "./mem-view.ts";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
+import { failedWhy, MemSetup, memSetupNow } from "./mem-setup.tsx";
 import { keepWhy } from "./mem-keep.tsx";
 import { openKeep } from "./keep.tsx";
 import { Avatar, Check } from "./views.tsx";
@@ -552,99 +552,68 @@ const agentWords = (ids: string[]) => {
 };
 
 /**
- * D375: Nowledge Mem's head, with what Mem's own doctor on the home says: one calm line when all is
- * well, else the one thing wrong in the failed ink and its one action (Update, Check again, Sign in
- * again with the link field in place, Connect by Mem's own command). Read in the background: until
- * the first answer it says "Connected" as before, and never holds the page.
+ * D554: an agent on the home without Mem's plugin is an offer under the setup, never Mem itself in
+ * the failed ink: 接上 runs Mem's own command for it (busy while it runs). D664: Mem's own trouble
+ * (signed out, out of reach, too old) is a step of the setup, with that step's one action.
  */
-function MemHealthHead({ b }: { b: BridgeView | undefined }) {
-  const [signing, setSigning] = useState(false);
-  const [link, setLink] = useState("");
+function MemPluginOffer() {
   const homeDv = A.devices?.find((d) => d.home);
-  const h = memHealthLook(A.mem?.health, b, homeDv?.harnesses ?? []);
-  const home = homeOf(b);
-  // D646: a state says the same line here as on Agent messaging and Overview, with its one action.
-  const sv = memStateView(A.mem, b, home, failedWhy(b?.detail));
-  let line = t("mem.app.on");
-  let tone: "done" | "bad" | undefined = "done";
-  let act: ComponentChildren = null;
-  if (sv && (sv.state === "signed_out" || sv.state === "unreachable" || sv.state === "old" || sv.state === "old_elsewhere")) {
-    (line = t(sv.line.key, ...sv.line.args)), (tone = sv.tone === "muted" ? undefined : "bad");
-    if (sv.action === "sign_in" && !signing) act = <Btn kind="primary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => setSigning(true)} />;
-    else if (sv.action === "check_again") act = <Btn kind="secondary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => A.checkMemHealth()} />;
-    else if (sv.action === "update") act = <Btn kind="secondary" size="sm" label={t(sv.act)} about="Nowledge Mem" onClick={() => A.installBridgeMem()} />;
-  } else if (h.look === "ok") line = t("mem.health.ok");
-  // D554: an agent without Mem's plugin is an offer under the head, never Mem itself in the failed ink.
+  const h = memHealthLook(A.mem?.health, A.bridge, homeDv?.harnesses ?? []);
   const p = h.look === "ok" ? h.plugin : undefined;
-  const who = p ? agentWords(p.agents) : "";
-  const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
-  const go = () => {
-    if (!link.trim()) return;
-    A.signInBridgeMem(link.trim());
-    setLink("");
-  };
+  if (!p) return null;
+  const who = agentWords(p.agents);
   return (
-    <>
-      <GHead tile={<MemTile faded={tone === "bad"} />} name="Nowledge Mem" line={line} tone={tone}>
-        {act}
-      </GHead>
-      {p && (
-        <GRow title={t("mem.health.plugin", who)} line={p.busy ? t("mem.health.plugin.busy", who) : keepClauses(t(p.agents.length === 1 ? "mem.health.plugin.why.one" : "mem.health.plugin.why"))}>
-          {p.busy ? <Btn kind="secondary" size="sm" busy label={t("mem.health.plugin.going")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => {}} /> : homeDv && <Btn kind="secondary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => p.agents.forEach((a) => A.installMem(homeDv.id, a))} />}
-        </GRow>
-      )}
-      {h.look === "signed_out" && signing && (
-        <GBlock>
-          <small class="mem-health-why">{t("mem.health.resign.how")}</small>
-          {why && <small class="mem-why">{why}</small>}
-          <label class="acct-field">
-            <span class="small">{t("bridge.mem.signin.link")}</span>
-            <textarea class="wmem-paste" rows={3} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterkeyhint="go" placeholder={t("bridge.mem.signin.ph")} value={link} onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) (e.preventDefault(), go()); }} />
-          </label>
-          <span class="mem-health-acts">
-            <Btn kind="primary" size="sm" disabled={!link.trim()} label={t("bridge.mem.signin.go")} about={home} onClick={go} />
-            <Btn kind="text" size="sm" label={t("memp.cancel")} about="Nowledge Mem" onClick={() => (setSigning(false), setLink(""))} />
-          </span>
-        </GBlock>
-      )}
-    </>
+    <GRow title={t("mem.health.plugin", who)} line={p.busy ? t("mem.health.plugin.busy", who) : keepClauses(t(p.agents.length === 1 ? "mem.health.plugin.why.one" : "mem.health.plugin.why"))}>
+      {p.busy ? <Btn kind="secondary" size="sm" busy label={t("mem.health.plugin.going")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => {}} /> : homeDv && <Btn kind="secondary" size="sm" label={t("mem.health.plugin.go")} about={spoken(A.L, who, "Nowledge Mem")} onClick={() => p.agents.forEach((a) => A.installMem(homeDv.id, a))} />}
+    </GRow>
   );
 }
 
-/** Nowledge Mem itself: connected, where it's kept, its name there, the one update worth a tap, the raw facts behind 详情. */
+/**
+ * Nowledge Mem itself (D664: the one setup group): its steps until all are done, then one calm line;
+ * where it's kept and its name there while the steps are folded (open, the steps say them), how much
+ * it holds, the one update worth a tap, the raw facts behind 详情.
+ */
 function MemLink({ b }: { b: BridgeView | undefined }) {
   const [more, setMore] = useState(false);
   const mem = A.mem;
   const u = memUpdate(b);
   const where = memWhere(b);
   return (
-    <Group class="mem-g" label="Nowledge Mem">
-      <MemHealthHead b={b} />
-      {where && <GRow title={t("mem.app.kept.title")} line={where} />}
-      {mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
-      {/* D582: the way to Mem goes under the count on a phone (it squeezed the count to four lines). */}
-      <GRow cls="act-under" title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
-        <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
-      </GRow>
-      <MemFilesRow />
-      {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
-      {peersPageShown() && (
-        <GRow cls="act-under" title={t("mem.peers.row", A.settings!.name)}>
-          <Btn kind="text" size="sm" chev label={t("mem.peers.go")} onClick={() => A.openSettings("peers")} />
-        </GRow>
+    <MemSetup
+      after={(stepsShown) => (
+        <>
+          <MemPluginOffer />
+          {!stepsShown && where && <GRow title={t("mem.app.kept.title")} line={where} />}
+          {!stepsShown && mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
+          {/* D582: the way to Mem goes under the count on a phone (it squeezed the count to four lines). */}
+          <GRow cls="act-under" title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
+            <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+          </GRow>
+          <MemFilesRow />
+          {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
+          {peersPageShown() && (
+            <GRow cls="act-under" title={t("mem.peers.row", A.settings!.name)}>
+              <Btn kind="text" size="sm" chev label={t("mem.peers.go")} onClick={() => A.openSettings("peers")} />
+            </GRow>
+          )}
+          {/* D664: an update Mem needs before it works is the setup's first step, not a row here. */}
+          {u && b && u.kind !== "needed" && u.kind !== "updating" && <MemUpdateRow u={u} b={b} />}
+          {/* D466: an agent's Nowledge Mem with a newer version out, or in more than once: one row each, asked in place. */}
+          <MemPluginRows />
+          {more && b && (
+            <GBlock>
+              <MemFacts b={b} />
+            </GBlock>
+          )}
+        </>
       )}
-      {u && b && <MemUpdateRow u={u} b={b} />}
-      {/* D466: an agent's Nowledge Mem with a newer version out, or in more than once: one row each, asked in place. */}
-      <MemPluginRows />
-      {more && b && (
-        <GBlock>
-          <MemFacts b={b} />
-        </GBlock>
-      )}
-      <GFoot note={b?.version ? t("mem.app.version", b.version) : ""}>
-        <Btn kind="text" size="sm" label={t("mem.details")} about="Nowledge Mem" expanded={more} onClick={() => setMore(!more)} />
-      </GFoot>
-    </Group>
+      foot={
+        <GFoot note={b?.version ? t("mem.app.version", b.version) : ""}>
+          <Btn kind="text" size="sm" label={t("mem.details")} about="Nowledge Mem" expanded={more} onClick={() => setMore(!more)} />
+        </GFoot>
+      }
+    />
   );
 }
 
@@ -667,122 +636,19 @@ function MemFilesRow() {
   );
 }
 
-const FACE = { missing: "idle", install: "idle", installing: "working", sign_in: "waiting", signing_in: "working" } as const;
-
-/**
- * Nowledge Mem's two steps on the home, each one tap in place (D225): put it in, then sign in with a
- * one-time link. Memory's first page and 和你的其他 agent 通信's (D332) walk the same steps.
- */
-export function MemSteps({ phase, b }: { phase: "install" | "installing" | "sign_in" | "signing_in"; b: BridgeView | undefined }) {
-  const [link, setLink] = useState("");
-  const [tried, setTried] = useState(false);
+/** Memory before Mem is there (D664: the one setup group): what Nowledge Mem is, then its steps. */
+function MemFirst({ b }: { b: BridgeView | undefined }) {
   const home = homeOf(b);
-  const installed = phase === "sign_in" || phase === "signing_in";
-  const busyIn = phase === "installing";
-  const busySign = phase === "signing_in";
-  const why = b?.signIn === "used" ? t("bridge.mem.signin.used") : b?.signIn === "bad" ? t("bridge.mem.signin.bad") : b?.signIn === "failed" ? t("bridge.mem.signin.failed", b.detail ?? "") : "";
-  const go = () => {
-    if (!link.trim() || busySign) return;
-    A.signInBridgeMem(link.trim());
-    setLink("");
-  };
   return (
-    <ol class="chat-steps">
-      <li class="chat-step">
-        <span class="chat-mark" aria-hidden="true">1</span>
-        <span class="grow">
-          <p>{installed ? t("mem.step.done") : t("mem.step.install")}</p>
-          {!installed && (
-            <>
-              <small>{busyIn ? t("bridge.mem.installing", home) : b?.canRun ? t("bridge.mem.install", home) : t(b?.cmd ? "bridge.mem.install.need.run" : "bridge.mem.install.need", home)}</small>
-              {b?.detail && !busyIn && <MemFailed detail={b.detail} kept={b.kept} install />}
-              {/* D432: the one line to run on the home, to copy, in place of a fold to open. */}
-              {!b?.canRun && !busyIn && (b?.cmd ? <CopyLine text={b.cmd} kind="line" /> : <MemMore label={t("bridge.mem.how")} text={t("bridge.mem.install.need.how")} />)}
-              {/* D404: a retry that meets the same missing tool says so, instead of the same words coming back. */}
-              {tried && !b?.canRun && !busyIn && <small class="mem-tried">{t("mem.retry.same")}</small>}
-              {!busyIn && <Btn kind={b?.canRun ? "primary" : "secondary"} size="sm" label={b?.canRun ? t("bridge.mem.install.go") : t("bridge.retry")} about={home} onClick={() => (setTried(!b?.canRun), A.installBridgeMem())} />}
-            </>
-          )}
-        </span>
-      </li>
-      <li class="chat-step">
-        <span class="chat-mark" aria-hidden="true">2</span>
-        <span class="grow">
-          <p>{t("mem.step.signin")}</p>
-          {/* D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account. */}
-          {!busySign && (
-            <>
-              <small>{t("mem.step.account", homeOf(b))}</small>
-              <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.step.account.go")} />
-            </>
-          )}
-          {installed && (
-            <>
-              {b?.done && <small class="mem-done">{t(`bridge.mem.done.${b.done}`, home)}</small>}
-              <small>{t("bridge.mem.signin", home)}</small>
-              {why && <small class="mem-why">{why}</small>}
-              <label class="acct-field">
-                <span class="small">{t("bridge.mem.signin.link")}</span>
-                <textarea class="wmem-paste" rows={3} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellcheck={false} enterkeyhint="go" placeholder={t("bridge.mem.signin.ph")} value={link} disabled={busySign} onInput={(e) => setLink((e.target as HTMLTextAreaElement).value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) (e.preventDefault(), go()); }} />
-              </label>
-              <Btn kind="primary" size="sm" disabled={busySign || !link.trim()} label={busySign ? t("bridge.mem.signin.busy") : t("bridge.mem.signin.go")} about={home} onClick={go} />
-            </>
-          )}
-        </span>
-      </li>
-    </ol>
-  );
-}
-
-/** Memory before Mem is there: a small empty state, then the setup as one group of steps. */
-function MemFirst({ phase, b }: { phase: Exclude<MemPhase, "on" | "off" | "closed">; b: BridgeView | undefined }) {
-  const home = homeOf(b);
-  const line = { missing: t("mem.setup.missing"), install: t("mem.setup.install", home), installing: t("mem.setup.installing"), sign_in: t("mem.setup.signin"), signing_in: t("mem.setup.signing") }[phase];
-  return (
-    <>
-      {/* D469: the page's head says it in the partner's voice (say.memory.first); no second hero. */}
-      <Group class="mem-g" label="Nowledge Mem">
-        <GHead tile={<MemTile faded />} name="Nowledge Mem" line={line} />
-        {/* D552: what Nowledge Mem is, before any step, in every phase (a fresh user meets the steps cold). */}
-        {/* D583: act-under, so on a phone its words keep the width (they stood in a 150-wide column). */}
+    <MemSetup
+      intro={
+        /* D552: what Nowledge Mem is, before any step (a fresh user meets the steps cold). D583: act-under. */
         <GRow cls="act-under" title={t("mem.app.learn")} line={t("mem.app.what")}>
           <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
         </GRow>
-        {phase !== "missing" && <MemSteps phase={phase} b={b} />}
-        <GFoot note={t("mem.setup.local", home || t("mem.setup.local.here"))} />
-      </Group>
-    </>
-  );
-}
-
-/** D329: what the closed app means, and the one way to open it, under the head (never squeezed beside it on a phone). */
-export function MemClosedWords({ b }: { b: BridgeView }) {
-  const home = homeOf(b);
-  // D646: one state table: the same title, line and action on Memory and Agent messaging.
-  const sv = memStateView(A.mem, b, home);
-  const line = sv ? t(sv.line.key, ...sv.line.args) : t("bridge.mem.closed.there", home);
-  return (
-    <GBlock>
-      <small class="mem-closed-line">{line}</small>
-      {sv?.action === "open_mem" && (
-        <span class="mem-closed-act">
-          <Btn kind="primary" size="sm" label={t(sv.act)} about={home} onClick={() => A.openBridgeMem()} />
-        </span>
-      )}
-    </GBlock>
-  );
-}
-
-/**
- * D329: the Nowledge Mem app on the home is closed: one line in place of the Nowledge Mem group, and
- * the way to open it when the home can (a Mac with the app); else where to open it.
- */
-export function MemClosed({ b }: { b: BridgeView }) {
-  return (
-    <Group class="mem-g" label="Nowledge Mem">
-      <GHead tile={<MemTile faded />} name={t("bridge.mem.closed")} />
-      <MemClosedWords b={b} />
-    </Group>
+      }
+      foot={<GFoot note={t("mem.setup.local", home || t("mem.setup.local.here"))} />}
+    />
   );
 }
 
@@ -795,23 +661,23 @@ export function MemoryPage() {
   if (phase === "closed")
     return (
       <>
-        {/* D646: the fix sits under the line that says it, never a card below. */}
-        {b && <MemClosed b={b} />}
+        {/* D646, D664: the closed app is the setup's first step, with its one way to open it; what Mem holds waits. */}
+        <MemSetup />
         <MemHead />
       </>
     );
-  if (phase !== "on") return <MemFirst phase={phase} b={b} />;
-  // D563: Mem's own trouble is fixed right under the line that says it, never a page below.
-  const trouble = memTrouble(A.mem, b, A.devices?.find((d) => d.home)?.harnesses ?? []);
+  if (phase !== "on") return <MemFirst b={b} />;
+  // D563, D664: while a step isn't done, the setup comes first: its fix sits under the line that says it.
+  const first = !memSetupNow(false).done;
   return (
     <>
-      {trouble && <MemLink b={b} />}
+      {first && <MemLink b={b} />}
       <MemHead />
       <MemAbout />
       <MemCheckSec />
       <MemRules />
       <MemTools />
-      {!trouble && <MemLink b={b} />}
+      {!first && <MemLink b={b} />}
     </>
   );
 }
@@ -1316,69 +1182,12 @@ function PeersProblem({ b, name }: { b: BridgeView; name: string }) {
       </GRow>
     );
   }
-  const sv = memStateView(A.mem, b, homeOf(b), failedWhy(b.detail));
-  return sv ? <MemProblemRow sv={sv} b={b} name={name} /> : null;
+  // D664: every Mem state is a step of the one setup group (mem-setup.tsx), not a row here.
+  return null;
 }
 
-/** D646: a refusal's name and who to ask in Mem, behind the shared 详情 disclosure (never a
- * browser's own summary triangle). */
-function MemStateFact({ text }: { text: string }) {
-  const [more, setMore] = useState(false);
-  return (
-    <>
-      <GFoot note="">
-        <Btn kind="text" size="sm" chev expanded={more} label={t("mem.details")} about="Nowledge Mem" onClick={() => setMore(!more)} />
-      </GFoot>
-      {more && (
-        <GBlock>
-          <small class="mem-why">{text}</small>
-        </GBlock>
-      )}
-    </>
-  );
-}
-
-/**
- * D646: one Mem problem on Agent messaging, from the shared state table: a title, one line, and
- * at most one action. The identity and who to tell in Mem stay behind 详情, so a refusal asks the
- * person to do something they can picture. The newer-Mem hint stays one quiet clause, never a second
- * button: the update itself is Memory's one action.
- */
-function MemProblemRow({ sv, b, name }: { sv: MemStateView; b: BridgeView; name: string }) {
-  const press = () => {
-    switch (sv.action) {
-      case "open_mem":
-        A.openBridgeMem();
-        break;
-      case "sign_in":
-        A.openSettings("memory");
-        break;
-      case "update":
-        A.installBridgeMem();
-        break;
-      case "check_again":
-      case "retry":
-        A.connectBridge();
-        break;
-    }
-  };
-  const newer = b.newer !== undefined && (sv.state === "failed" || sv.state === "refused" || sv.state === "unconfirmed");
-  const line = [t(sv.line.key, ...sv.line.args), newer ? t("peers.mem.newer") : ""].filter(Boolean).join(" ");
-  return (
-    <>
-      <GRow cls="act-under" tile={<CoinsTile faded />} title={t(sv.title.key, ...sv.title.args)} line={line}>
-        {sv.action !== "none" && <Btn kind="secondary" size="sm" label={t(sv.act)} about={name} onClick={press} />}
-      </GRow>
-      {sv.fact && <MemStateFact text={t(sv.fact.key, ...sv.fact.args)} />}
-    </>
-  );
-}
-
-/** D404: the home's own words for a failed connect (bridge-link.ts), said in the person's language, never raw. */
-export const FAILED_DETAILS: Record<string, string> = { "Mem answered with another identity or place": "bridge.failed.identity", "nmem didn't start": "bridge.failed.nostart" };
-export const failedLine = (d?: string): string => (!d ? "" : FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : t("bridge.failed", d));
-/** D646: a failed connect's reason alone, for the state table's line (the title already says 没连上). */
-export const failedWhy = (d?: string): string => (!d ? "" : FAILED_DETAILS[d] ? t(FAILED_DETAILS[d]!) : d);
+// D404, D646: the home's own words for a failed connect, kept with the setup that says them (mem-setup.tsx).
+export { FAILED_DETAILS, failedLine, failedWhy } from "./mem-setup.tsx";
 
 /** Whether 和你的其他 agent 通信 has anything to show yet (D332: by who; J6). */
 export const peersPageShown = () => A.peersAsked || peersShown(A.settings?.peers, A.bridge, A.S.channel.some((e) => e.peer), ownsAgents(A.ownAgents, A.devices ?? []));
@@ -1411,8 +1220,6 @@ export function PeersPage() {
     else A.setSettings({ peers: { ...p, reach: v ? "own" : "off" } });
     say("peers", t(v ? "said.peers.on" : "said.peers.off", name));
   };
-  const mem = b ? memPhase(true, A.mem, b) : "missing";
-  const upd = memUpdate(b);
   // D470: the switch is the page's first group (the partner's sentence above says how things stand).
   const head = phase !== "getting" && phase !== "none" && (
     <section class="set mem-sec">
@@ -1440,6 +1247,8 @@ export function PeersPage() {
           <PeersThreads name={name} threads={threads} p={p} />
           <PeersRules p={p} />
           {threads.length > 0 && <PeersTry name={name} />}
+          {/* D664: the setup, done, as one calm line at the foot (its steps one tap away). */}
+          <MemSetup mailbox />
         </>
       ) : (
         <>
@@ -1447,19 +1256,19 @@ export function PeersPage() {
           {head}
         </>
       )}
-      {phase === "getting" && b && (
-        <Group class="mem-g" label="Nowledge Mem">
-          <GHead tile={<MemTile faded />} name="Nowledge Mem" line={t("peers.mem.what")} />
-          {upd?.kind === "needed" || upd?.kind === "updating" ? <MemUpdateRow u={upd} b={b} /> : (mem === "install" || mem === "installing" || mem === "sign_in" || mem === "signing_in") && <MemSteps phase={mem} b={b} />}
-          <GFoot note={t("peers.mem.then")} />
-        </Group>
+      {/* D664: the one Nowledge Mem setup, the same group as Memory's, with the mailbox as its last step. */}
+      {(phase === "getting" || phase === "joining" || (phase === "problem" && b?.state !== "elsewhere")) && (
+        <MemSetup
+          mailbox
+          intro={
+            <GRow cls="act-under" title={t("mem.app.learn")} line={t("peers.mem.what")}>
+              <LinkBtn kind="secondary" size="sm" href={MEM_SITE} label={t("mem.app.open")} />
+            </GRow>
+          }
+          foot={phase === "getting" ? <GFoot note={t("peers.mem.then")} /> : undefined}
+        />
       )}
-      {phase === "joining" && (
-        <Group class="mem-g" label={t("settings.tab.peers")}>
-          <GRow tile={<Avatar size={40} state="working" />} title={t("peers.joining", name)} />
-        </Group>
-      )}
-      {phase === "problem" && b && (
+      {phase === "problem" && b?.state === "elsewhere" && (
         <Group class="mem-g" label={t("settings.tab.peers")}>
           <PeersProblem b={b} name={name} />
         </Group>

@@ -34,10 +34,10 @@ func (a *App) memoryPanel(c *ui.Context) {
 	a.partnerToast(c)
 	switch phase {
 	case "on":
-		// D563: Mem signed out, out of reach or too old is said at the top (D552) and fixed right
-		// under it: its group, with 重新登录 / 再看一次 / 更新, comes first, never a page below.
-		trouble := memTrouble(a.S.Mem, b, a.homeHarnesses())
-		if trouble {
+		// D563, D664: while a step of the setup isn't done (Mem signed out, out of reach, too old),
+		// the setup comes first, its fix under the line that says it; never a page below.
+		first := !a.memSetupNow(false).Done
+		if first {
 			a.memLink(c, b)
 		}
 		a.memHead(c, st)
@@ -45,17 +45,18 @@ func (a *App) memoryPanel(c *ui.Context) {
 		a.memCheck(c)
 		a.memRules(c)
 		a.memTools(c)
-		if !trouble {
+		if !first {
 			a.memLink(c, b)
 		}
 	case "off":
 		a.memHead(c, st)
 	case "closed":
-		// D646: the fix sits under the line that says it, never a card below.
-		a.memClosed(c, b)
+		// D646, D664: the closed app is the setup's first step, with its one way to open it; what
+		// Mem holds waits until it answers again.
+		a.memSetup(c, "mem-app", false, nil, nil, nil)
 		a.memHead(c, st)
 	default:
-		a.memFirst(c, phase, b)
+		a.memFirst(c, b)
 	}
 }
 
@@ -565,17 +566,17 @@ func (a *App) memWhere(b *protocol.BridgeView) string {
 	return ""
 }
 
-// memLink is Nowledge Mem itself: connected, where it's kept, its name
-// there, the one update worth a tap, and the raw facts behind 详情.
+// memLink is Nowledge Mem itself (D664: the one setup group): its steps until all are done, then
+// one calm line; where it's kept and its name there while the steps are folded (open, the steps say
+// them), how much it holds, the one update worth a tap, and the raw facts behind 详情.
 func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
-	t := a.T
 	m := a.S.Mem
-	a.group(c, "mem-app", "", "", func() {
-		a.memHealthHead(c, b)
-		if w := a.memWhere(b); w != "" {
+	a.memSetup(c, "mem-app", false, nil, func(stepsShown bool) {
+		a.memPluginOffer(c)
+		if w := a.memWhere(b); w != "" && !stepsShown {
 			a.tileRow(c, "mem-where", nil, a.L.T("mem.app.kept.title"), w, nil)
 		}
-		if m != nil && m.KeptUnder != "" {
+		if m != nil && m.KeptUnder != "" && !stepsShown {
 			a.tileRow(c, "mem-name", nil, a.L.T("mem.app.name.title"), a.L.T("mem.app.name.line", m.KeptUnder), nil)
 		}
 		// D321: how much Mem holds, and the door to all of it.
@@ -601,7 +602,8 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 				})
 			}
 		}
-		if u := memUpdate(b); u != nil {
+		// D664: an update Mem needs before it works is the setup's first step, not a row here.
+		if u := memUpdate(b); u != nil && u.Kind != "needed" && u.Kind != "updating" {
 			a.memUpdateRow(c, u, b)
 		}
 		// D466: an agent's Nowledge Mem with a newer version out, or in more
@@ -610,6 +612,7 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 		if a.memDetails {
 			a.textBlock(c, "mem-details", func() { a.memFacts(c, b) })
 		}
+	}, func() {
 		note := ""
 		if b != nil && b.Version != "" {
 			note = a.L.T("mem.app.version", b.Version)
@@ -621,7 +624,6 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 		})
 	})
 	a.saidLine(c, "memfiles")
-	_ = t
 }
 
 // memFilesRow is 做好的文件也存进 Nowledge Mem / Also keep files I make in
@@ -655,12 +657,10 @@ func (a *App) memFilesRow(c *ui.Context) {
 	}
 }
 
-// memHealthHead is Nowledge Mem's head with what Mem's own doctor on the home
-// says (D375): one calm line when all is well, else the one thing wrong in the
-// failed ink and its one action (更新, 再看一次, 重新登录 with the link field
-// in place, 接上 by Mem's own command). Until the first answer it says
-// "Connected" as before; the page never waits for it.
-func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
+// memPluginOffer is D554's offer under the setup: agents on the home without Mem's plugin, with
+// 接上 by Mem's own command (busy while it runs), never Mem itself in the failed ink. D664: Mem's
+// own trouble (signed out, out of reach, too old) is a step of the setup, with its one action.
+func (a *App) memPluginOffer(c *ui.Context) {
 	t := a.T
 	var health *protocol.MemHealth
 	if a.S.Mem != nil {
@@ -676,99 +676,31 @@ func (a *App) memHealthHead(c *ui.Context, b *protocol.BridgeView) {
 	if home != nil {
 		hs = home.Harnesses
 	}
-	h := memHealthLook(health, b, hs)
-	homeName := a.memHome()
-	why := ""
-	if b != nil {
-		why = a.failedWhy(b.Detail)
+	h := memHealthLook(health, a.S.Bridge, hs)
+	if h.Look != "ok" || len(h.Agents) == 0 {
+		return
 	}
-	// D646: a state says the same line here as on Agent messaging and Overview, with its one action.
-	sv := memStateOf(a.S.Mem, b, homeName, why)
-	line, tone := a.L.T("mem.app.on"), sideDone
-	var act func()
-	if sv != nil && (sv.State == "signed_out" || sv.State == "unreachable" || sv.State == "old" || sv.State == "old_elsewhere") {
-		line, tone = a.memWord(sv.Line), sideFailed
-		switch sv.Action {
-		case "sign_in":
-			if !a.memReSign {
-				act = func() {
-					if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnPrimary, t.ControlSM, t.Surface) {
-						a.memReSign = true
-					}
-				}
-			}
-		case "check_again":
-			act = func() {
-				if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.MemHealthReq{T: "mem_health"})
-				}
-			}
-		case "update":
-			act = func() {
-				if a.buttonFor(c, a.L.T(sv.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) && b != nil {
-					b.State = "updating"
-					a.send(protocol.BridgeAction{T: "bridge_mem_install"})
+	who := a.memAgentsWords(h.Agents)
+	about := spoken(a.L, who, "Nowledge Mem")
+	sub := a.L.T("mem.health.plugin.why")
+	if len(h.Agents) == 1 {
+		sub = a.L.T("mem.health.plugin.why.one") // D556: 它 for one agent, 它们 for two
+	}
+	var ctl func()
+	if h.Busy {
+		sub = a.L.T("mem.health.plugin.busy", who)
+		c.After(500e6)
+		ctl = func() { a.busyButton(c, a.L.T("mem.health.plugin.going"), about, t.ControlSM, t.Surface) }
+	} else if home != nil {
+		ctl = func() {
+			if a.buttonFor(c, a.L.T("mem.health.plugin.go"), about, btnSecondary, t.ControlSM, t.Surface) {
+				for _, x := range h.Agents {
+					a.installMem(home.ID, x)
 				}
 			}
 		}
-	} else if h.Look == "ok" {
-		line = a.L.T("mem.health.ok")
 	}
-	a.headRow(c, "mem-app", a.memTile(c, tone == sideFailed), "Nowledge Mem", line, tone, act)
-	// D554: an agent without Mem's plugin is an offer under the head, never
-	// Mem itself in the failed ink.
-	if h.Look == "ok" && len(h.Agents) > 0 {
-		who := a.memAgentsWords(h.Agents)
-		about := spoken(a.L, who, "Nowledge Mem")
-		sub := a.L.T("mem.health.plugin.why")
-		if len(h.Agents) == 1 {
-			sub = a.L.T("mem.health.plugin.why.one") // D556: 它 for one agent, 它们 for two
-		}
-		var ctl func()
-		if h.Busy {
-			sub = a.L.T("mem.health.plugin.busy", who)
-			c.After(500e6)
-			ctl = func() { a.busyButton(c, a.L.T("mem.health.plugin.going"), about, t.ControlSM, t.Surface) }
-		} else if home != nil {
-			ctl = func() {
-				if a.buttonFor(c, a.L.T("mem.health.plugin.go"), about, btnSecondary, t.ControlSM, t.Surface) {
-					for _, x := range h.Agents {
-						a.installMem(home.ID, x)
-					}
-				}
-			}
-		}
-		a.tileRow(c, "mem-plugin", nil, a.L.T("mem.health.plugin", who), keepClauses(sub), ctl) // D556: never 「上。」 alone
-	}
-	if h.Look == "signed_out" && a.memReSign {
-		a.textBlock(c, "mem-resign", func() {
-			help := a.L.T("mem.health.resign.how") // D375: its own line, not the first sign-in's
-			if b != nil {
-				switch b.SignIn {
-				case "used":
-					help += "\n" + a.L.T("bridge.mem.signin.used")
-				case "bad":
-					help += "\n" + a.L.T("bridge.mem.signin.bad")
-				case "failed":
-					help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
-				}
-			}
-			a.note(c, help)
-			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, a.L.T("bridge.mem.signin.ph"), "")
-				})
-				if a.buttonFor(c, a.L.T("bridge.mem.signin.go"), homeName, btnPrimary, t.ControlMD, t.Surface) && strings.TrimSpace(a.bridgeLink) != "" && b != nil {
-					b.State = "signing_in"
-					a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
-					a.bridgeLink, a.memReSign = "", false
-				}
-				if a.buttonFor(c, a.L.T("memp.cancel"), "Nowledge Mem", btnText, t.ControlMD, t.Surface) {
-					a.bridgeLink, a.memReSign = "", false
-				}
-			})
-		})
-	}
+	a.tileRow(c, "mem-plugin", nil, a.L.T("mem.health.plugin", who), keepClauses(sub), ctl) // D556: never 「上。」 alone
 }
 
 // memFacts is the literal facts for support, selectable, in mono.
@@ -872,157 +804,26 @@ func (a *App) memUpdateRow(c *ui.Context, u *memUpd, b *protocol.BridgeView) {
 	a.tileRow(c, "mem-update", tile, title, line, control)
 }
 
-// memClosed is D329's one line when the Nowledge Mem app on the home is
-// closed: what it means, and the way to open it when the home can.
-func (a *App) memClosed(c *ui.Context, b *protocol.BridgeView) {
+// memFirst is Memory before Mem is there (D664: the one setup group): what Nowledge Mem is, then
+// its steps, the local app's way as its note.
+func (a *App) memFirst(c *ui.Context, b *protocol.BridgeView) {
 	t := a.T
 	home := a.memHome()
-	// D646: one state table: the same title, line and action on Memory and Agent messaging.
-	sv := memStateOf(a.S.Mem, b, home, "")
-	line := a.L.T("bridge.mem.closed.there", home)
-	var control func()
-	if sv != nil {
-		line = a.memWord(sv.Line)
-		if sv.Action == "open_mem" {
-			control = func() {
-				if a.buttonFor(c, a.L.T(sv.Act), home, btnSecondary, t.ControlSM, t.Surface) {
-					a.send(protocol.BridgeAction{T: "bridge_mem_open"})
-				}
-			}
-		}
-	}
-	a.group(c, "mem-closed", "", "", func() {
-		a.headRow(c, "mem-closed", a.memTile(c, true), a.L.T("bridge.mem.closed"), line, sideMuted, control)
-	})
-}
-
-// memFirst is Memory before Mem is there: a small empty state on the paper
-// (the partner with its notebook, what it would give), then the setup as
-// one group of steps, the local app's way as its note.
-func (a *App) memFirst(c *ui.Context, phase string, b *protocol.BridgeView) {
-	t := a.T
-	home := a.memHome()
-	// D469: the pane's head says it in the partner's voice (say.memory.first); no second hero.
-	line := map[string]string{
-		"missing":    a.L.T("mem.setup.missing"),
-		"install":    a.L.T("mem.setup.install", home),
-		"installing": a.L.T("mem.setup.installing"),
-		"sign_in":    a.L.T("mem.setup.signin"),
-		"signing_in": a.L.T("mem.setup.signing"),
-	}[phase]
-	a.group(c, "mem-setup", "", "", func() {
-		a.headRow(c, "mem-setup", a.memTile(c, true), "Nowledge Mem", line, sideMuted, nil)
+	a.memSetup(c, "mem-setup", false, func() {
 		// D552: what Nowledge Mem is, before any step, in every phase.
 		a.tileRow(c, "mem-what", nil, a.L.T("mem.app.learn"), a.L.T("mem.app.what"), func() {
 			if a.button(c, a.L.T("mem.app.open"), btnSecondary, t.ControlSM, t.Surface) {
 				a.openLink(memSite)
 			}
 		})
-		if phase != "missing" {
-			a.memSteps(c, phase, b)
-		}
+	}, nil, func() {
 		where := home
 		if where == "" {
 			where = a.L.T("mem.setup.local.here")
 		}
 		a.footRow(c, "mem-local", a.L.T("mem.setup.local", where), nil)
 	})
-}
-
-// memSteps is Nowledge Mem's two steps on the home, each one tap in place
-// (D225): put it in, then sign in with a one-time link. Memory's first page
-// and 和你的其他 agent 通信's (D332) walk the same steps.
-func (a *App) memSteps(c *ui.Context, phase string, b *protocol.BridgeView) {
-	t := a.T
-	home := a.memHome()
-	installed := phase == "sign_in" || phase == "signing_in"
-	a.chatBody(c, "mem-steps", func() {
-		// 1. Install.
-		if installed {
-			a.chatStep(c, 1, a.L.T("mem.step.done"), nil)
-		} else {
-			a.chatStep(c, 1, a.L.T("mem.step.install"), func() {
-				busy := phase == "installing"
-				help := a.L.T("bridge.mem.install", home)
-				switch {
-				case busy:
-					help = a.L.T("bridge.mem.installing", home)
-				case b != nil && !b.CanRun && b.Cmd != "":
-					help = a.L.T("bridge.mem.install.need.run", home) // D432: the one line to run, to copy, under the words
-				case b != nil && !b.CanRun:
-					help = a.L.T("bridge.mem.install.need.below", home) + "\n" + a.L.T("bridge.mem.install.need.how") // D399: the Mac has no 怎么装 fold; the step is right below
-				}
-				if b != nil && b.Detail != "" && !busy {
-					help += "\n" + a.memFailed(true, home, b.Detail, b.Kept)
-				}
-				// D404: a retry that meets the same missing tool says so.
-				if a.settings.memTried && b != nil && !b.CanRun && !busy {
-					help += "\n" + a.L.T("mem.retry.same")
-				}
-				a.note(c, help)
-				if busy {
-					return
-				}
-				if b != nil && !b.CanRun && b.Cmd != "" {
-					a.lendCopy(c, "mem-cmd", b.Cmd, "line")
-				}
-				label, kind := a.L.T("bridge.mem.install.go"), btnPrimary
-				if b == nil || !b.CanRun {
-					label, kind = a.L.T("bridge.retry"), btnSecondary
-				}
-				ui.Row(c).Children(func() {
-					if a.buttonFor(c, label, home, kind, t.ControlSM, t.Surface) && b != nil {
-						a.settings.memTried = !b.CanRun
-						b.State = "installing"
-						a.send(protocol.BridgeAction{T: "bridge_mem_install"})
-					}
-				})
-			})
-		}
-		// 2. Sign in.
-		a.chatStep(c, 2, a.L.T("mem.step.signin"), func() {
-			// D554: a fresh user learns here, before anything else, that this needs a Nowledge Mem account.
-			if phase != "signing_in" {
-				a.note(c, a.L.T("mem.step.account", home))
-				if a.quietLink(c, "mem-account", a.L.T("mem.step.account.go"), a.L.T("mem.step.account.go")) {
-					a.openLink(memSite)
-				}
-			}
-			if !installed {
-				return
-			}
-			busy := phase == "signing_in"
-			help := a.L.T("bridge.mem.signin", home)
-			if b != nil {
-				if b.Done != "" {
-					help = a.L.T("bridge.mem.done."+b.Done, home) + "\n" + help
-				}
-				switch b.SignIn {
-				case "used":
-					help += "\n" + a.L.T("bridge.mem.signin.used")
-				case "bad":
-					help += "\n" + a.L.T("bridge.mem.signin.bad")
-				case "failed":
-					help += "\n" + a.L.T("bridge.mem.signin.failed", b.Detail)
-				}
-			}
-			a.note(c, help)
-			ui.Row(c).Gap(t.S2).AlignItems(ui.End).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-					a.field(c, "bridge-link", a.L.T("bridge.mem.signin.link"), &a.bridgeLink, a.L.T("bridge.mem.signin.ph"), "")
-				})
-				label := a.L.T("bridge.mem.signin.go")
-				if busy {
-					label = a.L.T("bridge.mem.signin.busy")
-				}
-				if a.buttonFor(c, label, home, btnPrimary, t.ControlMD, t.Surface) && !busy && strings.TrimSpace(a.bridgeLink) != "" && b != nil {
-					b.State = "signing_in"
-					a.send(protocol.BridgeMemSignIn{T: "bridge_mem_sign_in", Link: strings.TrimSpace(a.bridgeLink)})
-					a.bridgeLink = ""
-				}
-			})
-		})
-	})
+	_ = b
 }
 
 // askAboutMe goes back to the conversation with 你都记得我些什么？ in the

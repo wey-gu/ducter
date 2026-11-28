@@ -18,8 +18,9 @@ test("the missing tool's line says the same on both clients, and names one comma
   expect(pipxCmd("darwin")).toBe("brew install pipx");
   expect(pipxCmd("linux")).toBe("sudo apt install pipx");
   // Shown to copy, never two systems in one sentence.
-  expect(src("../src/memory.tsx")).toContain("<CopyLine text={b.cmd}");
-  expect(src("../../desktop/internal/views/memory_pane.go")).toContain(`a.lendCopy(c, "mem-cmd", b.Cmd, "line")`);
+  // D664: the one setup's install step shows it, on both clients.
+  expect(src("../src/mem-setup.tsx")).toContain("<CopyLine text={s.cmd}");
+  expect(src("../../desktop/internal/views/memsetup.go")).toContain(`a.lendCopy(c, "mem-cmd", s.Cmd, "line")`);
 });
 
 test("发现了就说 is on Notifications only", () => {

@@ -65,8 +65,9 @@ func TestMemHealthHead(t *testing.T) {
 		app, sent := memHealthApp(t, lang, &protocol.MemHealth{}, nil)
 		tt := ui.NewTesterWith(app.View, 1280, 2600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		frames(tt)
-		if _, ok := tt.Find(L.T("mem.health.ok")); !ok {
-			t.Fatalf("%s: no calm line", lang)
+		// D664: the setup, all done, is one calm line naming the home.
+		if _, ok := tt.Find(L.T("memsetup.done", "hel")); !ok {
+			t.Fatalf("%s: no calm line in %q", lang, tt.Texts())
 		}
 		// Unreachable: 再看一次 asks the home to read it again.
 		app.S.Mem.Health = &protocol.MemHealth{Issue: "unreachable"}

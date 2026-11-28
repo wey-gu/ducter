@@ -183,27 +183,32 @@ func (a *App) peersCard(c *ui.Context, st *protocol.Settings) {
 		if len(threads) > 0 {
 			a.peersTry(c, name)
 		}
+		// D664: the setup, done, as one calm line at the foot (its steps one tap away).
+		a.memSetup(c, "peers-setup", true, nil, nil, nil)
 	} else {
 		a.peersPicture(c, name)
 		head()
 	}
-	switch phase {
-	case "getting":
-		a.group(c, "peers-mem", "", "", func() {
-			a.headRow(c, "peers-mem", a.memTile(c, true), "Nowledge Mem", a.L.T("peers.mem.what"), sideMuted, nil)
-			if u := memUpdate(b); u != nil && (u.Kind == "needed" || u.Kind == "updating") {
-				a.memUpdateRow(c, u, b)
-			} else if ph := memPhase(true, a.S.Mem, b); ph == "install" || ph == "installing" || ph == "sign_in" || ph == "signing_in" {
-				a.memSteps(c, ph, b)
+	// D664: the one Nowledge Mem setup, the same group as Memory's, with the mailbox as its last step.
+	if phase == "getting" || phase == "joining" || (phase == "problem" && b.State != "elsewhere") {
+		a.memSetup(c, "peers-mem", true, func() {
+			a.tileRow(c, "peers-what", nil, a.L.T("mem.app.learn"), a.L.T("peers.mem.what"), func() {
+				if a.button(c, a.L.T("mem.app.open"), btnSecondary, t.ControlSM, t.Surface) {
+					a.openLink(memSite)
+				}
+			})
+		}, nil, func() {
+			// "Once it's in and signed in, I connect by myself": only while those steps are left.
+			if phase == "getting" {
+				a.footRow(c, "peers-mem", a.L.T("peers.mem.then"), nil)
 			}
-			a.footRow(c, "peers-mem", a.L.T("peers.mem.then"), nil)
 		})
-	case "joining":
-		a.group(c, "peers-joining", "", "", func() {
-			a.tileRow(c, "peers-joining", func() { a.avatar(c, theme.Working, 40) }, a.L.T("peers.joining", name), "", nil)
-		})
+	}
+	switch phase {
 	case "problem":
-		a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
+		if b.State == "elsewhere" {
+			a.group(c, "peers-problem", "", "", func() { a.peersProblem(c, b, name) })
+		}
 	case "none":
 		a.group(c, "peers-none", "", "", func() {
 			a.tileRow(c, "peers-none", nil, a.L.T("peers.none", name), "", func() {
@@ -356,48 +361,7 @@ func (a *App) peersProblem(c *ui.Context, b *protocol.BridgeView, name string) {
 		})
 		return
 	}
-	// D646: one Mem state table: a title, one line, at most one action. The identity and who to
-	// tell in Mem stay behind 详情, so a refusal asks the person to do something they can picture.
-	v := memStateOf(a.S.Mem, b, a.memHome(), a.failedWhy(b.Detail))
-	if v == nil {
-		return
-	}
-	line := a.memWord(v.Line)
-	if b.Newer != nil && (v.State == "failed" || v.State == "refused" || v.State == "unconfirmed") {
-		line += " " + a.L.T("peers.mem.newer")
-	}
-	a.tileRow(c, "peers-problem", a.coinsTile(c, true), a.memWord(v.Title), line, func() {
-		switch v.Action {
-		case "open_mem":
-			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
-				a.send(protocol.BridgeAction{T: "bridge_mem_open"})
-			}
-		case "sign_in":
-			if a.buttonFor(c, a.L.T(v.Act), "Nowledge Mem", btnSecondary, t.ControlSM, t.Surface) {
-				a.openTab(TabMemory)
-			}
-		case "update":
-			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
-				b.State = "updating"
-				a.send(protocol.BridgeAction{T: "bridge_mem_install"})
-			}
-		case "check_again", "retry":
-			if a.buttonFor(c, a.L.T(v.Act), a.memHome(), btnSecondary, t.ControlSM, t.Surface) {
-				b.State = "connecting"
-				a.send(protocol.BridgeAction{T: "bridge_connect"})
-			}
-		}
-	})
-	if v.Fact != nil {
-		a.footRow(c, "peers-fact", "", func() {
-			if a.quietButton(c, "peers-fact", a.L.T("mem.details"), "Nowledge Mem", a.peersFact, 0) {
-				a.peersFact = !a.peersFact
-			}
-		})
-		if a.peersFact {
-			a.textBlock(c, "peers-fact-body", func() { a.note(c, a.memWord(*v.Fact)) })
-		}
-	}
+	// D664: every Mem state is a step of the one setup group (memsetup.go), not a row here.
 }
 
 // peerName is an agent's tool by name, for its coin ("terminal-claude" → Claude Code).

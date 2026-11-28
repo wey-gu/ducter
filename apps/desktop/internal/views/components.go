@@ -1400,6 +1400,64 @@ func (a *App) stepNumber(c *ui.Context, n int) {
 	})
 }
 
+// setupStep is one live step of a setup checklist (D664: Nowledge Mem's setup; the web's
+// SetupStep). Its mark on the step number's sunken disc says how it stands: the number while it is
+// next (ringed in the accent) or later (muted), a drawn check on the done tint, the shared spinner
+// while it runs or is looked at again, a drawn cross on the failed tint. Its title, one line, then
+// the next step's one action (aside) under the words. state says it in words for VoiceOver.
+func (a *App) setupStep(c *ui.Context, n int, look, title, line, state string, aside func()) {
+	t := a.T
+	ui.Row(c.Key("setup-step:" + strconv.Itoa(n))).Gap(t.S3).AlignItems(ui.Start).Label(state + " " + title).Children(func() {
+		ui.Row(c).Width(40).Shrink(0).Justify(ui.Center).Padding(1, 0, 0, 0).Children(func() {
+			disc := ui.Row(c).Size(26, 26).Radius(13).Justify(ui.Center).AlignItems(ui.Center).AccessHidden(true)
+			switch look {
+			case "done":
+				disc.Background(t.Done.Surface).Shadow(0, 2, 0, 0, t.Done.Ledge)
+			case "failed":
+				disc.Background(t.Failed.Surface).Shadow(0, 2, 0, 0, t.Failed.Ledge)
+			case "now":
+				disc.Background(t.Surface).InsetShadow(0, 0, 0, 1.5, t.Accent).Shadow(0, 2, 0, 0, t.Line2)
+			case "later":
+				disc.Background(t.Sunken)
+			default:
+				disc.Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2)
+			}
+			disc.Children(func() {
+				switch look {
+				case "done":
+					a.glyph(c, 14, drawCheck(t.Done.Ink))
+				case "failed":
+					a.glyph(c, 12, drawCross(t.Failed.Ink))
+				case "busy":
+					ui.Box(c).Size(12, 12).Center().Children(func() { ui.Spinner(c).Size(11, 11) })
+				default:
+					col := t.Ink
+					if look == "later" {
+						col = t.InkMuted
+					}
+					uiText(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(col).LineHeight(1)
+				}
+			})
+		})
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S2).Children(func() {
+			col := t.Ink
+			if look == "later" {
+				col = t.InkMuted
+			}
+			// The title and its line read as one, as a row's do (gap 2); the action stands apart.
+			ui.Column(c).Gap(2).MinWidth(0).Children(func() {
+				uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(600).LineHeight(a.leading(1.5)).TextColor(col)
+				if line != "" {
+					uiText(c, keepClauses(line)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				}
+			})
+			if aside != nil {
+				aside()
+			}
+		})
+	})
+}
+
 // lineField is the shared one-line field (D536; the web's Field): the
 // control height, as wide as its column allows up to 420, a hairline that
 // becomes the one accent ring while typing in it. strong: a name, bolder.

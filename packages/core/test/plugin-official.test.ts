@@ -12,7 +12,11 @@ import { tempDir } from "./helpers.ts";
 
 const repo = join(import.meta.dir, "../../../.plugins-repo/repo");
 const lodyDir = join(repo, "plugins/lody");
-const index = JSON.parse(readFileSync(join(repo, "index.json"), "utf8")) as { plugins: { id: string; hash: string; commit: string; icon?: string }[] };
+// The official repository is its own repo (github.com/wey-gu/ducter-plugins), checked out here only
+// on a maintainer's machine; where it isn't (CI), these tests are skipped and say so.
+const HAVE = existsSync(join(repo, "index.json"));
+if (!HAVE) console.warn("official plugin tests skipped: no .plugins-repo/repo checkout here");
+const index = (HAVE ? JSON.parse(readFileSync(join(repo, "index.json"), "utf8")) : { plugins: [] }) as { plugins: { id: string; hash: string; commit: string; icon?: string }[] };
 const NOW = Date.parse("2026-12-02T10:00:00Z");
 
 const LIVE = (() => {
@@ -25,7 +29,7 @@ const LIVE = (() => {
 })();
 if (!LIVE) console.warn("official plugin live run skipped: this host refused sandbox_apply (nested Seatbelt)");
 
-test("the official Lody plugin matches the index: manifest, icon and content hash", () => {
+test.skipIf(!HAVE)("the official Lody plugin matches the index: manifest, icon and content hash", () => {
   for (const [id, dir] of [["lody", lodyDir]] as const) {
     const entry = index.plugins.find((p) => p.id === id)!;
     expect(entry).toBeDefined();
@@ -42,7 +46,7 @@ test("the official Lody plugin matches the index: manifest, icon and content has
   expect(readManifest(lodyDir).uses[0]).toMatchObject({ command: "lody", online: true });
 });
 
-test.skipIf(!LIVE)("the Lody plugin runs the declared signed-in lody command sandboxed and imports", async () => {
+test.skipIf(!HAVE || !LIVE)("the Lody plugin runs the declared signed-in lody command sandboxed and imports", async () => {
   const t = tempDir();
   const home = join(t.dir, "home");
   mkdirSync(join(home, ".lody"), { recursive: true });

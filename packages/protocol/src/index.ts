@@ -452,7 +452,7 @@ export interface Bodies {
   // shelf (D410): the person asked where their apps are: a card that opens 小应用 / Apps under these words.
   // D418 `pings`: the own agent's contact tests (message ids) this line tells about; clients show
   // this line in place of their folded quiet line, so it is said once.
-  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string; /** D623: the day after the first run: the true facts, each a link, under these words. */ dayAfter?: DayAfter; /** D628: a wait that re-armed with nothing new: this line is said once per task and reason. */ waitSlow?: { taskId: string; reason: string }; /** D633: the one quiet summary of outside things that just ended (counts, for tests and clients that want the facts). */ settled?: { prs: number; issues: number; refs: string[] } };
+  ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[]; cal?: CalGlance; first?: FirstWords; ui?: RichUi[]; uiDropped?: number; app?: AppCard; appAnswer?: AppAnswer; shelf?: true; pings?: string[]; /** D511: the Keep this turn made: its receipt card under these words. */ keep?: import("./keeps.ts").KeepCard; /** D598: the hand-off (its message id) no task of the helper took in time: said once. */ stalled?: string; /** D623: the day after the first run: the true facts, each a link, under these words. */ dayAfter?: DayAfter; /** D628: a wait that re-armed with nothing new: this line is said once per task and reason. */ waitSlow?: { taskId: string; reason: string }; /** D633: the one quiet summary of outside things that just ended (counts, for tests and clients that want the facts). */ settled?: { prs: number; issues: number; refs: string[]; /** research/244 rule 4: each one named in words, by its title when Ducter holds one. */ names?: { ref: string; title?: string }[] } };
   // D623: the day after the first run. Code logs the true facts it found; the partner is
   // woken by it and says one short recap in its own words, carrying the same items as links. A
   // separate `finds` note then asks the one offer (two chips, no card). Logged once in a home's life.
@@ -490,6 +490,10 @@ export interface Bodies {
     decisionId: string;
     taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)
     question: string;
+    // research/244 rule 7: the decision is already answered and this is what was done, word for
+    // word (a group review's comments): clients draw it as a record, never as a question with
+    // buttons. `question` stays for the Log and for older clients.
+    record?: string;
     // D640 (#254): what the task showed with this question (`report.media`): the pictures
     // and files stand on the card itself, so they are there before the person answers, wherever
     // the card is shown (the conversation, On hand). Never repeated under the relaying line.
@@ -736,6 +740,9 @@ export interface Bodies {
     items?: SourceItemRef[];
     /** new: under the standing go (they start without asking). */
     taken?: boolean;
+    /** research/244 rule 5: new ones held for a quiet moment and offered as one card: the partner is
+     *  not woken (the card is the offer), and render says nothing over it. */
+    offered?: boolean;
   };
   // D341: one write to the to-do's app on the person's behalf (comment, close, tick, untick), with
   // the Go or standing go that allowed it. Done for you reads it (sent: comment; changed: the rest).

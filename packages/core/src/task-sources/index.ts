@@ -61,6 +61,12 @@ interface State {
    * read GitHub's long answers as empty lists) learns quietly on its next look, never 50 "new" at once.
    */
   learned?: Record<string, string>;
+  /**
+   * research/244 rules 5 and 6: new to-dos found while a subject was live (the person had just
+   * written, or a card was open) wait here, as one batch, for the next quiet moment. Quiet hours
+   * hold them until morning.
+   */
+  held?: { at: string; items: SourceItemRef[] };
 }
 
 /** What a look found that On hand may show first (D357): the recent ones, review requests, mentions. */
@@ -164,6 +170,11 @@ export interface TaskSourcesDeps {
   reviewGuide?: (repo: string) => Promise<string | undefined> | string | undefined;
   /** D385: handing several over (groups, places, computers, rules, opening and telling tasks). */
   handover?: Pick<HandoverDeps, "persona" | "groups" | "places" | "computers" | "rules" | "newTasks" | "addRule" | "open" | "openEarly" | "tell" | "repoWhere" | "prState">;
+  /**
+   * research/244 rule 6: is this a quiet moment for an offer? A subject is live when the person
+   * wrote in the last few minutes or a card is open; quiet hours are night. Absent: always quiet.
+   */
+  quietGap?: () => boolean;
 }
 
 export interface ProposeResult {
@@ -229,8 +240,9 @@ const newId = () => `src_${randomBytes(4).toString("hex")}`;
 
 const SAID = {
   zh: {
-    commentQ: "在 {where}{label} 下留言？",
-    closeQ: "在 {where}{label} 下留言并关掉它？",
+    // research/244 rule 4: every card names its to-do in words, its title before any number.
+    commentQ: "在 {where}{label}「{title}」下留言？",
+    closeQ: "在 {where}{label}「{title}」下留言并关掉它？",
     commentGo: "留言",
     closeGo: "留言并关掉",
     trustTakeQ: "以后 {app} 上标给你的，直接接下？",
@@ -240,16 +252,20 @@ const SAID = {
     trustWriteGo: "直接留言",
     keepAsking: "仍然先问我",
     notNow: "暂不留言",
-    closeOnlyQ: "关掉 {where}{label}？",
+    closeOnlyQ: "关掉 {where}{label}「{title}」？",
     tickQ: "勾掉 Obsidian 里的「{title}」？",
     tickGo: "勾掉",
     tickHold: "暂不勾掉",
     closeOnlyGo: "关掉",
     leaveOpen: "暂不关掉",
+    offerQ: "你的待办里有 {n} 个新的，要我开始吗？",
+    offerOne: "你的待办里有一个新的：「{title}」，要我开始吗？",
+    offerGo: "接下",
+    offerHold: "现在不",
   },
   en: {
-    commentQ: "Comment on {where}{label}?",
-    closeQ: "Comment on {where}{label} and close it?",
+    commentQ: "Comment on {where}{label} “{title}”?",
+    closeQ: "Comment on {where}{label} “{title}” and close it?",
     commentGo: "Comment",
     closeGo: "Comment and close",
     trustTakeQ: "Take what's assigned to you on {app} without asking from now on?",
@@ -259,12 +275,16 @@ const SAID = {
     trustWriteGo: "Comment by itself",
     keepAsking: "Keep asking me",
     notNow: "Not now",
-    closeOnlyQ: "Close {where}{label}?",
+    closeOnlyQ: "Close {where}{label} “{title}”?",
     tickQ: "Tick off “{title}” in Obsidian?",
     tickGo: "Tick it off",
     tickHold: "Not now",
     closeOnlyGo: "Close it",
     leaveOpen: "Leave it open",
+    offerQ: "{n} new in your to-dos. Shall I start them?",
+    offerOne: "One new in your to-dos: “{title}”. Shall I start it?",
+    offerGo: "Take them",
+    offerHold: "Not now",
   },
 };
 const fill = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
@@ -287,7 +307,7 @@ const appName = (k: SourceKind) => (k === "github" ? "GitHub" : k === "obsidian"
 /** research/245 B5: Ducter's note to a task is in the task's own language (the person's). */
 const CHANGE = {
   zh: {
-    whatGithub: "{app} {where}{label}",
+    whatGithub: "{app} {where}{label}「{title}」",
     whatLine: "「{title}」",
     closed: "[Ducter] 这个任务对应的待办 {what} 在那边关掉了{by}。Ducter 正在判断这是否还重要（你最近关于这个任务说的话，以及是不是这个任务自己写回或已合并的 PR 关掉的）：先接着做，需要停的时候它会告诉你。",
     reopened: "[Ducter] {what} 在那边重新打开了。",
@@ -297,7 +317,7 @@ const CHANGE = {
     by: "（{who} 关的）",
   },
   en: {
-    whatGithub: "{app} {where}{label}",
+    whatGithub: "{app} {where}{label} “{title}”",
     whatLine: 'to-do "{title}" in {where}',
     closed: "[Ducter] The to-do this task was opened for, {what}, was closed there{by}. Ducter is reading whether that still matters (the person's latest words about this task, and whether it was this task's own write-back or merged PR): carry on for now, and it will tell you if it should stop.",
     reopened: "[Ducter] {what} was reopened there.",
@@ -313,6 +333,7 @@ export function changeNote(change: "closed" | "reopened" | "edited" | "gone", it
   const w = CHANGE[lang];
   const what = fill(item.kind === "github" ? w.whatGithub : w.whatLine, { app: appName(item.kind), where: item.where ?? "", label: item.label, title: item.title });
   const by = item.closedBy ? fill(w.by, { who: item.closedBy }) : "";
+  // research/244 rule 4: the note names the to-do in words, never only by its number.
   if (change === "closed") return fill(w.closed, { what, by });
   if (change === "reopened") return fill(w.reopened, { what });
   if (change === "gone") return fill(w.gone, { what });
@@ -327,7 +348,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   if (existsSync(file))
     try {
       const raw = JSON.parse(readFileSync(file, "utf8")) as Partial<State>;
-      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {}, learned: raw.learned ?? {} };
+      st = { sources: Array.isArray(raw.sources) ? raw.sources : [], seen: raw.seen ?? {}, offered: raw.offered ?? {}, told: raw.told ?? {}, learned: raw.learned ?? {}, ...(raw.held && Array.isArray(raw.held.items) ? { held: { at: String(raw.held.at ?? ""), items: raw.held.items } } : {}) };
     } catch (err) {
       console.warn(`[task-sources] ${file} is unreadable; starting with none:`, (err as Error).message);
     }
@@ -444,7 +465,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
   /** The words of a write card, in the person's language. */
   function writeCard(item: SourceItemRef, text: string, close: boolean, taskId: string | undefined, lang: "zh" | "en"): Bodies["decision"] {
     const w = SAID[lang];
-    const v = { where: item.kind === "github" ? (item.where ?? "") : "", label: item.label };
+    const v = { where: item.kind === "github" ? (item.where ?? "") : "", label: item.label, title: item.title };
     return {
       decisionId: `d_${randomBytes(6).toString("hex")}`,
       question: fill(close ? w.closeQ : w.commentQ, v),
@@ -531,15 +552,52 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       if (!st.learned?.[s.id]) st.learned = { ...(st.learned ?? {}), [s.id]: new Date(now()).toISOString() };
       // The first look only learns what is there: nothing is "new" the moment a source is added.
       if (!first && fresh.length && s.whenNew !== "quiet") {
-        const told = st.told[s.id] ? Date.parse(st.told[s.id]!) : 0;
-        if (s.whenNew === "take" || now() - told >= TELL_GAP_MS) {
+        if (s.whenNew === "take") {
+          // The standing go: they start without asking; the acks say it.
           st.told[s.id] = new Date(now()).toISOString();
-          const take = s.whenNew === "take" && countTaken(s.id) < TAKE_DAILY;
+          const take = countTaken(s.id) < TAKE_DAILY;
           d.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: s.id, change: "new", items: fresh.slice(0, take ? Math.max(0, TAKE_DAILY - countTaken(s.id)) : 20).map(refOf), ...(take ? { taken: true } : {}) } });
+        } else {
+          // research/244 rules 5 and 6: an offer, not a bubble question. It waits for a quiet
+          // moment, as one batch, and then becomes one card.
+          const held = st.held?.items ?? [];
+          for (const it of fresh.slice(0, 20)) if (!held.some((x) => x.ref === it.ref)) held.push(refOf(it));
+          st.held = { at: st.held?.at ?? new Date(now()).toISOString(), items: held.slice(0, 20) };
         }
       }
       save();
     }
+  }
+
+  /**
+   * research/244 rules 5 and 6: the held new to-dos become one card at the next quiet moment
+   * (the person hasn't just written, no card is open, not quiet hours). Go takes them; the
+   * default holds and the offer fades like D453's, saying nothing more.
+   */
+  function flushOffers() {
+    if (stopped || !st.held?.items.length) return;
+    if (d.quietGap && !d.quietGap()) return;
+    const items = st.held.items;
+    st.held = undefined;
+    save();
+    const lang = d.lang?.() ?? "en";
+    const w = SAID[lang];
+    // research/244 rule 5: the card lists the titles once; the question says the count, and the
+    // one item's title when there is only one (then the card has no list to name it).
+    const question = items.length === 1 ? fill(w.offerOne, { title: items[0]!.title }) : fill(w.offerQ, { n: String(items.length) });
+    decision({
+      decisionId: `d_${randomBytes(6).toString("hex")}`,
+      question,
+      goLabel: w.offerGo,
+      holdLabel: w.offerHold,
+      defaultOption: "hold",
+      // D453: an offer fades at the next morning, never needs clearing.
+      defaultAt: new Date(now() + 10 * 3_600_000).toISOString(),
+      reversible: false,
+      offer: true,
+      src: { kind: "offer", item: items[0]!, items: items.map((item) => ({ item })) },
+    });
+    d.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, offered: true } });
   }
 
   async function lookBound() {
@@ -613,6 +671,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
       await probeGh();
       await lookSources();
       await lookBound();
+      flushOffers();
       changed();
       // D359: the sort, the first time a source read its list and then once a day (only what
       // changed goes to the model), and the newest review requests pre-read. Neither holds the look.
@@ -741,6 +800,11 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     const src = card.src as SourceAsk;
     // D359: the morning's picks, answered inside the note: Go hands them over.
     if (src.kind === "picks") return pile.answer(card, r);
+    // research/244 rule 5: a to-do offer card: Go hands them over; Hold (the default) fades it.
+    if (src.kind === "offer") {
+      if (r.option === "go") await pile.hand((src.items ?? [{ item: src.item }]).map((x) => x.item.ref));
+      return;
+    }
     // D385: the plan card answered by its own buttons (any client), and the note's lasting where.
     if (src.kind === "plan") {
       if (src.groupId && handover) await handover.answerPlan(src.groupId, r.option, { ...(r.text ? { text: r.text } : {}) });
@@ -1058,7 +1122,7 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
         if (close && s.whenDone !== "close") {
           const body = writeCard(item, "", true, c!.taskId, lang);
           // The comment already went: this card only closes.
-          decision({ ...body, question: fill(SAID[lang].closeOnlyQ, { where: item.where ?? "", label: item.label }), goLabel: SAID[lang].closeOnlyGo, holdLabel: SAID[lang].leaveOpen });
+          decision({ ...body, question: fill(SAID[lang].closeOnlyQ, { where: item.where ?? "", label: item.label, title: item.title }), goLabel: SAID[lang].closeOnlyGo, holdLabel: SAID[lang].leaveOpen });
           return { ok: true, wrote, decisionId: body.decisionId };
         }
         return { ok: true, wrote };

@@ -967,6 +967,19 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 		})
 		return
 	}
+	if src.Kind == "offer" || src.Kind == "picks" {
+		// research/244 rule 4: a to-do offer lists each one by its title, never only its number.
+		ui.Column(c.Key("todo-offer")).Gap(t.S1).Children(func() {
+			for _, x := range src.Items {
+				item := x.Item
+				ui.Row(c.Key("offer:"+item.Ref)).Gap(t.S2).Padding(t.S1, t.S3).Radius(t.RadiusSM).Background(t.Surface.Alpha(0.75)).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					a.todoChip(c, "offer:"+d.DecisionID+":"+item.Ref, item)
+					uiText(c, keepWords(autospace(item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(item.Title)
+				})
+			}
+		})
+		return
+	}
 	if src.Kind != "write" {
 		ui.Row(c.Key("todo-ask-chip")).Children(func() { a.todoChip(c, "ask:"+d.DecisionID, src.Item) })
 		return

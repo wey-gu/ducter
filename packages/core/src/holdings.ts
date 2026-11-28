@@ -31,6 +31,9 @@ export type State = "open" | "merged" | "closed";
 interface Ref {
   ref: string;
   kind: Kind;
+  /** research/244 rule 4: the thing's own title when Ducter holds one (a hand-off's item, a PR's
+   *  standing, the task it belongs to), so the line names it in words, never only by its number. */
+  title?: string;
 }
 interface Holders {
   r: Ref;
@@ -71,18 +74,37 @@ const LINE = {
 /** The one quiet line the person hears when things that were held closed together. */
 const SUMMARY = {
   zh: {
-    both: "{prs} 个 PR 已合并、{issues} 个 issue 已关闭，相关的事都收了尾。",
-    prs: "{prs} 个 PR 已合并，相关的事都收了尾。",
-    issues: "{issues} 个 issue 已关闭，相关的事都收了尾。",
-    onePr: "PR #{n} 已合并，这件结束。",
-    oneIssue: "issue #{n} 已关闭，这件结束。",
+    // research/244 rule 4: each one by its title (from settled.names), never "4 个 PR".
+    // Rule: one verb per kind, once: 「A」「B」「C」都合并了，相关的事都收了尾。
+    many: "{parts}，相关的事都收了尾。",
+    onePr: "{name}合并了，这件结束。",
+    oneIssue: "{name}关闭了，这件结束。",
+    prMerged: "{names}都合并了",
+    issueClosed: "{names}都关闭了",
+    prMergedOne: "{names}合并了",
+    issueClosedOne: "{names}关闭了",
+    // how titles and refs are listed: 「A」「B」 side by side; bare refs part with 、
+    title: "「{t}」",
+    sep: "",
+    sepBare: "、",
+    lastSep: "",
+    lastSepBare: "、",
+    partsSep: "，",
   },
   en: {
-    both: "{prs} pull request(s) merged and {issues} issue(s) closed; everything they held is wrapped up.",
-    prs: "{prs} pull request(s) merged; everything they held is wrapped up.",
-    issues: "{issues} issue(s) closed; everything they held is wrapped up.",
-    onePr: "PR #{n} merged; this is done.",
-    oneIssue: "issue #{n} closed; this is done.",
+    many: "{parts}; everything around them is wrapped up.",
+    onePr: "{name} merged; this is done.",
+    oneIssue: "{name} closed; this is done.",
+    prMerged: "{names} merged",
+    issueClosed: "{names} closed",
+    prMergedOne: "{names} merged",
+    issueClosedOne: "{names} closed",
+    title: "“{t}”",
+    sep: ", ",
+    sepBare: ", ",
+    lastSep: " and ",
+    lastSepBare: " and ",
+    partsSep: "; ",
   },
 } as const;
 
@@ -139,6 +161,7 @@ export function createHoldings(o: {
   const known = new Map<string, State>();
   const summarized = new Set<string>();
   const pending = new Set<string>();
+  const pendingTitle = new Map<string, string>(); // research/244 rule 4: each ended ref's own title
   const busy = new Set<string>();
   let sweeping = false;
   const key = (r: Ref) => `${r.kind}:${r.ref}`;
@@ -152,6 +175,12 @@ export function createHoldings(o: {
   }
 
   const langOf = (titles: (string | undefined)[]): LangTag => (detect(titles.filter(Boolean).join(" "))?.lang ?? "en") as LangTag;
+  const REF_ONLY = /^(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#?\d+$/;
+  /** A title that says something in words, never the ref itself or a bare number. */
+  const usefulTitle = (ref: string, title?: string): boolean => {
+    const t = String(title ?? "").trim();
+    return !!t && t.toLowerCase() !== ref.toLowerCase() && !REF_ONLY.test(t) && !/^https?:\/\//i.test(t);
+  };
 
   /** Every holder of every outside ref, from tasks, hand-offs and armed waits. */
   const collect = (): Map<string, Holders> => {
@@ -160,16 +189,27 @@ export function createHoldings(o: {
       if (!REF.test(r.ref)) return;
       const k = key(r);
       const w = out.get(k) ?? { r: { ref: r.ref, kind: r.kind }, tasks: new Set<string>(), handoffs: new Set<string>(), waits: new Set<string>() };
+      // The first real title wins (a hand-off's own item names it best); a task's is a fallback.
+      // A "title" that is only the ref or a number names nothing in words: ignore it.
+      if (!w.r.title && usefulTitle(r.ref, r.title)) w.r.title = r.title!;
       if (holder.task) w.tasks.add(holder.task);
       if (holder.handoff) w.handoffs.add(holder.handoff);
       if (holder.wait) w.waits.add(holder.wait);
       out.set(k, w);
     };
-    for (const h of o.handoffs.open()) if (h.item.kind === "pr" || h.item.kind === "issue") add({ ref: h.item.ref.toLowerCase(), kind: h.item.kind }, { handoff: h.handoffId, ...(h.from.task ? { task: h.from.task } : {}) });
+    for (const h of o.handoffs.open()) {
+      if (h.item.kind !== "pr" && h.item.kind !== "issue") continue;
+      // The hand-off's own item, else the task it came from, names it in words (research/244 rule 4).
+      const own = usefulTitle(h.item.ref, h.item.title);
+      const task = h.from.task ? o.tasks.get(h.from.task)?.title : undefined;
+      const title = own ? h.item.title : usefulTitle(h.item.ref, task) ? task : undefined;
+      add({ ref: h.item.ref.toLowerCase(), kind: h.item.kind, ...(title ? { title } : {}) }, { handoff: h.handoffId, ...(h.from.task ? { task: h.from.task } : {}) });
+    }
     const waits = o.waiters.views().filter((w) => w.state === "armed");
     for (const w of waits) {
-      for (const r of refsInCheck(w.check)) add(r, { ...(w.taskId ? { task: w.taskId } : {}), wait: w.waiterId });
-      for (const r of refsInCheck(w.watch as CheckSpec | undefined)) add(r, { ...(w.taskId ? { task: w.taskId } : {}), wait: w.waiterId });
+      const wt = w.taskId ? o.tasks.get(w.taskId)?.title : undefined;
+      for (const r of refsInCheck(w.check)) add({ ...r, ...(wt ? { title: wt } : {}) }, { ...(w.taskId ? { task: w.taskId } : {}), wait: w.waiterId });
+      for (const r of refsInCheck(w.watch as CheckSpec | undefined)) add({ ...r, ...(wt ? { title: wt } : {}) }, { ...(w.taskId ? { task: w.taskId } : {}), wait: w.waiterId });
       // A full owner/repo#n in a timer's words is a ref Ducter holds, even with no check to read it.
       const full = /([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#(\d+)/.exec(String(w.reason ?? ""));
       if (full && ![...out.values()].some((v) => v.r.ref === full[0].toLowerCase())) add({ ref: full[0].toLowerCase(), kind: "pr" }, { ...(w.taskId ? { task: w.taskId } : {}), wait: w.waiterId });
@@ -177,9 +217,9 @@ export function createHoldings(o: {
     for (const c of o.tasks.list()) {
       // A finished task holds nothing open; done_claimed still carries its PR until it ends.
       if (["dropped", "superseded", "done", "failed"].includes(c.attention)) continue;
-      for (const p of c.prs ?? []) add({ ref: p.pr.toLowerCase(), kind: "pr" }, { task: c.taskId });
-      if (c.handoff?.item.kind === "pr" || c.handoff?.item.kind === "issue") add({ ref: c.handoff.item.ref.toLowerCase(), kind: c.handoff.item.kind }, { task: c.taskId });
-      for (const e of c.lastReport?.evidence ?? []) for (const r of refsInEvidence(String(e.ref ?? ""))) add(r, { task: c.taskId });
+      for (const p of c.prs ?? []) add({ ref: p.pr.toLowerCase(), kind: "pr", ...(p.standing?.title ? { title: p.standing.title } : { title: c.title }) }, { task: c.taskId });
+      if (c.handoff?.item.kind === "pr" || c.handoff?.item.kind === "issue") add({ ref: c.handoff.item.ref.toLowerCase(), kind: c.handoff.item.kind, ...(c.handoff.item.title ? { title: c.handoff.item.title } : { title: c.title }) }, { task: c.taskId });
+      for (const e of c.lastReport?.evidence ?? []) for (const r of refsInEvidence(String(e.ref ?? ""))) add({ ...r, title: c.title }, { task: c.taskId });
     }
     // A wait whose words name a ref already collected (a timer on "#11389"): the ref is the door's,
     // the state still comes from the reader. Only a ref we already hold is matched by its number.
@@ -301,18 +341,47 @@ export function createHoldings(o: {
     const issues = refs.filter((k) => k.startsWith("issue:"));
     const lang = o.lang?.() ?? langOf([...o.tasks.list()].slice(0, 8).map((c) => c.title));
     const w = words(SUMMARY, lang);
+    const named = refs.map((k) => {
+      const kind = k.startsWith("pr:") ? "pr" : "issue";
+      const ref = k.slice(k.indexOf(":") + 1);
+      return { kind, ref, ...(pendingTitle.get(k) ? { title: pendingTitle.get(k)! } : {}) };
+    });
+    // research/244 rule 4: its subject in words. A title when Ducter holds one (the hand-off's
+    // item, the PR's standing, the task), else its full ref; never only "#n".
+    const one = (n: (typeof named)[number]) =>
+      n.title ? fill(w.title, { t: n.title }) : n.ref;
+    // The verb once, for the kind: 「A」「B」「C」都合并了, not 「A」已合并、「B」已合并…
+    const list = (xs: (typeof named)[number][]) => {
+      const q = xs.map(one);
+      if (q.length <= 1) return q[0] ?? "";
+      const titled = xs.every((x) => x.title);
+      return q.slice(0, -1).join(titled ? w.sep : w.sepBare) + (titled ? w.lastSep : w.lastSepBare) + q.at(-1);
+    };
+    const parts: string[] = [];
+    const merged = named.filter((n) => n.kind === "pr");
+    const closed = named.filter((n) => n.kind === "issue");
+    // 都 only over two or more: one merged PR beside closed issues is 「A」合并了.
+    if (merged.length) parts.push(fill(merged.length > 1 ? w.prMerged : w.prMergedOne, { names: list(merged) }));
+    if (closed.length) parts.push(fill(closed.length > 1 ? w.issueClosed : w.issueClosedOne, { names: list(closed) }));
     const text =
-      prs.length && issues.length
-        ? fill(w.both, { prs: String(prs.length), issues: String(issues.length) })
-        : prs.length === 1 && !issues.length
-          ? fill(w.onePr, { n: num(prs[0]!.slice(3)) })
-          : issues.length === 1 && !prs.length
-            ? fill(w.oneIssue, { n: num(issues[0]!.slice(6)) })
-            : prs.length
-              ? fill(w.prs, { prs: String(prs.length) })
-              : fill(w.issues, { issues: String(issues.length) });
+      named.length === 1
+        ? fill(named[0]!.kind === "pr" ? w.onePr : w.oneIssue, { name: one(named[0]!) })
+        : fill(w.many, { parts: parts.join(w.partsSep) });
     for (const k of refs) summarized.add(k);
-    o.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text, settled: { prs: prs.length, issues: issues.length, refs: refs.map((k) => k.slice(k.indexOf(":") + 1)) } } });
+    o.log.append({
+      stream: "channel",
+      origin: "partner",
+      kind: "ai_msg",
+      body: {
+        text,
+        settled: {
+          prs: prs.length,
+          issues: issues.length,
+          refs: named.map((n) => n.ref),
+          names: named.map((n) => ({ ref: n.ref, ...(n.title ? { title: n.title } : {}) })),
+        },
+      },
+    });
   }
 
   async function sweepOnce() {
@@ -339,7 +408,10 @@ export function createHoldings(o: {
       }
       if (!state || state === "open" || stopped) continue;
       const changed = settleRef(h.r, state, h);
-      if (changed && !summarized.has(k)) pending.add(k);
+      if (changed && !summarized.has(k)) {
+        pending.add(k);
+        if (h.r.title) pendingTitle.set(k, h.r.title);
+      }
     }
   }
 
@@ -359,7 +431,11 @@ export function createHoldings(o: {
       known.set(b.pr.toLowerCase(), b.seen.state);
       if (b.seen.state === "open") return;
       const h = collect().get(`pr:${b.pr.toLowerCase()}`);
-      if (h && settleRef(h.r, b.seen.state, h)) pending.add(`pr:${b.pr.toLowerCase()}`);
+      if (h && settleRef(h.r, b.seen.state, h)) {
+        const k = `pr:${b.pr.toLowerCase()}`;
+        pending.add(k);
+        if (h.r.title) pendingTitle.set(k, h.r.title);
+      }
       queueMicrotask(flushSummary);
       return;
     }
@@ -369,7 +445,11 @@ export function createHoldings(o: {
     const state = known.get(b.item.ref.toLowerCase());
     if (state !== "closed" && state !== "merged") return;
     const h = collect().get(`${b.item.kind}:${b.item.ref.toLowerCase()}`);
-    if (h && settleRef(h.r, state, h)) pending.add(`${b.item.kind}:${b.item.ref.toLowerCase()}`);
+    if (h && settleRef(h.r, state, h)) {
+      const k = `${b.item.kind}:${b.item.ref.toLowerCase()}`;
+      pending.add(k);
+      if (h.r.title) pendingTitle.set(k, h.r.title);
+    }
     queueMicrotask(flushSummary);
   };
   const unsubscribe = o.log.subscribe(onEvent);

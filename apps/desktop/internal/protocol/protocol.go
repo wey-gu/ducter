@@ -185,6 +185,15 @@ type SettledNote struct {
 	PRs    int      `json:"prs"`
 	Issues int      `json:"issues"`
 	Refs   []string `json:"refs,omitempty"`
+	// Names (research/244 rule 4): each one in words, by its title when Ducter
+	// holds one.
+	Names []SettledName `json:"names,omitempty"`
+}
+
+// SettledName is one outside thing the summary names.
+type SettledName struct {
+	Ref   string `json:"ref"`
+	Title string `json:"title,omitempty"`
 }
 
 type Ack struct {
@@ -220,6 +229,10 @@ type Decision struct {
 	DecisionID string `json:"decisionId"`
 	TaskID     string `json:"taskId,omitempty"` // "" = a partner-level decision
 	Question   string `json:"question"`
+	// Record (research/244 rule 7): the decision is already answered and this is
+	// what was done, word for word (a group review's comments): draw it as a
+	// record, never as a question with buttons.
+	Record string `json:"record,omitempty"`
 	// Media (D640, #254) is what the task showed with this question: the pictures and
 	// files stand on the card itself, before the person answers, wherever it is shown.
 	Media         []MediaRef `json:"media,omitempty"`

@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
@@ -133,7 +134,8 @@ var relayWait = 60 * time.Second
 // presence holds the place. Zero once late or offline.
 func (a *App) relayDueIn(d *store.DecisionState) time.Duration {
 	// D587: a direct done's ask is never relayed: its own words show at once.
-	if d.TaskID == "" || d.Said != "" || d.Direct || a.Status != client.Connected {
+	// research/244 rule 5: a question of three or more points is the card's own, never relayed.
+	if d.TaskID == "" || d.Said != "" || d.Direct || protocol.AskPoints(d.Question) >= 3 || a.Status != client.Connected {
 		return 0
 	}
 	at := store.ParseTime(d.AskedAt)

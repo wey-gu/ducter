@@ -60,8 +60,8 @@ function scriptGh(dir: string) {
     env: (o: { home?: boolean } = {}) => ({ PATH: `${bin}:/usr/bin:/bin`, ...(o.home === false ? {} : { HOME: dir }) }) };
 }
 
-function boot(dir: string, env: Record<string, string>) {
-  const core = startCore({ dataDir: join(dir, "data"), port: 0, push: false, batchMs: 5, taskSources: { ghRun: realGhRun, ghEnv: env, home: join(dir, "no-home"), pollMs: 3_600_000, quietMs: 0 } });
+function boot(dir: string, env: Record<string, string>, o: { quietGap?: () => boolean } = {}) {
+  const core = startCore({ dataDir: join(dir, "data"), port: 0, push: false, batchMs: 5, taskSources: { ghRun: realGhRun, ghEnv: env, home: join(dir, "no-home"), pollMs: 3_600_000, quietMs: 0, ...(o.quietGap ? { quietGap: o.quietGap } : {}) } });
   stops.push(() => core.stop());
   return core;
 }
@@ -140,7 +140,7 @@ test("a look that fails says so on the source (its reason, no count); the next g
   expect(ts.view().sources[0]!.error).toBeUndefined();
 });
 
-test("a source 0.0.75 saw as empty learns its 50 quietly (no flood of 'new'); one assigned after that is told", async () => {
+test("a source 0.0.75 saw as empty learns its 50 quietly (no flood of 'new'); one assigned after that is offered as one card", async () => {
   const t = tempDir();
   stops.push(t.cleanup);
   const gh = scriptGh(t.dir);
@@ -148,17 +148,22 @@ test("a source 0.0.75 saw as empty learns its 50 quietly (no flood of 'new'); on
   mkdirSync(data, { recursive: true });
   // hel's file, as 0.0.75 left it: added by Connect, every look read as empty.
   writeFileSync(join(data, SOURCES_FILE), JSON.stringify({ sources: [{ id: "src_d1f73fc4", kind: "github", whenNew: "tell", whenDone: "ask", addedAt: "2026-11-17T19:08:00Z" }], seen: { src_d1f73fc4: [] }, offered: {}, told: {} }));
-  const core = boot(t.dir, gh.env());
+  // research/244 rule 6: a quiet moment (this test asks for one; the machine may be at night).
+  const core = boot(t.dir, gh.env(), { quietGap: () => true });
   const ts = core.taskSources;
   await until(() => ts.view().sources[0]?.open === 50);
   expect(core.log.read({ kinds: ["source_seen"] })).toHaveLength(0);
-  // A new one assigned: told.
+  // A new one assigned: one offer card, its subject by title; the partner not asked to say it.
   writeFileSync(gh.page, assignedResponse(51));
   await ts.look();
   await until(() => core.log.read({ kinds: ["source_seen"] }).length === 1);
   const told = core.log.read({ kinds: ["source_seen"] })[0]!.body as Bodies["source_seen"];
   expect(told.change).toBe("new");
   expect(told.items).toHaveLength(1);
+  expect(told.offered).toBe(true);
+  const card = core.log.read({ kinds: ["decision"] }).map((e) => e.body as Bodies["decision"]).find((d) => d.src?.kind === "offer")!;
+  expect(card).toMatchObject({ offer: true, defaultOption: "hold" });
+  expect(card.question).toContain(told.items![0]!.title);
 });
 
 test("while a look runs the source says so (looking), and not after", async () => {

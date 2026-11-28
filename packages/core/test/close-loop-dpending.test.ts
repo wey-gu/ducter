@@ -144,8 +144,15 @@ describe("D633: anything Ducter holds about an outside thing settles when it end
       const sums = summaries(second.core);
       expect(sums).toHaveLength(1);
       expect(sums[0]!.settled).toMatchObject({ prs: 5, issues: 0 });
-      expect(sums[0]!.text).toContain("5 个 PR 已合并");
+      // research/244 rule 4: each one by its title, not a count; the verb once (rule: the fix).
+      expect(sums[0]!.text).toContain("「跟进 nowledge-co/mem#11441」");
+      expect(sums[0]!.text).toContain("「盯 mem#11406 的收尾」");
+      expect(sums[0]!.text).toContain("都合并了");
+      expect(sums[0]!.text.match(/都合并了/g)).toHaveLength(1);
+      expect(sums[0]!.text).not.toMatch(/^\d+ 个 PR/);
       expect(sums[0]!.text).toContain("收了尾");
+      expect(sums[0]!.settled).toMatchObject({ prs: 5, issues: 0 });
+      expect((sums[0]!.settled as { names?: unknown[] }).names).toHaveLength(5);
     }
     // The repair ran once: a second start changes nothing and says nothing.
     {
@@ -191,7 +198,14 @@ describe("D633: anything Ducter holds about an outside thing settles when it end
       const sums = summaries(core);
       expect(sums).toHaveLength(1);
       expect(sums[0]!.settled).toMatchObject({ prs: 1, issues: 1 });
-      expect(sums[0]!.text).toContain("1 个 PR 已合并、1 个 issue 已关闭");
+      // research/244 rule 4: the issue and the PR by their titles; one verb per kind.
+      expect(sums[0]!.text).toContain("「盯 acme/site#42」");
+      expect(sums[0]!.text).toContain("「等别人的 PR #77」");
+      // one of each kind: each its verb once, and 都 only over two or more.
+      expect(sums[0]!.text).toContain("」关闭了");
+      expect(sums[0]!.text).toContain("」合并了");
+      expect(sums[0]!.text).not.toContain("都关闭了");
+      expect(sums[0]!.text).not.toContain("都合并了");
     }
   });
 

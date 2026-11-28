@@ -51,8 +51,15 @@ human opens them.
    the partner's own **[[later]]** mark (hidden). With nothing in that turn that brings it back (a
    task opened or sent to, a wait, a routine, a card), it is held for one correction round that asks
    for the call (its line then goes out as that call's ack) or an "OK" (it goes out as it was).
-   One turn never says the same line twice (D570): words already said this turn, as a message or
-   an ack, are not said again (the correction's call took the held line, then the model wrote it again).
+   One subject never says the same line twice inside a window (D570, widened by research/244 rule 10):
+   words already said this turn, as a message or an ack, are not said again (the correction's call
+   took the held line, then the model wrote it again); across turns the same words about the same
+   task, PR or to-do are held back for 30 minutes (E12 said one sentence twice in 80 s), and a report
+   older than its subject's last result is never said (E13; only the newest report per task in a
+   turn, and no progress after that task ended in it). **A claim is backed by an action:** the
+   partner's context shows what its own calls and their results did this turn; persona rule 10 says
+   an end, a stop or a done only when one of them did it (E11: 「都已结束跟进」 while every task
+   stayed open). Code keeps no phrase pattern for it: the model judges, code guards facts.
    Kept by tasks, the promise is recorded (state.json, five at most, three days) and shown as a fact
    (`[what you told them you'd come back to them with; still owed]`) on the turn one of its tasks ends
    in and whenever the person writes, until a turn after its tasks ended has said something. No code

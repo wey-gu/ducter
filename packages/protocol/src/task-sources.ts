@@ -324,7 +324,12 @@ export interface SourceAsk {
    * D415: hand_comment 先在这 {n} 个下面留一句，再开始？ the note asked to tell the issues first: Go
    *                    comments (text, on each of items) and starts; the other way starts without.
    */
-  kind: "write" | "closed" | "trust" | "batch" | "picks" | "review" | "plan" | "where_rule" | "group_review" | "reviews" | "hand_comment";
+  /*
+   * research/244 rule 5: offer  「A」「B」在自己的待办里：要我开始吗？ new to-dos held for a quiet
+   *                     moment, offered as one card (Go 接下 / Take them, Hold 现在不 / Not now,
+   *                     the default: it fades like D453's offers). Items are the to-dos.
+   */
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "offer" | "review" | "plan" | "where_rule" | "group_review" | "reviews" | "hand_comment";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;

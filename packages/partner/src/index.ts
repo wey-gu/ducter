@@ -1,5 +1,5 @@
 // @ducter/partner: the main AI. Entry point: createPartner(core, runner).
-export { createPartner, type PartnerHandle, type PartnerOptions } from "./partner.ts";
+export { createPartner, SAME_LINE_MS, type PartnerHandle, type PartnerOptions } from "./partner.ts";
 export { buildSystemPrompt } from "./persona.ts";
 export { forPerson, redactSecrets, renderHelpers } from "./partner.ts";
 export { renderProjection, renderTrigger, renderHistoryLine, renderTasks } from "./render.ts";

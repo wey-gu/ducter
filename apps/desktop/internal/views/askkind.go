@@ -201,7 +201,7 @@ func srcKind(src *protocol.SourceAsk) string {
 		return "computer"
 	case "plan":
 		return "todo"
-	case "batch", "picks":
+	case "batch", "offer", "picks":
 		return "todo"
 	}
 	return "todo"

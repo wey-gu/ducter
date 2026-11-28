@@ -1357,7 +1357,15 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       const i = [...TODO_ISSUES, ...scenarios.flatMap((x) => x.todoIssues ?? [])].find((x) => x.repo === m[1] && x.number === Number(m[2]))!;
       return { source: core.taskSources.view().sources[0]!.id, kind: "github" as const, ref, label: `#${i.number}`, where: i.repo, title: i.title, url: `https://github.com/${i.repo}/issues/${i.number}` };
     });
-    core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
+    if (st.todosNew.offer) {
+      // research/244 rule 5: the code-owned offer card (task-sources/index.ts's flushOffers), and no
+      // source_seen trigger: the partner is not woken over it.
+      const n = items.length;
+      const question = n === 1 ? `你的待办里有一个新的：「${items[0]!.title}」，要我开始吗？` : `你的待办里有 ${n} 个新的，要我开始吗？`;
+      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_offer_eval", question, goLabel: "接下", holdLabel: "现在不", defaultOption: "hold", defaultAt: new Date(Date.now() + 10 * 3_600_000).toISOString(), reversible: false, offer: true, src: { kind: "offer", item: items[0]!, items: items.map((item) => ({ item })) } } });
+    } else {
+      core.log.append({ stream: "channel", origin: "system", kind: "source_seen", body: { source: items[0]!.source, change: "new", items, ...(st.todosNew.taken ? { taken: true } : {}) } });
+    }
   } else if ("longRound" in st) {
     // D481: the round's steps as the runner logs them, then the keeper's hand-over (the mend it appends).
     const x = st.longRound;

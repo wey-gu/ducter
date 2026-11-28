@@ -695,7 +695,7 @@ export function groupReviewLines(src: NonNullable<import("@ducter/protocol").Bod
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
     <div class="src-card">
-      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && src.kind !== "hand_comment" && <SourceChip src={src.item} states={false} />}
+      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && src.kind !== "hand_comment" && src.kind !== "offer" && src.kind !== "picks" && <SourceChip src={src.item} states={false} />}
       {/* D415: the hand-over's note asked to tell the issues first: each one, then the line as it goes out. */}
       {src.kind === "hand_comment" && (
         <>
@@ -760,6 +760,19 @@ export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/proto
             ))}
           </ul>
         </div>
+      )}
+      {/* research/244 rule 4: a to-do offer lists each one by its title, never only its number. */}
+      {(src.kind === "offer" || src.kind === "picks") && src.items && (
+        <ul class="src-reviews">
+          {src.items.map(({ item }) => (
+            <li key={item.ref} class="src-review">
+              <SourceChip src={item} small states={false} />
+              <span class="grow src-review-title" dir="auto">
+                {item.title}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
       {src.kind === "batch" && src.items && src.items.length > 1 && <small class="muted">{t("ho.batch.n", src.items.length)}</small>}
       {/* D394: a review task's round: each drafted review opens as its PR's pre-read. */}

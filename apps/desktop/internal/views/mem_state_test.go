@@ -18,7 +18,7 @@ import (
 )
 
 func TestMemStateRowsAt1150And1400(t *testing.T) {
-	reasons := []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown"}
+	reasons := []string{"authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown", "policy_invalid"}
 	frames := func(tt *ui.Tester) {
 		for i := 0; i < 3; i++ {
 			tt.Advance(120 * time.Millisecond)
@@ -52,7 +52,7 @@ func TestMemStateRowsAt1150And1400(t *testing.T) {
 		peer("unconfirmed", "unconfirmed", L.T("bridge.unconfirmed.title"), L.T("bridge.unconfirmed"), L.T("bridge.retry"), &protocol.BridgeView{State: "unconfirmed", Identity: "ducter", Home: "hel"})
 		for _, r := range reasons {
 			act := L.T("bridge.retry")
-			if r == "lifetime_inactive" || r == "conflict" {
+			if r == "lifetime_inactive" || r == "conflict" || r == "policy_invalid" {
 				act = ""
 			}
 			peer("refused-"+r, "refused", L.T("bridge.refused."+r+".title"), L.T("bridge.refused."+r+".line"), act, &protocol.BridgeView{State: "refused", Reason: r, Identity: "ducter", Home: "hel"})

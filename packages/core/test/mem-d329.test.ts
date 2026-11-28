@@ -182,11 +182,18 @@ describe("Undo through settings", () => {
     const asked: unknown[] = [];
     settings.setMemHooks({ undo: async (n) => (asked.push(n), ok), waiting: () => new Set(["k-1"]) });
     expect((await settings.view()).mem.waiting).toEqual([b.seq]);
+    let failed: number[] = [];
+    const off = settings.onUndoFailed((seq) => failed.push(seq));
     ok = false;
     expect(await settings.undo(a.seq)).toBe(false);
     expect((await settings.view()).mem.undone).toBeUndefined();
+    expect(failed).toEqual([a.seq]);
+    // D669 (#4): the Log keeps the failed intent, and it is never replayed as a success.
+    expect(log.read({ stream: "channel", kinds: ["memory_feedback"], limit: 10 }).at(-1)!.body as Bodies["memory_feedback"]).toEqual({ memoryId: "m1", op: "forget", sent: false, failed: true });
     ok = true;
     expect(await settings.undo(a.seq)).toBe(true);
+    off();
+    expect(failed).toEqual([a.seq]);
     expect((await settings.view()).mem.undone).toEqual([a.seq]);
     expect(asked.at(-1)).toMatchObject({ memoryId: "m1" });
     expect(await settings.undo(9999)).toBe(false);

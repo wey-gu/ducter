@@ -287,15 +287,22 @@ and who to tell in Mem, is behind **详情** (`bridge.refused.detail`), as "Simp
 | too old, only its computer can | **Nowledge Mem 太旧了** · 在 {home} 上更新 Nowledge Mem，才能知道它好不好；登录和记忆都不动。 | **Nowledge Mem 太旧了** · need | none, and the line says which computer |
 | local Mem | **这台上的 Nowledge Mem 帮不了你的 agent** · {home} 上的这份只记它自己的；更新它，或者用云端工作区登录，再点「再试一次」。 | 这台上的 Nowledge Mem 不跟你的 agent 连 · need | **再试一次** |
 | no Space | **还没有只有你能看到的地方** · Nowledge Mem 里没有一处只有你能看到的地方。在 Mem 里建一个，再点「再看一次」。 | 还没给这里留一个只有你能看到的地方 · need | **再看一次** |
-| a refusal | see below | 你的 agent 还找不到我 · need | **再试一次**, except `lifetime_inactive` and `conflict` (none: the way through is in Mem) |
+| a refusal | see below | 你的 agent 还找不到我 · need | **再试一次**, except `lifetime_inactive`, `conflict` and `policy_invalid` (none: the way through is in Mem) |
 | failed | **没连上** · the home's own reason (`timed out`, `nmem 没能启动`) | 你的 agent 还找不到我 · need | **再试一次** |
 | unconfirmed | **连上了，还没确认** · 连上了，但 Nowledge Mem 没确认是我，所以还没打开。 | 连上了，还没确认 · need | **再试一次** |
 
 - **Refusals, in the person's words.** Each `bridge.refused.*` is a title and a line, not one red
   sentence: `authority_missing` **这个登录还不能替我做事** · 「在 Nowledge Mem 里把这个登录和我的名字对上…」
   (the alternatives `control_denied`, `revoked`, `attachment_mismatch`, `custody_birth_missing`,
-  `unavailable`, `unknown` follow the same shape). The words say what the person can do in Mem and
-  come back to tap; none says "identity", "key" or "workspace admin" in the line.
+  `unavailable`, `unknown`, and D669 (#4) `policy_invalid` — **这个 Nowledge Mem 工作区还没让这台电脑收发消息 /
+  This Nowledge Mem workspace hasn't let this computer send or receive yet**, nothing to retry — follow
+  the same shape). The words say what the person can do in Mem and come back to tap; none says
+  "identity", "key" or "workspace admin" in the line.
+- **A raw code is never a line (D669 #4).** A code Mem doesn't register (or a new suffix on a
+  registered family) is the generic failed line; the code itself is `BridgeView.code`, behind **详情**
+  (`mem.details.code`) and in `memFacts`. The stuck mailbox's code (`cloud_mailbox_*`) is behind **详情**
+  on Agent messaging too, never `(%s)` in its line. A test scans every bridge/Mem/Agent messaging word
+  in both languages for `cloud_bridge_setup_`, `policy_invalid`, `(%s)`; the same scan is on the Mac.
 - **`no_space` no longer stops.** D480's in-place Space choice was removed by D560, and no list of
   Spaces reaches the clients: `bridge_connect` takes no Space. So the one way through is **再看一次**
   after the person makes a personal Space in Mem; the line says exactly that, in Chinese, with no

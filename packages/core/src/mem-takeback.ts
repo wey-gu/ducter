@@ -4,6 +4,10 @@
 // are a take-back and nothing else ("别记这个", "这条不用记", "forget that"): longer words go to the
 // partner as they are. The take-back is D329's undo (archived in Mem, never deleted; a save still
 // waiting in the outbox is dropped), so the line reads 不记了「…」 on every client.
+//
+// D669 (#4): a refusal is not silence. The intent is still taken back at once, but a refused
+// undo marks that memory not taken back for the person (the failed ink on the Noted line) and for the
+// partner's next turn (one fact under their words), and the Log keeps the failed feedback intent.
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 
@@ -23,18 +27,25 @@ export function readTakeBack(text: string): boolean {
   return ZH.test(zh) || ZH_FORGET.test(zh) || EN.test(t);
 }
 
+/** One memory the words took back; failed: Mem refused the undo, so it is still kept. */
+export type TakenBack = { seq: number; title: string; failed?: true };
+
 export interface TakeBackPort {
   /** The memories taken back at these words (their user message's seq), with their titles. */
-  heardFrom(seq: number): { seq: number; title: string }[];
+  heardFrom(seq: number): TakenBack[];
+  /** Resolves when the undo calls these words set in motion have answered (at once when none did). */
+  settled(seq: number): Promise<void>;
   stop(): void;
 }
 
 /**
  * Takes back, at the person's word, the memories noted under the reply to their previous message.
- * undo is Settings' (D329), asynchronous; what was taken back is known at once for the partner's turn.
+ * undo is Settings' (D329), asynchronous; what was taken back is known at once for the partner's turn,
+ * and a refusal is known by the time `settled` answers.
  */
 export function takeBackAtOnce(o: { log: LogStore; undo: (seq: number) => Promise<boolean>; undone?: () => readonly number[] }): TakeBackPort {
-  const heard = new Map<number, { seq: number; title: string }[]>();
+  const heard = new Map<number, TakenBack[]>();
+  const settled = new Map<number, Promise<void>>();
   const stop = o.log.subscribe((e: LogEvent) => {
     if (e.kind !== "user_msg" || e.origin !== "user" || e.stream !== "channel") return;
     const b = e.body as Bodies["user_msg"];
@@ -46,8 +57,20 @@ export function takeBackAtOnce(o: { log: LogStore; undo: (seq: number) => Promis
       .read({ stream: "channel", kinds: ["memory_noted"], fromSeq: before + 1, limit: 20 })
       .filter((x) => x.seq < e.seq && !done.has(x.seq) && at - Date.parse(x.ts) <= TAKE_BACK_MS);
     if (!noted.length) return;
-    heard.set(e.seq, noted.map((x) => ({ seq: x.seq, title: (x.body as Bodies["memory_noted"]).title })));
-    for (const x of noted) void o.undo(x.seq).catch((err) => console.warn("[mem] taking back failed:", (err as Error).message));
+    const list = noted.map((x) => ({ seq: x.seq, title: (x.body as Bodies["memory_noted"]).title }) as TakenBack);
+    heard.set(e.seq, list);
+    const jobs = list.map((it) =>
+      o
+        .undo(it.seq)
+        .then((ok) => {
+          if (!ok) it.failed = true;
+        })
+        .catch((err) => {
+          it.failed = true;
+          console.warn("[mem] taking back failed:", (err as Error).message);
+        }),
+    );
+    settled.set(e.seq, Promise.all(jobs).then(() => undefined));
   });
-  return { heardFrom: (seq) => heard.get(seq) ?? [], stop };
+  return { heardFrom: (seq) => heard.get(seq) ?? [], settled: (seq) => settled.get(seq) ?? Promise.resolve(), stop };
 }

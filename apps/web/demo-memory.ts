@@ -25,6 +25,7 @@ const want = process.env.DEMO_MEM ?? "newer";
 const SPACE = "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11";
 const ok = (j: unknown) => ({ code: 0, out: JSON.stringify(j), err: "" });
 const conn = { connection_id: "00000000-0000-4000-8000-000000000001", agent_id: "ducter", identity_birth: "00000000-0000-4000-8000-000000000900", client_label: "ducter", state: "active" };
+let connected = false;
 const version = want === "old" ? "0.10.116" : "0.10.118";
 const health = process.env.DEMO_HEALTH;
 const direct = process.env.DEMO_DIRECT ?? "ok";
@@ -75,12 +76,22 @@ const run = async (args: string[]) => {
   if (a === "status")
     return want === "sign_in"
       ? { code: 1, out: "", err: "not signed in" }
-      : ok({ status: "healthy", backend: want === "local_mem" ? "local" : "cloud", update: { current: version, latest: want === "newer" ? "0.10.121" : version, update_available: want === "newer" } });
+      : ok({ status: "healthy", backend: want === "local_mem" ? "local" : want === "server" ? "server" : "cloud", update: { current: version, latest: want === "newer" ? "0.10.121" : version, update_available: want === "newer" } });
   if (a === "bridge setup") return ok({ state: "selection_needed", candidates: want === "no_space" || want === "local_mem" ? [] : [{ id: SPACE, label: "Only me", kind: "personal", readers: 1, write_default: true }] });
   if (a.includes("connections connect"))
-    return want === "refused" ? { code: 1, out: JSON.stringify({ error_code: "cloud_bridge_setup_role_authority_missing" }), err: "" } : ok({ state: "connected", agent_context: "ducter", connection: conn, selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } } });
-  if (a.includes("--agent-context ducter bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
-  if (a.includes("connections list")) return ok({ schema_version: 1, connections: want === "refused" || want === "no_space" || want === "local_mem" ? [] : [conn], next_connection_id: null });
+    return want === "refused"
+      ? { code: 1, out: JSON.stringify({ error_code: "cloud_bridge_setup_role_authority_missing" }), err: "" }
+      : want === "policy"
+        ? { code: 1, out: JSON.stringify({ error_code: "cloud_bridge_setup_policy_invalid" }), err: "" }
+        : ((connected = true),
+          ok({
+            state: "connected",
+            agent_context: args[args.indexOf("--context") + 1] ?? "ducter",
+            connection: conn,
+            selection: { scope: { space_id: SPACE }, address: { agent_id: "ducter" } },
+          }));
+  if (args.includes("--agent-context") && a.endsWith("bridge setup")) return ok({ state: "enable_needed", endpoint: { address: { agent_id: "ducter" } } });
+  if (a.includes("connections list")) return ok({ schema_version: 1, connections: connected && !["refused", "policy", "no_space", "local_mem"].includes(want) ? [conn] : [], next_connection_id: null });
   if (check) {
     // D465 (DEMO_CHECK=1): Mem's own asks, shaped as research/202 read them; answers are taken.
     if (a.startsWith("feed --type flag_contradiction")) return ok({ events: [checkContra] });
@@ -201,7 +212,8 @@ if (want !== "empty" && want !== "fresh" && want !== "sign_in")
     core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: zh ? z : e, memoryId: `m-${back}` } });
   }
 shift = 0;
-if (want === "newer" || want === "on" || want === "empty" || want === "refused" || want === "local_mem" || want === "no_space") void core.bridgeLink.connect();
+if (want === "newer" || want === "on" || want === "empty" || want === "refused" || want === "policy" || want === "local_mem" || want === "no_space" || want === "stuck" || want === "server") void core.bridgeLink.connect();
+if (want === "stuck") core.settings.setBridgeTrouble({ code: "cloud_mailbox_own_source_unreconciled" });
 console.log(`[demo] up at http://127.0.0.1:${core.port}/app#settings=memory (data: ${core.dataDir})`);
 // D597: DEMO_TAP=1: 更新 tapped as it starts (after the first check), so the page opens in that state.
 if (health === "update597" && process.env.DEMO_TAP === "1") setTimeout(() => void core.memPlugins.check().then(() => core.memPlugins.install("local", "claude-code")), 500);

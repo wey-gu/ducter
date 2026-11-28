@@ -944,20 +944,29 @@ export function NotedLine({ n }: { n: { seq: number; title: string; replaced?: s
         <span class="mk">{t("memory.undone", n.title)}</span>
       </div>
     );
+  const act = st.fresh ? (
+    <button class="qlink" aria-label={spoken(A.L, t("memory.undo"), n.title)} onClick={() => A.undoNoted(n.seq)}>
+      {t("memory.undo")}
+    </button>
+  ) : (
+    <button class="qlink" onClick={() => A.forget(n.seq)}>
+      {t("partner.memory.forget")}
+    </button>
+  );
   return (
     <div class="proof noted-line">
       {/* D590: waiting for Mem, said with its title as one element, never split from it by a wrap. */}
       <span class="mk">{st.waiting ? t("memory.waiting", n.title) : t("memory.noted", n.title)}</span>
       {n.replaced && <span class="nq">{t("memory.replaced", n.replaced)}</span>}
-      {st.failed && <span class="nq failed">{t("memory.undo.failed")}</span>}
-      {st.fresh ? (
-        <button class="qlink" aria-label={spoken(A.L, t("memory.undo"), n.title)} onClick={() => A.undoNoted(n.seq)}>
-          {t("memory.undo")}
-        </button>
+      {st.failed ? (
+        // D669 (#4): a refusal gets its own row with the one action, so a long failed line
+        // never leaves 别记这个 alone on the next line.
+        <span class="noted-failed-row">
+          <span class="nq failed">{t("memory.undo.failed")}</span>
+          {act}
+        </span>
       ) : (
-        <button class="qlink" onClick={() => A.forget(n.seq)}>
-          {t("partner.memory.forget")}
-        </button>
+        act
       )}
     </div>
   );

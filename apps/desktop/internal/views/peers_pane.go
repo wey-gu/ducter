@@ -272,14 +272,28 @@ func (a *App) peersNames(c *ui.Context, b *protocol.BridgeView, name string) {
 }
 
 // peersStuck is D369's one quiet line: Mem said the partner's mailbox
-// can't be read until Mem sorts it out on its side. Mem's code beside it,
-// nothing to tap; gone once a read works again.
+// can't be read until Mem sorts it out on its side. D669 (#4): Mem's
+// code is a fact behind 详情, never the line; gone once a read works again.
 func (a *App) peersStuck(c *ui.Context, b *protocol.BridgeView, name string) {
 	if b == nil || b.Stuck == nil {
 		return
 	}
+	t := a.T
 	a.group(c, "peers-stuck", "", "", func() {
-		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name, b.Stuck.Code), nil)
+		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name), nil)
+		a.footRow(c, "peers-stuck", "", func() {
+			if a.quietButton(c, "peers-stuck-fact", a.L.T("mem.details"), "Nowledge Mem", a.peersStuckFact, 0) {
+				a.peersStuckFact = !a.peersStuckFact
+			}
+		})
+		if a.peersStuckFact {
+			a.textBlock(c, "peers-stuck-fact-body", func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+					uiText(c, a.L.T("mem.details.code")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
+					uiText(c, b.Stuck.Code).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable().MinWidth(0).Shrink(1)
+				})
+			})
+		}
 	})
 }
 
@@ -388,14 +402,25 @@ func (a *App) peersProblem(c *ui.Context, b *protocol.BridgeView, name string) {
 			}
 		}
 	})
-	if v.Fact != nil {
+	// D669 (#4): an unregistered Mem code is a fact behind 详情, never the line.
+	if v.Fact != nil || b.Code != "" {
 		a.footRow(c, "peers-fact", "", func() {
 			if a.quietButton(c, "peers-fact", a.L.T("mem.details"), "Nowledge Mem", a.peersFact, 0) {
 				a.peersFact = !a.peersFact
 			}
 		})
 		if a.peersFact {
-			a.textBlock(c, "peers-fact-body", func() { a.note(c, a.memWord(*v.Fact)) })
+			a.textBlock(c, "peers-fact-body", func() {
+				if v.Fact != nil {
+					a.note(c, a.memWord(*v.Fact))
+				}
+				if b.Code != "" {
+					ui.Row(c).Gap(a.T.S3).AlignItems(ui.Baseline).Children(func() {
+						uiText(c, a.L.T("mem.details.code")).FontSize(a.T.SM).TextColor(a.T.InkMuted).Shrink(0)
+						uiText(c, b.Code).Font(a.T.Mono).FontSize(a.T.MonoSM).TextColor(a.T.InkSoft).Selectable().MinWidth(0).Shrink(1)
+					})
+				}
+			})
 		}
 	}
 }

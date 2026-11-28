@@ -215,8 +215,11 @@ func (a *App) memCheck(c *ui.Context) {
 		}
 		if ck.More && (open || n == 0) {
 			a.footRow(c, "mem-check", a.L.T("mem.check.more"), func() {
-				if a.quietLink(c, "mem-check-open", a.L.T("mem.all.open"), a.L.T("mem.all.open")) {
-					a.openLink(memSite)
+				// D669 (#4): 去 Nowledge Mem 看 opens the app where Mem lives.
+				if label, ok := a.memOpenLabel(nil); ok {
+					if a.quietLink(c, "mem-check-open", label, label) {
+						a.openMemAt(nil)
+					}
 				}
 			})
 		}

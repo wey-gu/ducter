@@ -7,7 +7,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
-import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, httpStatusIn, nmemCall, parseNmemVersion, pipxCmd, personalSpace, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
+import { BRIDGE_CONNECTION_FILE, createBridgeLink, whereCard, errorCodeIn, httpStatusIn, nmemCall, parseNmemVersion, pipxCmd, personalSpace, refusalOf, REFUSALS, versionConnects, type MemExec, type NmemCall } from "../src/bridge-link.ts";
 import { connectLinkOk, installPlan, type MemSys } from "../src/mem-cli.ts";
 import { startCore } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
@@ -66,6 +66,12 @@ describe("pieces", () => {
     expect(personalSpace({ candidates: [c("team", "t")] })).toBeUndefined();
     expect(personalSpace({ candidates: [c("personal", "p"), c("personal", "q")] })).toBeUndefined();
     expect(personalSpace({ state: "enable_needed" })).toBeUndefined();
+  });
+  test("the policy_invalid family has one line, by exact code or a suffix", () => {
+    expect(refusalOf("cloud_bridge_setup_policy_invalid")).toBe("policy_invalid");
+    expect(refusalOf("cloud_bridge_setup_policy_invalid_scope")).toBe("policy_invalid");
+    expect(refusalOf("cloud_bridge_setup_role_control_denied")).toBe("control_denied");
+    expect(refusalOf("cloud_bridge_setup_a_new_refusal")).toBeUndefined();
   });
   test("a refusal's code, wherever the CLI printed it", () => {
     expect(errorCodeIn('{"error_code":"cloud_bridge_setup_role_lifetime_inactive","http_status":403}', "")).toBe("cloud_bridge_setup_role_lifetime_inactive");
@@ -363,11 +369,14 @@ describe("the link over a fake nmem", () => {
     expect(JSON.stringify(v)).not.toMatch(/mint|Stop|backend/);
   });
 
-  test("an unregistered code: its name, not Mem's agent-facing detail", async () => {
-    const r = rig({ NMEM_FAKE_REFUSE: "cloud_bridge_setup_policy_invalid" });
+  test("an unregistered code: its own field for 详情, never a `Nowledge Mem: <code>` line", async () => {
+    const r = rig({ NMEM_FAKE_REFUSE: "cloud_bridge_setup_a_new_refusal" });
     await r.link.view();
     await r.link.connect();
-    expect(await r.link.view()).toMatchObject({ state: "failed", detail: "Nowledge Mem: policy_invalid" });
+    const v = await r.link.view();
+    expect(v).toMatchObject({ state: "failed", code: "cloud_bridge_setup_a_new_refusal" });
+    expect(v).not.toHaveProperty("detail");
+    expect(JSON.stringify(v)).not.toContain("Nowledge Mem: cloud_bridge_setup_");
   });
 
   test("not signed in: sign_in; a bad link runs nothing; a used one says so; a good one signs in, then ready", async () => {

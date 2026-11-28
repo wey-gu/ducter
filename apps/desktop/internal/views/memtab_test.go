@@ -122,7 +122,7 @@ func TestMemoryTab(t *testing.T) {
 		L := app.L
 		for _, w := range []string{L.T("mem.hero.on", app.personaName()), L.T("mem.update.newer", "0.10.121"), L.T("mem.update.newer.body", "hel", "0.10.118"), L.T("mem.badge.newer"),
 			L.T("mem.about.title"), L.T("mem.kind.preference"), L.T("mem.kind.decision"), L.T("mem.by.tool", "Codex"), L.T("mem.tools.title"), L.T("mem.tools.count", "53"),
-			L.T("mem.all.count", "10,980"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.where", "hel"), L.T("mem.week.count", "5"), L.T("mem.head.check")} {
+			L.T("mem.all.count", "10,980"), L.T("mem.all.open"), L.T("mem.app.on"), L.T("mem.app.kept.cloud"), L.T("mem.week.count", "5"), L.T("mem.head.check")} {
 			if !hasText(tt, w) {
 				t.Fatalf("%s: no %q in %q", lang, w, tt.Texts())
 			}
@@ -278,12 +278,12 @@ func memApp(t *testing.T, lang i18n.Lang, state string) (*App, *[]any) {
 	space := &protocol.BridgeSpace{ID: "6f1c0d2e-8b4a-4d1e-9c3f-2a7b5e0d9c11", Label: "Only me"}
 	switch state {
 	case "newer":
-		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Version: "0.10.118", Newer: ptr("0.10.121"), Upkeep: &protocol.BridgeUpkeep{Kind: "update"}}
+		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Where: "cloud", Version: "0.10.118", Newer: ptr("0.10.121"), Upkeep: &protocol.BridgeUpkeep{Kind: "update"}}
 	case "on":
-		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Version: "0.10.121"}
+		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Where: "cloud", Version: "0.10.121"}
 	case "empty":
 		f.Mem.Noted, f.Mem.Glance = nil, &protocol.MemGlance{Total: 3}
-		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Version: "0.10.121"}
+		f.Bridge = &protocol.BridgeView{State: "connected", Identity: "ducter", Space: space, Home: "hel", Where: "cloud", Version: "0.10.121"}
 	case "off":
 		f.Settings.Memory = false
 		f.Mem.State = "off"

@@ -191,7 +191,9 @@ export function memStateView(mem: MemView | undefined, b: BridgeView | undefined
       return make("no_space");
     case "refused": {
       const reason = b.reason ?? "control_denied";
-      const settled = reason === "lifetime_inactive" || reason === "conflict";
+      // D669 (#4): policy_invalid is fixed in Mem, not by another connect (conflict and a retired
+      // identity are the same: the way through is Mem).
+      const settled = reason === "lifetime_inactive" || reason === "conflict" || reason === "policy_invalid";
       return make("refused", { reason, ...(settled ? { action: "none" as const, act: "" } : {}) });
     }
     case "failed":
@@ -203,6 +205,19 @@ export function memStateView(mem: MemView | undefined, b: BridgeView | undefined
   if (look.look === "signed_out" && !mem?.health?.fresh) return make("signed_out");
   if (look.look === "unreachable") return make("unreachable");
   if (look.look === "old") return look.canUpdate ? make("old") : make("old_elsewhere");
+  return undefined;
+}
+
+/**
+ * D669 (#4): where 去 Nowledge Mem 看 goes. Cloud has a site; a local Mem and one's own server
+ * live on a computer, so the tap opens the app there (server's label names the computer). Unknown
+ * (a status that didn't say, or a state before it did): no link, rather than the wrong place.
+ */
+export function memOpenTarget(b: BridgeView | undefined): "app" | "site" | undefined {
+  if (!b) return undefined;
+  if (b.where === "cloud") return "site";
+  if (b.where === "local" || b.state === "local_mem") return "app";
+  if (b.where === "server") return "app";
   return undefined;
 }
 

@@ -321,7 +321,9 @@ section's note, never a dot and the same line on every row), the age at the righ
 and only the core's success answer says the partner's line; a refusal leaves the row as it was and one line in
 the failed ink says why (signed out, out of reach, refused) and the one way through. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
 (**N 条以上** when the whole read was this week), and the foot that says why they aren't listed. Then the
-Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆** with **去 Nowledge Mem 看**,
+Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆** with **去 Nowledge Mem 看**
+(the site only for Cloud; a local Mem or your own server opens the app on that computer, and a server's
+label names it — D669 #4),
 D459's **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** when Agent messaging is shown, an update, 详情).
 A forget or a fix is answered in the partner's word under the section (**好，忘掉「…」。 / 好，改成「…」。**, D459) only after Nowledge Mem did it (D652); a refusal says **没忘掉：… / 没改成功：…** in the failed ink with the reason and the way through, and the row comes back exactly as it was. Searching replaces the groups with **找到的** until cleared.
 
@@ -372,7 +374,9 @@ each of those is one quiet line in words, and nothing to learn.
 - **撤销 / Undo** (D444: now labelled **别记这个 / Don't keep this**, and said in words too) (`memory_undo`, `settings.undo`): on a Noted line while the person hasn't said anything
   since; no question. `nmem m archive` (never delete); a replaced memory comes back (`m show`, then a plain
   save); a save still in the outbox is dropped. `MemView.undone`; the line reads **不记了「…」**. Mem silent:
-  `undid {seq, ok: false}`, **Nowledge Mem 没回应，还记着**. Afterwards, 忘掉 as in D304.
+  `undid {seq, ok: false}`, **Nowledge Mem 没回应，还记着** — D669 (#4): also for a take-back said in
+  words, and the partner's next turn is told the memory was not taken back (never 不记了 over a kept one);
+  the Log's `memory_feedback` keeps the failed intent (`sent:false, failed:true`). Afterwards, 忘掉 as in D304.
 - **The outbox** (`outbox.ts`): a save Mem didn't answer (`unavailable`; `not_configured` never waits) is kept in
   `<partner dir>/mem-outbox.json` (0600) under a UUID-shaped key from persona, Log seq, task and words, and
   counted as remembered. Replayed on the next Mem call that works and every 5 minutes with the key as Mem's
@@ -480,8 +484,11 @@ like a friend who knows them. *How it starts:* nothing to set up; the first "以
   记", "算了，别记这个", "forget that", "don't remember that"; at most 40 characters) the moment it lands, and undoes
   the memories noted under the reply to the person's previous message (within 30 minutes) through Settings' undo
   (archived, never deleted; a waiting save dropped; a replaced one restored). The partner sees under their words
-  "Ducter already took back … say it back in a few words, no memory tool", and says **好，不记了。** Longer words go
-  to the partner as they are.
+  "Ducter already took back … say it back in a few words, no memory tool", and says **好，不记了。** D669 (#4):
+  when Mem refuses, the person sees **Nowledge Mem 没回应，还记着** in the failed ink on that Noted line, and the
+  partner gets one fact, `[the memory was not taken back]`, with the title; it must not say it was forgotten. The
+  partner's input for that message waits for the undo's answer, so the fact is never a guess; the Noted line itself
+  still moves the moment Mem answers. Longer words go to the partner as they are.
 - **"你都记得我些什么？"** What Mem knows about them (`MemoryClient.about`: `nmem m list --unit-type` preference,
   decision, fact, D321's rule: preferences from anyone, decisions and facts only the person's own) is already in
   front of the session (D487's block, with D444's answer shape: two or three warm sentences in its own words, the
@@ -493,9 +500,10 @@ like a friend who knows them. *How it starts:* nothing to set up; the first "以
   control, **哪条不想让我记，说一声「别记这个」就好。**; under 我知道的关于你, **让{name}说说记得你什么** puts the
   question in the composer (never sent for them): the page is the inventory, the conversation is where it feels
   like being known.
-- **Measured:** unit tests over fakes (core `mem-takeback.test.ts`, partner `about-me.test.ts`, web
-  `mem-d444.test.ts`, Mac `memory_test.go`, `mem_d444_test.go`); eval `mem-about-me-zh`, `mem-about-me-en`,
-  `mem-take-back-zh` (D444 in `decisions.md` for the runs). No live Mem.
+- **Measured:** unit tests over fakes (core `mem-takeback.test.ts` and `mem-no.test.ts` for the refused
+  take-back's frame, fact and Log; partner `about-me.test.ts` for both facts; web `mem-d444.test.ts` and
+  `mem-no.test.ts`, Mac `memory_test.go`, `mem_d444_test.go`, `mem_no_test.go`); eval `mem-about-me-zh`,
+  `mem-about-me-en`, `mem-take-back-zh` (D444 in `decisions.md` for the runs). No live Mem.
 
 ## Mem in the morning's offers (D458, built 2026-11-21)
 

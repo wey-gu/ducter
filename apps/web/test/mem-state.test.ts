@@ -9,7 +9,7 @@ import { strings, TABLES } from "../src/i18n.ts";
 
 const b = (x: Partial<BridgeView> = {}): BridgeView => ({ state: "connected", identity: "ducter", home: "hel", ...x });
 const mem = (issue?: string, fresh = false): MemView => ({ state: "connected", health: issue ? { issue, ...(fresh ? { fresh: true as const } : {}) } : {}, noted: [] });
-const REASONS = ["authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown"] as const;
+const REASONS = ["authority_missing", "custody_birth_missing", "lifetime_inactive", "attachment_mismatch", "control_denied", "revoked", "conflict", "unavailable", "unknown", "policy_invalid"] as const;
 const ACTIONS = ["sign_in", "open_mem", "check_again", "update", "retry"];
 
 type Case = { name: string; m?: MemView; v: BridgeView; state: string; action: string; args?: string[] };
@@ -25,7 +25,7 @@ const CASES: Case[] = [
   { name: "no Space", v: b({ state: "no_space" }), state: "no_space", action: "check_again" },
   { name: "failed", v: b({ state: "failed", detail: "timed out" }), state: "failed", action: "retry", args: ["mem"] },
   { name: "unconfirmed", v: b({ state: "unconfirmed" }), state: "unconfirmed", action: "retry" },
-  ...REASONS.map((reason) => ({ name: `refused ${reason}`, v: b({ state: "refused", reason }), state: "refused", action: reason === "lifetime_inactive" || reason === "conflict" ? "none" : "retry" })),
+  ...REASONS.map((reason) => ({ name: `refused ${reason}`, v: b({ state: "refused", reason }), state: "refused", action: reason === "lifetime_inactive" || reason === "conflict" || reason === "policy_invalid" ? "none" : "retry" })),
 ];
 
 const words = (x: { key: string; args: string[] }, lang: "zh" | "en") => strings(lang).t(x.key, ...x.args);
@@ -67,7 +67,10 @@ describe("Mem's states, one table (D646)", () => {
       for (const lang of ["zh", "en"] as const) {
         for (const w of [v.title, v.line, v.overview, v.need]) {
           const text = words(w, lang);
-          expect([reason, lang, /ducter|管理员|admin|workspace|owner/i.test(text)], `${reason} ${lang} ${w.key}`).toEqual([reason, lang, false]);
+          // policy_invalid is about the workspace's own setting, which the line must name; it still
+          // never names the persona's identity or Mem's administrator.
+          const names = reason === "policy_invalid" ? /ducter|管理员|admin|owner/i.test(text) : /ducter|管理员|admin|workspace|owner/i.test(text);
+          expect([reason, lang, names], `${reason} ${lang} ${w.key}`).toEqual([reason, lang, false]);
         }
         expect([reason, lang, words(v.fact!, lang).includes("ducter")]).toEqual([reason, lang, true]);
       }

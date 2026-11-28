@@ -279,7 +279,7 @@ What your partner remembers about you has its own section, **Memory**.
   wrote to the same Nowledge Mem this week and how many working notes. Those notes are about their
   work, not about you, so they aren't listed; your partner can still recall them.
 - **Nowledge Mem** says it is connected, **Where it's kept** (Nowledge Mem Cloud, the Nowledge Mem
-  app on one computer, or your own Mem server) and **Its name** there, with how many memories Nowledge Mem holds in all and **Open Nowledge Mem**. When a newer Nowledge Mem is
+  app on one computer, or your own Mem server) and **Its name** there, with how many memories Nowledge Mem holds in all and **Open Nowledge Mem**: for Nowledge Mem Cloud that opens its website; for the app on a computer or your own server it opens the app there, and a server's button names the computer. When a newer Nowledge Mem is
   out, a row says so with **Update** (your sign-in and your memories stay as they are), and the
   Settings entry for Memory says it too. **Details** shows the exact computer, version, identity
   and space, for when you need help. When you use agents of your own, **Your other agents reach
@@ -350,7 +350,9 @@ the same thing before, the line says **In place of** the old one: it replaces wh
 instead of keeping both. Right after, **Don't keep this** takes it back at once, and so does just
 saying "don't remember that" (the memory is set aside in Nowledge Mem, never deleted, and anything it
 replaced comes back); later, **Forget** asks first. If Nowledge Mem is away just then, the line says **“…” goes into Nowledge Mem once
-it's back**, and it does, by itself.
+it's back**, and it does, by itself. If Nowledge Mem refuses to take one back, the line stays and says
+**Nowledge Mem didn't answer; still noted** in the failed ink, and your partner is told it was not
+taken back, so it won't say it forgot; you can try again or change the memory in **Memory**.
 
 Once a week, in the first morning note of the week, one line offers to show what it noted about you
 in the last seven days. **Have a look** opens **What I learned this week**: mark a line **Right**,
@@ -385,7 +387,11 @@ When a connection can't be made, the page says what you can do in your own words
 line: this sign-in can't act as you yet, this connection is bound elsewhere, Nowledge Mem can't take
 it right now, and so on. **Try again** is there wherever trying again can help; where the way through
 is in Nowledge Mem itself (a retired identity, a connection bound to another sign-in), the line says
-so and there is no button. **Details** shows the exact name and who to ask in Nowledge Mem. If the
+so and there is no button. **Details** shows the exact name and who to ask in Nowledge Mem. A refusal this
+version doesn't have a sentence for still reads as one plain line, never a code: Mem's own code is
+under **Details**, for when you ask for help. When Nowledge Mem has opened a workspace to Bridge but
+hasn't let this computer exchange messages yet, the line says exactly that, and there is nothing to
+try again here: the way through is in Nowledge Mem. If the
 Nowledge Mem app is closed, the page says **Nowledge Mem isn't open** with **Open Nowledge Mem** on a
 Mac, or names the computer to open it on; if Mem here keeps its own memory and offers no place to
 connect, it says that too, and **Try again** reads it again after you update Nowledge Mem or sign in
@@ -422,6 +428,10 @@ your partner, in plain words, with when it last came at the right:
   waiting for that agent; if no answer comes, after two hours (only while you're around, never
   during quiet hours) your partner says once that the task is still waiting, naming it. When the answer
   comes, it goes into the task.
+
+If Nowledge Mem says your partner's mailbox needs sorting out on its side, one quiet line says so and
+nothing here needs doing: **Details** shows Mem's own code for when you ask for help, and your partner
+picks up again by itself once Mem sorts it.
 
 **Your helpers** lists each helper's address, with **Open** to its page under **Tasks › Looking after**. A helper is a name of yours in Nowledge Mem that your
 agents hand one kind of work to, for example "Nowledge Mem PR babysitter": your agents pass it a pull

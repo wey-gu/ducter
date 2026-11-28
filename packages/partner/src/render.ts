@@ -288,8 +288,8 @@ export interface RenderCtx {
   openAsks?(taskId: string): { id: string; question: string }[];
   /** D499: what the user already allowed this task to do without asking (kept for it, or for its repo's owner). */
   goesFor?(taskId: string): { action: string; text: string; task?: boolean }[];
-  /** D444: the memories Ducter took back at these words of the user's (别记这个). */
-  takenBack?(seq: number): { title: string }[];
+  /** D444: the memories Ducter took back at these words of the user's (别记这个); D669 (#4): failed marks one Mem refused. */
+  takenBack?(seq: number): { title: string; failed?: true }[];
   /** D426: the lines a task's many-things message asked for (all of them, any task), and that message's seq. */
   asksOf?(taskId: string): { msgSeq: number; lines: AskLine[] } | undefined;
   /** D426: the newest many-things message before this one (seq) with its lines, within a day. */
@@ -305,9 +305,18 @@ export function asksLines(a: { lines: AskLine[] }, ctx: Pick<RenderCtx, "taskTit
     .join("; ");
 }
 
-/** D444: one line under the user's words: what Ducter already took back from memory at them. */
-export function takenBackLine(ts: { title: string }[]): string {
-  return `  (Ducter already took back what you noted from memory at these words: ${ts.map((t) => `"${clip(t.title, 60)}"`).join(", ")}. It won't be remembered, and the user sees it as not kept. No memory tool: say it back in a few words, e.g. "好，不记了。" / "Okay, not keeping that.")`;
+/**
+ * D444: one line under the user's words: what Ducter took back from memory at them; D669 (#4):
+ * and the one it could not, as its own fact, so the partner never says 不记了 over a memory Mem kept.
+ */
+export function takenBackLine(ts: { title: string; failed?: true }[]): string {
+  const went = ts.filter((t) => !t.failed);
+  const kept = ts.filter((t) => t.failed);
+  const parts: string[] = [];
+  if (went.length) parts.push(`Ducter already took back what you noted from memory at these words: ${went.map((t) => `"${clip(t.title, 60)}"`).join(", ")}. It won't be remembered, and the user sees it as not kept. No memory tool: say it back in a few words, e.g. "好，不记了。" / "Okay, not keeping that."`);
+  if (kept.length)
+    parts.push(`[the memory was not taken back] Nowledge Mem refused to take back: ${kept.map((t) => `"${clip(t.title, 60)}"`).join(", ")}. It is still kept, and the user sees it as still noted. Do not say it was forgotten. Say plainly, in their words, that it is still there, e.g. "这条没能删掉，Mem 那边没回应。"; the person can try 别记这个 again or change it in Settings › Memory.`);
+  return `  (${parts.join(" ")})`;
 }
 
 /** D401: one line under the user's words: what Ducter already kept as their rule from them. */

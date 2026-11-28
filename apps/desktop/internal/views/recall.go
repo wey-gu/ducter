@@ -196,13 +196,17 @@ func (a *App) learnedRows() []protocol.Noted {
 func (a *App) noteFoot(c *ui.Context, key string, n *protocol.Finds) {
 	learned := n.Learned != nil && n.Learned.Count > 0
 	did := n.Rung == "morning" && !n.Quiet
-	if !learned && !did {
+	shadow := a.shadowOffered(n)
+	if !learned && !did && !shadow {
 		return
 	}
 	t := a.T
 	open := a.recall.learned == key
 	a.underBubble(c, func() {
 		ui.Row(c.Key(key + ":foot")).Gap(t.S4).AlignItems(ui.Center).Wrap().Children(func() {
+			if shadow {
+				a.shadowLink(c, key, n)
+			}
 			if learned {
 				label := a.L.T("learned.link.one")
 				if n.Learned.Count > 1 {
@@ -226,6 +230,9 @@ func (a *App) noteFoot(c *ui.Context, key string, n *protocol.Finds) {
 		})
 		if open {
 			a.learnedCard(c, key)
+		}
+		if shadow && a.shadow.open == key {
+			a.shadowCard(c, key)
 		}
 	})
 }

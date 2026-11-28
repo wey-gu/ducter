@@ -50,6 +50,7 @@ import { callEnded, cutAtWord } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { LaterAway, LaterBack, LaterButton, LaterTimes } from "./later.tsx";
 import { LearnedSheet, RecallLine, RecallSheet } from "./recall.tsx";
+import { ShadowSheet } from "./shadow-review.tsx";
 import { MicButton, ReadingLine, useReadback, voice, VoiceSettings, VoiceStrip } from "./voice.tsx";
 import { TalkPanel, talkIfAny, useTalkFeed } from "./talk.tsx";
 import { FirstAfter, firstOpening, KeyCard, keyJustAdded } from "./first-words.tsx";
@@ -3951,6 +3952,7 @@ function SheetsMain() {
   if (A.sheet.kind === "apps") return <AppsShelf />;
   if (A.sheet.kind === "recall") return <RecallSheet seq={A.sheet.seq} />;
   if (A.sheet.kind === "learned") return <LearnedSheet />;
+  if (A.sheet.kind === "shadow") return <ShadowSheet />;
   if (A.sheet.kind === "pile") return <PileSheet />;
   // D385: handing several over, and review together.
   if (A.sheet.kind === "hand") return <HandSheet />;

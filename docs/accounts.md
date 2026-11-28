@@ -194,6 +194,15 @@ fix you haven't shipped yet), it says so above the button. Nothing is ever sent 
 and nothing is saved into your mailbox. In **Tasks** the same item shows the reply's first line
 and **See the draft**, which takes you to it in the conversation.
 
+Once a week, the morning message may end with one more quiet line: **{n} things I noticed this
+week and didn't say**. These are things that looked off when your facts were put side by side
+(a flight and a hotel in different cities, a renewal whose card was declined) that your partner
+kept to itself. Open it to see each one: what it would have said, the mail or calendar entries
+it put together, and the day. Answer **Should have said it** or **Shouldn't have said it**, or
+**Stop asking about this kind**. Your answers decide whether things like these are told to you
+from then on; until you have answered a full week and they show it's worth it, none of them is
+said. Nothing is sent from there, nothing needs an answer, and the line fades the next morning.
+
 Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
 rules**, where you can remove it. You don't have to do anything else: what you tap, reply to or
 mark useful comes up first next time, and what you leave alone a little later, but no kind goes

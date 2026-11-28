@@ -13,6 +13,7 @@ import { ProactiveChips } from "./accounts.tsx";
 import { Btn, Facts, TextBox, TextLink } from "./controls.tsx";
 import { openDid } from "./did.tsx";
 import { LearnedLine } from "./recall.tsx";
+import { ShadowLine } from "./shadow-review.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -220,6 +221,7 @@ export function FindsNote({ n, join, seq, seqs }: { n: Bodies["finds"]; join?: b
             what it noted (the week's first note) and D300's Done for you (the morning's). */}
         {((n.learned && n.learned.count > 0) || (n.rung === "morning" && !n.quiet)) && (
           <div class="note-foot">
+            {n.shadowReview && n.shadowReview.count > 0 && <ShadowLine count={n.shadowReview.count} until={n.shadowReview.until} />}
             {n.learned && n.learned.count > 0 && <LearnedLine count={n.learned.count} />}
             {n.rung === "morning" && !n.quiet && <Btn kind="text" size="sm" chev class="did-morning" label={t("did.link")} onClick={() => openDid()} />}
           </div>

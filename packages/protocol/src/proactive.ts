@@ -336,6 +336,94 @@ export interface ShadowFinding {
   alsoBy: FindKind[];
   /** A find resting on any of these facts was already said. */
   said: boolean;
+  /** D674: the facts it joined as the review shows them (absent on passes logged before). */
+  rows?: ShadowFact[];
+}
+
+/** D674: one fact a shadow finding or a detector join rests on, as the review card shows it. */
+export interface ShadowFact {
+  id: string;
+  type: string;
+  /** Where it was read (日历 / 邮件 / 网上 …). */
+  src: FindSrc;
+  /** Its own header ("MU 523", "Shibuya Stream"), ≤ 80 chars. */
+  label: string;
+  /** Who it came from, its own element (D291). */
+  from?: string;
+  /** When the source item happened (ISO). */
+  at: string;
+}
+
+/** D674: the two answers to "should this have been said?" (应该早说 / 不该说). */
+export type ShadowVerdict = "yes" | "no";
+
+/**
+ * D674: one thing the week's shadow passes noticed, as the review lists it: a model finding
+ * (source "shadow"; alsoBy when a detector has it too) or a detectors' join no finding touched
+ * (source "detector"). id is stable across passes (a hash of its source and fact set).
+ */
+export interface ShadowItem {
+  id: string;
+  runId: string;
+  source: "shadow" | "detector";
+  /** What it would have said: the model's words, or the detector's own words. */
+  text: string;
+  why?: string;
+  next?: string;
+  confidence?: number;
+  /** Detectors with the same finding (a shadow item), or the detector's own kind (a detector item). */
+  alsoBy: FindKind[];
+  /** A find on these facts was already said. */
+  said: boolean;
+  /** When a pass first noticed it (ISO). */
+  at: string;
+  facts: ShadowFact[];
+  /** What "这类以后都别标 / Stop asking about this kind" stops: its fact types, or the detector's kind. */
+  sort: string;
+  /** The person's latest label, and whether it stopped this kind. */
+  verdict?: ShadowVerdict;
+  stopped?: boolean;
+}
+
+/** D674: the Log's `shadow_labels` event: one verdict, kept once (the latest per finding counts). */
+export interface ShadowLabel {
+  runId: string;
+  findingId: string;
+  verdict: ShadowVerdict;
+  /** 这类以后都别标: the sort no review asks about again (a "no" for this one). */
+  stop?: string;
+  at: string;
+}
+
+/** D674: why the gate stands where it does. */
+export type ShadowGateWhy = "pass" | "no_labels" | "no_full_week" | "no_more_found" | "lower_precision";
+
+/**
+ * D674: promoteShadow's answer, from the Log alone: on the fully labelled weeks, what the
+ * detectors found of what mattered (yes), what shadow and the detectors found together, each one's
+ * precision; pass only when together > detectors and shadow's precision ≥ theirs.
+ */
+export interface ShadowGate {
+  pass: boolean;
+  why: ShadowGateWhy;
+  /** Monday-to-Sunday weeks, already over, with a pass and every item labelled. */
+  weeks: number;
+  labelled: number;
+  mattered: number;
+  detectors: { flagged: number; found: number; precision: number | null };
+  shadow: { flagged: number; found: number; precision: number | null };
+  together: { found: number };
+  /** Detector kinds shadow covered on two labelled weeks or more (said only; detectors keep running). */
+  retire: FindKind[];
+}
+
+/** D674: the review card's list and `ducter proactive review`: one place, one store. */
+export interface ShadowReview {
+  /** YYYY-MM-DD, the span listed (the person's zone). */
+  from: string;
+  to: string;
+  items: ShadowItem[];
+  gate: ShadowGate;
 }
 
 /** D502: why code dropped a returned finding. */
@@ -352,7 +440,7 @@ export interface ShadowRun {
   repeats: number;
   dropped: { why: ShadowDrop; n: number }[];
   /** The detectors' joins (two facts or more, or a mismatch) none of the findings touch. */
-  detectorsOnly: { key: string; kind: FindKind; facts: string[] }[];
+  detectorsOnly: { key: string; kind: FindKind; facts: string[]; /** D674: the detector's own words, and whether a find on these facts was said. */ text?: string; said?: boolean; rows?: ShadowFact[] }[];
   tokens: number;
   /** It did not ask the model: over the day's budget, nothing to read, no model, or the call failed. */
   skipped?: "budget" | "no_facts" | "no_model" | "failed";
@@ -370,7 +458,9 @@ export interface ShadowWeek {
   /** Detector joins no finding touched (each distinct join once). */
   detectorsOnly: number;
   /** Shadow-only findings by their words (the newest few, oldest first). */
-  list: { text: string; confidence: number; facts: number; at: string }[];
+  list: { text: string; confidence: number; facts: number; at: string; verdict?: ShadowVerdict }[];
+  /** D674: the person's labels on this week's items (shadow findings and detector joins). */
+  labels?: { items: number; labelled: number; yes: number; no: number; stopped: number };
 }
 
 /** D464: `ducter proactive week`: from the Log, per week; and the weights learned now (D453). */
@@ -383,6 +473,8 @@ export interface WeekReport {
   weeks: WeekRow[];
   /** What ranks offers now: per kind and per sender, 1 = knows nothing (never gating). */
   weights: { kind: Partial<Record<FindKind, number>>; senders: { sender: string; w: number }[] };
+  /** D674: the shadow's gate now, from the labels in the Log (absent: no shadow pass logged). */
+  gate?: ShadowGate;
 }
 
 export interface ProactiveDay {

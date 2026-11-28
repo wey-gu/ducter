@@ -765,7 +765,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdBrowser({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
     case "proactive":
       // D388: the dry replay of the last days of the accounts, on the home. D464: the week's offers counted.
-      return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], lang: detectLocale(), ...(args.days ? { days: args.days } : {}), ...(args.weeks ? { weeks: args.weeks } : {}), ...(args.noWeb ? { noWeb: true } : {}) });
+      return cmdProactive({ t, target: ctx.target, json: args.json, rest: args.rest ?? [], lang: detectLocale(), ...(args.days ? { days: args.days } : {}), ...(args.weeks ? { weeks: args.weeks } : {}), ...(args.noWeb ? { noWeb: true } : {}), ...(args.week ? { week: true } : {}), ...(args.labels ? { labels: args.labels } : {}) });
     case "repairs":
       // D473: how self-repair did, week by week, counted from the home's Log.
       return cmdRepairs({ t, target: ctx.target, json: args.json, ...(args.weeks ? { weeks: args.weeks } : {}) });

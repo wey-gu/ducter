@@ -326,6 +326,8 @@ type App struct {
 	forgotten map[int64]bool
 	// recall is the 想起了 line's card and 这周记下的 (D304, recall.go).
 	recall recallState
+	// shadow is the week's review of what it noticed and didn't say (D674, shadow.go).
+	shadow shadowState
 	// thinkingSince is when this app sent the message it waits on (the
 	// presence row's clock before the partner names a step, D104).
 	thinkingSince time.Time

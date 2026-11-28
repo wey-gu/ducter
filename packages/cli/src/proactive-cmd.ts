@@ -5,7 +5,7 @@
 // D464: `ducter proactive week [--weeks N] [--json]`: what Ducter offered by itself each week, read
 // from the home's Log, and what came of it (opened, Go, 有用, replied, faded, 这类不用告诉我), by
 // source and by kind, against the one-in-twenty line (D453); interruptions apart; the weights now.
-import { AHA_LINE, FIND_FROMS, FIND_KINDS, type FindKind, type OfferCounts, type ReplayReport, type ServerFrame, type ShadowRun, type WeekReport, type WeekRow } from "@ducter/protocol";
+import { AHA_LINE, FIND_FROMS, FIND_KINDS, type FindKind, type OfferCounts, type ReplayReport, type ServerFrame, type ShadowGate, type ShadowItem, type ShadowReview, type ShadowRun, type WeekReport, type WeekRow } from "@ducter/protocol";
 import { words, type LangTag } from "@ducter/protocol";
 import { KIND_WORDS } from "@ducter/core/src/proactive/words.ts";
 import { connect, type Conn } from "./client.ts";
@@ -21,6 +21,9 @@ interface Opts {
   days?: number;
   weeks?: number;
   noWeb?: boolean;
+  /** D674: review --week (the last full week only) and --label id=yes|no|stop. */
+  week?: boolean;
+  labels?: string[];
   /** The CLI's language (kind names, dates). */
   lang?: string;
   /** Test seam. */
@@ -35,6 +38,7 @@ export async function cmdProactive(o: Opts): Promise<number> {
   const print = o.print ?? ((l: string) => console.log(l));
   if (o.rest[0] === "week") return cmdWeek(o, print);
   if (o.rest[0] === "cross") return cmdCross(o, print);
+  if (o.rest[0] === "review") return cmdReview(o, print);
   if (o.rest[0] !== "replay" || (o.days !== undefined && (o.days < 1 || o.days > 7))) {
     print(o.t("proactive.usage"));
     return 2;
@@ -150,10 +154,88 @@ export function crossLines(t: T, r: ShadowRun): string[] {
   return out;
 }
 
-/** D502: a week's shadow section under its offers. */
+/** D502: a week's shadow section under its offers; D674: the labels on it. */
 function shadowBlock(t: T, s: NonNullable<WeekRow["shadow"]>): string[] {
   const out = ["", `  ${t("proactive.week.shadow", { runs: s.runs, n: s.findings, both: s.both, only: s.shadowOnly, detectors: s.detectorsOnly })}`];
-  for (const x of s.list) out.push(`    ${t("proactive.week.quote", { words: x.text.length > 80 ? `${x.text.slice(0, 79)}…` : x.text })} (${Math.round(x.confidence * 100)}%)`);
+  if (s.labels) out.push(`  ${t("proactive.week.labels", { labelled: s.labels.labelled, items: s.labels.items, yes: s.labels.yes, no: s.labels.no, stopped: s.labels.stopped })}`);
+  for (const x of s.list) out.push(`    ${t("proactive.week.quote", { words: x.text.length > 80 ? `${x.text.slice(0, 79)}…` : x.text })} (${Math.round(x.confidence * 100)}%)${x.verdict ? `  ${t(`proactive.review.v.${x.verdict}` as Key)}` : ""}`);
+  return out;
+}
+
+/** D674: the review answers in seconds (the Log and the ledger only). */
+const REVIEW_MS = 60_000;
+
+/**
+ * D674: `ducter proactive review [--week] [--label id=yes|no|stop]`: the same list the morning
+ * note's review card shows, from the same store; each --label writes one verdict there first.
+ */
+async function cmdReview(o: Opts, print: (l: string) => void): Promise<number> {
+  const asks: { findingId: string; verdict: "yes" | "no" | "stop" }[] = [];
+  for (const l of o.labels ?? []) {
+    const [id, v] = l.split("=");
+    if (!id || (v !== "yes" && v !== "no" && v !== "stop")) {
+      print(o.t("proactive.usage"));
+      return 2;
+    }
+    asks.push({ findingId: id, verdict: v });
+  }
+  const c = o.conn ?? (await connect(o.target));
+  if (!c) {
+    print(await notReached(o.t, o.target));
+    return 1;
+  }
+  const answer = () => c.next((x: ServerFrame): x is Extract<ServerFrame, { t: "shadow_review_result" }> => x.t === "shadow_review_result", REVIEW_MS);
+  try {
+    let bad = 0;
+    for (const a of asks) {
+      c.send({ t: "shadow_label", ...a });
+      const f = await answer();
+      if (!f?.review) {
+        bad++;
+        if (!o.json) print(o.t(f?.error === "unknown_item" ? "proactive.review.unknown" : "proactive.review.failed", { id: a.findingId, reason: f?.error ?? "timeout" }));
+      } else if (!o.json) print(o.t("proactive.review.kept", { id: a.findingId, verdict: o.t(`proactive.review.v.${a.verdict}` as Key) }));
+    }
+    c.send({ t: "shadow_review", ...(o.week ? { week: true } : {}) });
+    const f = await answer();
+    if (!f?.review) {
+      print(o.json ? JSON.stringify({ ok: false, error: f?.error ?? "timeout" }) : o.t("proactive.review.failed", { id: "", reason: f?.error ?? "no answer in a minute" }));
+      return 1;
+    }
+    if (o.json) print(JSON.stringify({ ok: !bad, review: f.review }));
+    else for (const l of reviewLines(o.t, f.review, o.lang ?? "en")) print(l);
+    return bad ? 1 : 0;
+  } finally {
+    if (!o.conn) c.close();
+  }
+}
+
+/** D674: the review as lines: each item with its id, words, facts and verdict; then the gate. */
+export function reviewLines(t: T, r: ShadowReview, lang: LangTag): string[] {
+  const kindName = (k: FindKind) => (KIND_WORDS[k] ? words(KIND_WORDS[k], lang) : k);
+  const open = r.items.filter((i) => !i.verdict && !i.stopped).length;
+  const out = [t("proactive.review.head", { from: dayWords(t, r.from), to: dayWords(t, r.to), n: r.items.length, open })];
+  if (!r.items.length) out.push(`  ${t("proactive.review.none")}`);
+  for (const i of r.items) out.push("", ...itemLines(t, i, kindName));
+  out.push("", ...gateLines(t, r.gate));
+  return out;
+}
+
+function itemLines(t: T, i: ShadowItem, kindName: (k: FindKind) => string): string[] {
+  const by = i.source === "detector" ? t("proactive.review.by.detector", { kind: kindName(i.alsoBy[0]!) }) : i.alsoBy.length ? t("proactive.review.by.both", { kinds: i.alsoBy.map(kindName).join(t("proactive.week.sep")) }) : t("proactive.review.by.shadow");
+  const verdict = i.verdict ? t(`proactive.review.v.${i.verdict}` as Key) : i.stopped ? t("proactive.review.v.stopped") : t("proactive.review.v.open", { id: i.id });
+  const out = [`  [${i.id}] ${i.text || kindName(i.alsoBy[0]!)}`];
+  if (i.why || i.next) out.push(`      ${t("proactive.review.why", { why: i.why ?? "", next: i.next ?? "" })}`);
+  for (const f of i.facts) out.push(`      ${[t(`proactive.review.src.${f.src}` as Key), f.at.slice(0, 10), f.label, f.from].filter(Boolean).join("  ")}`);
+  out.push(`      ${by}${i.said ? `  ${t("proactive.review.said")}` : ""}  ${verdict}`);
+  return out;
+}
+
+/** D674: where the gate stands, and the counts it stands on. */
+export function gateLines(t: T, g: ShadowGate): string[] {
+  const p = (x: number | null) => (x === null ? "–" : `${Math.round(x * 100)}%`);
+  const out = [t(`proactive.review.gate.${g.why}` as Key, { weeks: g.weeks })];
+  if (g.labelled) out.push(`  ${t("proactive.review.gate.counts", { weeks: g.weeks, labelled: g.labelled, mattered: g.mattered, dFound: g.detectors.found, dFlagged: g.detectors.flagged, dP: p(g.detectors.precision), sFound: g.shadow.found, sFlagged: g.shadow.flagged, sP: p(g.shadow.precision), together: g.together.found })}`);
+  if (g.retire.length) out.push(`  ${t("proactive.review.gate.retire", { kinds: g.retire.join(", ") })}`);
   return out;
 }
 
@@ -193,6 +275,7 @@ export function weekLines(t: T, r: WeekReport, lang: LangTag): string[] {
   if (kinds.length) out.push(t("proactive.week.wKinds", { list: kinds.join(sep) }));
   if (r.weights.senders.length) out.push(t("proactive.week.wSenders", { list: r.weights.senders.map((s) => `${s.sender} ×${s.w}`).join(sep) }));
   if (!kinds.length && !r.weights.senders.length) out.push(t("proactive.week.wNone"));
+  if (r.gate) out.push("", ...gateLines(t, r.gate));
   return out;
 }
 

@@ -167,7 +167,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "import" | "chats" | "autofill" | "devices" | "phone" | "plugins";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | { kind: "keys" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "shadow" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | { kind: "keys" } | null;
 
 /**
  * D455: what is typed over the folder browser: a path (it starts with / or ~) names the folder to
@@ -646,6 +646,8 @@ class AppState {
   /** D655: Settings › 导入 / Import and Past tasks' offer (imports.tsx keeps its own state). */
   onImportsFrame?: (f: import("@ducter/protocol").ImportsServerFrame) => void;
   onThemesFrame?: (f: import("@ducter/protocol").ThemesServerFrame) => void;
+  /** D674: shadow_review_result, handed to the review sheet (shadow-review.tsx sets it). */
+  onShadowFrame?: (f: Extract<import("@ducter/protocol").ServerFrame, { t: "shadow_review_result" }>) => void;
   /** D357: a to-do handed over from Tasks (todos.tsx): true when the answer was its. */
   onHanded?: (f: Extract<ServerFrame, { t: "task_new_result" }>) => boolean;
   /** D345: Settings › 待办来源's 连上 GitHub in flight, and the account it just connected as (said once on GitHub's card). */
@@ -1102,6 +1104,7 @@ class AppState {
     // D285: 做过的事 / Past tasks (past.tsx).
     // D300: 替你做过的 / Done for you (did.tsx).
     if (f.t === "did_result") return onDidFrame(f);
+    if (f.t === "shadow_review_result") return void this.onShadowFrame?.(f);
     // D591: the week's count for Overview and the limit card (usage-week.tsx).
     if (f.t === "usage_days_result") return onUsageFrame(f);
     // D391: the find-anything field asks with its own ids (k…): its answers are its own.

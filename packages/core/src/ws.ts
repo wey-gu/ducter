@@ -2028,6 +2028,30 @@ export function createWsHandler(deps: WsDeps) {
           .catch((err: Error) => send(ws, { t: "proactive_cross_result", error: err.message.slice(0, 200) }));
         return;
       }
+      case "shadow_review": {
+        // D674: the review of what the shadow noticed (the card and `ducter proactive review`); read-only, this socket only.
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        try {
+          send(ws, { t: "shadow_review_result", review: p.shadowReview(f.week === true) });
+        } catch (err) {
+          send(ws, { t: "shadow_review_result", error: (err as Error).message.slice(0, 200) });
+        }
+        return;
+      }
+      case "shadow_label": {
+        // D674: one verdict, kept once in the Log (partner stream); never wakes the partner, never said.
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        const verdict = f.verdict === "yes" || f.verdict === "no" || f.verdict === "stop" ? f.verdict : undefined;
+        if (!verdict || typeof f.findingId !== "string") {
+          send(ws, { t: "shadow_review_result", error: "bad_label" });
+          return;
+        }
+        const r = p.shadowLabel(f.findingId, verdict);
+        send(ws, "review" in r ? { t: "shadow_review_result", review: r.review } : { t: "shadow_review_result", error: r.error });
+        return;
+      }
       case "worktrees_plan": {
         // D514: read-only; answered on this socket only.
         const r = deps.runner();

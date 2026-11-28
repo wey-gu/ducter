@@ -10,6 +10,7 @@ import { parseArgs } from "../src/args.ts";
 import { translator } from "../src/i18n.ts";
 import { cmdPlugin } from "../src/plugin-cmd.ts";
 import { tempDir } from "../../core/test/helpers.ts";
+import { makePluginRepo } from "../../core/test/helpers-repo.ts";
 
 const fixture = join(import.meta.dir, "../../core/test/fixtures/plugin");
 const t = translator("en");
@@ -92,6 +93,33 @@ test("plugin add of something that is not a plugin exits 1 and installs nothing"
   expect(await cmdPlugin({ t, dataDir: d.dir, json: false, rest: ["add", join(d.dir, "empty")], print: (s) => out.push(s) })).toBe(1);
   expect(out.join("\n")).toContain("That didn't work");
   expect(createPluginRuntime({ dataDir: d.dir }).list()).toEqual([]);
+  d.cleanup();
+});
+
+test("plugin source add|list|remove: the official repository is always there and can't go", async () => {
+  const d = tempDir();
+  const theirs = makePluginRepo(join(d.dir, "theirs"), [{ from: fixture, id: "fixture-two", app: "Fixture Two" }]);
+  const added: string[] = [];
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: false, rest: ["source", "add", theirs.root], print: (s) => added.push(s) })).toBe(0);
+  expect(added.join("\n")).toContain("Added the plugin repository");
+  expect(readFileSync(join(d.dir, "import-repositories.json"), "utf8")).toContain(theirs.root);
+
+  const list: string[] = [];
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: true, rest: ["source", "list"], print: (s) => list.push(s) })).toBe(0);
+  const parsed = JSON.parse(list.join("\n"));
+  expect(parsed.repositories).toHaveLength(2);
+  expect(parsed.repositories[0]).toMatchObject({ id: "official", official: true });
+  const mine = parsed.repositories[1];
+  expect(mine).toMatchObject({ url: theirs.root, official: false });
+
+  // The official source can't be removed; the person's can.
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: true, rest: ["source", "remove", "official"], print: () => {} })).toBe(1);
+  const gone: string[] = [];
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: false, rest: ["source", "remove", mine.id], print: (s) => gone.push(s) })).toBe(0);
+  expect(gone.join("\n")).toContain("Removed the plugin repository");
+  const after: string[] = [];
+  await cmdPlugin({ t, dataDir: d.dir, json: true, rest: ["source", "list"], print: (s) => after.push(s) });
+  expect(JSON.parse(after.join("\n")).repositories).toHaveLength(1);
   d.cleanup();
 });
 

@@ -4,7 +4,7 @@
 // consent per read list, the host's stamp, the one import service). The first live run is in
 // plugin-sandbox.test.ts, which needs a host that can apply a Seatbelt profile.
 import { expect, test } from "bun:test";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
 import { createImportSources } from "../src/imports/sources.ts";
@@ -14,8 +14,10 @@ import { openLog } from "../src/log.ts";
 import { createMarks, createPast } from "../src/past.ts";
 import { createRegistry } from "../src/registry.ts";
 import { tempDir } from "./helpers.ts";
+import { makePluginRepo } from "./helpers-repo.ts";
 
 const fixture = join(import.meta.dir, "fixtures/plugin");
+const onlineFixture = join(import.meta.dir, "fixtures/plugin-online");
 const NOW = Date.parse("2026-12-01T10:00:00Z");
 const THREAD = { t: "thread", id: "FX-1", title: "A fixture thread", repo: "acme/hawdb", createdAt: "2026-10-02T03:11:00Z", updatedAt: "2026-10-02T03:14:00Z" };
 const stream = (app = "Fixture Notes") =>
@@ -35,10 +37,16 @@ function setup() {
   tasks.setMarks((p, id) => marks.get(p, id));
   const past = createPast({ log, tasks, marks, now: () => NOW });
   const holder = { out: stream(), seen: undefined as import("../src/imports/sandbox.ts").PluginRun | undefined };
+  const bin = join(t.dir, "bin");
+  mkdirSync(bin, { recursive: true });
+  const fakeLody = join(bin, "lody");
+  writeFileSync(fakeLody, "#!/bin/sh\nprintf '{\"ok\":true,\"workspaces\":[]}\\n'\n");
+  chmodSync(fakeLody, 0o755);
   const runtime = createPluginRuntime({
     dataDir: t.dir,
     now: () => NOW,
     curated: [],
+    path: `${bin}:${process.env.PATH ?? ""}`,
     sandbox: async (run) => {
       holder.seen = run;
       return { code: 0, stdout: holder.out, stderr: "" };
@@ -47,6 +55,7 @@ function setup() {
   const reader = join(t.dir, "reader");
   mkdirSync(reader, { recursive: true });
   cpSync(fixture, reader, { recursive: true });
+  const official = makePluginRepo(join(t.dir, "official-repo"), [{ from: fixture }]);
   const sources = createImportSources({
     log,
     tasks,
@@ -55,11 +64,8 @@ function setup() {
     now: () => NOW,
     zone: () => "UTC",
     plugins: runtime,
+    officialUrl: official.root,
     lookMs: 0,
-    run: async (args) =>
-      args[0] === "workspace"
-        ? { code: 0, stdout: `${JSON.stringify({ ok: true, workspaces: [] })}\n`, stderr: "" }
-        : { code: 0, stdout: `${JSON.stringify({ ok: true, items: [] })}\n`, stderr: "" },
   });
   return { ...t, log, tasks, past, runtime, reader, holder, sources };
 }
@@ -67,9 +73,12 @@ function setup() {
 test("an added plugin is a row of its own: added by you, its repository, its author and what it reads", async () => {
   const s = setup();
   expect((await s.runtime.install(s.reader)).ok).toBe(true);
+  await s.sources.look(true);
   const v = s.sources.view();
   const row = v.sources.find((x) => x.id === "fixture-reader")!;
-  expect(row).toMatchObject({ app: "Fixture Notes", kind: "plugin", state: "ready", added: true, unreviewed: true, consented: false, imported: 0 });
+  // The official index lists this exact version and hash, so it is checked; it was still added
+  // by the person (not through the official repository), so 你加的 stays.
+  expect(row).toMatchObject({ app: "Fixture Notes", kind: "plugin", state: "ready", added: true, reviewed: true, unreviewed: false, consented: false, imported: 0 });
   expect(row.repo).toBe(s.reader);
   expect(row.author).toBe("Ducter tests");
   expect(row.reads).toEqual(["./threads.json"]);
@@ -131,7 +140,7 @@ test("a reader added while the home runs appears on the pane without a restart",
   expect(s.sources.view().sources.some((x) => x.id === "fixture-reader")).toBe(false);
   expect((await s.runtime.install(s.reader)).ok).toBe(true);
   const row = s.sources.view().sources.find((x) => x.id === "fixture-reader")!;
-  expect(row).toMatchObject({ app: "Fixture Notes", added: true, unreviewed: true });
+  expect(row).toMatchObject({ app: "Fixture Notes", added: true });
   t_cleanup(s);
 });
 
@@ -149,6 +158,50 @@ test("removing an added source deletes its ledger and hides what it brought in",
   expect(s.sources.view().sources.some((x) => x.id === "fixture-reader")).toBe(false);
   // A folder an author keeps is not deleted by Ducter.
   expect(readFileSync(join(s.reader, "ducter-plugin.json"), "utf8")).toContain("fixture-reader");
+  t_cleanup(s);
+});
+
+test("an unreviewed online reader needs the second, explicit line before anything runs", async () => {
+  const s = setup();
+  const reader = join(s.dir, "online-reader");
+  mkdirSync(reader, { recursive: true });
+  cpSync(onlineFixture, reader, { recursive: true });
+  expect((await s.runtime.install(reader)).ok).toBe(true);
+  await s.sources.look(true);
+  const row = s.sources.view().sources.find((x) => x.id === "fixture-online")!;
+  expect(row).toMatchObject({ online: true, needsOnlineConsent: true, unreviewed: true, reviewed: false });
+  expect(row.uses?.[0]).toMatchObject({ command: "lody", online: true });
+  expect(row.uses?.[0]?.why.zh).toContain("会联网");
+
+  // No consent at all.
+  expect((await s.sources.run("fixture-online")).error).toBe("not_consented");
+  // A yes that didn't include the online line is not enough.
+  s.sources.consent("fixture-online", false);
+  expect((await s.sources.run("fixture-online")).error).toBe("not_consented");
+  // The second line, ticked, is.
+  s.sources.consent("fixture-online", true);
+  s.holder.out = stream("Fixture Online");
+  s.holder.seen = undefined;
+  const run = await s.sources.run("fixture-online");
+  expect([run.ok, run.threads, run.messages]).toEqual([true, 1, 2]);
+  // The host resolved the declared command and gave the run that program.
+  expect(s.holder.seen?.uses?.[0]).toMatchObject({ command: "lody", online: true });
+  expect(s.holder.seen?.network).toBe(true);
+  t_cleanup(s);
+});
+
+test("the same version from a person's source stays unchecked unless the official index lists it", async () => {
+  const s = setup();
+  const theirs = makePluginRepo(join(s.dir, "theirs"), [{ from: onlineFixture, id: "fixture-online", app: "Fixture Online" }]);
+  const add = s.sources.addSource(theirs.root);
+  expect(add.ok).toBe(true);
+  await s.sources.look(true);
+  const a = s.sources.view().available?.find((x) => x.id === "fixture-online")!;
+  expect(a).toMatchObject({ official: false, reviewed: false, online: true });
+  const installed = await s.sources.install(add.id!, "fixture-online");
+  expect(installed).toMatchObject({ ok: true, needsConsent: true });
+  const row = s.sources.view().sources.find((x) => x.id === "fixture-online")!;
+  expect(row).toMatchObject({ added: true, unreviewed: true, online: true, needsOnlineConsent: true });
   t_cleanup(s);
 });
 

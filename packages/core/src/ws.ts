@@ -2443,7 +2443,10 @@ export function createWsHandler(deps: WsDeps) {
       case "import_run":
       case "import_remove":
       case "import_update":
-      case "import_offer": {
+      case "import_offer":
+      case "import_source_add":
+      case "import_source_remove":
+      case "import_install": {
         const imp = deps.importSources?.();
         if (!imp) throw new Error("import isn't available here");
         if (f.t === "imports") {
@@ -2452,6 +2455,26 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "imports", ...imp.view() });
           void imp.look().catch(() => undefined);
           return;
+        }
+        // D670: the repositories' own actions; they don't name an installed source.
+        if (f.t === "import_source_add") {
+          const r = imp.addSource(typeof f.url === "string" ? f.url : "");
+          send(ws, { t: "import_answer", id: r.id ?? "source", op: "source_add", ok: r.ok, ...(r.id ? { sourceId: r.id } : {}), ...(r.error ? { error: r.error } : {}), ...(r.detail ? { detail: r.detail } : {}) });
+          // A new repository's index is read now, so its plugins are in the frame that follows.
+          if (r.ok) await imp.look(true).catch(() => undefined);
+          return send(ws, { t: "imports", ...imp.view() });
+        }
+        if (f.t === "import_source_remove") {
+          const r = imp.removeSource(typeof f.id === "string" ? f.id : "");
+          send(ws, { t: "import_answer", id: typeof f.id === "string" ? f.id : "source", op: "source_remove", ok: r.ok, ...(r.error ? { error: r.error } : {}) });
+          return send(ws, { t: "imports", ...imp.view() });
+        }
+        if (f.t === "import_install") {
+          const source = typeof f.source === "string" ? f.source : "";
+          const id = typeof f.id === "string" ? f.id : "";
+          const r = await imp.install(source, id);
+          send(ws, { t: "import_answer", id, op: "install", ok: r.ok, ...(r.error ? { error: r.error } : {}), ...(r.needsConsent ? { needsConsent: true } : {}) });
+          return send(ws, { t: "imports", ...imp.view() });
         }
         const known = imp.view().sources.find((s) => s.id === f.id)?.id;
         if (!known) return send(ws, { t: "import_answer", id: typeof f.id === "string" ? f.id : "lody", op: "run", ok: false, error: "unknown_source" });
@@ -2482,7 +2505,7 @@ export function createWsHandler(deps: WsDeps) {
           });
           return send(ws, { t: "imports", ...imp.view() });
         }
-        const r = f.t === "import_consent" ? await imp.accept(id) : await imp.run(id);
+        const r = f.t === "import_consent" ? await imp.accept(id, f.online === true) : await imp.run(id);
         send(ws, { t: "import_answer", id, op: f.t === "import_consent" ? "consent" : "run", ok: r.ok, ...(r.threads ? { threads: r.threads } : {}), ...(r.messages ? { messages: r.messages } : {}), ...(r.skipped ? { skipped: r.skipped } : {}), ...(r.error ? { error: r.error } : {}), ...(r.stopped ? { stopped: true } : {}) });
         return send(ws, { t: "imports", ...imp.view() });
       }

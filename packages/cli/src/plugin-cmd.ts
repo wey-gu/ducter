@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { openLog } from "@ducter/core/src/log.ts";
 import { createRegistry } from "@ducter/core/src/registry.ts";
 import { createPluginRuntime, type PluginAnswer, type PluginEntry, type PluginRuntime } from "@ducter/core/src/imports/plugins.ts";
+import { createRepositories, type RepositoryRuntime } from "@ducter/core/src/imports/repos.ts";
 import { IMPORTS_FILE } from "@ducter/core/src/imports/sources.ts";
 import type { T } from "./i18n.ts";
 
@@ -22,12 +23,18 @@ export interface PluginCmdCtx {
   print?: (s: string) => void;
   /** Injected in tests: the runtime (git, sandbox, curated list). */
   runtime?: PluginRuntime;
+  /** Injected in tests: the repositories (official URL, git, the person's ledger). */
+  repositories?: RepositoryRuntime;
 }
 
 const short = (s: string | undefined, n = 8) => (s ? s.slice(0, n) : "");
 
 function makeRuntime(c: PluginCmdCtx): PluginRuntime {
   return c.runtime ?? createPluginRuntime({ dataDir: c.dataDir });
+}
+
+function makeRepositories(c: PluginCmdCtx, runtime: PluginRuntime): RepositoryRuntime {
+  return c.repositories ?? createRepositories({ dataDir: c.dataDir, plugins: runtime });
 }
 
 function state(t: T, e: PluginEntry): string {
@@ -77,12 +84,54 @@ function hideImported(dataDir: string, app: string, account: string): number {
 export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
   const print = c.print ?? ((s: string) => console.log(s));
   const t = c.t;
-  const [what, value] = c.rest;
+  const [what, value, third] = c.rest;
   const runtime = makeRuntime(c);
 
   if (!what || what === "help") {
     print(t("plugin.usage"));
     return what ? 0 : 2;
+  }
+
+  // D670: a plugin repository is a source. `source add|list|remove`; the official repository
+  // is always there and can't be removed. Nothing is installed or run here.
+  if (what === "source") {
+    const repos = makeRepositories(c, runtime);
+    const sub = value ?? "list";
+    if (sub === "list") {
+      const all = repos.list();
+      if (c.json) {
+        print(JSON.stringify({ ok: true, repositories: all }, null, 2));
+        return 0;
+      }
+      for (const r of all) print(t("plugin.source.row", { id: r.id, url: r.url, official: r.official ? t("plugin.source.official") : "" }));
+      return 0;
+    }
+    if (sub === "add") {
+      if (!third) {
+        print(t("plugin.source.usage"));
+        return 2;
+      }
+      const r = repos.add(third);
+      if (c.json) print(JSON.stringify(r, null, 2));
+      else if (r.ok) print(t("plugin.source.added", { url: r.url ?? third }));
+      else print(t("plugin.error", { code: r.error ?? "failed", detail: r.detail ?? "" }));
+      return r.ok ? 0 : 1;
+    }
+    if (sub === "remove") {
+      if (!third) {
+        print(t("plugin.source.usage"));
+        return 2;
+      }
+      const all = repos.list();
+      const id = all.find((r) => r.id === third || r.url === third)?.id ?? third;
+      const r = repos.remove(id);
+      if (c.json) print(JSON.stringify(r, null, 2));
+      else if (r.ok) print(t("plugin.source.removed", { id }));
+      else print(t("plugin.error", { code: r.error ?? "failed", detail: "" }));
+      return r.ok ? 0 : 1;
+    }
+    print(t("plugin.source.usage"));
+    return 2;
   }
 
   if (what === "list") {
@@ -172,7 +221,8 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
       print(t("plugin.usage"));
       return 2;
     }
-    const a = await runtime.update(value);
+    const installed = runtime.get(value);
+    const a = installed?.record.kind === "repo" ? await makeRepositories(c, runtime).update(value) : await runtime.update(value);
     if (c.json) print(JSON.stringify(a, null, 2));
     else if (!a.ok) print(t("plugin.error", { code: a.error ?? "update_failed", detail: a.detail ?? "" }));
     else if (a.upToDate) print(t("plugin.updated.upToDate", { id: value }));

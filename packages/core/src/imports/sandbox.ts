@@ -16,13 +16,30 @@
 // glob is granted at its static prefix (Seatbelt and bwrap have no glob rules), which is the
 // narrowest directory the declaration names.
 import { execFile } from "node:child_process";
-import { existsSync, mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export type SandboxPlatform = "darwin" | "linux";
 export type SandboxError = "sandbox_unavailable" | "plugin_failed";
+
+/**
+ * A command the manifest declares, resolved for this run (D670). The reader may start this
+ * exact program; its package/install folder is readable so it can load, and a script's own
+ * interpreter is allowed too (an npm-installed CLI is a `node` script under a shebang).
+ */
+export interface PluginUseRun {
+  command: string;
+  /** What PATH resolution or the declared path found. */
+  path: string;
+  real: string;
+  /** The package folder to read: the nearest package.json above the program, else its folder. */
+  installDir: string;
+  interpreter?: string;
+  interpreterDir?: string;
+  online: boolean;
+}
 
 export interface PluginRun {
   id: string;
@@ -34,6 +51,10 @@ export interface PluginRun {
   reads: string[];
   /** Declared extra programs, resolved. */
   starts: string[];
+  /** Declared commands (`uses`), resolved. */
+  uses?: PluginUseRun[];
+  /** Outbound network for this run only: true when a declared use is online. */
+  network?: boolean;
   /** The one folder the reader may write. */
   tempDir: string;
   timeoutMs?: number;
@@ -85,6 +106,77 @@ export function pluginArgv(command: string[], o: { dir: string; bunPath?: string
   else if (first.includes("/")) exe = first;
   else exe = whichNow(first, { PATH: o.path ?? process.env.PATH ?? "" }) ?? first;
   return [exe, ...rest];
+}
+
+/** The nearest package folder above a program: its dependencies live there, not in /usr/bin. */
+function installRoot(file: string): string {
+  const home = (process.env.HOME ?? "").replace(/\/+$/, "");
+  let d = dirname(file);
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(d, "package.json"))) return d;
+    const up = dirname(d);
+    if (up === d || d === "/" || (home && d === home)) break;
+    d = up;
+  }
+  return dirname(file);
+}
+
+/** `#!/bin/sh` or `#!/usr/bin/env node`: the program the kernel will also execute. */
+function shebangOf(file: string): string | undefined {
+  try {
+    const head = readFileSync(file, { encoding: "latin1", flag: "r" }).slice(0, 256);
+    if (!head.startsWith("#!")) return undefined;
+    const line = head.slice(2).split(/\r?\n/)[0]!.trim();
+    if (!line) return undefined;
+    const parts = line.split(/\s+/).filter(Boolean);
+    if (/\/env$/.test(parts[0] ?? "")) {
+      let i = 1;
+      if (parts[i] === "-S") i++;
+      return parts[i];
+    }
+    return parts[0];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Resolves one `uses` command for one run: a bare name through PATH, a path relative to the
+ * plugin. Undefined means the command isn't on this computer, and the host refuses the run
+ * before the sandbox (the consent card promised that command).
+ */
+export function resolveUse(command: string, o: { dir: string; path?: string }): PluginUseRun | undefined {
+  const raw = command.trim();
+  if (!raw) return undefined;
+  let found: string | undefined;
+  if (raw.includes("/")) {
+    const p = isAbsolute(raw) ? raw : resolve(o.dir, raw);
+    if (existsSync(p)) found = p;
+  } else {
+    found = whichNow(raw, { PATH: o.path ?? process.env.PATH ?? "" }) ?? undefined;
+  }
+  if (!found) return undefined;
+  let real: string;
+  try {
+    real = realpathSync(found);
+  } catch {
+    real = found;
+  }
+  const shebang = shebangOf(real);
+  let interpreter: string | undefined;
+  let interpreterDir: string | undefined;
+  if (shebang) {
+    const exe = shebang.startsWith("/") ? shebang : whichNow(shebang, { PATH: o.path ?? process.env.PATH ?? "" });
+    if (exe && existsSync(exe)) {
+      try {
+        interpreter = realpathSync(exe);
+      } catch {
+        interpreter = exe;
+      }
+      interpreterDir = installRoot(interpreter);
+    }
+  }
+  return { command: raw, path: found, real, installDir: installRoot(real), online: false, ...(interpreter ? { interpreter } : {}), ...(interpreterDir ? { interpreterDir } : {}) };
 }
 
 function quote(s: string): string {
@@ -175,7 +267,28 @@ export function seatbeltProfile(run: PluginRun, o: { bunPath?: string } = {}): s
     .map((r) => expandDeclaredPath(r, { dir: run.dir, home }))
     .flatMap(readRules);
   const temp = normalize(run.tempDir);
-  const execs = [...new Set([run.argv[0], o.bunPath, ...run.starts].filter((x): x is string => !!x))];
+  const uses = run.uses ?? [];
+  const execs = [
+    ...new Set(
+      [run.argv[0], o.bunPath, ...run.starts, ...uses.flatMap((u) => [u.path, u.real, u.interpreter])].filter((x): x is string => !!x),
+    ),
+  ];
+  // macOS's /bin/sh is a shim that execs its variant (/private/var/select/sh -> bash, zsh or dash):
+  // allowing /bin/sh alone denies every #!/bin/sh script ("Failed to exec /bin/bash as variant").
+  if (execs.includes("/bin/sh")) {
+    for (const v of ["/private/var/select/sh", "/bin/bash"]) {
+      try {
+        const r = realpathSync(v);
+        if (!execs.includes(r)) execs.push(r);
+      } catch {
+        /* not on this system */
+      }
+    }
+  }
+  const online = run.network === true || uses.some((u) => u.online);
+  // The program's package folder and its interpreter's folder are readable so it can load; its
+  // own declared read paths are still the only data it can reach.
+  const useDirs = uses.flatMap((u) => [u.installDir, u.interpreterDir]).filter((x): x is string => !!x);
   const real = (p: string) => {
     try {
       return realpathSync(p);
@@ -183,7 +296,7 @@ export function seatbeltProfile(run: PluginRun, o: { bunPath?: string } = {}): s
       return p;
     }
   };
-  const bunDirs = [...new Set(execs.map((e) => real(e)).map(dirname))];
+  const bunDirs = [...new Set([...execs.map((e) => real(e)).map(dirname), ...useDirs])];
   return [
     "(version 1)",
     "(deny default)",
@@ -205,15 +318,29 @@ export function seatbeltProfile(run: PluginRun, o: { bunPath?: string } = {}): s
     // System libraries only: no home, no documents, no other app's store.
     ...["/usr/lib", "/usr/libexec", "/usr/share", "/usr/local/lib", "/System/Library", "/Library/Apple", "/private/var/db/dyld", "/private/var/db/timezone", "/usr/share/zoneinfo"].map((d) => `(allow file-read* (subpath ${quote(d)}))`),
     ...["/dev/null", "/dev/zero", "/dev/random", "/dev/urandom", "/private/etc/passwd", "/private/etc/group", "/private/etc/hosts"].map((p) => `(allow file-read* (literal ${quote(p)}))`),
+    // DNS and TLS are part of going online, not extra data: mDNSResponder answers getaddrinfo,
+    // and the system's own roots answer a TLS handshake. Only an online run gets them.
+    ...(online
+      ? [
+          '(allow mach-lookup (global-name "com.apple.system.logger") (global-name "com.apple.dnssd.service"))',
+          ...["/private/etc/resolv.conf", "/private/etc/ssl", "/etc/ssl", "/System/Library/Keychains", "/Library/Keychains"].map((p) => `(allow file-read* (subpath ${quote(p)}))`),
+        ]
+      : []),
     ...reads.map((r) => `(allow file-read* ${r})`),
-    "(deny network*)",
+    // D670: a declared online use gets outbound network for this run only. Everything else
+    // keeps the default deny; an undeclared reader can't even open a loopback socket.
+    online ? "(allow network-outbound)" : "(deny network*)",
   ].join("\n");
 }
 
 /** The bwrap arguments for one run; `--` and the reader's own argv come last. */
 export function bwrapArgs(run: PluginRun, o: { bunPath?: string; path?: string } = {}): string[] {
   const home = run.home ?? process.env.HOME ?? tmpdir();
-  const args: string[] = ["--unshare-net", "--die-with-parent", "--new-session", "--unshare-pid", "--cap-drop", "ALL", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
+  const uses = run.uses ?? [];
+  const online = run.network === true || uses.some((u) => u.online);
+  // D670: an online use is the only reason not to unshare the network; every other run
+  // keeps the same --unshare-net bubblewrap had (D668).
+  const args: string[] = [...(online ? [] : ["--unshare-net"]), "--die-with-parent", "--new-session", "--unshare-pid", "--cap-drop", "ALL", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
   const bound = new Set<string>();
   const covered = (src: string) => [...bound].some((b) => src === b || src.startsWith(`${b}/`));
   const ro = (src: string) => {
@@ -221,8 +348,22 @@ export function bwrapArgs(run: PluginRun, o: { bunPath?: string; path?: string }
     bound.add(src);
     args.push("--ro-bind", src, src);
   };
-  for (const d of ["/usr", "/usr/local", "/lib", "/lib64", "/bin", "/sbin", "/etc/ld.so.cache", "/etc/passwd", "/etc/group"]) if (existsSync(d)) ro(d);
-  for (const e of [run.argv[0], o.bunPath, ...run.starts]) {
+  for (const d of [
+    "/usr",
+    "/usr/local",
+    "/lib",
+    "/lib64",
+    "/bin",
+    "/sbin",
+    "/etc/ld.so.cache",
+    "/etc/passwd",
+    "/etc/group",
+    ...(online
+      ? ["/etc/resolv.conf", "/etc/hosts", "/etc/nsswitch.conf", "/etc/ssl", "/etc/pki", "/etc/ca-certificates", "/usr/share/ca-certificates"]
+      : []),
+  ])
+    if (existsSync(d)) ro(d);
+  for (const e of [run.argv[0], o.bunPath, ...run.starts, ...uses.flatMap((u) => [u.path, u.real, u.interpreter])]) {
     if (!e) continue;
     const real = (() => {
       try {
@@ -233,14 +374,42 @@ export function bwrapArgs(run: PluginRun, o: { bunPath?: string; path?: string }
     })();
     ro(real);
   }
+  for (const u of uses) {
+    ro(u.installDir);
+    if (u.interpreterDir) ro(u.interpreterDir);
+  }
   ro(run.dir);
   for (const r of run.reads) {
     const abs = expandDeclaredPath(r, { dir: run.dir, home });
     const root = declaredRoot(abs).path;
     ro(root);
   }
+  const path = [...new Set([...uses.map((u) => dirname(u.real)), "/usr/local/bin", "/usr/bin", "/bin"])].join(":");
   // Only /tmp is writable inside; the reader's temp folder is that tmpfs.
-  return [...args, "--chdir", run.dir, "--clearenv", "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin", "--setenv", "HOME", "/tmp", "--setenv", "TMPDIR", "/tmp", "--setenv", "DUCTER_PLUGIN_TMP", "/tmp", "--setenv", "DUCTER_PLUGIN_ID", run.id, ...(run.env ? Object.entries(run.env).flatMap(([k, v]) => ["--setenv", k, v]) : []), "--", ...run.argv];
+  return [
+    ...args,
+    "--chdir",
+    run.dir,
+    "--clearenv",
+    "--setenv",
+    "PATH",
+    run.env?.PATH ?? path,
+    "--setenv",
+    "HOME",
+    run.home ?? "/tmp",
+    "--setenv",
+    "TMPDIR",
+    "/tmp",
+    "--setenv",
+    "DUCTER_PLUGIN_TMP",
+    "/tmp",
+    "--setenv",
+    "DUCTER_PLUGIN_ID",
+    run.id,
+    ...(run.env ? Object.entries(run.env).flatMap(([k, v]) => (k === "PATH" ? [] : ["--setenv", k, v])) : []),
+    "--",
+    ...run.argv,
+  ];
 }
 
 /** The plan for this platform; undefined when no sandbox can be built. */
@@ -272,7 +441,11 @@ function execPlan(plan: SandboxPlan, run: PluginRun): Promise<SandboxResult> {
         encoding: "utf8",
         env: {
           PATH: run.env?.PATH ?? "/usr/local/bin:/usr/bin:/bin",
-          HOME: run.tempDir,
+          // D670: HOME is the person's home the `~` declarations name, but the profile still
+          // denies every read outside them and every write outside TMPDIR. A reader that resolves
+          // `~/.example` or whose command reads its own login must see the real home; the boundary is
+          // the profile, not a fake HOME that makes every declared path unreachable.
+          HOME: run.home ?? run.tempDir,
           TMPDIR: run.tempDir,
           LANG: run.env?.LANG ?? "en_US.UTF-8",
           ...run.env,

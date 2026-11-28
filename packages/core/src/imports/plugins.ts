@@ -1,11 +1,12 @@
-// D668 (research/246 §3.5, §3.6, §3.9): the plugin a person can add to 导入 / Import.
+// D668/D670 (research/246 §3.5, §3.6, §3.9): the plugin a person can add to 导入 / Import.
 //
 // A plugin is a folder with `ducter-plugin.json`: a reader that prints `ducter-import/1`. It is
-// installed at a pinned commit (git) or at the content it had (a folder for authors), and the
-// content hash is checked again before every run. Nothing is executed at install or update time:
-// the manifest is read, the files are copied, and the reader only ever runs inside the sandbox
-// (sandbox.ts). Ducter's curated `plugins.json` says which id at which commit Ducter checked;
-// anything else is shown as **没有人替你检查过 / Nobody has checked it for you**.
+// installed at a pinned commit (git/repository) or at the content it had (a folder for authors),
+// and the content hash is checked again before every run. Nothing is executed at install or update
+// time: the manifest is read, the files are copied, and the reader only ever runs inside the
+// sandbox (sandbox.ts). Ducter's official plugin repository is the reviewed list now: a version
+// listed there at its pinned commit and content hash is **Ducter 查过这个版本 / Ducter checked this
+// version**; anything else is **没有人替你检查过 / Nobody has checked it for you**.
 //
 // The Log is never touched here: `run` returns a stream, and the import service (service.ts) is
 // the only writer. A plugin can't claim to be Lody, the person or a task: the host stamps its
@@ -16,18 +17,21 @@ import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync,
 import { dirname, join, relative, resolve } from "node:path";
 import { DUCTER_VERSION, compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
-import curatedRaw from "./plugins.json" with { type: "json" };
-import { pluginArgv, pluginTempDir, removePluginTempDir, runSandboxed, sandboxAvailable, type SandboxResult } from "./sandbox.ts";
+import { iconPathOk } from "./icon.ts";
+import { pluginArgv, pluginTempDir, removePluginTempDir, resolveUse, runSandboxed, sandboxAvailable, type PluginUseRun, type SandboxResult } from "./sandbox.ts";
 
 export const PLUGIN_FORMAT = "ducter-plugin/1";
 export const PLUGIN_KIND = "importer";
 export const PLUGIN_FILE = "ducter-plugin.json";
 export const PLUGINS_LEDGER = "import-plugins.json";
-export const PLUGINS_CURATED_FORMAT = "ducter-plugins/1";
+/** The one repository Ducter itself reviews: its index is the curated list (D670). */
+export const OFFICIAL_SOURCE_ID = "official";
+export const OFFICIAL_PLUGINS_URL = "https://github.com/wey-gu/ducter-plugins";
 const ID_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
 /** What one plugin may declare; keeps a card readable and a profile small. */
 const READS_MAX = 64;
 const RUN_MAX = 16;
+const USES_MAX = 8;
 
 export interface PluginName {
   en: string;
@@ -37,6 +41,16 @@ export interface PluginName {
 export interface PluginAuthor {
   name: string;
   url?: string;
+}
+
+/**
+ * A command the reader itself starts. `online` is the one way a reader may reach the network
+ * through a command the person already has (`lody`), and only for this plugin's run (D670).
+ */
+export interface PluginUse {
+  command: string;
+  online: boolean;
+  why: PluginName;
 }
 
 export interface PluginManifest {
@@ -51,7 +65,11 @@ export interface PluginManifest {
   run: string[];
   reads: string[];
   starts: string[];
-  network: false;
+  uses: PluginUse[];
+  /** True when a use is online: the run gets outbound network for that reason alone. */
+  online: boolean;
+  /** Kept for older manifests (`network: false`); true only when a use is online. */
+  network: boolean;
   detect: string[];
   ducter: string;
 }
@@ -69,9 +87,10 @@ export interface CuratedEntry {
 
 export interface PluginRecord {
   id: string;
-  kind: "git" | "folder";
+  /** git: a URL; folder: the author's folder loaded in place; repo: a copy from a repository index. */
+  kind: "git" | "folder" | "repo";
   dir: string;
-  /** The git URL it came from, without the `#ref`. */
+  /** The git URL (or repository folder) it came from, without the `#ref`. */
   source?: string;
   ref?: string;
   commit?: string;
@@ -81,12 +100,17 @@ export interface PluginRecord {
   name?: string;
   author?: string;
   installedAt: string;
+  /** D670: the repository source it was installed from, and whether that is Ducter's own. */
+  repoId?: string;
+  official?: boolean;
   /** The declaration this version was installed with, so a widening is measured against it. */
   reads?: string[];
   run?: string[];
   starts?: string[];
+  uses?: PluginUse[];
+  online?: boolean;
   /** What the person said yes to, exactly as the manifest wrote it. */
-  consent?: { reads: string[]; at: string };
+  consent?: { reads: string[]; online?: boolean; at: string };
   checkedAt?: string;
   latest?: { commit?: string; hash?: string; version?: string };
 }
@@ -113,8 +137,12 @@ export interface PluginAnswer {
   commit?: string;
   hash?: string;
   reads?: string[];
+  uses?: PluginUse[];
+  online?: boolean;
   reviewed?: boolean;
   unreviewed?: boolean;
+  /** An unreviewed online reader also owes the second, explicit line on its consent card. */
+  needsOnlineConsent?: boolean;
   needsConsent?: boolean;
   widened?: boolean;
   upToDate?: boolean;
@@ -122,11 +150,31 @@ export interface PluginAnswer {
   detail?: string;
 }
 
+/**
+ * A plugin already checked out of one repository at a pinned commit. repos.ts clones the source,
+ * verifies the index's content hash, and hands the folder here; this copies it to
+ * `<dataDir>/plugins/<id>` like a git install (D670).
+ */
+export interface PreparedInstall {
+  /** The plugin folder, already at the pinned commit and hash-checked. */
+  dir: string;
+  /** The repository URL or folder. */
+  source: string;
+  repoId: string;
+  official: boolean;
+  commit: string;
+  hash: string;
+  /** Replace an installed version (an update) instead of refusing. */
+  replace?: boolean;
+}
+
 export interface PluginRunResult {
   stream: string;
   code: number;
   error?: "sandbox_unavailable" | "plugin_failed" | "needs_newer" | "hash_mismatch" | "broken" | "not_found";
   detail?: string;
+  /** What the reader said on stderr (diagnostics, never the stream), cut to 2,000 characters. */
+  stderr?: string;
 }
 
 export interface GitResult {
@@ -167,6 +215,8 @@ export interface PluginOptions {
   home?: string;
   platform?: NodeJS.Platform;
   path?: string;
+  /** Extra environment for a run (tests and demos: a probe's port, a fake's switch). */
+  env?: Record<string, string>;
   timeoutMs?: number;
 }
 
@@ -175,12 +225,18 @@ export interface PluginRuntime {
   get(id: string): PluginEntry | undefined;
   curated(): CuratedEntry[];
   install(input: string): Promise<PluginAnswer>;
+  /** D670: a folder checked out of a repository index, at its pinned commit and hash. */
+  installPrepared(input: PreparedInstall): Promise<PluginAnswer>;
   update(id: string): Promise<PluginAnswer>;
   remove(id: string): { ok: boolean; deletedFolder: boolean; error?: string };
-  consent(id: string, reads: string[]): void;
-  consented(id: string, reads: string[]): boolean;
+  consent(id: string, reads: string[], online?: boolean): void;
+  consented(id: string, reads: string[], online?: boolean): boolean;
   run(id: string): Promise<PluginRunResult>;
   check(force?: boolean): Promise<void>;
+  /** The source index says a newer version is out. */
+  setLatest(id: string, latest: PluginRecord["latest"]): void;
+  /** The official index is the reviewed list. */
+  setCurated(list: CuratedEntry[]): void;
   onChange(fn: () => void): () => void;
 }
 
@@ -227,7 +283,6 @@ export function parseManifest(raw: unknown): PluginManifest {
   if (raw.kind !== PLUGIN_KIND) throw new PluginError("bad_manifest", "only an importer plugin is read now");
   const id = typeof raw.id === "string" ? raw.id.trim() : "";
   if (!ID_RE.test(id)) throw new PluginError("bad_manifest", "id must be lower-case letters, digits and -");
-  if (id === "lody") throw new PluginError("bad_manifest", "that id belongs to a built-in source");
   const version = typeof raw.version === "string" ? raw.version.trim() : "";
   if (!isVersion(version)) throw new PluginError("bad_manifest", "version must be a version");
   const name = isObj(raw.name) ? raw.name : {};
@@ -237,7 +292,8 @@ export function parseManifest(raw: unknown): PluginManifest {
   const app = isObj(raw.app) ? raw.app : {};
   const appName = typeof app.name === "string" ? app.name.trim() : "";
   if (!appName) throw new PluginError("bad_manifest", "app.name is the app whose conversations it reads");
-  if (appName.toLowerCase() === "lody") throw new PluginError("bad_manifest", "that app belongs to a built-in source");
+  const appIcon = typeof app.icon === "string" ? app.icon.trim() : "";
+  if (appIcon && !iconPathOk(appIcon)) throw new PluginError("bad_manifest", "app.icon must be a PNG or SVG inside the plugin");
   const author = isObj(raw.author) ? raw.author : {};
   const authorName = typeof author.name === "string" ? author.name.trim() : "";
   if (!authorName) throw new PluginError("bad_manifest", "author.name says who made it");
@@ -252,9 +308,26 @@ export function parseManifest(raw: unknown): PluginManifest {
   }
   const starts = raw.starts === undefined ? [] : strings(raw.starts);
   if (!starts) throw new PluginError("bad_manifest", "starts is a list of programs");
+  // D670: `uses` is the one way a reader starts a command the person already has, and the
+  // only way it may go online. `why` is shown literally on the consent card.
+  if (raw.uses !== undefined && !Array.isArray(raw.uses)) throw new PluginError("bad_manifest", "uses must be a list");
+  const uses: PluginUse[] = [];
+  for (const u of Array.isArray(raw.uses) ? raw.uses : []) {
+    if (!isObj(u)) throw new PluginError("bad_manifest", "a use must be an object");
+    const command = typeof u.command === "string" ? u.command.trim() : "";
+    if (!command || command.length > 200 || /[\0\n\r]/.test(command)) throw new PluginError("bad_manifest", "a use names a command");
+    if (u.online !== undefined && typeof u.online !== "boolean") throw new PluginError("bad_manifest", "online must be true or false");
+    const why = isObj(u.why) ? u.why : {};
+    const whyEn = typeof why.en === "string" ? why.en.trim() : "";
+    const whyZh = typeof why.zh === "string" ? why.zh.trim() : "";
+    if (!whyEn) throw new PluginError("bad_manifest", "a use says why, in words");
+    uses.push({ command, online: u.online === true, why: { en: whyEn, ...(whyZh ? { zh: whyZh } : {}) } });
+    if (uses.length > USES_MAX) throw new PluginError("bad_manifest", "too many uses");
+  }
+  const online = uses.some((u) => u.online);
+  if (raw.network !== undefined && raw.network !== false && !online) throw new PluginError("bad_manifest", "network must be declared by an online use");
   const detect = raw.detect === undefined ? [] : strings(raw.detect);
   if (!detect) throw new PluginError("bad_manifest", "detect is a list of paths");
-  if (raw.network !== undefined && raw.network !== false) throw new PluginError("bad_manifest", "network must be false: a reader never goes online");
   const ducter = typeof raw.ducter === "string" ? raw.ducter.trim() : "";
   if (!ducter) throw new PluginError("bad_manifest", "ducter is the Ducter range it needs");
   return {
@@ -269,7 +342,9 @@ export function parseManifest(raw: unknown): PluginManifest {
     run,
     reads,
     starts,
-    network: false,
+    uses,
+    online,
+    network: online,
     detect,
     ducter,
   };
@@ -347,8 +422,8 @@ function loadLedger(dataDir: string): Record<string, PluginRecord> {
       if (!isObj(v)) continue;
       if (typeof v.dir !== "string" || typeof v.hash !== "string" || typeof v.version !== "string") continue;
       const r = v as unknown as PluginRecord;
-      // `ducter move` carries <dataDir>/plugins: a git install's recorded path follows the folder.
-      if (r.kind === "git" && !existsSync(r.dir)) {
+      // `ducter move` carries <dataDir>/plugins: an install's recorded path follows the folder.
+      if ((r.kind === "git" || r.kind === "repo") && !existsSync(r.dir)) {
         const moved = join(dataDir, "plugins", id);
         if (existsSync(moved)) r.dir = moved;
       }
@@ -368,27 +443,13 @@ function saveLedger(dataDir: string, plugins: Record<string, PluginRecord>): voi
   renameSync(tmp, file);
 }
 
-function readCurated(raw: unknown): CuratedEntry[] {
-  if (!isObj(raw) || raw.format !== PLUGINS_CURATED_FORMAT || !Array.isArray(raw.plugins)) return [];
-  const out: CuratedEntry[] = [];
-  for (const p of raw.plugins) {
-    if (!isObj(p)) continue;
-    const id = typeof p.id === "string" ? p.id.trim() : "";
-    const repo = typeof p.repo === "string" ? p.repo.trim() : "";
-    if (!ID_RE.test(id) || !repo) continue;
-    out.push({
-      id,
-      repo,
-      ...(typeof p.commit === "string" && p.commit.trim() ? { commit: p.commit.trim() } : {}),
-      ...(typeof p.hash === "string" && p.hash.trim() ? { hash: p.hash.trim() } : {}),
-      ...(typeof p.version === "string" && p.version.trim() ? { version: p.version.trim() } : {}),
-      ...(typeof p.app === "string" && p.app.trim() ? { app: p.app.trim() } : {}),
-    });
-  }
-  return out;
+/**
+ * The reviewed list used to be shipped as `plugins.json`; D670 replaces it with the official
+ * repository's index, loaded by repos.ts. A test or a demo may still pass one explicitly.
+ */
+export function curatedEntries(): CuratedEntry[] {
+  return [];
 }
-
-export const shippedCurated = readCurated(curatedRaw);
 
 /** `https://host/repo#ref` → the URL and the ref; a local path is not split. */
 export function splitRef(input: string): { url: string; ref?: string } {
@@ -424,7 +485,9 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     plugins = loadLedger(o.dataDir);
   };
 
-  const curatedList = o.curated ?? shippedCurated;
+  // D670: the official repository's index is the reviewed list. It is loaded when the
+  // repositories are looked at, and cached on disk so an offline start still says what was checked.
+  let curatedList: CuratedEntry[] = [...(o.curated ?? [])];
   const curatedFor = (id: string) => curatedList.find((c) => c.id === id);
 
   const entryOf = (record: PluginRecord): PluginEntry => {
@@ -442,8 +505,16 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
       detail = (e as Error).message;
     }
     const c = curatedFor(record.id);
-    // A folder install has no immutable commit: only its content hash can match a curated version.
-    const reviewed = !!c && (c.hash ? c.hash === record.hash : !!c.commit && record.kind === "git" && c.commit === record.commit);
+    // The official index lists id, version, commit and content hash. A year of work is reviewed
+    // only when the exact version and bytes are on it; a folder install has no commit, so its hash
+    // is the proof. An older explicit test entry without a hash still matches by commit.
+    const reviewed =
+      !!c &&
+      (!c.version || c.version === record.version) &&
+      (!c.commit || !record.commit || c.commit === record.commit) &&
+      (c.hash
+        ? c.hash === record.hash
+        : !!c.commit && record.kind === "git" && c.commit === record.commit);
     const latest = record.latest;
     const update =
       latest && ((latest.commit && latest.commit !== record.commit) || (latest.hash && latest.hash !== record.hash) || (latest.version && latest.version !== record.version))
@@ -480,8 +551,11 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     ...(e.record.commit ? { commit: e.record.commit } : {}),
     hash: e.record.hash,
     reads: e.manifest?.reads ?? e.record.consent?.reads ?? [],
+    uses: e.manifest?.uses ?? [],
+    online: e.manifest?.online ?? e.record.online === true,
     reviewed: e.reviewed,
     unreviewed: !e.reviewed,
+    ...(e.manifest?.online && !e.reviewed ? { needsOnlineConsent: true } : {}),
     ...extra,
   });
 
@@ -507,7 +581,7 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     const r = await git(["clone", "--quiet", url, dest]);
     if (r.code !== 0) throw new PluginError("git_failed", r.stderr.trim() || "git clone failed");
     if (ref) {
-      const co = await git(["checkout", "--quiet", "--detach", "--", ref], { cwd: dest });
+      const co = await git(["checkout", "--quiet", "--detach", ref], { cwd: dest });
       if (co.code !== 0) throw new PluginError("git_failed", co.stderr.trim() || `git checkout ${ref} failed`);
     }
     const head = await git(["rev-parse", "HEAD"], { cwd: dest });
@@ -572,6 +646,8 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
         reads: [...manifest.reads],
         run: [...manifest.run],
         starts: [...manifest.starts],
+        uses: manifest.uses.map((u) => ({ ...u, why: { ...u.why } })),
+        online: manifest.online,
       };
       const e = installRecord(record);
       return answer(e, { needsConsent: true });
@@ -583,7 +659,90 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     }
   }
 
+  /** Whether a newer manifest asks the person again (a wider read list, a new command, network). */
+  function widenedFor(record: PluginRecord | undefined, m: PluginManifest): boolean {
+    if (!record) return true;
+    const said = record.consent?.reads ?? [];
+    if (!covers(said, m.reads)) return true;
+    if (!same(record.run ?? [], m.run) || !same(record.starts ?? [], m.starts)) return true;
+    if (JSON.stringify(record.uses ?? []) !== JSON.stringify(m.uses)) return true;
+    if (m.online && record.consent?.online !== true) return true;
+    return false;
+  }
+
+  async function installPrepared(input: PreparedInstall): Promise<PluginAnswer> {
+    reload();
+    let manifest: PluginManifest;
+    let hash: string;
+    try {
+      manifest = readManifest(input.dir);
+      hash = contentHash(input.dir);
+    } catch (err) {
+      return { ok: false, error: (err as PluginError).code || "bad_manifest", detail: (err as Error).message };
+    }
+    if (hash !== input.hash) return { ok: false, error: "hash_mismatch", detail: "the index's hash and the checked-out files disagree" };
+    const existing = plugins[manifest.id];
+    if (existing && !input.replace) return { ok: false, error: "already_installed" };
+    try {
+      checkApp(manifest);
+    } catch (err) {
+      return { ok: false, error: (err as PluginError).code || "app_taken", detail: (err as Error).message };
+    }
+    const widened = !!existing && widenedFor(existing, manifest);
+    const needsConsent = !existing || widened;
+    const dir = join(o.dataDir, "plugins", manifest.id);
+    try {
+      mkdirSync(dirname(dir), { recursive: true, mode: 0o700 });
+      if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
+      copyTree(input.dir, dir);
+    } catch (err) {
+      return { ok: false, error: "install_failed", detail: (err as Error).message };
+    }
+    const record: PluginRecord = {
+      id: manifest.id,
+      kind: "repo",
+      dir,
+      source: input.source,
+      repoId: input.repoId,
+      official: input.official,
+      commit: input.commit,
+      hash,
+      version: manifest.version,
+      app: manifest.app.name,
+      name: manifest.name.en,
+      author: manifest.author.name,
+      installedAt: existing?.installedAt ?? new Date(now()).toISOString(),
+      reads: [...manifest.reads],
+      run: [...manifest.run],
+      starts: [...manifest.starts],
+      uses: manifest.uses.map((u) => ({ ...u, why: { ...u.why } })),
+      online: manifest.online,
+      ...(existing?.consent && !widened ? { consent: existing.consent } : {}),
+    };
+    const e = installRecord(record);
+    return answer(e, { needsConsent, widened });
+  }
+
+  /** D670: repos.ts tells the ledger what the source's index now lists. */
+  function setLatest(id: string, latest: PluginRecord["latest"]): void {
+    reload();
+    const record = plugins[id];
+    if (!record) return;
+    if (latest) record.latest = latest;
+    else delete record.latest;
+    save();
+    changed();
+  }
+
+  /** D670: the official index is the reviewed list; a test or demo may set it directly. */
+  function setCurated(list: CuratedEntry[]): void {
+    curatedList = list.map((c) => ({ ...c }));
+    changed();
+  }
+
   async function checkOne(record: PluginRecord): Promise<void> {
+    // A repository install's newer version is the source index's entry; repos.ts sets `latest`.
+    if (record.kind === "repo") return;
     if (record.kind === "git" && record.source) {
       const r = await git(["ls-remote", record.source, record.ref ?? "HEAD"]).catch(() => undefined);
       if (r?.code === 0) {
@@ -624,6 +783,8 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     reload();
     const record = plugins[id];
     if (!record) return { ok: false, error: "not_found" };
+    // A repository install moves with its repository's index, not with a git remote.
+    if (record.kind === "repo") return { ok: false, error: "update_failed", detail: "update it from its repository" };
     const old = entryOf(record);
     let staging: string | undefined;
     try {
@@ -682,7 +843,7 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     const record = plugins[id];
     if (!record) return { ok: false, deletedFolder: false, error: "not_found" };
     let deletedFolder = false;
-    if (record.kind === "git" && record.dir.startsWith(join(o.dataDir, "plugins") + "/")) {
+    if ((record.kind === "git" || record.kind === "repo") && record.dir.startsWith(join(o.dataDir, "plugins") + "/")) {
       try {
         rmSync(record.dir, { recursive: true, force: true });
         deletedFolder = true;
@@ -711,6 +872,15 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
       return { stream: "", code: -1, error: "broken", detail: (err as Error).message };
     }
     if (hash !== e.record.hash) return { stream: "", code: -1, error: "hash_mismatch" };
+    // D670: a use is resolved to the exact program this run may start. A declared command
+    // that isn't on this computer fails before the sandbox: the card promised that command.
+    const uses: PluginUseRun[] = [];
+    for (const u of m.uses) {
+      const r = resolveUse(u.command, { dir: e.record.dir, path: o.path ?? process.env.PATH ?? "" });
+      if (!r) return { stream: "", code: -1, error: "plugin_failed", detail: `the ${u.command} command isn't on this computer` };
+      uses.push({ ...r, online: u.online });
+    }
+    const useDirs = [...new Set(uses.map((u) => dirname(u.real)))];
     const temp = pluginTempDir(o.dataDir);
     try {
       const runSpec = {
@@ -719,16 +889,19 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
         argv: pluginArgv(m.run, { dir: e.record.dir, bunPath: o.bunPath, path: o.path }),
         reads: m.reads,
         starts: m.starts.map((s) => pluginArgv([s], { dir: e.record.dir, bunPath: o.bunPath, path: o.path })[0]!).filter(Boolean),
+        uses,
+        network: m.online,
         tempDir: temp,
         timeoutMs,
         home,
         // A single-binary Ducter is also Bun: with this it runs the reader's script, not itself.
-        env: { BUN_BE_BUN: "1" },
+        // The declared commands' own folders lead PATH so the reader can name `lody` as it does.
+        env: { ...o.env, BUN_BE_BUN: "1", PATH: [...useDirs, o.path ?? "/usr/local/bin:/usr/bin:/bin"].join(":") },
       };
       const r = o.sandbox ? await o.sandbox(runSpec) : await runSandboxed(runSpec, { platform: o.platform, bunPath: o.bunPath, path: o.path });
       if (r.error) return { stream: r.stdout, code: r.code, error: r.error, ...(r.stderr ? { detail: r.stderr.slice(0, 2000) } : {}) };
       if (r.code !== 0 && !r.stdout.trim()) return { stream: "", code: r.code, error: "plugin_failed", ...(r.stderr ? { detail: r.stderr.slice(0, 2000) } : {}) };
-      return { stream: r.stdout, code: r.code, ...(r.code !== 0 ? { detail: r.stderr.slice(0, 2000) } : {}) };
+      return { stream: r.stdout, code: r.code, ...(r.code !== 0 ? { detail: r.stderr.slice(0, 2000) } : {}), ...(r.stderr ? { stderr: r.stderr.slice(0, 2000) } : {}) };
     } finally {
       removePluginTempDir(temp);
     }
@@ -739,33 +912,31 @@ export function createPluginRuntime(o: PluginOptions): PluginRuntime {
     get,
     curated: () => [...curatedList],
     install,
+    installPrepared,
     update,
     remove,
-    consent(id, reads) {
+    consent(id, reads, online = false) {
       reload();
       const record = plugins[id];
       if (!record) return;
-      record.consent = { reads: [...reads], at: new Date(now()).toISOString() };
+      record.consent = { reads: [...reads], online, at: new Date(now()).toISOString() };
       save();
       changed();
     },
-    consented(id, reads) {
+    consented(id, reads, online = false) {
       reload();
       const record = plugins[id];
-      return !!record?.consent && covers(record.consent.reads, reads);
+      return !!record?.consent && covers(record.consent.reads, reads) && (!online || record.consent.online === true);
     },
     run,
     check,
+    setLatest,
+    setCurated,
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
   };
-}
-
-/** The curated list as shipped with this build; a test or a demo may pass another. */
-export function curatedEntries(): CuratedEntry[] {
-  return shippedCurated;
 }
 
 /** A row's app name and version are facts of the manifest, never the folder name. */

@@ -46,16 +46,39 @@ test("the manifest keeps only its own fields and refuses what an importer can't 
   expect(m.kind).toBe("importer");
   expect(m.reads).toEqual(["./threads.json"]);
   expect(m.network).toBe(false);
+  expect(m.online).toBe(false);
+  expect(m.uses).toEqual([]);
   expect(m.name.zh).toBe("测试笔记");
 
   const raw = JSON.parse(readFileSync(join(fixture, "ducter-plugin.json"), "utf8")) as Record<string, unknown>;
   expect(() => parseManifest({ ...raw, kind: "reader" })).toThrow();
   expect(() => parseManifest({ ...raw, network: true })).toThrow();
-  expect(() => parseManifest({ ...raw, id: "lody" })).toThrow();
-  expect(() => parseManifest({ ...raw, app: { name: "Lody" } })).toThrow();
+  // D670: Lody is the official plugin now, so its id and app name are allowed.
+  expect(parseManifest({ ...raw, id: "lody" }).id).toBe("lody");
+  expect(parseManifest({ ...raw, app: { name: "Lody" } }).app.name).toBe("Lody");
+  expect(() => parseManifest({ ...raw, app: { name: "Notes", icon: "../icon.png" } })).toThrow();
+  expect(parseManifest({ ...raw, app: { name: "Notes", icon: "icon.png" } }).app.icon).toBe("icon.png");
   expect(() => parseManifest({ ...raw, reads: ["~/x/../secret"] })).toThrow();
   expect(() => parseManifest({ ...raw, emits: "ducter-import/2" })).toThrow();
   expect(() => parseManifest({ ...raw, author: {} })).toThrow();
+});
+
+test("a use names a command, says why, and is the only way a run may go online", () => {
+  const raw = JSON.parse(readFileSync(join(fixture, "ducter-plugin.json"), "utf8")) as Record<string, unknown>;
+  const m = parseManifest({
+    ...raw,
+    uses: [{ command: "lody", online: true, why: { en: "It reads with lody, signed in here, and goes online.", zh: "它会用这里登录着的 lody 读，会联网。" } }],
+  });
+  expect(m.online).toBe(true);
+  expect(m.uses).toHaveLength(1);
+  expect(m.uses[0]).toMatchObject({ command: "lody", online: true });
+  expect(m.uses[0]!.why.zh).toContain("会联网");
+  // A path, not only a bare name, is a command too.
+  expect(parseManifest({ ...raw, uses: [{ command: "./bin/reader", online: false, why: { en: "A bundled command." } }] }).uses[0]!.command).toBe("./bin/reader");
+  // No why, no online flag, or an online flag without a use is refused.
+  expect(() => parseManifest({ ...raw, uses: [{ command: "lody", online: true }] })).toThrow();
+  expect(() => parseManifest({ ...raw, uses: [{ command: "lody", online: "yes", why: { en: "x" } }] })).toThrow();
+  expect(() => parseManifest({ ...raw, network: true })).toThrow();
 });
 
 test("the host range: caret, at least, exact", () => {

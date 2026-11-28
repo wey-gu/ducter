@@ -2,9 +2,10 @@
 // reader that runs where the conversations live. Phase 2: the Lody reader in tree, Settings ›
 // 导入 / Import, the consent card, the offer in Past tasks, and removal.
 //
-// A source is one app on this computer (Lody, through the person's own signed-in `lody` command).
-// The home reads the source's index for its state; nothing is read until the person says yes, and
-// removal hides what it brought in (never silently: the row says what will be hidden first).
+// A source is one installed reader. D670: readers come from plugin repositories — Ducter's
+// official one, or one the person adds. The home reads a source's index for its state; nothing is
+// read until the person says yes, and removal hides what it brought in (never silently: the row
+// says what will be hidden first).
 
 /**
  * A source in Settings › 导入 / Import: the built-in `"lody"`, or an added plugin's own id (D668,
@@ -64,11 +65,61 @@ export interface ImportSourceRow {
   unreviewed?: boolean;
   /** A newer commit or content is out; one tap applies it (and asks again if it reads more). */
   update?: { version?: string; commit?: string };
+  /** D670: the app's own icon, a data URL from its plugin; absent keeps the letter tile. */
+  icon?: string;
+  /** The declared commands this reader starts, with the literal words its card says. */
+  uses?: { command: string; online: boolean; why: { en: string; zh?: string } }[];
+  /** It declares an online command, so its run gets outbound network (and its card says so). */
+  online?: boolean;
+  /** An unreviewed online reader needs the second, explicit line ticked on its card. */
+  needsOnlineConsent?: boolean;
+}
+
+/** D670: a plugin repository the person added (or the official one). */
+export interface ImportRepository {
+  id: string;
+  url: string;
+  official: boolean;
+  /** looking before the first index read; failed says its index can't be reached. */
+  state: "looking" | "ready" | "failed";
+  problem?: string;
+  /** How many plugins its index lists, once read. */
+  plugins?: number;
+}
+
+/** D670: one plugin a source lists and the person can bring in. */
+export interface ImportAvailable {
+  id: string;
+  /** The app whose conversations it reads, the name the row shows. */
+  app: string;
+  /** The plugin's own name (the manifest's en name). */
+  name: string;
+  version: string;
+  commit: string;
+  hash: string;
+  /** The repository's id. */
+  source: string;
+  sourceUrl: string;
+  /** The short name the row shows (owner/repo, or the folder name); the URL is the tooltip. */
+  sourceName: string;
+  official: boolean;
+  reads: string[];
+  uses?: { command: string; online: boolean; why: { en: string; zh?: string } }[];
+  online: boolean;
+  /** A `detect` path exists on this computer: detected apps come first. */
+  detected: boolean;
+  /** The official index lists this exact version and hash. */
+  reviewed: boolean;
+  icon?: string;
 }
 
 /** What Settings › Import and Past tasks read, one frame, kept current on every change. */
 export interface ImportsView {
   sources: ImportSourceRow[];
+  /** D670: every repository Ducter knows, the official one first. */
+  repositories?: ImportRepository[];
+  /** D670: the quiet Available list under the installed rows, detected apps first. */
+  available?: ImportAvailable[];
   /**
    * The one line Past tasks may show under 也在这台电脑上 / Also on this computer, while a source is
    * detected and not brought in yet. Once per source per computer; after 先不 it waits for the person
@@ -80,8 +131,14 @@ export interface ImportsView {
 export type ImportsClientFrame =
   // Subscribe; answered with an imports frame and again on every change.
   | { t: "imports" }
-  // The person said yes on the consent card: keep the consent, then bring them in now.
-  | { t: "import_consent"; id: ImportSourceId }
+  // The person said yes on the consent card: keep the consent, then bring them in now. `online`
+  // is the second, explicit line an unreviewed online reader's card makes them tick.
+  | { t: "import_consent"; id: ImportSourceId; online?: boolean }
+  // D670: 加一个插件仓库 / Add a plugin repository, and remove one the person added.
+  | { t: "import_source_add"; url: string }
+  | { t: "import_source_remove"; id: string }
+  // D670: Bring them in on an Available row: install at the index's pin, then its consent card.
+  | { t: "import_install"; source: string; id: ImportSourceId }
   // 再带一次 / Bring in again: run a consented source now.
   | { t: "import_run"; id: ImportSourceId }
   // 删掉这个来源 / Remove this source: hide what it brought in (the row asked once, in place).
@@ -96,4 +153,4 @@ export type ImportsServerFrame =
   | ({ t: "imports" } & ImportsView)
   // The answer to a consent, a run or a removal: the same ImportAnswer shape the CLI uses, plus what
   // removal hid. The imports frame that follows carries the new rows.
-  | { t: "import_answer"; id: ImportSourceId; op: "consent" | "run" | "remove" | "update"; ok: boolean; threads?: number; messages?: number; skipped?: number; removed?: number; stopped?: boolean; error?: string; /** The update widened the read list: show the consent card again. */ needsConsent?: boolean; widened?: boolean; /** The update had nothing to apply. */ upToDate?: boolean; detail?: string };
+  | { t: "import_answer"; id: ImportSourceId; op: "consent" | "run" | "remove" | "update" | "install" | "source_add" | "source_remove"; ok: boolean; threads?: number; messages?: number; skipped?: number; removed?: number; stopped?: boolean; error?: string; /** The update widened the read list: show the consent card again. */ needsConsent?: boolean; widened?: boolean; /** The update had nothing to apply. */ upToDate?: boolean; detail?: string; /** source_add: the id of the repository now known. */ sourceId?: string; url?: string };

@@ -5,18 +5,19 @@
 // (a read outside the declared list, a socket, a write outside the temp folder); they are skipped
 // where the host refuses to apply a nested Seatbelt profile, never treated as a pass.
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { parseImport } from "../src/imports/format.ts";
 import { createPluginRuntime } from "../src/imports/plugins.ts";
-import { bwrapArgs, declaredRoot, expandDeclaredPath, runSandboxed, seatbeltProfile, type PluginRun } from "../src/imports/sandbox.ts";
+import { bwrapArgs, declaredRoot, expandDeclaredPath, resolveUse, runSandboxed, seatbeltProfile, type PluginRun } from "../src/imports/sandbox.ts";
 import { importInto } from "../src/imports/service.ts";
 import { openLog } from "../src/log.ts";
 import { createRegistry } from "../src/registry.ts";
 import { tempDir } from "./helpers.ts";
 
 const fixture = join(import.meta.dir, "fixtures/plugin");
+const onlineFixture = join(import.meta.dir, "fixtures/plugin-online");
 const NOW = Date.parse("2026-12-01T10:00:00Z");
 
 /** Can this shell apply a Seatbelt profile at all? A development sandbox may deny sandbox_apply. */
@@ -69,7 +70,31 @@ test("the Seatbelt profile denies by default, reads only the declaration, writes
   expect(p).not.toContain('(allow file-read* (subpath "/etc"))');
 });
 
+test("a declared online use gets outbound network and the command it starts, and nothing else", () => {
+  const use = { command: "lody", path: "/opt/bin/lody", real: "/opt/bin/lody", installDir: "/opt/lib/lody", interpreter: "/bin/sh", interpreterDir: "/bin", online: true };
+  const p = seatbeltProfile(spec({ reads: [], uses: [use], network: true }), { bunPath: "/opt/ducter/bun" });
+  expect(p).toContain("(allow network-outbound)");
+  expect(p).not.toContain("(deny network*)");
+  // DNS and the system's TLS roots come with going online.
+  expect(p).toContain("com.apple.dnssd.service");
+  expect(p).toContain('(subpath "/etc/ssl")');
+  // The command, its real path and its interpreter may exec; its package folder is readable.
+  expect(p).toContain('(allow process-exec ');
+  expect(p).toContain('(literal "/opt/bin/lody")');
+  expect(p).toContain('(literal "/bin/sh")');
+  expect(p).toContain('(allow file-read* (subpath "/opt/lib/lody"))');
+  // The online flag is not a grant to the whole home.
+  expect(p).not.toContain('(allow file-read* (subpath "/Users/me"))');
+  // An offline run keeps the denial even when it starts a command.
+  const off = seatbeltProfile(spec({ uses: [{ ...use, online: false }] }), { bunPath: "/opt/ducter/bun" });
+  expect(off).toContain("(deny network*)");
+  expect(off).not.toContain("(allow network-outbound)");
+});
+
 test("bwrap gets a read-only bind per declaration, a tmpfs /tmp, no network and no capabilities", () => {
+  const tb = tempDir();
+  const install = join(tb.dir, "pkg");
+  mkdirSync(install, { recursive: true });
   const args = bwrapArgs(
     spec({
       dir: fixture,
@@ -92,6 +117,32 @@ test("bwrap gets a read-only bind per declaration, a tmpfs /tmp, no network and 
   expect(args.slice(dd + 1)).toEqual(["/opt/ducter/bun", "main.ts"]);
   // No writable bind of the plugin folder or the home.
   expect(args.some((a, i) => a === "--bind" && args[i + 1] === fixture)).toBe(false);
+
+  // An online use is the only reason to keep the network: no --unshare-net, and the command's
+  // own folder is bound read-only so it can load.
+  const use = { command: "lody", path: "/opt/bin/lody", real: "/opt/bin/lody", installDir: install, online: true };
+  const online = bwrapArgs(spec({ dir: fixture, argv: ["/opt/ducter/bun", "main.ts"], uses: [use], network: true }), { path: "/usr/bin:/bin" });
+  expect(online).not.toContain("--unshare-net");
+  expect(online).toContain(install);
+  if (existsSync("/etc/resolv.conf")) expect(online).toContain("/etc/resolv.conf");
+  expect(online.indexOf("--")).toBeGreaterThan(0);
+  tb.cleanup();
+});
+
+test("a use resolves to the program and its shebang interpreter", () => {
+  const t = tempDir();
+  const bin = join(t.dir, "bin");
+  mkdirSync(bin, { recursive: true });
+  const lody = join(bin, "lody");
+  writeFileSync(lody, "#!/bin/sh\necho '{\"ok\":true}\n'\n");
+  chmodSync(lody, 0o755);
+  const r = resolveUse("lody", { dir: t.dir, path: `${bin}:${process.env.PATH ?? ""}` })!;
+  expect(r.path).toBe(lody);
+  expect(r.real).toBe(realpathSync(lody));
+  expect(r.interpreter?.endsWith("/sh")).toBe(true);
+  expect(r.online).toBe(false);
+  expect(resolveUse("no-such-command-here", { dir: t.dir, path: bin })).toBeUndefined();
+  t.cleanup();
 });
 
 test("a declaration expands literally; .. is refused and a glob grants its static root", () => {
@@ -157,6 +208,38 @@ test.skipIf(!LIVE)("a real fixture reader runs under Seatbelt and its stream imp
     expect([into.ok, into.threads, into.messages]).toEqual([true, 2, 4]);
   } finally {
     log.close();
+    t.cleanup();
+  }
+});
+
+test.skipIf(!LIVE)("a declared online reader opens a loopback socket and starts its command under Seatbelt", async () => {
+  const t = tempDir();
+  const bin = join(t.dir, "bin");
+  mkdirSync(bin, { recursive: true });
+  const lody = join(bin, "lody");
+  writeFileSync(lody, "#!/bin/sh\nprintf '{\"ok\":true,\"workspaces\":[]}\\n'\n");
+  chmodSync(lody, 0o755);
+  const server = createServer(() => undefined);
+  await new Promise<void>((res) => server.listen(0, "127.0.0.1", () => res()));
+  const port = (server.address() as { port: number }).port;
+  const rt = createPluginRuntime({
+    dataDir: t.dir,
+    now: () => NOW,
+    curated: [],
+    path: `${bin}:${process.env.PATH ?? ""}`,
+    env: { PROBE_PORT: String(port), PROBE_LODY: "1" },
+  });
+  try {
+    expect((await rt.install(onlineFixture)).ok).toBe(true);
+    rt.consent("fixture-online", ["./threads.json"], true);
+    const r = await rt.run("fixture-online");
+    expect(r.error).toBeUndefined();
+    expect(r.stderr).toContain("SOCKET_OK");
+    expect(r.stderr).toContain("LODY_OK");
+    const p = parseImport(r.stream, { now: () => NOW });
+    expect([p.ok, p.counts.threads, p.counts.messages]).toEqual([true, 2, 4]);
+  } finally {
+    await new Promise<void>((res) => server.close(() => res()));
     t.cleanup();
   }
 });

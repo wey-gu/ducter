@@ -1140,89 +1140,111 @@ top and the back rows close; a wide screen keeps the 640 form sheet. Checked by
 still 640 with no list back) and shots `.shots/settings-polish/fullheight/` (every pane's first
 screen at 390 × 844 and 320 × 640, before and after, wide samples and 2× top crops).
 
-## 导入 / Import (D655, research/246 §3.10, §3.11)
+## 导入 / Import (D655, D668, D670; research/246 §3.10, §3.11, §4)
 
 Leaving an app shouldn't mean leaving the months of conversations in it. Settings › 导入 / Import
-brings what the person did elsewhere into 做过的事 / Past tasks, read only. The reader for Lody
-runs the person's own signed-in `lody` command on this computer (the same way Ducter runs `gh`);
-the conversations themselves are written only by the import service (D651). The pane sits beside
-待办来源 / To-do sources, after it in the rail, and is built from the shared pieces: a group per
-source (`a.group`), its first row (`a.headRow`) with the app's tile and a drawn initial for an app
-with no faithful mark yet, the shared clay menu (`a.menuButton`) on its ⋯, the in-place
-confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
+brings what the person did elsewhere into 做过的事 / Past tasks, read only. A reader is a **plugin**
+from a **plugin repository**: Ducter's official one (`https://github.com/wey-gu/ducter-plugins`) or
+one the person adds. The conversations themselves are written only by the import service (D651).
+The pane sits beside 待办来源 / To-do sources, after it in the rail, and is built from the shared
+pieces: a group per installed source (`a.group`), its first row (`a.headRow`), the shared clay menu
+on its ⋯, the in-place confirmation (`a.confirmRow`), the shared text field, and one literal read
+list in a `textBlock`.
 
-- **Who is here.** The consumer leaving Lody (C) and the heavy developer moving between agent
-  GUIs (H). Before: their work is stuck in the app they are leaving. After: one tap, and it is in
-  Past tasks with its own day and project; nothing is pushed, and nothing in Lody changes.
-- **The row.** The app's picture and name; one state line: **{n} 段对话 / {n} conversations**
-  before the first run, **带进来的 {day} / Brought in {day}** after one, **有新的 {k} 段 /
-  {k} new** when the source has conversations Ducter doesn't. One action: **带进来 / Bring them in**
-  before the first run, **再带一次 / Bring in again** after. The ⋯ menu holds **看看它读什么 /
-  What it reads** (the same list, no buttons) and **删掉这个来源 / Remove this source** (it asks
-  there, once).
-- **An added source** (D668; research/246 §3.6, §3.10, §3.11) is a reader the person installed
-  with `ducter plugin add <git-url|path>`. Its row is the same row, with the app's own name and
-  tile, and three facts of its own, each its own line: **你加的 / Added by you**, who made it
-  (**{author} 写的 / Made by {author}**) and its repository (in mono). Outside Ducter's curated
-  `plugins.json` it says **没有人替你检查过 / Nobody has checked it for you**; on the list at its
-  pinned commit or content hash it says **Ducter 查过这个版本 / Ducter checked this version**. A newer commit or content
-  shows **有新版本 / Update available** and **更新 / Update**; the update runs on the home, never
-  in the app, and a widened read list opens the consent card before anything runs. A source that
-  can't run says why in its state line: needs a newer Ducter, its files changed after they were
-  pinned, its manifest can't be read, this computer can't sandbox it, it printed nothing.
-- **The consent card**, once per source (again only if the read list widens), all literal:
-  **它会读：** then the one path in words (**Lody 里你的对话（通过你电脑上的 lody 命令）**); **它会用你电脑
-  上已经登录的 lody 命令读你的对话。** (for a reader that goes online through the person's own CLI);
-  **带进来的会出现在「做过的事」里，只读。**; who made it (**Ducter 自己写的，内置。**); **带进来 /
-  Bring them in** and **先不 / Not now**. Nothing is read before its 带进来. The card is a group in
-  the pane, never a dialog, never a decision card. For an added source the card names every path
-  its manifest declares, one line each (a glob stays literal, e.g.
-  `~/Library/Notes/**/*.sqlite*`), then **它不能上网，也不能改那些文件。 / It can't go online or change
-  those files.**, **带进来的会出现在「做过的事」里，只读。**, and **{author} 写的，不是 Ducter。 / Made by
-  {author}, not Ducter.** It never borrows Lody's signed-in-command sentence: an added reader has no
-  command of the person's and no network.
-- **The states.** `ready`; `signed_out` (**Lody 还没登录。先在终端里运行 lody login。**);
-  `needs_authorization` (**Lody 还没让这台电脑读它加密的 workspace。先在 Lody 里允许这台电脑。**); `missing` (**这台电脑上
-  找不到 lody 命令。先按 Lody 的说明装好它。**); `failed` (**这次没读成。再试一次。**); `looking`
-  (**正在看…**). A workspace that refuses while another reads is said under the state
-  (**Lody 还没让这台电脑读：{names}。**) and the readable ones still come in.
-- **When the run is over**, one quiet line where it started: **带进来了 {n} 段对话，最早的是 {date}。**
-  plus **{k} 张图片和附件没有带过来。** when anything was skipped, and **中途停了，前面的都带进来了。**
-  when the stream stopped early. Nothing new: **没有新的对话。**
-- **The offer** (D453: costs a glance, fades): under Past tasks' 也在这台电脑上 / Also on this
-  computer, one line when a source is detected and nothing was brought in yet:
-  **Lody 里你做过的 {n} 段对话可以带进「做过的事」，只读。** with **带进来** and **先不**. It is drawn
-  once per source per computer and fades by itself a day later; **先不** keeps it away until the
-  person mentions the app again. 带进来 opens the same consent card in this pane. Never a push,
-  never a card, never a count on Tasks.
-- **The partner** may say one line when the person mentions Lody and a source is here with nothing
-  brought in (a context line from code, not a tool of its own); it never starts anything.
-- **Removal** says what will be hidden before it asks, once: **删掉这个来源？它带进来的 {n} 段对话会从
-  「做过的事」和搜索里藏起来，不会删掉。** Then `import_removed` hides those tasks from Past tasks,
+- **Who is here.** The consumer leaving Lody (C), the heavy developer moving between agent GUIs
+  who wants their own tool's history in (H), and the author who wants one place to review what
+  ships. Before: the work is stuck, or a review meant a Ducter PR, or an added reader could never
+  use the vendor's own command. After: one repository URL, an Available list with every app's own
+  icon, one tap to install, and one literal consent card; nothing is pushed, nothing in the other
+  app changes.
+- **A plugin repository** is a git repo with an `index.json` at its root:
+  `{ "format": "ducter-plugins/1", "plugins": [{ "id", "path", "version", "commit", "hash",
+  "app", "icon" }] }`. The hash is the content hash D668 pins (every file's path and bytes,
+  sorted). Ducter knows one official source and the person's own: `ducter plugin source add
+  <git-url>`, `source list`, `source remove`, and **插件仓库 › 加一个插件仓库 / Add a plugin
+  repository** here. The official index **is** the reviewed list: a version is **Ducter 查过这个版本
+  / Ducter checked this version** only when the official index lists the same id, version and
+  content hash (and commit when it has one); anything else says **没有人替你检查过 / Nobody has
+  checked it for you**. The old shipped `plugins.json` is gone. The last good official index is
+  cached, so an offline start doesn't relabel a checked version.
+- **An installed row.** The app's own icon (from its plugin) and name; one state line: **装好了 /
+  Installed**, **带进来的 {day} / Brought in {day}** after a run, **有新的 {k} 段 / {k} new** when
+  the source has conversations Ducter doesn't; **带进来 / Bring them in** before the first run,
+  **再带一次 / Bring in again** after; ⋯ **看看它读什么 / What it reads** and **删掉这个来源 /
+  Remove this source**. Its own facts, each its own line: **你加的 / Added by you** unless it came
+  from the official repository, **{author} 写的 / Made by {author}**, its repository in mono, and
+  the check line. **更新 / Update** appears when the source's index lists a newer version; the
+  update runs on the home, never in the app, and a widened read list opens the consent card before
+  anything runs. A source that can't run says why in its state line: needs a newer Ducter, its
+  files changed after they were pinned, its manifest can't be read, this computer can't sandbox
+  it, it printed nothing.
+- **The app's icon.** `app.icon` (and the index's `icon`) names a PNG or SVG inside the plugin, at
+  most 256 KB; the host checks the path, the bytes and the size, and sends one data URL. Web and
+  Mac draw it in the same clay tile as an app with a faithful mark (D622); a missing or bad icon
+  keeps the letter tile.
+- **可以带进来的 / Available.** A quiet list under the installed rows, one row per plugin in the
+  sources' indexes that isn't installed: its app icon, then two lines — the app name with its
+  version as its own muted element and a small **这台电脑上有它 / It's on this computer** tag when a
+  `detect` path exists; and where it comes from (**官方仓库 / Official repository**, or the
+  repository's short name `owner/repo`, its full URL as the tooltip and on the row's ⋯) with its
+  check line (**Ducter 查过这个版本 / Ducter checked this version** or **没有人替你检查过 / Nobody has
+  checked it for you**). Detected rows sort first. **带进来 / Bring them in** installs at the index's
+  commit, verifies the content hash, then opens the same literal consent card; nothing runs before
+  its own yes. A source that can't be read says **读不到这个仓库 / That repository can't be reached**
+  and never becomes a silent empty list.
+- **插件仓库 / Plugin repositories.** The official repository as one quiet row (its URL, **{n} 个
+  插件 / {n} plugins**), the person's sources with **删掉这个仓库 / Remove this repository** (it asks
+  once; installed plugins stay), and the one field that adds another: **仓库地址 / Repository
+  address**, **加进来 / Add it**. Adding doesn't install anything; its plugins appear under
+  Available.
+- **The consent card**, once per read list and again if it widens, all literal: **它会读： / It will
+  read:** then every declared path, one line each (a glob stays literal); every command the reader
+  starts (`uses`), the command in mono and the manifest's own `why` in the person's language — an
+  online use's sentence already says it goes online, and an offline use adds **它不能上网，也不能改
+  那些文件。 / It can't go online or change those files.**; **带进来的会出现在「做过的事」里，只读。
+  / What it brings in shows in Past tasks, read only.**; who made it (**{author} 写的，不是 Ducter。
+  / Made by {author}, not Ducter.** or **Ducter 自己写的，官方仓库里的。 / Made by Ducter, from its
+  official repository.**); **带进来 / Bring them in** and **先不 / Not now**. An unreviewed online
+  reader also shows the second, explicit line **它会联网，没有人替你检查过 / It will go online, and
+  nobody has checked it for you**, and **带进来** is disabled until it is ticked. The card is a
+  group in the pane, never a dialog, never a decision card.
+- **Lody is the official plugin now.** Its app name ("Lody") and account ("lody") are unchanged,
+  so a person who already brought Lody in keeps every imported task, its thread ids and its
+  messages; the plugin's row counts them, and importing again appends only new messages. The
+  built-in reader, its row and its test are gone; the reader is `plugins/lody` in the repository,
+  with `uses: lody online` and reads `~/.lody/**`, `~/.lody-oss/**`.
+- **Going online.** A `uses` entry with `online: true` is the only reason a run gets outbound
+  network: macOS Seatbelt gets `(allow network-outbound)` instead of `(deny network*)`, Linux drops
+  `--unshare-net`; the command's real path, its interpreter and its package/install folder are
+  readable and executable, and its folder leads `PATH`. Reads stay exactly the declared list. A
+  declared command that isn't on this computer refuses the run.
+- **When the run is over**, one quiet line where it started: **带进来了 {n} 段对话，最早的是
+  {date}。** plus **{k} 张图片和附件没有带过来。** when anything was skipped, and **中途停了，前面的都
+  带进来了。** when the stream stopped early. Nothing new: **没有新的对话。**
+- **Removal** says what will be hidden before it asks, once: **删掉这个来源？它带进来的 {n} 段对话会
+  从「做过的事」和搜索里藏起来，不会删掉。** Then `import_removed` hides those tasks from Past tasks,
   ⌘K and the partner's `task_find`; the streams stay in the Log, never a silent delete. Bringing
   the source in again after it puts them back. The consent is owed again.
 - **The words** are in both tables (`apps/web/src/i18n-imports.ts`,
-  `internal/i18n/imports.go`) and in the product-model glossary: 导入, 带进来, 再带一次,
-  删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段, 你加的, 没有人替你检查过,
-  Ducter 查过这个版本, 更新, 它不能上网，也不能改那些文件。
-- **The CLI and the list.** `ducter plugin add <git-url|path>` installs a reader at a pinned
-  commit and content hash; `list` prints what is installed, its pin and what it reads; `remove`
-  deletes its folder and ledger and hides what it brought in (the same `import_removed` the pane
-  writes); `update` moves it to the newer pin. A folder is loaded where the author keeps it (a git
-  folder's HEAD is the pin); a git URL is copied into `<dataDir>/plugins/<id>`. Nothing is run at
-  install or update time. The curated `plugins.json` ships in `packages/core/src/imports/` and is
-  added to by pull request: `{ "format": "ducter-plugins/1", "plugins": [{ "id", "repo",
-  "commit", "version" }] }` (a folder install matches by `hash` instead of `commit`).
+  `internal/i18n/imports.go`) and in the product-model glossary: 导入, 带进来, 再带一次, 删掉这个
+  来源, 看看它读什么, 可以带进来的, 官方仓库, 插件仓库, 加一个插件仓库, 仓库地址, 加进来, 你加的,
+  没有人替你检查过, Ducter 查过这个版本, 更新, 它不能上网，也不能改那些文件, 它会联网，没有人替你
+  检查过.
+- **The CLI and the index.** `ducter plugin add <git-url|path>` still installs one reader directly
+  at a pinned commit and content hash; `ducter plugin source add|list|remove` manages repositories;
+  `list`/`update`/`remove` stay. `scripts/index.ts` in the plugin repository is the one writer of
+  `index.json`: it hashes every plugin folder exactly as the host does and pins the commit. Nothing
+  is run at install or update time.
 - **The sandbox.** macOS runs the reader under `sandbox-exec` with a generated Seatbelt profile
   (deny default, read the plugin folder, Ducter's Bun and system libraries plus the declared
-  paths, write only the temporary folder, deny network, exec only the declared programs). Linux
-  uses bubblewrap (`--unshare-net`, a read-only bind per declaration, a tmpfs `/tmp`,
-  `--die-with-parent`, no capabilities). Where neither can run, the source is refused with
-  **这台电脑不能把它关进沙箱。 / This computer can't sandbox it.** and is never run unconfined.
-  The profile text, the denials (a read outside the list, a socket, a write outside temp) and the
-  fixture reader are in `packages/core/test/plugin-sandbox.test.ts`; the Linux live denial run is
-  owed on a Linux box (`todo.md`).
-- **Not done here:** showing the curated list itself as importable apps (the CLI installs it and
-  the row says whether the pinned version is on the list), signing, dependencies, a worker running
-  a plugin where its store is (D377; phase 4), and the `reader` kind. The per-computer detection
-  when the home is a server waits for phase 4; the built-in Lody reader runs on the home.
+  paths, write only the temporary folder, exec the reader, its declared commands and their
+  interpreters, network denied unless a use is online). Linux uses bubblewrap (`--unshare-net`
+  unless online, a read-only bind per declaration, a tmpfs `/tmp`, `--die-with-parent`, no
+  capabilities). Where neither can run, the source is refused with **这台电脑不能把它关进沙箱。 /
+  This computer can't sandbox it.** and is never run unconfined. The profile text, the denials (a
+  read outside the list, a socket, a write outside temp), the online socket and the fixture reader
+  are in `packages/core/test/plugin-sandbox.test.ts`; the live run is owed where the host refuses
+  a nested Seatbelt profile (`todo.md`).
+- **Not done here:** signing, dependencies, a worker running a plugin where its store is (D377;
+  phase 4), and the `reader` kind. The per-computer detection when the home is a server waits for
+  phase 4. Live Linux sandbox denials are still owed.

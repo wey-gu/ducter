@@ -1,0 +1,25 @@
+{
+  "format": "ducter-plugin/1",
+  "id": "fixture-online",
+  "kind": "importer",
+  "version": "0.1.0",
+  "name": { "en": "Fixture Online", "zh": "联网测试" },
+  "app": { "name": "Fixture Online" },
+  "author": { "name": "Ducter tests" },
+  "emits": "ducter-import/1",
+  "run": ["bun", "main.ts"],
+  "reads": ["./threads.json"],
+  "starts": [],
+  "uses": [
+    {
+      "command": "lody",
+      "online": true,
+      "why": {
+        "en": "It reads your conversations with the lody command already signed in on this computer, and goes online.",
+        "zh": "它会用你电脑上已经登录的 lody 命令读你的对话，会联网。"
+      }
+    }
+  ],
+  "detect": ["./threads.json"],
+  "ducter": "^0.1"
+}

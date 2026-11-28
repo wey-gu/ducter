@@ -8,6 +8,12 @@ read-only past tasks: message text, role, timestamps and project folder, searcha
 citable by the partner. Live sessions are out of scope. The issue suggests that an importer
 could produce "the same validated shape" that `ducter move --receive` checks.
 
+> **Historical in part (D670).** The recommendation that Lody stay in tree (§3.3 rule 3,
+> §4.2, §4.8) was changed by the author on 2026-11-28: Lody is now the official plugin, and a
+> manifest may declare an online command through `uses`. The report's format, mapping, sandbox and
+> consent findings still stand; read §3.3 rule 3 and §4.2 as the evidence at the time.
+>
+
 This report covers five things: how magpie does plugins (Part 1); which of Ducter's existing
 extension points already act as plugin interfaces (Part 2); a plugin mechanism for Ducter
 designed from the user side (Part 3); #261 as its first case (Part 4); and a phased plan with a

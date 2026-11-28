@@ -118,6 +118,7 @@ function todosSay(): string {
   return items.length ? t("say.todos.n", items.join(t("say.todos.sep"))) : t("say.todos");
 }
 
+
 function chatsSay(): string {
   const names = linkedChats();
   return names.length ? t("say.chats.n", names.join(t("acct.sep"))) : t("say.chats");
@@ -160,6 +161,9 @@ export function paneSay(page: SettingsPage): string {
       return notifySay();
     case "todos":
       return todosSay();
+    case "import":
+      // The pane's own lede is its one line; no second sentence above it.
+      return "";
     case "chats":
       return chatsSay();
     case "autofill":

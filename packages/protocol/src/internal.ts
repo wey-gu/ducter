@@ -137,6 +137,14 @@ export interface MemIdentity {
   lane?: string;
 }
 
+/** What the partner needs of Settings › 导入 / Import (core/src/imports/sources.ts). */
+export interface ImportSourcesPort {
+  /** The person mentioned the app: 先不 is forgotten, so the offer may come once more. */
+  mention(): void;
+  /** One line's worth when a source is detected and nothing was brought in; else undefined. */
+  offerLine(): { app: string; total?: number } | undefined;
+}
+
 export interface CoreApi {
   log: LogStore;
   tasks: TaskRegistry;
@@ -233,6 +241,11 @@ export interface CoreApi {
   always?: { tap(decisionId: string): { ok: true; standing: import("./standing.ts").StandingView } | { ok: false; error: string } };
   /** D528: the person's time zone (IANA), so a task writes the times they read in it. */
   zone?(): string;
+  /**
+   * D655 (research/246): Settings › 导入 / Import: the one source's state and the offer the
+   * partner may say once when the person mentions the app. Absent in tests and stubs.
+   */
+  importSources?: () => ImportSourcesPort;
   /**
    * D539: keys copied to a computer for Ducter's tasks there: which variables a task holds (its
    * session gets them at start, read on the computer it runs on), and the home's own shelf, which

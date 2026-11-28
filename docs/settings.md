@@ -37,7 +37,7 @@ On the left is a row of tabs; the one you pick shows on the right. Settings open
 | **Updates and about** | The version, updates, help links and credits |
 
 On a phone, tap the grid at the top right and then **Settings** (or your partner's name at the top of the conversation):
-Settings opens with the same overview at the top (your partner's few lines and your computers), then a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **Your devices**, **This phone**), and tapping one opens
+Settings opens with the same overview at the top (your partner's few lines and your computers), then a list of the same sections (**Partner**, **Memory**, **Notifications**, **Accounts**, **To-do sources**, **Import**, **Your devices**, **This phone**), and tapping one opens
 it. **This phone** (**This computer** in a browser on a computer) holds what is this device's own: **Light and dark** (**Follow the system**, **Light** or **Dark**), **An opened task** (**Comfortable** or **Compact**),
 the language of its screens, Details in the conversation, and reading replies aloud when you talk by voice.
 A small preview at the top shows your partner, a message of yours and its reply as they look here, and

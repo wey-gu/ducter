@@ -77,7 +77,7 @@ const (
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabHome, TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabHome, TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabImport, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -204,6 +204,11 @@ func (a *App) openTab(tab string) {
 		a.todos.removing, a.todos.addErr = "", ""
 		a.send(protocol.SourcesReq{T: "sources"})
 	}
+	// D655: 导入 / Import (subscribed after; the home looks at the source's index).
+	if tab == TabImport {
+		a.imports.notice = ""
+		a.send(protocol.ImportsReq{T: "imports"})
+	}
 }
 
 // settingsTab is the tab shown.
@@ -282,6 +287,8 @@ func (a *App) settingsView(c *ui.Context) {
 						a.chatsPanel(c)
 					case TabTodos:
 						a.todosPanel(c)
+					case TabImport:
+						a.importsPanel(c)
 					case TabAutofill:
 						a.autofillPanel(c)
 					case TabAccounts:
@@ -424,6 +431,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		bmp = theme.Clay("wait_mail")
 	case TabTodos:
 		bmp = theme.Clay(todosArt) // D348: a note page with a ticked box
+	case TabImport:
+		bmp = theme.Clay(importsArt) // D655: a page of lines, things carried in
 	case TabAutofill:
 		bmp = theme.Clay("set_autofill")
 	case TabRun:

@@ -3387,6 +3387,8 @@ type ServerFrame struct {
 	MemFile *MemFileAnswer `json:"-"`
 	// Sources (D341): sources, source_items_result and source_result, decoded on their own.
 	Sources *SourcesFrame `json:"-"`
+	// Imports (D655): imports and import_answer, decoded on their own.
+	Imports *ImportsFrame `json:"-"`
 	// D480: mailbox_look's answer (with Device and Harness).
 	Look *MailboxLook `json:"look,omitempty"`
 }
@@ -3659,6 +3661,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeMemAnswered(data, f)
 	case "sources", "source_items_result", "source_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result":
 		return decodeSources(data, f)
+	case "imports", "import_answer":
+		return decodeImports(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

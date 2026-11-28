@@ -124,3 +124,14 @@ func menuGlyph(name string) ui.MenuIcon {
 	}
 	return nil
 }
+
+// menuDots is a row's ⋯ that opens the one clay menu (D421): the shared opener for a card or a
+// row whose more stands at its end (Import's source row). The ⋯ is drawn, never a font glyph.
+func (a *App) menuDots(c *ui.Context, key, label string, build func(m *ui.Menu)) {
+	t := a.T
+	b := ui.Box(c.Key(key)).Size(t.ControlSM, t.ControlSM).Radius(a.buttonRadius(t.ControlSM)).Label(label).
+		Tooltip(label).Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, t.ControlSM, t.Surface)
+	b.Draw(drawMore(fg))
+	a.menuButton(c, b, build)
+}

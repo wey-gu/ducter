@@ -18,6 +18,7 @@ import { phoneuse } from "./i18n-phoneuse.ts";
 import { computeruse } from "./i18n-computeruse.ts";
 import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
+import { importWords } from "./i18n-imports.ts";
 import { groupWords } from "./i18n-groups.ts";
 import { asksWords } from "./i18n-asks.ts";
 import { firstMeetWords } from "./i18n-first-meet.ts";
@@ -3724,6 +3725,9 @@ Object.assign(TABLES.en, channelWords.en);
 // D341: 待办来源 / To-do sources (i18n-todos.ts).
 Object.assign(TABLES.zh, todoWords.zh);
 Object.assign(TABLES.en, todoWords.en);
+// D655: 导入 / Import (i18n-imports.ts).
+Object.assign(TABLES.zh, importWords.zh);
+Object.assign(TABLES.en, importWords.en);
 // D360: 分组 / Groups on On hand (i18n-groups.ts).
 Object.assign(TABLES.zh, groupWords.zh);
 Object.assign(TABLES.en, groupWords.en);

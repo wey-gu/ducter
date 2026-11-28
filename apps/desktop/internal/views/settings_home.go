@@ -173,6 +173,9 @@ func (a *App) paneSay(tab, lede string) string {
 		return a.lookSay()
 	case TabTodos:
 		return a.todosSay()
+	case TabImport:
+		// The pane's lede is its one line (the partner's voice says what the pane is for).
+		return lede
 	case TabChats:
 		return a.chatsSay()
 	case TabAutofill:

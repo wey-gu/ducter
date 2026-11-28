@@ -576,6 +576,7 @@ A new control is added to the set (and to this table) before it is used.
 | Settings rail tab | `railTab` (`settings.go`) | the pushed-page list |
 | Destructive text button (断开这台 MacBook, a connection's 断开) | `dangerText` (`shared.go`) | `DangerButton` |
 | ⋯ that opens more in place | `moreButton` (`shared.go`) | `MoreButton` |
+| A row's ⋯ that opens the one clay menu (Import's source row; D655) | `menuDots` (`menu.go`) | `MoreButton` with `Menu` |
 | A name renamed in place | `cardName` (`devupdate.go`) | `RenameTitle` |
 | An agent's coin in a tray, and the socket | `coinTile`, `socketTile` (`devicecard.go`); `trayToken` (`loadout.go`) | `CoinButton`, `SocketButton` |
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |

@@ -57,6 +57,8 @@ export interface WsData {
   channels?: boolean;
   /** D341: subscribed to 待办来源 / To-do sources. */
   sources?: boolean;
+  /** D655: subscribed to Settings › 导入 / Import and Past tasks' offer. */
+  imports?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
   /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
@@ -114,6 +116,8 @@ export interface WsDeps {
   devices?: () => DevicesView | undefined;
   /** D651 (research/246): `ducter import`'s reader stream, appended by core's import service. */
   imports?: (data: string) => Promise<import("@ducter/protocol").ImportAnswer>;
+  /** D655 (research/246): Settings › 导入 / Import's one source, the offer and removal. */
+  importSources?: () => import("./imports/sources.ts").ImportSources | undefined;
   /** D347: 加一台做事的电脑 / Add a computer for tasks (lend.ts); absent in tests that don't need it. */
   lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
@@ -538,6 +542,19 @@ export function createWsHandler(deps: WsDeps) {
   };
   // D276: 聊天软件 / Chat apps: every subscriber gets a fresh frame on every change.
   const offChannels = deps.channels?.onChange(channelsChanged);
+  // D655 (research/246): Settings › 导入 / Import: subscribed on its first frame.
+  let offImports: (() => void) | undefined;
+  const importsChanged = () => {
+    const imp = deps.importSources?.();
+    if (!imp) return;
+    const v = imp.view();
+    for (const ws of sockets) if (ws.data.imports) send(ws, { t: "imports", ...v });
+  };
+  const watchImports = () => {
+    if (offImports) return;
+    offImports = deps.importSources?.()?.onChange(importsChanged);
+    if (offImports) for (const ws of sockets) if (ws.data.imports) send(ws, { t: "imports", ...deps.importSources!()!.view() });
+  };
   // D341: 待办来源 / To-do sources: made after this handler; subscribed on the first sources frame.
   let offSources: (() => void) | undefined;
   const sourcesChanged = () => {
@@ -2380,6 +2397,39 @@ export function createWsHandler(deps: WsDeps) {
         const taskId = typeof f.taskId === "string" ? f.taskId : undefined;
         const r = deps.mentions ? await deps.mentions.slash(taskId) : { entries: [] };
         return send(ws, { t: "slash_list", id, ...(taskId ? { taskId } : {}), entries: r.entries, ...(r.harness ? { harness: r.harness } : {}) });
+      }
+      // D655 (research/246): Settings › 导入 / Import: the pane, the consent, 再带一次,
+      // 删掉这个来源 and Past tasks' one line.
+      case "imports":
+      case "import_consent":
+      case "import_run":
+      case "import_remove":
+      case "import_offer": {
+        const imp = deps.importSources?.();
+        if (!imp) throw new Error("import isn't available here");
+        if (f.t === "imports") {
+          ws.data.imports = true;
+          watchImports();
+          send(ws, { t: "imports", ...imp.view() });
+          void imp.look().catch(() => undefined);
+          return;
+        }
+        const id = f.id === "lody" ? "lody" : undefined;
+        if (!id) return send(ws, { t: "import_answer", id: "lody", op: "run", ok: false, error: "unknown_source" });
+        if (f.t === "import_offer") {
+          if (f.action === "seen" || f.action === "begin") imp.offerSeen(id);
+          else imp.offerDecline(id);
+          return send(ws, { t: "imports", ...imp.view() });
+        }
+        if (f.t === "import_remove") {
+          const n = imp.view().sources.find((s) => s.id === id)?.imported ?? 0;
+          imp.remove(id);
+          send(ws, { t: "import_answer", id, op: "remove", ok: true, removed: n });
+          return send(ws, { t: "imports", ...imp.view() });
+        }
+        const r = f.t === "import_consent" ? await imp.accept(id) : await imp.run(id);
+        send(ws, { t: "import_answer", id, op: f.t === "import_consent" ? "consent" : "run", ok: r.ok, ...(r.threads ? { threads: r.threads } : {}), ...(r.messages ? { messages: r.messages } : {}), ...(r.skipped ? { skipped: r.skipped } : {}), ...(r.error ? { error: r.error } : {}), ...(r.stopped ? { stopped: true } : {}) });
+        return send(ws, { t: "imports", ...imp.view() });
       }
       case "import": {
         // D651 (research/246): the reader's stream arrives in chunks and the home's own

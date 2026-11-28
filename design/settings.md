@@ -1073,3 +1073,55 @@ nothing but a direct message.
   the first handshake, the ack under load, the text edit's 20 times, the applink on desktop and
   phone, Lark's English labels). Owed: group @-mentions, threads, pictures/files, card buttons, a
   per-partner app. See `channels.md` §14 and `todo.md`.
+
+## 导入 / Import (D655, research/246 §3.10, §3.11)
+
+Leaving an app shouldn't mean leaving the months of conversations in it. Settings › 导入 / Import
+brings what the person did elsewhere into 做过的事 / Past tasks, read only. The reader for Lody
+runs the person's own signed-in `lody` command on this computer (the same way Ducter runs `gh`);
+the conversations themselves are written only by the import service (D651). The pane sits beside
+待办来源 / To-do sources, after it in the rail, and is built from the shared pieces: a group per
+source (`a.group`), its first row (`a.headRow`) with the app's tile and a drawn initial for an app
+with no faithful mark yet, the shared clay menu (`a.menuButton`) on its ⋯, the in-place
+confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
+
+- **Who is here.** The consumer leaving Lody (C) and the heavy developer moving between agent
+  GUIs (H). Before: their work is stuck in the app they are leaving. After: one tap, and it is in
+  Past tasks with its own day and project; nothing is pushed, and nothing in Lody changes.
+- **The row.** The app's picture and name; one state line: **{n} 段对话 / {n} conversations**
+  before the first run, **带进来的 {day} / Brought in {day}** after one, **有新的 {k} 段 /
+  {k} new** when the source has conversations Ducter doesn't. One action: **带进来 / Bring them in**
+  before the first run, **再带一次 / Bring in again** after. The ⋯ menu holds **看看它读什么 /
+  What it reads** (the same list, no buttons) and **删掉这个来源 / Remove this source** (it asks
+  there, once).
+- **The consent card**, once per source (again only if the read list widens, phase 3), all literal:
+  **它会读：** then the one path in words (**Lody 里你的对话（通过你电脑上的 lody 命令）**); **它会用你电脑
+  上已经登录的 lody 命令读你的对话。** (for a reader that goes online through the person's own CLI);
+  **带进来的会出现在「做过的事」里，只读。**; who made it (**Ducter 自己写的，内置。**); **带进来 /
+  Bring them in** and **先不 / Not now**. Nothing is read before its 带进来. The card is a group in
+  the pane, never a dialog, never a decision card.
+- **The states.** `ready`; `signed_out` (**Lody 还没登录。先在终端里运行 lody login。**);
+  `needs_authorization` (**Lody 还没让这台电脑读它加密的 workspace。先在 Lody 里允许这台电脑。**); `missing` (**这台电脑上
+  找不到 lody 命令。先按 Lody 的说明装好它。**); `failed` (**这次没读成。再试一次。**); `looking`
+  (**正在看…**). A workspace that refuses while another reads is said under the state
+  (**Lody 还没让这台电脑读：{names}。**) and the readable ones still come in.
+- **When the run is over**, one quiet line where it started: **带进来了 {n} 段对话，最早的是 {date}。**
+  plus **{k} 张图片和附件没有带过来。** when anything was skipped, and **中途停了，前面的都带进来了。**
+  when the stream stopped early. Nothing new: **没有新的对话。**
+- **The offer** (D453: costs a glance, fades): under Past tasks' 也在这台电脑上 / Also on this
+  computer, one line when a source is detected and nothing was brought in yet:
+  **Lody 里你做过的 {n} 段对话可以带进「做过的事」，只读。** with **带进来** and **先不**. It is drawn
+  once per source per computer and fades by itself a day later; **先不** keeps it away until the
+  person mentions the app again. 带进来 opens the same consent card in this pane. Never a push,
+  never a card, never a count on Tasks.
+- **The partner** may say one line when the person mentions Lody and a source is here with nothing
+  brought in (a context line from code, not a tool of its own); it never starts anything.
+- **Removal** says what will be hidden before it asks, once: **删掉这个来源？它带进来的 {n} 段对话会从
+  「做过的事」和搜索里藏起来，不会删掉。** Then `import_removed` hides those tasks from Past tasks,
+  ⌘K and the partner's `task_find`; the streams stay in the Log, never a silent delete. Bringing
+  the source in again after it puts them back. The consent is owed again.
+- **The words** are in both tables (`apps/web/src/i18n-imports.ts`,
+  `internal/i18n/imports.go`) and in the product-model glossary: 导入, 带进来, 再带一次,
+  删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段.
+- **Not done here:** added sources and their rows (phase 3), update on a widened read list, the
+  per-computer detection when the home is a server (the reader runs on the home in phase 2).

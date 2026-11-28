@@ -85,6 +85,7 @@ import { CheckoutBody, StepBody } from "./errand.tsx";
 
 import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
+import { ImportSettings } from "./imports.tsx";
 import { DensityRow, HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
 import { AddSection, brainHeld, heldAt, NewTasksSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
@@ -3657,6 +3658,8 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
   // D341: 待办来源 / To-do sources (todos.tsx); D348: its own clay, a note page with a ticked box.
   { page: "todos", art: "set_todos", title: "settings.tab.todos" },
+  // D655: 导入 / Import (imports.tsx): a page of lines, things carried in.
+  { page: "import", art: "wait_file", title: "settings.tab.import" },
   // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
   { page: "chats", art: "set_chats", title: "settings.tab.chats" },
   { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
@@ -3787,6 +3790,7 @@ export function SettingsSheet() {
           {page === "notify" && <NotifySettings />}
           {page === "accounts" && <Accounts />}
           {page === "todos" && <TodoSourcesSettings />}
+          {page === "import" && <ImportSettings />}
           {page === "chats" && <ChatAppsSettings />}
           {page === "autofill" && <AutofillSettings />}
           {page === "devices" && <DevicesSection open={dev} setOpen={setDev} />}

@@ -544,6 +544,22 @@ the first open on the day after the first run; nothing to set up.
 
 ## The living message (principle 7)
 
+**One living card per subject (research/244 rules 1 and 8; D653).** A task, the hand-off it
+joined and the PR it works on are one subject: keyed by the task id, the hand-off's one key per
+`repo#n`, or the PR ref. The card hangs from the message that started the work (D426's card
+extended to a single task) and says its title in words, its state in one line (**在做 / Working**,
+**等你 / Needs you**, **做完了 / Done**, **没做成 / Didn't work**) and the newest real progress.
+Every report revises that one card in place; a report never becomes a message of its own. The
+partner hears a subject only at a needs-you, a first failure and the final verified result — once:
+a progress report never wakes it, a done report from a task still watching (an open PR, an armed
+wait, a loop) only revises the card, and a later done on the same subject wakes nobody. Code
+decides which report states wake (`packages/core/src/subjects.ts`, with the per-subject key); the
+model still judges what to say when woken ("model judges, code guards"). Information is lighter
+than needs-you: it rides in the card or as a quiet line; a pure-information line not answered by
+tomorrow leaves the scroll (the card and the task keep it; the living message's 24-hour window
+retires its own items the same way). Needs-you keeps the card shape and the count. The rules below are the living message's own items;
+the subject card is drawn under its message, not inside that message.
+
 | State | Meaning |
 |---|---|
 | `open` | Unread and always the last message; at most one exists. Revised in place. |
@@ -593,6 +609,9 @@ the first open on the day after the first run; nothing to set up.
 - The core renders the living message (`packages/core/src/living.ts`) from task cards,
   reports and decisions; each revision is a superseding `living_msg` Log event, and a read
   receipt freezes it.
+- One card per subject is a `subject_card` Log event (latest per key wins), hung from the
+  message that started the work (`packages/core/src/subjects.ts`); both clients draw it under
+  that message and revise it in place.
 - The partner's own words are never revised: an `ai_msg` is immutable once logged. Only the
   core-rendered living message changes in place.
 - Not built: revising inside the partner's session (truncate to before the message, then

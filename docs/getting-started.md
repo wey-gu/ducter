@@ -158,6 +158,13 @@ line to see which AI agent is on it. You hear back once for the whole message, a
 something needs you or didn't work. To change one of them later, just say which ("the second one,
 make it Saturday").
 
+**One piece of work, one card.** A single task — and the hand-off or the PR it grew into — gets
+one small card under the message that started it: what it is working on, where it stands (in
+progress, waiting on you, done, or didn't work out), and the newest thing that came of it. The
+card changes in place as the work moves; a progress note never becomes a new message. You hear
+from your partner only when something needs you, fails, or is finally done — once. A card that is
+only information and not answered by tomorrow leaves the conversation; the task keeps it.
+
 ## 3. Get your first result
 
 While a task works, there's nothing to watch. **Silence means it's going fine.** When it's done,

@@ -57,6 +57,7 @@ func moveConv(dst, src *Store) {
 	dst.DecisionCalls, dst.LastUserSeq = src.DecisionCalls, src.LastUserSeq
 	dst.notes, dst.sets = src.notes, src.sets
 	dst.asksWaiting, dst.asksAsked, dst.asksWanted = src.asksWaiting, src.asksAsked, src.asksWanted
+	dst.cardsWaiting = src.cardsWaiting
 	dst.First = src.First
 	dst.Activity, dst.ActivityAt, dst.ActivityEndedAt = src.Activity, src.ActivityAt, src.ActivityEndedAt
 	dst.Recalled, dst.SetAside = src.Recalled, src.SetAside

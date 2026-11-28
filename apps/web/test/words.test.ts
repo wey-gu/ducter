@@ -98,6 +98,7 @@ describe("the web client's words", () => {
       ["i18n-taskview.ts", "taskviewWords", "taskview.go"],
       ["i18n-groups.ts", "groupWords", "groups.go"],
       ["i18n-asks.ts", "asksWords", "asks.go"],
+      ["i18n-subjects.ts", "subjectWords", "subjects.go"],
       ["i18n-first-meet.ts", "firstMeetWords", "firstmeet.go"],
       ["i18n-voice.ts", "voiceWords", "voice.go"],
       ["i18n-partners.ts", "partnersWords", "partners.go"],

@@ -46,6 +46,9 @@ type Entry struct {
 	// Asks (D426), on a user's message: the several things it asked for,
 	// line by line (the latest asks event for it).
 	Asks *protocol.Asks
+	// Cards (D653, research/244 rules 1 and 8): the living cards of the
+	// work this message started, one per subject, revised in place.
+	Cards []protocol.SubjectCard
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -511,6 +514,9 @@ type Store struct {
 	// asksWaiting (D426) holds lines that came before their message was
 	// loaded (a history page), until it is.
 	asksWaiting map[int64]*protocol.Asks
+	// cardsWaiting holds cards that came before their message was loaded
+	// (history paging), kept until it is.
+	cardsWaiting map[int64][]protocol.SubjectCard
 	// asksAsked, asksWanted (D481): the questions asked for (asks_get) on
 	// this socket, and those to ask for now.
 	asksAsked  map[string]bool
@@ -1418,6 +1424,10 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			e.Asks = w
 			delete(s.asksWaiting, ev.Seq)
 		}
+		if cs := s.cardsWaiting[ev.Seq]; len(cs) > 0 {
+			e.Cards = cs
+			delete(s.cardsWaiting, ev.Seq)
+		}
 		s.add(e)
 	case *protocol.Asks:
 		// D426: the latest lines win, drawn under their message; the event
@@ -1432,6 +1442,18 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.asksWaiting = map[int64]*protocol.Asks{}
 		}
 		s.asksWaiting[b.MsgSeq] = b
+	case *protocol.SubjectCardBody:
+		// D653: the latest card per subject, on its message; no row of its own.
+		s.bySeq[ev.Seq] = nil
+		if at := s.bySeq[b.Card.MsgSeq]; at != nil && (at.User != nil || at.AI != nil || at.Job != nil) {
+			at.Cards = subjectCardsPut(at.Cards, b.Card)
+			at.Revision++
+			return
+		}
+		if s.cardsWaiting == nil {
+			s.cardsWaiting = map[int64][]protocol.SubjectCard{}
+		}
+		s.cardsWaiting[b.Card.MsgSeq] = subjectCardsPut(s.cardsWaiting[b.Card.MsgSeq], b.Card)
 	case *protocol.Finds:
 		s.addFinds(ev, b)
 	case *protocol.TodoSet:
@@ -2313,4 +2335,17 @@ type AccountAnswer struct {
 	Usage *protocol.AccountUsage
 	Why   string
 	At    time.Time
+}
+
+// subjectCardsPut puts a card in place: the same subject (its key) or the same
+// task (its key moved when a task joined its hand-off's PR) replaces the one
+// before, so a message shows one card per subject.
+func subjectCardsPut(list []protocol.SubjectCard, c protocol.SubjectCard) []protocol.SubjectCard {
+	for i, x := range list {
+		if x.Key == c.Key || (c.TaskID != "" && x.TaskID == c.TaskID) {
+			list[i] = c
+			return list
+		}
+	}
+	return append(list, c)
 }

@@ -18865,6 +18865,174 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   }
 }
 
+/* D653 (research/244 rules 1 and 8): one living card per subject, hanging from the message
+   that started the work. The title in words, the state in one line, the newest progress; revised in
+   place, never a new message. The mark is the one the lines already use; each fact is its own
+   element, never a joined line. */
+.subjects {
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: fit-content;
+  max-width: min(80%, var(--bubble-measure));
+  margin-top: -2px;
+}
+.scroll > .user + .subjects,
+.scroll > .user-m + .subjects {
+  margin-top: -6px;
+}
+.subject-card {
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r-sm) + 4px);
+  background: var(--surface);
+}
+.subject-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px 6px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease);
+}
+.subject-row:disabled {
+  cursor: default;
+}
+.subject-row:focus-visible {
+  outline: 2px solid var(--ink-soft);
+  outline-offset: -2px;
+}
+.subject-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.subject-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.subject-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--sm);
+  line-height: 1.25rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.subject-state {
+  flex: none;
+  font-size: var(--xs);
+  line-height: 1.0625rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.subject-card.s-needs_you .subject-state {
+  color: var(--needs-ink);
+  font-weight: 600;
+}
+.subject-card.s-done .subject-state {
+  color: var(--done-ink);
+}
+.subject-card.s-failed .subject-state {
+  color: var(--failed-ink);
+}
+.subject-line {
+  font-size: var(--xs);
+  line-height: 1.0625rem;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.subject-progress {
+  font-size: var(--xs);
+  line-height: 1.0625rem;
+  color: var(--ink-muted);
+  opacity: 0.85;
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) and (pointer: fine) {
+  .subject-row:not(:disabled):hover {
+    background: var(--surface-sunken);
+  }
+}
+@media (pointer: coarse) {
+  .subject-row {
+    min-height: 44px;
+  }
+}
+/* The same drawn marks the lines under a message use (D69), scoped to the card. */
+.subjects .amark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+.subjects .amark svg {
+  display: block;
+}
+.subjects .amark svg circle {
+  fill: currentColor;
+}
+.subjects .amark svg path {
+  stroke: var(--surface);
+}
+.subjects .amark.s-done {
+  color: var(--done-dot);
+}
+.subjects .amark.s-needs_you {
+  color: var(--needs-dot);
+}
+.subjects .amark.s-failed {
+  color: var(--failed-dot);
+}
+.subjects .amark.s-working {
+  background: var(--working-surface);
+}
+.subjects .amark .pulse {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.subjects .amark .pulse i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--working-dot);
+  transform-origin: bottom;
+  animation: oh-pulse 1.6s var(--ease) infinite;
+}
+.subjects .amark .pulse i:nth-child(2) {
+  animation-delay: -0.55s;
+}
+.subjects .amark .pulse i:nth-child(3) {
+  animation-delay: -1.1s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .subjects .amark .pulse i {
+    animation: none;
+  }
+}
+@media (max-width: 460px) {
+  .subjects {
+    max-width: 100%;
+  }
+}
+
 /* D442: 放手说 / Talk hands-free. Over the composer like hold to talk's strip, larger: the clay
    partner listening (leaning in with the voice), thinking (a slow sway), or speaking (two soft rings
    from it); the words heard or said, large; a card's question with its two answers; End. */

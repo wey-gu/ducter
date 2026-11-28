@@ -135,6 +135,7 @@ import { createProjects } from "./projects.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
 import { createOnHandAway } from "./onhand-away.ts";
 import { createAsks, type Asks } from "./asks.ts";
+import { createSubjects, type Subjects } from "./subjects.ts";
 import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -394,6 +395,8 @@ export interface Core extends CoreApi {
   mcp: CoreMcpHub;
   decisions: Decisions;
   living: Living;
+  /** D653: one living card per subject (research/244 rules 1 and 8). */
+  subjects: Subjects;
   devices: DeviceAuth;
   workers: Workers;
   /** 你的设备和本事 / Your devices and abilities. */
@@ -1220,8 +1223,13 @@ export function startCore(opts: CoreOptions = {}): Core {
   const asks = createAsks({ log, tasks, release: (evs) => evs.forEach((e) => wake(e)) });
   asksRef = asks;
   log.subscribe((e) => asks.onEvent(e));
+  // D653 (research/244 rules 1 and 8): one living card per subject, and who speaks. The card
+  // is kept before the wake below decides, so a repeated done/progress only revises it.
+  let handoffsForSubjects: ReturnType<typeof createHandoffs> | undefined;
+  const subjects = createSubjects({ log, tasks, handoffs: () => handoffsForSubjects });
+  log.subscribe((e) => subjects.onEvent(e));
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !appFill.wakes(e)) return;
+    if (!triggersPartner(e) || (e.kind === "report" && !subjects.shouldWake(e)) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !appFill.wakes(e)) return;
     wake(e);
   });
 
@@ -1433,6 +1441,8 @@ export function startCore(opts: CoreOptions = {}): Core {
           },
         }),
   });
+  // D653: the subject cards read the hand-off records lazily (this one is made after them).
+  handoffsForSubjects = handoffs;
   // D633: one settle path for everything Ducter holds about an outside thing (a task, a
   // hand-off, a Keep's item and a wait). Its own looks (owned_news) and a new hand-off settle at
   // once; GitHub is read on start and hourly for the rest. Tests enable the read with holdingsEveryMs.
@@ -3293,6 +3303,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     mcp,
     decisions,
     living,
+    subjects,
     devices,
     workers,
     devicesView,

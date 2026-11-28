@@ -20,6 +20,7 @@ import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
 import { groupWords } from "./i18n-groups.ts";
 import { asksWords } from "./i18n-asks.ts";
+import { subjectWords } from "./i18n-subjects.ts";
 import { firstMeetWords } from "./i18n-first-meet.ts";
 import { handoverWords } from "./i18n-handover.ts";
 import { taskviewWords } from "./i18n-taskview.ts";
@@ -3774,6 +3775,9 @@ Object.assign(TABLES.en, groupWords.en);
 // D426: several things in one message, under it (i18n-asks.ts).
 Object.assign(TABLES.zh, asksWords.zh);
 Object.assign(TABLES.en, asksWords.en);
+// D653: one living card per subject (i18n-subjects.ts).
+Object.assign(TABLES.zh, subjectWords.zh);
+Object.assign(TABLES.en, subjectWords.en);
 // D532: the link to the home (i18n-link.ts), the Mac's words (D520).
 Object.assign(TABLES.zh, linkWords.zh);
 Object.assign(TABLES.en, linkWords.en);

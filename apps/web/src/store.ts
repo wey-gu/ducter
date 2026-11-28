@@ -8,6 +8,7 @@ import type { ActivityStep, Attention, Bodies, BridgeReceipt, ClientFrame, Deliv
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { askOpen } from "@ducter/protocol/src/open-asks.ts";
+import type { SubjectCard } from "@ducter/protocol/src/subject.ts";
 import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -43,6 +44,8 @@ export interface Entry {
   set?: Bodies["todo_set"];
   /** D426: on a user's message: the several things it asked for, line by line (the latest `asks`). */
   asks?: Bodies["asks"];
+  /** D653: the living cards of the work that message started, latest per subject. */
+  cards?: SubjectCard[];
 }
 
 export type DecisionState = Bodies["decision"] & {
@@ -270,6 +273,8 @@ export class Store {
   older = { from: 0, done: false, asked: 0 };
   /** D426: lines that came before their message was loaded (history paging), kept until it is. */
   asksWaiting = new Map<number, Bodies["asks"]>();
+  /** D653: living cards that came before their message was loaded, kept until it is. */
+  cardsWaiting = new Map<number, SubjectCard[]>();
   jobs = new Map<string, Job>();
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
@@ -591,7 +596,9 @@ export class Store {
         this.lastUserSeq = Math.max(this.lastUserSeq, ev.seq);
         const waiting = this.asksWaiting.get(ev.seq);
         if (waiting) this.asksWaiting.delete(ev.seq);
-        return entry({ user: ev.body as Bodies["user_msg"], ...(waiting ? { asks: waiting } : {}) });
+        const cards = this.cardsWaiting.get(ev.seq);
+        if (cards) this.cardsWaiting.delete(ev.seq);
+        return entry({ user: ev.body as Bodies["user_msg"], ...(waiting ? { asks: waiting } : {}), ...(cards ? { cards } : {}) });
       }
       case "asks": {
         // D426: the latest lines win, drawn under their message; the event itself is no row.
@@ -602,6 +609,25 @@ export class Store {
           at.asks = b;
           at.revision++;
         } else this.asksWaiting.set(b.msgSeq, b);
+        return;
+      }
+      case "subject_card": {
+        // D653: one living card per subject under the message that started the work. It is
+        // revised in place, never a row of its own; a key that moved (a task joined its PR) and a
+        // helper's card of the same task replace the one before.
+        const c = (ev.body as Bodies["subject_card"]).card;
+        this.bySeq.set(ev.seq, null);
+        const put = (list: SubjectCard[]) => {
+          const i = list.findIndex((x) => x.key === c.key || (!!c.taskId && x.taskId === c.taskId));
+          if (i >= 0) list[i] = c;
+          else list.push(c);
+          return list;
+        };
+        const at = this.bySeq.get(c.msgSeq);
+        if (at && (at.user || at.ai || at.job)) {
+          at.cards = put([...(at.cards ?? [])]);
+          at.revision++;
+        } else put(this.cardsWaiting.get(c.msgSeq) ?? this.cardsWaiting.set(c.msgSeq, []).get(c.msgSeq)!);
         return;
       }
       case "finds": {
@@ -867,6 +893,8 @@ export class Store {
       if (e.user) {
         const w = this.asksWaiting.get(e.ev.seq);
         if (w) (e.asks = w), this.asksWaiting.delete(e.ev.seq); // the latest lines came first
+        const cw = this.cardsWaiting.get(e.ev.seq);
+        if (cw) (e.cards = cw), this.cardsWaiting.delete(e.ev.seq);
       }
       added.add(e);
       front.push(e);
@@ -894,6 +922,7 @@ export class Store {
     fill(this.pings, sc.pings);
     fill(this.pingAt, sc.pingAt);
     fill(this.asksWaiting, sc.asksWaiting);
+    fill(this.cardsWaiting, sc.cardsWaiting);
     for (const [k, v] of sc.setAside) {
       const had = this.setAside.get(k);
       this.setAside.set(k, had ? { n: had.n + v.n, seq: had.seq } : v);

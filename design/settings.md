@@ -1167,13 +1167,15 @@ list in a `textBlock`.
   content hash (and commit when it has one); anything else says **没有人替你检查过 / Nobody has
   checked it for you**. The old shipped `plugins.json` is gone. The last good official index is
   cached, so an offline start doesn't relabel a checked version.
-- **An installed row.** The app's own icon (from its plugin) and name; one state line: **装好了 /
+- **An installed row.** The app's own icon (from its plugin) and name, and its state — **装好了 /
   Installed**, **带进来的 {day} / Brought in {day}** after a run, **有新的 {k} 段 / {k} new** when
-  the source has conversations Ducter doesn't; **带进来 / Bring them in** before the first run,
+  the source has conversations Ducter doesn't. It keeps the Available row's two-line rhythm: the
+  name and state on one line; on the next, where it comes from (**官方仓库 / Official repository**
+  for the official source, never its URL, or the repository's short name `owner/repo`, the full
+  URL as the tooltip and on the row's ⋯), plus **你加的 / Added by you** (never the official one)
+  and the check line, each its own element. **带进来 / Bring them in** before the first run,
   **再带一次 / Bring in again** after; ⋯ **看看它读什么 / What it reads** and **删掉这个来源 /
-  Remove this source**. Its own facts, each its own line: **你加的 / Added by you** unless it came
-  from the official repository, **{author} 写的 / Made by {author}**, its repository in mono, and
-  the check line. **更新 / Update** appears when the source's index lists a newer version; the
+  Remove this source**. **更新 / Update** appears when the source's index lists a newer version; the
   update runs on the home, never in the app, and a widened read list opens the consent card before
   anything runs. A source that can't run says why in its state line: needs a newer Ducter, its
   files changed after they were pinned, its manifest can't be read, this computer can't sandbox

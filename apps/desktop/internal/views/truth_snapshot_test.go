@@ -287,3 +287,49 @@ func TestTruthStoppedNeedsRow(t *testing.T) {
 		t.Fatalf("head %q", got)
 	}
 }
+
+// D661 (the head line): a failure is named failed, never stopped; a stop plus a failure says both.
+func TestTruthHeadLineNamesFailed(t *testing.T) {
+	fail := func(id string) protocol.TaskCard {
+		return decorate(snapshotCard(id, protocol.Failed, ""), protocol.TruthFailed, "")
+	}
+	stopCard := decorate(snapshotCard("sn1", protocol.NeedsYou, ""), protocol.TruthNeedsYou, "它停了 40 分钟，没说在等什么。")
+	stopCard.Truth.Needs = "stopped"
+
+	cases := []struct {
+		truth *protocol.OnHandTruth
+		cards []protocol.TaskCard
+		zh    string
+		en    string
+	}{
+		{
+			truth: &protocol.OnHandTruth{Failed: []protocol.TruthItem{{TaskTruth: protocol.TaskTruth{State: protocol.TruthFailed}, TaskID: "f1"}, {TaskTruth: protocol.TaskTruth{State: protocol.TruthFailed}, TaskID: "f2"}}},
+			cards: []protocol.TaskCard{fail("f1"), fail("f2")},
+			zh:    "有 2 个没做成。",
+			en:    "2 didn't work out.",
+		},
+		{
+			truth: &protocol.OnHandTruth{
+				NeedsYou: []protocol.TruthItem{{TaskTruth: protocol.TaskTruth{State: protocol.TruthNeedsYou, Needs: "stopped", WaitsFor: "它停了 40 分钟，没说在等什么。"}, TaskID: "sn1"}},
+				Failed:   []protocol.TruthItem{{TaskTruth: protocol.TaskTruth{State: protocol.TruthFailed}, TaskID: "f1"}},
+			},
+			cards: []protocol.TaskCard{stopCard, fail("f1")},
+			zh:    "有 1 个停下了，1 个没做成，要你看一眼。",
+			en:    "1 stopped and 1 didn't work out; they need a look.",
+		},
+	}
+	for _, c := range cases {
+		for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+			app, _ := iaApp(t, lang)
+			app.LocaleFixed = true
+			app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: c.cards, Truth: c.truth}})
+			want := c.zh
+			if lang == i18n.EN {
+				want = c.en
+			}
+			if got := app.headLine(app.S.Board(), "", app.stateCounts(app.S.Board(), "")); got != want {
+				t.Errorf("%s: head %q, want %q", lang, got, want)
+			}
+		}
+	}
+}

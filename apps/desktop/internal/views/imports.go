@@ -396,6 +396,11 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 					}
 				}
 				a.menuDots(c, "imp-more:"+s.ID, a.L.T("imports.more"), func(mn *ui.Menu) {
+					// The full repository address, only in the ⋯ (the row shows its short name).
+					if s.Repo != "" {
+						mn.Item(s.Repo).Disabled(true)
+						mn.Separator()
+					}
 					what := a.L.T("imports.what")
 					if st.read == s.ID {
 						what = a.L.T("imports.details.close")
@@ -419,30 +424,24 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 				uiText(c, a.L.T("imports.waiting", strings.Join(s.Waiting, a.L.T("acct.sep")))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			})
 		}
-		if s.Added || s.Author != "" || s.Repo != "" || s.Unreviewed || s.Reviewed || s.Update != nil {
+		if s.Official || s.Repo != "" || s.Added || s.Unreviewed || s.Reviewed {
 			a.textBlock(c, "imp-meta:"+s.ID, func() {
-				ui.Column(c).Gap(t.S1).Children(func() {
-					if s.Added {
-						uiText(c.Key("added"), a.L.T("imports.added")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-					}
-					if s.Author != "" {
-						uiText(c.Key("author"), a.L.T("imports.author", s.Author)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-					}
+				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 					if s.Repo != "" {
-						uiText(c.Key("repo"), s.Repo).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Selectable()
+						src := s.SourceName
+						if s.Official {
+							src = a.L.T("imports.avail.official")
+						}
+						uiText(c.Key("src"), src).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Tooltip(s.Repo)
+					}
+					if s.Added {
+						uiText(c.Key("added"), a.L.T("imports.added")).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 					}
 					if s.Unreviewed {
-						uiText(c.Key("unreviewed"), a.L.T("imports.unreviewed")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+						uiText(c.Key("unreviewed"), a.L.T("imports.unreviewed")).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 					}
 					if s.Reviewed {
-						uiText(c.Key("reviewed"), a.L.T("imports.reviewed")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
-					}
-					if s.Update != nil {
-						line := a.L.T("imports.state.updateReady")
-						if s.Update.Version != "" {
-							line = a.L.T("imports.state.update", s.Update.Version)
-						}
-						uiText(c.Key("update"), line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+						uiText(c.Key("reviewed"), a.L.T("imports.reviewed")).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 					}
 				})
 			})

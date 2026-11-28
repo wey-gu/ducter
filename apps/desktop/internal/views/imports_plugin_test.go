@@ -20,6 +20,7 @@ func pluginImportFrame(over ...func(*protocol.ImportSourceRow)) protocol.ServerF
 		State:      "ready",
 		Added:      true,
 		Repo:       "https://example.test/fixture.git",
+		SourceName: "fixture",
 		Author:     "Ducter tests",
 		Reads:      []string{"./threads.json", "~/Library/Notes/**/*.sqlite*"},
 		Unreviewed: true,
@@ -37,13 +38,17 @@ func TestPluginImportRow(t *testing.T) {
 		app.openTab(TabImport)
 		app.Receive(pluginImportFrame(func(r *protocol.ImportSourceRow) { r.Update = &protocol.ImportUpdate{Version: "0.2.0"} }))
 		tt.Frame()
-		for _, want := range []string{L.T("imports.added"), L.T("imports.author", "Ducter tests"), "https://example.test/fixture.git", L.T("imports.unreviewed"), L.T("imports.state.plugin")} {
+		for _, want := range []string{L.T("imports.added"), "fixture", L.T("imports.unreviewed"), L.T("imports.state.plugin")} {
 			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}
 		}
-		if hasText(tt, "你加的 https://example.test/fixture.git") {
-			t.Error("added and the repository were joined")
+		if hasText(tt, "你加的 fixture") {
+			t.Error("added and the source were joined")
+		}
+		// The full URL is never the row's own text: it is the tooltip and the ⋯ menu.
+		if hasText(tt, "https://example.test/fixture.git") {
+			t.Errorf("%s: the row shows the full URL: %q", lang, tt.Texts())
 		}
 		// 更新 sends the request; nothing changes before the home answers.
 		sep := "，"
@@ -56,6 +61,28 @@ func TestPluginImportRow(t *testing.T) {
 		if f, ok := lastSent[protocol.ImportUpdateReq](*sent); !ok || f.ID != "fixture-reader" {
 			t.Fatalf("%s: update sends %+v", lang, f)
 		}
+	}
+}
+
+func TestPluginOfficialRowSaysOfficialRepository(t *testing.T) {
+	app, _, tt := importApp(t, i18n.ZH)
+	L := app.L
+	app.openTab(TabImport)
+	app.Receive(pluginImportFrame(func(r *protocol.ImportSourceRow) {
+		r.Added = false
+		r.Official = true
+		r.Repo = "https://github.com/wey-gu/ducter-plugins"
+		r.SourceName = "wey-gu/ducter-plugins"
+	}))
+	tt.Frame()
+	if !hasText(tt, L.T("imports.avail.official")) {
+		t.Errorf("an official source doesn't say 官方仓库: %q", tt.Texts())
+	}
+	if hasText(tt, "https://github.com/wey-gu/ducter-plugins") {
+		t.Errorf("the official row shows its URL: %q", tt.Texts())
+	}
+	if hasText(tt, L.T("imports.added")) {
+		t.Error("an official source says 你加的")
 	}
 }
 
@@ -96,8 +123,9 @@ func TestPluginReviewedAndUpdate(t *testing.T) {
 	if hasText(tt, L.T("imports.unreviewed")) {
 		t.Error("a curated version says nobody checked it")
 	}
-	if !hasText(tt, L.T("imports.state.update", "0.2.0")) {
-		t.Errorf("no update line: %q", tt.Texts())
+	// The update's one word is the 更新 button (the row keeps its two-line rhythm).
+	if !hasText(tt, L.T("imports.update")) {
+		t.Errorf("no update button: %q", tt.Texts())
 	}
 }
 

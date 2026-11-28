@@ -47,13 +47,13 @@ func TestImportRepoShots(t *testing.T) {
 	}
 	lody := protocol.ImportSourceRow{
 		ID: "lody", App: "Lody", Kind: "plugin", State: "ready", Consented: true, Imported: 2, ImportedDay: "2026-11-28", Added: false, Reviewed: true,
-		Repo: "https://github.com/wey-gu/ducter-plugins", Author: "the Ducter authors", Reads: []string{"~/.lody/**", "~/.lody-oss/**"},
+		Repo: "https://github.com/wey-gu/ducter-plugins", Official: true, SourceName: "wey-gu/ducter-plugins", Author: "the Ducter authors", Reads: []string{"~/.lody/**", "~/.lody-oss/**"},
 		Online: true, Uses: []protocol.ImportUse{{Command: "lody", Online: true, Why: protocol.ImportWhy{En: "It reads your conversations with the lody command already signed in on this computer, and goes online.", Zh: "它会用你电脑上已经登录的 lody 命令读你的对话，会联网。"}}},
 		Icon: icon("lody"), Last: &protocol.ImportLast{At: "2026-11-28T10:00:00Z", Threads: 2, Oldest: "2026-10-02", Skipped: 0},
 	}
 	person := protocol.ImportSourceRow{
 		ID: "acme-notes", App: "Acme Notes", Kind: "plugin", State: "ready", Added: true, Unreviewed: true,
-		Repo: "https://github.com/lin/ducter-plugins", Author: "Lin", Reads: []string{"~/Library/Application Support/AcmeNotes/**/*.sqlite*"},
+		Repo: "https://github.com/lin/ducter-plugins", SourceName: "lin/ducter-plugins", Author: "Lin", Reads: []string{"~/Library/Application Support/AcmeNotes/**/*.sqlite*"},
 		Online: true, NeedsOnlineConsent: true, Uses: []protocol.ImportUse{{Command: "lody", Online: true, Why: protocol.ImportWhy{En: "It reads your notes with the lody command already signed in on this computer, and goes online.", Zh: "它会用你电脑上已经登录的 lody 命令读你的笔记，会联网。"}}},
 	}
 	frame := func(sources []protocol.ImportSourceRow, avail []protocol.ImportAvailable) protocol.ServerFrame {

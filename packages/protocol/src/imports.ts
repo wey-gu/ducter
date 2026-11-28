@@ -53,8 +53,12 @@ export interface ImportSourceRow {
   running?: boolean;
   /** D668: an added source. 你加的 / Added by you, and its repository, in its own elements. */
   added?: boolean;
-  /** The repository or folder it came from, shown as its own line. */
+  /** The repository or folder it came from; the full URL is the tooltip and the ⋯ menu. */
   repo?: string;
+  /** D670: whether it came from Ducter's official repository (the row says 官方仓库, never its URL). */
+  official?: boolean;
+  /** D670: the repository's short name (owner/repo, or a folder name); the full URL is the tooltip. */
+  sourceName?: string;
   /** Who made it, in their own name. */
   author?: string;
   /** The literal paths the consent card names, one line each. Absent for the built-in Lody. */

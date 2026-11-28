@@ -321,6 +321,11 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
             {more &&
               createPortal(
                 <Menu class="pmenu import-menu" label={r.app} anchor={moreAt} onClose={() => ((IM.more[r.id] = false), A.changed())}>
+                  {r.repo && (
+                    <MenuHead>
+                      <span class="import-avail-url">{r.repo}</span>
+                    </MenuHead>
+                  )}
                   <MenuItem onClick={() => ((IM.more[r.id] = false), (IM.read[r.id] = !read), A.changed())}>{t(read ? "imports.details.close" : "imports.what")}</MenuItem>
                   <MenuSep />
                   <MenuItem danger onClick={() => ((IM.more[r.id] = false), (IM.remove[r.id] = true), A.changed())}>
@@ -332,14 +337,14 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
           </span>
         </span>
       </div>
-      {(r.added || r.repo || r.unreviewed || r.reviewed || r.update) && (
+      {(r.repo || r.added || r.unreviewed || r.reviewed) && (
         <div class="import-meta">
-          {r.added && <p class="small muted import-added">{t("imports.added")}</p>}
-          {r.added && r.author && <p class="small muted import-author">{t("imports.author", r.author)}</p>}
-          {r.repo && <p class="small muted import-repo">{r.repo}</p>}
-          {r.unreviewed && <p class="small import-unreviewed">{t("imports.unreviewed")}</p>}
-          {r.reviewed && <p class="small muted import-reviewed">{t("imports.reviewed")}</p>}
-          {r.update && <p class="small muted import-update">{r.update.version ? t("imports.state.update", r.update.version) : t("imports.state.updateReady")}</p>}
+          <span class="import-source" title={r.repo}>
+            {r.official ? t("imports.avail.official") : r.sourceName}
+          </span>
+          {r.added && <span class="import-added">{t("imports.added")}</span>}
+          {r.unreviewed && <span class="import-unreviewed">{t("imports.unreviewed")}</span>}
+          {r.reviewed && <span class="import-reviewed">{t("imports.reviewed")}</span>}
         </div>
       )}
       {r.state === "ready" && !!r.waiting?.length && <p class="small muted import-waiting">{t("imports.waiting", r.waiting.join(t("acct.sep")))}</p>}

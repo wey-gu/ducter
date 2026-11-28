@@ -26241,12 +26241,17 @@ button.fd-link,
 .import-notice { margin: 0 var(--s5) var(--s4); color: var(--ink-muted); font-size: var(--sm); line-height: var(--lh-read); }
 .import-meta {
   display: flex;
-  flex-direction: column;
-  gap: var(--s1);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s2);
   margin: 0 var(--s5) var(--s2);
+  font-size: var(--xs);
+  line-height: var(--lh-read);
+  overflow-wrap: anywhere;
 }
-.import-meta p { margin: 0; font-size: var(--sm); line-height: var(--lh-read); }
-.import-meta .import-repo { font-family: var(--mono); font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; }
+.import-meta .import-source,
+.import-meta .import-added,
+.import-meta .import-reviewed { color: var(--ink-muted); }
 .import-meta .import-unreviewed { color: var(--ink); }
 .import-read-path {
   font-family: var(--mono);

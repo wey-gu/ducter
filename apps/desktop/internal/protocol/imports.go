@@ -35,9 +35,14 @@ type ImportSourceRow struct {
 	Consented   bool        `json:"consented"`
 	Last        *ImportLast `json:"last,omitempty"`
 	Running     bool        `json:"running,omitempty"`
-	// D668: an added source's own facts, each shown on its own line.
-	Added      bool          `json:"added,omitempty"`
-	Repo       string        `json:"repo,omitempty"`
+	// D668: an added source's own facts, each shown as its own element on the row's one meta line.
+	Added bool `json:"added,omitempty"`
+	// Repo is the repository or folder it came from; the full URL is the tooltip and the ⋯ menu.
+	Repo string `json:"repo,omitempty"`
+	// D670: Official says it came from Ducter's official repository (the row says 官方仓库, never its URL).
+	Official bool `json:"official,omitempty"`
+	// D670: SourceName is the repository's short name (owner/repo, or a folder name); Repo is the tooltip.
+	SourceName string        `json:"sourceName,omitempty"`
 	Author     string        `json:"author,omitempty"`
 	Reads      []string      `json:"reads,omitempty"`
 	Reviewed   bool          `json:"reviewed,omitempty"`

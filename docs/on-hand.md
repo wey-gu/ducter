@@ -25,7 +25,8 @@ on a phone. Esc goes back one step.
 At the top is your partner, with one short line: whether anything needs you, and if not, what
 comes next: "Nothing needs you. I'm on it." while work is under way, or "Nothing needs you. The
 first is back at 22:40." when everything waits. If a task has stopped and nothing will start it
-again on its own, the line says so: "One has stopped and needs a look."
+again on its own, the line says so: "One has stopped and needs a look." A task that didn't work
+out is said as it is, "One didn't work out.", and a mix names both.
 
 Its pose tells you the same at a glance: a little flag when something needs you, reading while
 work is under way, resting on its bench while everything waits, smiling when the day's work came

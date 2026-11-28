@@ -63,8 +63,17 @@ describe("On hand by attention (D467)", () => {
     expect(parts.earlier.map((x) => x.id)).toEqual(["flaky"]);
     // The strip: 等你 counts the stopped and the failed; 今天做完 counts what it lists.
     expect(o.stateCounts("")).toEqual([2, 1, 3, 1]);
-    // The head is true to the body: nothing to decide, two stopped.
-    expect(o.headLine("")).toBe(A.L.t("onhand.line.stopped", 2));
+    // The head is true to the body: nothing to decide, one stopped and one that didn't work out.
+    expect(o.headLine("")).toBe(A.L.t("onhand.line.stopped.failed", 1, 1));
+    A.S.tasks.clear();
+  });
+
+  test("the head names a failure as failed, never stopped", async () => {
+    const { A, o } = await board([card("broke", "failed", iso(-60 * 60_000)), card("gone", "failed", iso(-2 * 60 * 60_000))]);
+    expect(o.stateCounts("")[0]).toBe(2);
+    expect(o.headLine("")).toBe(A.L.t("onhand.line.failed", 2));
+    A.L = strings("en");
+    expect(o.headLine("")).toBe("2 didn't work out.");
     A.S.tasks.clear();
   });
 
@@ -116,7 +125,7 @@ describe("On hand by attention (D467)", () => {
 
   test("zh and en together", async () => {
     const { onhandWords } = await import("../src/i18n-onhand.ts");
-    for (const k of ["onhand.line.stopped.one", "onhand.line.stopped", "onhand.done.yesterday", "onhand.src.do", "onhand.src.decide", "onhand.src.close", "onhand.src.later", "onhand.src.unread", "onhand.src.taken", "onhand.src.taken.row", "onhand.src.review", "onhand.src.all", "onhand.src.hide"]) {
+    for (const k of ["onhand.line.stopped.one", "onhand.line.stopped", "onhand.line.failed.one", "onhand.line.failed", "onhand.line.stopped.failed", "onhand.done.yesterday", "onhand.src.do", "onhand.src.decide", "onhand.src.close", "onhand.src.later", "onhand.src.unread", "onhand.src.taken", "onhand.src.taken.row", "onhand.src.review", "onhand.src.all", "onhand.src.hide"]) {
       expect(onhandWords.zh[k], k).toBeTruthy();
       expect(onhandWords.en[k], k).toBeTruthy();
       expect(onhandWords.zh[k]).not.toContain("件");

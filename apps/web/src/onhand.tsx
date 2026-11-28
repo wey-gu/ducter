@@ -1043,26 +1043,37 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
   return `${first}${A.L.style.spaced ? " " : ""}${A.L.style.cased ? rest[0]!.toUpperCase() + rest.slice(1) : rest}`;
 }
 
+/** The head's words when what needs the person is only stops and failures: each named by its own
+ *  fact, never a failure called a stop (D661: one state per task). */
+function lookWords(stopped: number, failed: number): string {
+  if (failed > 0 && stopped === 0) return failed === 1 ? t("onhand.line.failed.one") : t("onhand.line.failed", failed);
+  if (stopped > 0 && failed === 0) return stopped === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", stopped);
+  return t("onhand.line.stopped.failed", stopped, failed);
+}
+
 /** On hand's own line under the partner (D315): one short sentence in its voice that says what the
  *  strip can't, whether anything needs you and, when nothing does, what comes next. The counts are
  *  the strip's; the full sentence (headSay) stays the bar's. The Mac's headLine says the same. */
 export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
   const truth = A.S.onHand?.truth;
+  let stopped = 0;
+  let failed = 0;
   if (truth) {
-    // D661 turn 2: a stopped task that is now needs-you counts in its stopped list, so a board of
-    // only stops says so; a real question leads.
-    const stoppedNeeds = truthInLens(truth.needsYou, lens).filter((x) => x.needs === "stopped").length;
-    // Only needs-you items are in n[0]; the stopped/failed lists stand apart from it, so they
-    // must not be added to its halted count (a fresh stop is not the person's yet).
-    const halted = stoppedNeeds;
-    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
-    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+    // D661 turn 2: a needs-you stop counts in its stopped list; a real question leads. A failure
+    // stands in the truth's failed list, so it is named from there, never called a stop.
+    stopped = truthInLens(truth.needsYou, lens).filter((x) => x.needs === "stopped").length;
+    failed = truthInLens(truth.failed, lens).length;
+    if (n[0] && n[0] > stopped) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (stopped + failed > 0) return lookWords(stopped, failed);
   } else {
-    // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
+    // D467: the line is true to the body: what only stopped or didn't work out is said as it is,
+    // never 没有要你定的 and never a failure called a stop.
     const parts = boardParts(lensLanes(lens), now);
-    const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
-    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
-    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+    stopped = parts.stopped.length;
+    failed = parts.failed.length;
+    const look = stopped + failed;
+    if (n[0] && n[0] > look) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (look > 0) return lookWords(stopped, failed);
   }
   if (n[1]) return t("onhand.line.working");
   if (n[2]) {

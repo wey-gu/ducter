@@ -195,8 +195,11 @@ func (a *App) paneSay(tab, lede string) string {
 	case TabTodos:
 		return a.todosSay()
 	case TabImport:
-		// The pane's lede is its one line (the partner's voice says what the pane is for).
-		return lede
+		// D666: the state of what was brought in, not what the pane is for.
+		if a.S.Imports == nil {
+			return lede
+		}
+		return a.importsSay()
 	case TabChats:
 		return a.chatsSay()
 	case TabAutofill:
@@ -280,13 +283,9 @@ func (a *App) chatsSay() string {
 		if ch.State != "linked" {
 			continue
 		}
-		switch ch.Kind {
-		case "wechat":
-			names = append(names, a.L.T("chats.wechat"))
-		case "telegram":
-			names = append(names, "Telegram")
-		case "slack":
-			names = append(names, "Slack")
+		// One kind → name table (chatName, shared with the pane): a new app is named here too.
+		if name := a.chatName(ch.Kind); name != "" {
+			names = append(names, name)
 		}
 	}
 	if len(names) == 0 {
@@ -619,13 +618,9 @@ func (a *App) homeReach() string {
 		if ch.State != "linked" {
 			continue
 		}
-		switch ch.Kind {
-		case "wechat":
-			names = append(names, a.L.T("chats.wechat"))
-		case "telegram":
-			names = append(names, "Telegram")
-		case "slack":
-			names = append(names, "Slack")
+		// The same table the Chat apps pane reads: Feishu / Lark cannot go missing here again.
+		if name := a.chatName(ch.Kind); name != "" {
+			names = append(names, name)
 		}
 	}
 	if len(names) == 0 {

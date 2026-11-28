@@ -146,7 +146,10 @@ message. Telegram shows typing every 4 s while a turn started there waits for it
   **拷贝 App 配置 / Copy the app manifest** (secondary) with **看看内容 / View** (a quiet disclosure),
   never a raw JSON block. A group's last line is its privacy note on the text column and its one
   button at the right edge: **连上** (primary) while setting up, **断开 {app}** (destructive text)
-  once connected; **换个账号** is quiet text at the right of the **和 {name} 连着** row.
+  once connected; **换个账号** is quiet text at the right of the **和 {name} 连着** row. The
+  pane's head, Overview's **也能找我** and the list of linked apps read one kind → name table
+  (`chatName` in `chats.go`, `chatName` in `channels.tsx`), so a linked Feishu / Lark cannot be
+  missing from one of them (D666).
 
 ## 7. Architecture (D276 (7))
 

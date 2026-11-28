@@ -513,21 +513,45 @@ export function SignInPanel({ s }: { s: SignInView }) {
  *  call and today's calls; the daily limit as a row with its choice; what Ducter turned off on the
  *  provider as quiet check lines; your voice as a row with its switch; and the last line: the rails,
  *  说明 (the consent and deleting the voice) and Disconnect, quiet until confirmed. */
+/** One readiness table for calls: only a connection the home says is ok can call. An unauthorized
+ *  one needs its sign-in again; unreachable (and any state a newer home adds) is not a ready card. */
+export type PhoneReady = "ready" | "signed_out" | "down" | "checking";
+export function phoneReady(state: ConnectionView["state"]): PhoneReady {
+  switch (state) {
+    case "ok":
+      return "ready";
+    case "unauthorized":
+      return "signed_out";
+    // Not looked at yet (a home just started): never "can't reach", which would be a guess.
+    case "unknown":
+      return "checking";
+    default:
+      return "down";
+  }
+}
+
 export function PhoneCard({ c }: { c: ConnectionView }) {
   const p = c.phone!;
   const [stopping, setStopping] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [about, setAbout] = useState(false);
-  const out = c.state === "unauthorized";
+  const ready = phoneReady(c.state);
+  const out = ready !== "ready";
   const v = p.voice;
   const today = p.calls === 0 ? t("call.card.today.none") : p.calls === 1 ? t("call.card.today.one", money(p.spentTodayUsd)) : t("call.card.today", p.calls, money(p.spentTodayUsd));
   if (A.signIn?.reconnect && A.signIn.id === c.id && A.signIn.state === "waiting") return <SignInPanel s={A.signIn} />;
   const off = [p.rails?.sampling && t("call.card.sampling", p.provider), p.rails?.shared && t("call.card.shared", p.provider), p.doNotCall > 0 && t("call.card.dnc", p.doNotCall)].filter(Boolean) as string[];
   return (
     <Group id="acct-phone" label={spoken(A.L, t("call.card.title"), p.provider)}>
-      <GHead tile={/^tuwa$/i.test(p.provider) ? <BrandTile name="tuwa" faded={out} /> : <Tile><CallArt off={out} size={40} /></Tile>} name={p.provider} line={out ? t("call.card.out", p.provider) : t("call.card.ok")} tone={out ? "bad" : "done"}>
-        {!out && <span class="g-state">{today}</span>}
-        {out && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
+      <GHead
+        tile={/^tuwa$/i.test(p.provider) ? <BrandTile name="tuwa" faded={out} /> : <Tile><CallArt off={out} size={40} /></Tile>}
+        name={p.provider}
+        line={ready === "ready" ? t("call.card.ok") : ready === "signed_out" ? t("call.card.out", p.provider) : ready === "checking" ? t("call.card.checking", p.provider) : t("call.card.down", p.provider)}
+        tone={ready === "checking" ? undefined : out ? "bad" : "done"}
+      >
+        {ready === "ready" && <span class="g-state">{today}</span>}
+        {ready === "signed_out" && <Btn kind="secondary" size="sm" label={t("call.card.signin")} onClick={() => A.reauth(c.id)} />}
+        {ready === "down" && <Btn kind="secondary" size="sm" label={t("acct.retry")} about={p.provider} onClick={() => A.send({ t: "connections" })} />}
       </GHead>
       <GRow title={t("call.card.cap")} line={t("call.card.cap.help")}>
         <Seg<number> label={t("call.card.cap")} value={[5, 10, 20, 50].includes(p.capUsd) ? p.capUsd : undefined} options={[5, 10, 20, 50].map((n) => ({ v: n, label: `$${n}` }))} onPick={(n) => A.phoneCap(n)} />

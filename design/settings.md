@@ -1169,7 +1169,8 @@ confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
 - **The states.** `ready`; `signed_out` (**Lody 还没登录。先在终端里运行 lody login。**);
   `needs_authorization` (**Lody 还没让这台电脑读它加密的 workspace。先在 Lody 里允许这台电脑。**); `missing` (**这台电脑上
   找不到 lody 命令。先按 Lody 的说明装好它。**); `failed` (**这次没读成。再试一次。**); `looking`
-  (**正在看…**). A workspace that refuses while another reads is said under the state
+  (**正在看…**). Every state but ready and looking carries **再试一次 / Try again**, not only a
+  failed read. A workspace that refuses while another reads is said under the state
   (**Lody 还没让这台电脑读：{names}。**) and the readable ones still come in.
 - **When the run is over**, one quiet line where it started: **带进来了 {n} 段对话，最早的是 {date}。**
   plus **{k} 张图片和附件没有带过来。** when anything was skipped, and **中途停了，前面的都带进来了。**
@@ -1183,11 +1184,43 @@ confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
 - **The partner** may say one line when the person mentions Lody and a source is here with nothing
   brought in (a context line from code, not a tool of its own); it never starts anything.
 - **Removal** says what will be hidden before it asks, once: **删掉这个来源？它带进来的 {n} 段对话会从
-  「做过的事」和搜索里藏起来，不会删掉。** Then `import_removed` hides those tasks from Past tasks,
-  ⌘K and the partner's `task_find`; the streams stay in the Log, never a silent delete. Bringing
-  the source in again after it puts them back. The consent is owed again.
+  「做过的事」和搜索里藏起来，不会删掉。** The line saying it is under the sources where the source
+  was, never a toast. Then `import_removed` hides those tasks from Past tasks, ⌘K and the
+  partner's `task_find`; the streams stay in the Log, never a silent delete. Bringing the source in
+  again after it puts them back. The consent is owed again.
 - **The words** are in both tables (`apps/web/src/i18n-imports.ts`,
   `internal/i18n/imports.go`) and in the product-model glossary: 导入, 带进来, 再带一次,
   删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段.
 - **Not done here:** added sources and their rows (phase 3), update on a widened read list, the
   per-computer detection when the home is a server (the reader runs on the home in phase 2).
+
+## A connection says what is true (D666, research/247 Brief D)
+
+Three places said something that was not so. **Who is here:** the consumer tapping a call from a
+phone; the person who just linked Feishu / Lark and looks at Overview or the Chat apps head; the
+person removing an Import source. **Felt before:** 不放心 — **能打电话了** while Tuwa could not be
+reached, **也能找我** omitting the app they had just linked, a removal floating over the page.
+**After:** 放心 and 顺滑 — a connection that cannot work says so with its one fix, every linked app
+is named, and a change says its word where it happened.
+
+1. **One readiness table for calls.** The web's `PhoneCard` treated only `unauthorized` as not
+   ready, so `unreachable` fell into the ready branch with **能打电话了 / Ready to call** and
+   today's count. `phoneReady` (`apps/web/src/phone.tsx`) makes only `ok` ready; `unauthorized`
+   says **需要重新登录 {provider} / Sign in to {provider} again** with **重新登录 / Sign in again**;
+   `unreachable` and any state a newer home adds say **现在连不上 {provider} / Can't reach
+   {provider} right now** in the failed ink, with **再试一次 / Try again** and no count. The Mac's
+   card already read `sourceDown` for its line but kept the count and had no action for an
+   unreachable connection; it now reads the same table (`cv.State == "ok"`) and offers the retry.
+2. **One table of chat apps.** The Mac's `chatsSay` and `homeReach` had their own switch over
+   WeChat, Telegram and Slack, so a linked Feishu / Lark was missing from Overview's **也能找我**
+   and from the Chat apps head. Both read `a.chatName`, the pane's own table in `chats.go`; the
+   web's one table is `chatName` in `channels.tsx`, read by the pane's head, Overview and the list
+   of linked apps. No per-kind switch can drift again.
+3. **Import says it where it happened.** On the Mac the head is the state (`importsSay`: what was
+   brought in), never the pane's purpose once its frame is here; the web keeps its own lede. On
+   both, every source that is not ready (`signed_out`, `needs_authorization`, `missing`, `failed`)
+   has **再试一次 / Try again**, not only a failed read, and a removal says its line under the
+   sources (`IM.notice` / `.import-notice`), never a toast.
+4. **44 at a finger.** **用地址和密钥添加 / Add with an address and key**, **怎么连 / How to
+   connect** and a device's name (the rename) reach a thumb's 44 at 390, and stay lean on a pointer
+   screen.

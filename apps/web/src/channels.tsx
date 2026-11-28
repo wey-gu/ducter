@@ -76,8 +76,10 @@ A.onChannelFrame = (f) => {
   A.changed();
 };
 
-/** A chat app's name: Telegram and Slack are theirs in every language; WeChat's is 微信 in Chinese. */
-const nameOf = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : kind === "feishu" ? t("chats.feishu") : "Telegram");
+/** A chat app's name: Telegram and Slack are theirs in every language; WeChat's is 微信 in Chinese.
+ *  One kind → name table for the web: Settings' pane, the pane's head and Overview all read it. */
+export const chatName = (kind: ChannelKind) => (kind === "wechat" ? t("chats.wechat") : kind === "slack" ? "Slack" : kind === "feishu" ? t("chats.feishu") : kind === "telegram" ? "Telegram" : "");
+const nameOf = chatName;
 const BOTFATHER = "https://t.me/BotFather";
 const SLACK_APPS = "https://api.slack.com/apps?new_app=1";
 const FEISHU_APPS = "https://open.feishu.cn/app";
@@ -525,6 +527,11 @@ function WechatScan({ v }: { v: ChannelView }) {
   );
 }
 
+/** The linked apps' names from the one kind → name table: the pane's head and Overview both read it. */
+export function linkedChatNames(channels: ChannelView[]): string[] {
+  return channels.filter((v) => v.state === "linked").map((v) => chatName(v.kind)).filter(Boolean);
+}
+
 /** D469: the chat apps the partner can be found in now (Settings' brief), asked for once. */
 let chatsAsked = false;
 export function linkedChats(): string[] {
@@ -532,5 +539,5 @@ export function linkedChats(): string[] {
     if (!chatsAsked && A.S.welcomed) (chatsAsked = true), A.send({ t: "channels" });
     return [];
   }
-  return S.frame.channels.filter((v) => v.state === "linked").map((v) => nameOf(v.kind));
+  return linkedChatNames(S.frame.channels);
 }

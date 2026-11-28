@@ -33,9 +33,10 @@ in shows in **Past tasks** read only, and who made the reader. Nothing is read b
 - **When it is done** one line says what came in and the oldest conversation's day. Pictures and
   attachments are counted, not brought.
 - **If it can't read**: no `lody` on this computer, not signed in, or an encrypted workspace this
-  computer isn't authorized for. The row says which, in plain words, and nothing else is tried.
+  computer isn't authorized for. The row says which, in plain words, and offers **Try again**.
 - **Remove this source** hides the conversations it brought in from Past tasks and search. It says
   how many before you choose, and it never deletes them: bringing Lody in again brings them back.
+  The line saying it was removed sits under the sources, where the source was, not in a toast.
 - Running **Bring in again** adds only conversations and messages that are new. A message edited
   in Lody isn't updated, because Ducter only has a copy.
 

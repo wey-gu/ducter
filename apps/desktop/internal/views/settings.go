@@ -198,6 +198,10 @@ func (a *App) openTab(tab string) {
 		// what it says, away under the person (the Mac walk of 0.0.98).
 		a.peersAsked = true
 	}
+	if tab == TabImport && tab != a.settings.tab {
+		// A removal's line belongs to the visit it happened in.
+		a.imports.notice = ""
+	}
 	if tab != a.settings.tab {
 		// "Tried again just now" belongs to the page it was tried on (the
 		// Mac walk of 0.0.98: it followed to Agent messaging, minutes later).

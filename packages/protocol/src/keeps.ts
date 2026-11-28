@@ -204,6 +204,9 @@ export const BELL_RATE_WINDOW_MS = 60_000;
 export interface KeepSheet {
   id: string;
   title: string;
+  /** D654 (research/245 §3.2): the project its task's folder belongs to, from core. */
+  projectKey?: string;
+  projectName?: string;
   persona?: string;
   life: KeepLife;
   run: KeepRun;

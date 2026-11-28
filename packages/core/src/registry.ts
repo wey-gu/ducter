@@ -134,6 +134,12 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
           persona: e.persona,
           title: b.title,
           project: b.project,
+          // D654 (research/245 §3.2): the project identity core stamped at open (absent on an
+          // older task: the snapshot's decorator derives it from the place).
+          ...(b.projectKey ? { projectKey: b.projectKey } : prev?.projectKey ? { projectKey: prev.projectKey } : {}),
+          ...(b.projectName ? { projectName: b.projectName } : prev?.projectName ? { projectName: prev.projectName } : {}),
+          ...(b.projectGroup ? { projectGroup: b.projectGroup } : prev?.projectGroup ? { projectGroup: prev.projectGroup } : {}),
+          ...(b.workKind ? { workKind: b.workKind } : prev?.workKind ? { workKind: prev.workKind } : {}),
           place: movedPlace(b.place),
           harness: b.harness,
           model: b.model,

@@ -88,6 +88,12 @@ type onHandState struct {
 	// D360: the group being renamed in place, and its draft name; the
 	// selection's name for a new group (bulk 放进一个分组).
 	groupRename, groupDraft string
+	// D654 (research/245 §3.2): the project being renamed in place, its
+	// draft, and 来自 / From's filter (a source, never a lens).
+	projRename, projDraft, source string
+	// A drag on a project row keeps the person's order (the Mac and the wide web).
+	projDrag           bool
+	projFrom, projOver string
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -292,7 +298,7 @@ func integrated(task *store.Task) string {
 // haystack is what Find and the switcher match against.
 func (a *App) haystack(task *store.Task) string {
 	p := task.Place()
-	parts := []string{task.Title(), task.Project(), p.RepoPath, p.Branch, p.Path, harnessName(task.Harness()), a.storyOf(task).words}
+	parts := []string{task.Title(), task.Project(), task.ProjectName(), p.RepoPath, p.Branch, p.Path, harnessName(task.Harness()), a.storyOf(task).words}
 	if p.Kind != "none" && p.Device != "" {
 		parts = append(parts, a.computerName(p.Device))
 	}

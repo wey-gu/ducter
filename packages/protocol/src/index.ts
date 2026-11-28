@@ -582,6 +582,11 @@ export interface Bodies {
     taskId: string;
     title: string;
     project: string; // "" = Loose
+    /** D654 (research/245 §3.2): the project's identity and display name, stamped once by core
+     *  from the place's normalized origin (else its computer and path). */
+    projectKey?: string;
+    projectName?: string;
+    projectGroup?: "computer" | "none";
     place: Place;
     harness: string; // a HarnessId (harnesses.ts)
     model?: string;
@@ -1147,6 +1152,21 @@ export interface TaskCard {
   persona: string;
   title: string;
   project: string;
+  /**
+   * D654 (research/245 §3.2): the project's identity, derived once in core from the
+   * repository's normalized origin (else the folder's computer and path). Absent/"" for a task
+   * that belongs to no project. Clients read this; they never derive a key again.
+   */
+  projectKey?: string;
+  /** D654: the name the project row shows (the person's rename, else the repository's short
+   *  name, `owner/repo` when two share one). Absent/"" for no project. */
+  projectName?: string;
+  /** D654: how a keyless task is shown: `computer` is 电脑上的事 / On your computers (an errand
+   *  or a machine set-up), `none` is 不在项目里 / Not in a project. Absent on a project key. */
+  projectGroup?: "computer" | "none";
+  /** D654: the kind of work the partner said at open (D372), so a keyless task can be told
+   *  apart: an errand belongs under 电脑上的事 / On your computers. */
+  workKind?: import("./loadout.ts").WorkKind;
   place: Place;
   harness: string;
   model?: string;
@@ -1291,6 +1311,12 @@ export interface OnHand {
   /** D186: the projects the user added by hand (a folder each), shown even before a task. */
   projects?: ProjectView[];
   /**
+   * D654 (research/245 §3.2): every project lens the person may see, inferred from the
+   * repository identities on the cards and the folders added by hand, with the person's renames,
+   * merges, hidden, pinned and order. Clients draw the column from this and read `TaskCard.projectKey`.
+   */
+  projectList?: ProjectLens[];
+  /**
    * D312: with more than one partner, every partner's own open questions (not its tasks'), so On
    * hand lists another partner's too; a client leaves out the partner it shows (its conversation has them).
    */
@@ -1330,7 +1356,44 @@ export interface ProjectView {
   addedAt: string;
   /** D455: a repo's origin, normalized: the same repo added on a second computer joins this project's name. */
   remote?: string;
+  /** D654: the project identity (projectKeyOf). */
+  key?: string;
 }
+
+/**
+ * D654 (research/245 §3.2): one row of the project lens. The key is the identity (a normalized
+ * origin, or `folder:<computer>:<path>`); the name is what the person sees. Hidden projects stay out
+ * of the column unless something there needs the person; pinned rows come first; order is the
+ * person's drag order (low first). aliases are other keys merged into this one (a fork they count as
+ * one). Added projects with no task yet are here too, so their row says its first step.
+ */
+export interface ProjectLens {
+  key: string;
+  name: string;
+  /** The computers it lives on, by name, home first (D455's 在 {computers} 上). */
+  devices?: string[];
+  hidden?: boolean;
+  pinned?: boolean;
+  /** The person renamed it (so the row offers 恢复原名 / Undo rename). */
+  renamed?: boolean;
+  /** The person's drag order (0 first); absent: by urgency. */
+  order?: number;
+  /** A folder added by hand, with no task yet. */
+  added?: boolean;
+  place?: Place;
+  /** Other keys the person merged into this one. */
+  aliases?: string[];
+}
+
+/** D654 (research/245 §3.2): one change to a project, from its row's ⋯ or the partner's
+ *  project_change tool. Every one is reversible from the same place. */
+export type ProjectChange =
+  | { act: "rename"; key: string; name?: string }
+  | { act: "merge"; key: string; into: string }
+  | { act: "unmerge"; key: string }
+  | { act: "hide"; key: string; hidden: boolean }
+  | { act: "pin"; key: string; pinned: boolean }
+  | { act: "order"; keys: string[] };
 
 /** D185: when a task the user opens by hand starts. Absent = now. at: once, at a time (a routine
  *  of one firing); every: on a schedule (a routine, active at once); when: the task opens now and
@@ -1509,6 +1572,9 @@ export interface RoutineBody {
   model?: string;
   effort?: string; // D202: the effort picked on the New task card
   project?: string;
+  /** D654 (research/245 §3.2): the project identity and name, stamped when it is made. */
+  projectKey?: string;
+  projectName?: string;
   /** D245: its runs keep hitting an account error. Ducter tries again by itself, 5 min doubling
    *  to 24 h, and clears this on the first run that works. failures: account errors in a row
    *  (the person is told once, at 2). */
@@ -1981,6 +2047,8 @@ export type ClientFrame =
   | PastClientFrame
   // D383: 给你做的 / Made for you (made.ts).
   | MadeClientFrame
+  // D654 (research/245 §3.2): the project row's ⋯ (rename, merge, unmerge, hide, pin, order).
+  | { t: "project_change"; change: ProjectChange }
   | AppsClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame

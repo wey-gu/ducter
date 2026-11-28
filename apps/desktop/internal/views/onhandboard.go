@@ -25,10 +25,12 @@ import (
 )
 
 const (
-	// lensOther is the lens key of the tasks of no folder (其他 / Other).
-	lensOther = "~"
+	// lensOther is the lens key of the tasks of no folder (不在项目里 / Not in a project), and
+	// lensComputers of the errands and machine set-ups (电脑上的事 / On your computers).
+	lensOther     = "~"
+	lensComputers = "~computers"
 	// lensColW is the project column's width beside the board.
-	lensColW = 208
+	lensColW = 244
 	// quietAfter is how long a wait goes without any change before it
 	// folds away under 在等 (D261): it is still there, one tap away.
 	quietAfter = 24 * time.Hour
@@ -45,37 +47,80 @@ type lensGroup struct {
 	kind      string // D341: a to-do source's app (key src:<id>); "" for a project
 	// where (D455): the computers it lives on, by name, when the home has
 	// two or more (one repo on two computers is one project).
-	where []string
+	where   []string
+	pinned  bool
+	hidden  bool
+	renamed bool
+	order   *int
+	aliases []string
 }
 
-// lensGroups are the board's projects in projectGroups' order (what needs
-// you first), Other last.
+// lensGroups are the board's projects in core's order (D654: pinned, then the person's drag
+// order, else what needs the person first and the most recent activity); 不在项目里 and 电脑上的事 last.
 func (a *App) lensGroups(b store.Board) []lensGroup {
-	var added []protocol.ProjectView
+	var list []protocol.ProjectLens
+	fromCore := false
 	if a.S.OnHand != nil {
-		added = a.S.OnHand.Projects
-	}
-	addedNames := map[string]bool{}
-	for _, p := range added {
-		addedNames[p.Name] = true
+		list = a.S.OnHand.ProjectList
+		fromCore = len(list) > 0
+		// An older home sends only the projects added by hand: each is still its own row.
+		if len(list) == 0 {
+			for _, p := range a.S.OnHand.Projects {
+				key := p.Key
+				if key == "" {
+					key = p.Name
+				}
+				pl := p.Place
+				list = append(list, protocol.ProjectLens{Key: key, Name: p.Name, Added: true, Place: &pl})
+			}
+		}
 	}
 	var out []lensGroup
-	for _, g := range projectGroups(b, added, a.routines()) {
-		key, name := g.name, g.name
-		if g.name == "" {
-			key, name = lensOther, a.L.T("onhand.other")
+	for _, g := range projectGroups(b, list, a.routines()) {
+		name := g.name
+		switch g.key {
+		case lensOther:
+			name = a.L.T("onhand.other")
+		case lensComputers:
+			name = a.L.T("onhand.computers")
 		}
-		if g.name != "" && neverStarted(g.tasks) {
+		if g.key != lensOther && g.key != lensComputers && neverStarted(g.tasks) {
 			continue // D471: no place yet: its tasks never started there; they stand under All
 		}
-		lg := lensGroup{key: key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: addedNames[g.name]}
-		if g.name != "" && a.manyComputers() {
-			lg.where = a.groupWhere(g.name, g.tasks, g.routines, added)
+		lg := lensGroup{key: g.key, name: name, place: g.place, tasks: g.tasks, routines: g.routines, added: g.added, where: g.where, pinned: g.pinned, hidden: g.hidden, renamed: g.renamed, order: g.order, aliases: g.aliases}
+		if lg.where == nil && g.key != lensOther && g.key != lensComputers && a.manyComputers() {
+			lg.where = a.groupWhere(g.name, g.tasks, g.routines, nil)
 		}
 		out = append(out, lg)
 	}
-	// D341: then the to-do sources that have tasks, each a lens of its own.
-	return append(out, a.sourceLensGroups(b)...)
+	// The person hid this project: its tasks still count under All and needs-you; it shows again
+	// the moment something there needs the person.
+	shown := out[:0]
+	for _, g := range out {
+		if g.hidden && a.lensNeeds(g.tasks) == nil {
+			continue
+		}
+		shown = append(shown, g)
+	}
+	// D654: core sends the order; an older home has no projectList and keeps its urgency order.
+	if fromCore {
+		at := make(map[string]int, len(list))
+		for i, p := range list {
+			at[p.Key] = i
+		}
+		sort.SliceStable(shown, func(i, j int) bool {
+			oi, iok := at[shown[i].key]
+			oj, jok := at[shown[j].key]
+			if iok != jok {
+				return iok
+			}
+			if iok && jok && oi != oj {
+				return oi < oj
+			}
+			return false
+		})
+	}
+	return shown
 }
 
 // groupWhere are the computers a project lives on (D455): where its
@@ -134,13 +179,8 @@ func (a *App) currentLens(groups []lensGroup) string {
 	return ""
 }
 
-// lensOf is the lens key a task is under.
-func lensOf(task *store.Task) string {
-	if p := projectOf(task); p != "" {
-		return p
-	}
-	return lensOther
-}
+// lensOf is the lens key a task is under, read from core's card (D654, research/245 §3.2).
+func lensOf(task *store.Task) string { return lensKey(task) }
 
 // lensBoard is the board narrowed to a lens ("" is all of it).
 func lensBoard(b store.Board, lens string) store.Board {
@@ -150,13 +190,25 @@ func lensBoard(b store.Board, lens string) store.Board {
 	var out store.Board
 	for i, l := range b.Lanes {
 		for _, x := range l {
-			if isSourceLens(lens) {
-				if s := taskTodo(x); s != nil && srcLensPrefix+s.Source == lens {
-					out.Lanes[i] = append(out.Lanes[i], x)
-				}
-				continue
-			}
 			if lensOf(x) == lens {
+				out.Lanes[i] = append(out.Lanes[i], x)
+			}
+		}
+	}
+	out.Counts = protocol.Counts{NeedsYou: len(out.Lanes[store.LaneNeedsYou]), Working: len(out.Lanes[store.LaneWorking]), Waiting: len(out.Lanes[store.LaneWaiting]), DoneToday: store.DoneToday(out.Lanes[store.LaneDone], time.Now())}
+	return out
+}
+
+// sourceBoard is D341's 来自 / From as a filter over any lens, never a lens of its own
+// (D654, research/245 §3.2).
+func sourceBoard(b store.Board, key string) store.Board {
+	if key == "" {
+		return b
+	}
+	var out store.Board
+	for i, l := range b.Lanes {
+		for _, x := range l {
+			if s := taskTodo(x); s != nil && srcLensPrefix+s.Source == key {
 				out.Lanes[i] = append(out.Lanes[i], x)
 			}
 		}
@@ -214,25 +266,22 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 				for _, l := range b.Lanes {
 					all = append(all, l...)
 				}
-				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false, "", nil)
+				a.lensRow(c, "", a.L.T("onhand.lens.all"), all, lens == "", false, "", nil, nil)
 				ui.Box(c.Key("gap")).Height(t.S3)
-				srcs := 0
-				for _, g := range groups {
+				for i := range groups {
+					g := &groups[i]
 					if g.kind != "" {
-						srcs++
 						continue
 					}
-					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther, "", g.where)
-				}
-				// D341: 来自 / From: the to-do sources with tasks, after the projects.
-				if srcs > 0 {
-					uiText(c.Key("src-head"), a.L.T("todos.lens")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).
-						Padding(t.S4, t.S3, t.S1, t.S3).Role(ui.RoleHeading)
-					for _, g := range groups {
-						if g.kind != "" {
-							a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, false, g.kind, nil)
-						}
+					if a.oh.projRename == g.key {
+						in := a.lineField(c, "lens-rename", a.L.T("onhand.project.rename"), &a.oh.projDraft, a.L.T("onhand.project.rename.ph"), true, func() {
+							a.projectChange(protocol.ProjectChange{Act: "rename", Key: g.key, Name: strings.TrimSpace(a.oh.projDraft)})
+							a.oh.projRename, a.oh.projDraft = "", ""
+						})
+						in.Width(lensColW - 2*t.S3)
+						continue
 					}
+					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther || g.key == lensComputers, "", g.where, g)
 				}
 				// D455: on any computer of the home (its own, a worker's, this
 				// Mac's), never only this Mac's picker.
@@ -248,10 +297,61 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 	})
 }
 
+// middleEllipsis keeps a project name's start and end on one line: a hyphenated name keeps its
+// first and last part (`nowledge-…-website`); otherwise the longest measured head + … + tail fits.
+func middleEllipsis(c *ui.Context, s string, width, size float32) string {
+	measure := func(x string) float32 {
+		w, _ := c.MeasureText(0, ui.Span{Text: x, Size: size, Weight: 600})
+		return w
+	}
+	if measure(s) <= width-8 { // a margin, so the count never touches the name
+		return s
+	}
+	parts := strings.Split(s, "-")
+	if len(parts) > 2 {
+		return parts[0] + "-…-" + parts[len(parts)-1]
+	}
+	ell := "…"
+	lo, hi, best := 0, len([]rune(s))-1, 0
+	runes := []rune(s)
+	for lo <= hi {
+		n := (lo + hi) / 2
+		l, r := (n+1)/2, n/2
+		out := string(runes[:l]) + ell + string(runes[len(runes)-r:])
+		if measure(out) <= width {
+			best, lo = n, n+1
+		} else {
+			hi = n - 1
+		}
+	}
+	if best < 3 {
+		return string(runes[:1]) + ell
+	}
+	l, r := (best+1)/2, best/2
+	return string(runes[:l]) + ell + string(runes[len(runes)-r:])
+}
+
+// fitWhere keeps a project row's computers on one line: as many as fit, then +N. Each computer is
+// its own element (D291); the row's tooltip carries all of them.
+func fitWhere(where []string, budget float32, width func(string) float32) ([]string, int) {
+	used := float32(0)
+	for i, w := range where {
+		add := width(w)
+		if i > 0 {
+			add += 8
+		}
+		if i > 0 && used+add > budget {
+			return where[:i], len(where) - i
+		}
+		used += add
+	}
+	return where, 0
+}
+
 // lensRow is one project in the column: its name and what its branches
 // changed; at its end the face of its most urgent task and how many it has.
 // A to-do source's row (D341) has its app's mark before its name.
-func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string, where []string) {
+func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, other bool, brand string, where []string, g *lensGroup) {
 	t := a.T
 	_, _, words := a.foldMark(tasks)
 	label := name
@@ -262,7 +362,7 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 		label = spoken(a.L, label, words)
 	}
 	r := ui.Row(c.Key("lens:"+key)).Gap(t.S2).Padding(t.S2+1, t.S3).MinHeight(44).Radius(t.RadiusMD).AlignItems(ui.Center).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Tooltip(label).Focusable()
 	switch {
 	case on:
 		a.knob(r) // D270: the chosen one is the knob
@@ -284,13 +384,23 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			if other && !on {
 				ink = t.InkMuted
 			}
-			// D471: the name whole, in two lines when long (never two rows cut to the same few letters).
-			uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).MaxLines(2).MinWidth(0).AccessHidden(true)
-			// D455: where it lives, each computer its own word (D291).
+			// D654: one line, cut in the middle when too long (the full name in the tooltip
+			// and the ⋯ menu's head), never two ragged lines at a hyphen.
+			nameW := float32(lensColW) - 2*t.S3 - 20 - 2*t.S2
+			if g != nil && key != "" && key != lensOther && key != lensComputers {
+				nameW -= 26
+			}
+			uiText(c, middleEllipsis(c, name, nameW, 14)).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().Width(nameW).Clip().MinWidth(0).Tooltip(name).AccessHidden(true)
+			// D455: where it lives, each computer its own element (D291), one line; what does not
+			// fit is +N, never a cut line. The row's tooltip has the whole list.
 			if len(where) > 0 {
-				ui.Row(c.Key("where")).Gap(t.S2).Wrap().MinWidth(0).AccessHidden(true).Children(func() {
-					for i, w := range where {
-						uiText(c.Key(fmt.Sprint("w", i)), w).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				shown, rest := fitWhere(where, nameW, func(s string) float32 { w, _ := c.MeasureText(0, ui.Span{Text: s, Size: t.XS}); return w })
+				ui.Row(c.Key("where")).Gap(t.S2).Width(nameW).MinWidth(0).AccessHidden(true).Children(func() {
+					for i, w := range shown {
+						uiText(c.Key(fmt.Sprint("w", i)), w).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0)
+					}
+					if rest > 0 {
+						uiText(c.Key("more"), fmt.Sprintf("+%d", rest)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Shrink(0)
 					}
 				})
 			}
@@ -306,18 +416,152 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			ink = t.NeedsYou.Ink
 		}
 		uiText(c.Key("n"), n).FontSize(t.SM).FontWeight(700).TextColor(ink).FontFeatures("tnum").MinWidth(20).TextAlign(ui.End).Shrink(0).AccessHidden(true).Tooltip(words)
+		// D654 (research/245 §3.2): the project row's ⋯ (D421's one menu).
+		if g != nil && key != "" && key != lensOther && key != lensComputers {
+			a.projectMore(c, g)
+		}
 	})
+	// D654 (research/245 §3.2): a drag on a project row keeps the person's order, on the home.
+	if g != nil {
+		_, dy, held := r.Dragged()
+		if held && !a.oh.projDrag {
+			a.oh.projDrag, a.oh.projFrom = true, key
+		}
+		if held && a.oh.projDrag && a.oh.projFrom == key {
+			switch {
+			case dy > 14:
+				a.reorderProjects(key, 1)
+				a.oh.projDrag = false
+			case dy < -14:
+				a.reorderProjects(key, -1)
+				a.oh.projDrag = false
+			}
+		}
+		if !held {
+			a.oh.projDrag = false
+		}
+	}
 	if r.Clicked() {
 		a.Local.SetLens(key)
 		a.oh.focus = ""
 	}
 }
 
+// reorderProjects moves a project one place in the person's order (D654, research/245 §3.2).
+func (a *App) reorderProjects(key string, by int) {
+	var keys []string
+	for _, g := range a.lensGroups(a.S.Board()) {
+		if g.key != lensOther && g.key != lensComputers && g.kind == "" {
+			keys = append(keys, g.key)
+		}
+	}
+	at := -1
+	for i, k := range keys {
+		if k == key {
+			at = i
+		}
+	}
+	if at < 0 {
+		return
+	}
+	to := at + by
+	if to < 0 || to >= len(keys) {
+		return
+	}
+	keys[at], keys[to] = keys[to], keys[at]
+	a.projectChange(protocol.ProjectChange{Act: "order", Keys: keys})
+}
+
+// projectMore is a project row's ⋯: rename, merge into another project (an undoable alias),
+// unmerge, pin, hide. Every one is reversible from the same menu.
+func (a *App) projectMore(c *ui.Context, g *lensGroup) {
+	a.menuMark(c, "pmore:"+g.key, a.L.T("onhand.project.menu", g.name), 26, func(m *ui.Menu) {
+		// The full project name is the menu's head (the row says it in one line, cut in the middle).
+		m.Item(g.name).Disabled(true)
+		m.Separator()
+		if m.Item(a.L.T("onhand.project.rename")).Chosen() {
+			a.oh.projRename, a.oh.projDraft = g.key, g.name
+		}
+		if g.renamed && m.Item(a.L.T("onhand.project.rename.undo")).Chosen() {
+			a.projectChange(protocol.ProjectChange{Act: "rename", Key: g.key})
+		}
+		// A fork the person counts as one: one row per other project (no submenu in the clay menu).
+		var others []lensGroup
+		for _, x := range a.lensGroups(a.S.Board()) {
+			if x.key != g.key && x.key != lensOther && x.key != lensComputers && x.kind == "" {
+				others = append(others, x)
+			}
+		}
+		if len(others) > 0 {
+			m.Separator()
+			m.Submenu(a.L.T("onhand.project.merge"), func(sm *ui.Menu) {
+				for _, x := range others {
+					x := x
+					if sm.Item(a.tp("onhand.project.merge.into", x.name)).Chosen() {
+						a.projectChange(protocol.ProjectChange{Act: "merge", Key: g.key, Into: x.key})
+					}
+				}
+			})
+		}
+		if len(g.aliases) > 0 && m.Item(a.L.T("onhand.project.unmerge")).Chosen() {
+			a.projectChange(protocol.ProjectChange{Act: "unmerge", Key: g.key})
+		}
+		m.Separator()
+		pin := a.L.T("onhand.project.pin")
+		if g.pinned {
+			pin = a.L.T("onhand.project.unpin")
+		}
+		if m.Item(pin).Chosen() {
+			a.projectChange(protocol.ProjectChange{Act: "pin", Key: g.key, Pinned: !g.pinned})
+		}
+		hide := a.L.T("onhand.project.hide")
+		if g.hidden {
+			hide = a.L.T("onhand.project.show")
+		}
+		if m.Item(hide).Chosen() {
+			a.projectChange(protocol.ProjectChange{Act: "hide", Key: g.key, Hidden: !g.hidden})
+		}
+	})
+}
+
+// projectChange sends one change to the home, which keeps it for every device.
+func (a *App) projectChange(ch protocol.ProjectChange) {
+	a.send(protocol.ClientFrame{T: "project_change", Change: &ch})
+}
+
 // lensTabs is the lens where the window is too narrow for the column: one
 // row of names, the chosen one raised.
 func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 	t := a.T
-	ui.Row(c.Key("lens-tabs")).Gap(t.S1).Wrap().AlignItems(ui.Center).Label(a.L.T("onhand.lens")).Children(func() {
+	// D654 (research/245 §3.2): one row that never wraps; what does not fit goes into the one
+	// 更多 / More menu.
+	budget := float32(a.winW) - 48
+	if budget < 190 {
+		budget = 190
+	}
+	tabW := func(name string) float32 {
+		w := float32(24)
+		for _, r := range name {
+			if r >= 0x3000 && r <= 0x9fff {
+				w += 15
+			} else {
+				w += 8.5
+			}
+		}
+		return w
+	}
+	var shown, folded []lensGroup
+	used := tabW(a.L.T("onhand.lens.all"))
+	for _, g := range groups {
+		w := tabW(g.name)
+		if len(shown) == 0 || used+w <= budget {
+			used += w
+			shown = append(shown, g)
+		} else {
+			folded = append(folded, g)
+		}
+	}
+	ui.Row(c.Key("lens-tabs")).Gap(t.S1).AlignItems(ui.Center).Label(a.L.T("onhand.lens")).Children(func() {
 		tab := func(key, name string, tasks []*store.Task) {
 			on := key == lens
 			_, _, words := a.foldMark(tasks)
@@ -348,13 +592,49 @@ func (a *App) lensTabs(c *ui.Context, groups []lensGroup, lens string) {
 		}
 		var all []*store.Task
 		for _, g := range groups {
-			if g.kind == "" { // a source's tasks are in their projects too
+			if g.kind == "" {
 				all = append(all, g.tasks...)
 			}
 		}
 		tab("", a.L.T("onhand.lens.all"), all)
-		for _, g := range groups {
+		for _, g := range shown {
 			tab(g.key, g.name, g.tasks)
+		}
+		if len(folded) > 0 {
+			a.menuText(c, "lens-more", a.L.T("onhand.more"), func(m *ui.Menu) {
+				for _, g := range folded {
+					g := g
+					if m.Item(g.name).Chosen() {
+						a.Local.SetLens(g.key)
+						a.oh.focus = ""
+					}
+				}
+			})
+		}
+	})
+}
+
+// sourceChips is D341's 来自 / From over the board: one chip per to-do source that has a task,
+// a filter on any project's lens (D654, research/245 §3.2).
+func (a *App) sourceChips(c *ui.Context, b store.Board) {
+	t := a.T
+	groups := a.sourceLensGroups(b)
+	if len(groups) == 0 {
+		return
+	}
+	ui.Row(c.Key("src-chips")).Gap(t.S2).AlignItems(ui.Center).Label(a.L.T("todos.lens")).Children(func() {
+		uiText(c.Key("src-h"), a.L.T("todos.lens")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		for _, g := range groups {
+			g := g
+			on := a.oh.source == g.key
+			if a.choice(c, "src:"+g.key, g.name, on, "") {
+				if on {
+					a.oh.source = ""
+				} else {
+					a.oh.source = g.key
+				}
+				a.oh.focus = ""
+			}
 		}
 	})
 }
@@ -393,6 +673,8 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 	ui.Column(c.Key("top")).Gap(t.S4).Children(func() {
 		// D467: the partner's brief in its own voice; no count strip.
 		a.brief(c, b, lens, n)
+		// D654 (research/245 §3.2): 来自 / From filters any lens; it is never a lens itself.
+		a.sourceChips(c, b)
 		g := groupOf(groups, lens)
 		here := g != nil && g.key != lensOther && g.kind == ""
 		total := n[0] + n[1] + n[2] + n[3]
@@ -425,13 +707,14 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 
 // lensName is what a lens key says.
 func (a *App) lensName(key string) string {
-	if key == lensOther {
+	switch key {
+	case lensOther:
 		return a.L.T("onhand.other")
+	case lensComputers:
+		return a.L.T("onhand.computers")
 	}
-	if isSourceLens(key) { // D341
-		if g := groupOf(a.sourceLensGroups(a.S.Board()), key); g != nil {
-			return g.name
-		}
+	if g := groupOf(a.lensGroups(a.S.Board()), key); g != nil {
+		return g.name
 	}
 	return key
 }

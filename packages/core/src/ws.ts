@@ -1692,6 +1692,13 @@ export function createWsHandler(deps: WsDeps) {
         if (!r.ok) throw new Error(r.error);
         return;
       }
+      case "project_change": {
+        // D654 (research/245 §3.2): the project row's ⋯, kept on the home so every device sees it.
+        const r = core.projectChange?.(f.change);
+        if (!r) throw new Error("projects can't be changed here");
+        if (!r.ok) throw new Error(r.error);
+        return;
+      }
       case "app_set": {
         // D410: the shelf's 「⋯」: rename, pin, stop a routine updating it.
         if (!deps.apps) throw new Error("apps are not available");

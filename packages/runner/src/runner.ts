@@ -2126,7 +2126,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.bound ? { bound: input.bound } : {}), ...(input.replaces ? { replaces: input.replaces } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
+    // D654 (research/245 §3.2): the project's identity is core's, stamped once at open. A
+    // caller that already knows it (New task, a routine) passes it; otherwise core reads the
+    // repository's origin here, so every card, replay and client has the same key.
+    const projectId =
+      !input.projectKey && (resolved.place.kind === "repo" || resolved.place.kind === "folder") && core.projectKeyFor
+        ? await core.projectKeyFor(resolved.place).catch(() => undefined)
+        : undefined;
+    const projectKey = input.projectKey ?? projectId?.key;
+    const projectName = input.projectName ?? projectId?.name;
+    const projectGroup = input.projectGroup ?? (projectKey ? undefined : workKind === "errand" ? "computer" : undefined);
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, ...(effort ? { effort } : {}), ...(projectKey ? { projectKey, ...(projectName ? { projectName } : {}) } : {}), ...(projectGroup ? { projectGroup } : {}), brief: later ? "" : briefIn, ...(!later && input.media?.length ? { media: input.media } : {}), ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.from ? { from: input.from } : {}), ...(input.from && input.fromStep ? { fromStep: input.fromStep, ...(input.fromCommit ? { fromCommit: input.fromCommit } : {}) } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}), ...(workKind ? { workKind } : {}), ...(input.bound ? { bound: input.bound } : {}), ...(input.replaces ? { replaces: input.replaces } : {}), ...(input.adopt ? { outside: { agent: input.adopt.agent, sessionId: input.adopt.sessionId, startedAt: input.adopt.startedAt } } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), ...(effort ? { effort } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
@@ -2134,6 +2144,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       persona,
       title,
       project,
+      ...(projectKey ? { projectKey, ...(projectName ? { projectName } : {}) } : {}),
+      ...(projectGroup ? { projectGroup } : {}),
+      ...(workKind ? { workKind } : {}),
       place: resolved.place,
       harness: h,
       model,

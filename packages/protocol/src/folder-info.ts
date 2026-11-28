@@ -50,6 +50,24 @@ export function normalizeRemote(url: string): string {
   return u.replace(/\/+$/, "").replace(/\.git$/i, "").replace(/\/+$/, "").toLowerCase();
 }
 
+/**
+ * D654 (research/245 §3.2): a project's identity, derived once in core.
+ * A repository is its normalized origin (`github.com/owner/repo`: ssh and https, `git@`, `.git`
+ * and the case all agree). A folder without one is its own project, keyed by the computer it is on
+ * and its path there. `device` is "local" for the home.
+ */
+export function projectKeyOf(remote: string | undefined, device: string | undefined, path: string): string {
+  const r = remote ? normalizeRemote(remote) : "";
+  if (r) return r;
+  const dev = !device || device === "local" ? "local" : device;
+  return `folder:${dev}:${String(path ?? "").replace(/\/+$/, "")}`;
+}
+
+/** D654: the repository's short name as a project shows it (`mem`, `nowledge-labs-website`). */
+export function projectShortName(remote: string): string {
+  return normalizeRemote(remote).split("/").filter(Boolean).pop() ?? "";
+}
+
 /** D202: the repo's origin, normalized (normalizeRemote); undefined without one. */
 export async function repoRemote(repoPath: string, run: GitRun = realGit): Promise<string | undefined> {
   const r = await run(repoPath, ["remote", "get-url", "origin"]);

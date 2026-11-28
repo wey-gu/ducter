@@ -8,8 +8,8 @@ import { basename, join, resolve } from "node:path";
 import type { AgentModels, Bodies, Candidate, CloneReason, DucterFolderView, FolderChangeReason, LangTag, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
 import { ducterFolder, writeChosenFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { moveDucterFolder, underFolder, type FolderMoveResult } from "@ducter/protocol/src/folder-move.ts";
-import { cutAtWord, detect, fill, words as wordsIn } from "@ducter/protocol";
-import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
+import { cutAtWord, detect, fill, sameComputer, words as wordsIn } from "@ducter/protocol";
+import { expandHome, projectKeyOf, projectShortName, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
 import type { Projects } from "./projects.ts";
@@ -498,6 +498,28 @@ export async function defaultBranch(repoPath: string, run: GitRun = realGit): Pr
   return (await repoBranches(repoPath, run)).defaultBranch;
 }
 
+
+/** D654 (research/245 §3.2): the project a place belongs to, stamped on the task open. */
+async function projectOfPlace(d: NewTaskDeps, place: Place): Promise<{ key: string; name: string } | undefined> {
+  if (place.kind !== "repo" && place.kind !== "folder") return undefined;
+  // D654: a place that names the home is the home, and a worker's name is its id, so the key it
+  // stamps is the same one the snapshot derives later.
+  const raw = ("device" in place && place.device) || "local";
+  const home = d.computers?.homeName();
+  const worker = d.computers?.workers?.().find((x) => x.id === raw || sameComputer(x.name, raw));
+  const dev = !raw || raw === "local" || (home && sameComputer(raw, home)) ? "local" : (worker?.id ?? raw);
+  if (place.kind === "folder") return { key: projectKeyOf(undefined, dev, place.path), name: basename(place.path.replace(/\/+$/, "")) };
+  const remote =
+    place.clone ||
+    (isLocal(dev)
+      ? await repoRemote(place.repoPath, d.git ?? realGit).catch(() => undefined)
+      : await d.computers
+          ?.folderInfo(dev, place.repoPath, 6_000)
+          .then((r) => (r === "offline" ? undefined : r.remote))
+          .catch(() => undefined));
+  return { key: projectKeyOf(remote, dev, place.repoPath), name: remote ? projectShortName(remote) : basename(place.repoPath.replace(/\/+$/, "")) };
+}
+
 /** Opens a task with the user's own words. The one path the card and `ducter task` share. */
 export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise<NewTaskResult> {
   const git = d.git ?? realGit;
@@ -535,7 +557,8 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
     project = basename(place.path);
   }
   // D186: a project the user added keeps the name they know it by.
-  project = d.projects?.of(place)?.name ?? project;
+  const pid = await projectOfPlace(d, place);
+  project = d.projects?.of(place)?.name ?? pid?.name ?? project;
   const title = (input.title?.trim() ? cutAtWord(input.title, TITLE_MAX) : "") || titleFromWords(words);
   const when = input.when;
   const language = input.language ?? languageOf(words, d.settings);
@@ -550,6 +573,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
         brief: words,
         ...(place.kind !== "none" || place.device ? { place } : {}),
         ...(project ? { project } : {}),
+        ...(pid ? { projectKey: pid.key, projectName: pid.name } : {}),
         ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}) } : {}),
         language,
       });
@@ -570,6 +594,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       brief: when?.kind === "when" ? waitFirstBrief(condition, input.brief ?? words, language) : (input.brief ?? words),
       place,
       project,
+      ...(pid ? { projectKey: pid.key, projectName: pid.name } : {}),
       ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
       ...(input.effort ? { effort: input.effort } : {}),
       language,

@@ -4317,6 +4317,40 @@ export const scenarios: Scenario[] = [
     rubric:
       "The app has just shown the user what they set up yesterday (a finished task and an app they made) and an offer card for a morning line is below the message. The partner says one short recap in English, in its own voice: these are what they set up together yesterday. It must not list them one by one (the app's links do), not ask a question, not offer anything else, not explain a feature or add a feature tour, and not invent a fact. One or two sentences; no greeting.",
   },
+  // D654 (research/245 §3.2): two projects the person counts as one repository. The partner
+  // changes the project, not a task; the merge is an alias kept on the home (undoable from ⋯).
+  {
+    id: "project-merge-zh",
+    category: "direct",
+    lang: "zh",
+    world: {
+      home: { name: "hel", os: "linux", agents: ["claude-code", "codex"] },
+      projects: [
+        { name: "mem", computer: "hel", path: "/home/w/ducter/projects/mem", origin: "github.com/nowledge-co/mem" },
+        { name: "mem-identity", computer: "hel", path: "/home/w/dev/mem-identity" },
+      ],
+    },
+    steps: [{ user: "把 mem-identity 并到 mem 里" }],
+    expect: { lines: 1, called: [{ tool: "project_change", args: { act: "merge", project: /mem-identity/i, into: /mem/i } }], notCalled: ["task_open", "task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 80 },
+    rubric:
+      "The user counts two projects as one repository and wants mem-identity merged into mem. The partner calls project_change once with act merge, project mem-identity and into mem; it opens no task, sends nothing to a task and puts up no card. At most one short Chinese line saying the merge is done and can be undone from the project's ⋯ (it may also say the row now shows them together or that its tasks now stand under mem); never a claim that mem-identity was deleted.",
+  },
+  {
+    id: "project-merge-en",
+    category: "direct",
+    lang: "en",
+    world: {
+      home: { name: "hel", os: "linux", agents: ["claude-code", "codex"] },
+      projects: [
+        { name: "mem", computer: "hel", path: "/home/w/ducter/projects/mem", origin: "github.com/nowledge-co/mem" },
+        { name: "mem-identity", computer: "hel", path: "/home/w/dev/mem-identity" },
+      ],
+    },
+    steps: [{ user: "merge mem-identity into mem" }],
+    expect: { lines: 1, called: [{ tool: "project_change", args: { act: "merge", project: /mem-identity/i, into: /mem/i } }], notCalled: ["task_open", "task_switch"], opens: 0, noSend: true, noAsk: true, msgs: [0, 1], maxChars: 120 },
+    rubric:
+      "The user counts two projects as one repository and wants mem-identity merged into mem. The partner calls project_change once with act merge, project mem-identity and into mem; it opens no task, sends nothing to a task and puts up no card. At most one short English line saying the merge is done and can be undone from the project's ⋯ (it may also say the row now shows them together or that its tasks now stand under mem); never a claim that mem-identity was deleted.",
+  },
   // D477: world puzzles (puzzles.ts), graded on outcome.
   ...puzzles,
 ];

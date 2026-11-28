@@ -155,13 +155,29 @@ or **Merged** once you've done either from Ducter, or once its pull request merg
 
 ### Projects
 
-Every task that works in a folder belongs to that folder's project; everything else is under
-**Other**. There's nothing to set up. Once there are two or more, the projects appear: on a wide
-window as a column on the left, otherwise as a row of names above the list. Each one shows its
-whole name and how many tasks it has; the number turns to the needs-you colour when something
-there needs you. A task that couldn't start because its folder isn't on that computer doesn't
-make a project of its own; it stays under **All**, where its fix is. Pick one to see only its tasks;
-**All** shows everything again. Under a project, **+** starts a new task in its folder.
+A project is a repository, not a folder. However many folders and computers hold one repository,
+its tasks stand together under one name: the repository's own short name, like **mem** or
+**nowledge-labs-website**. A folder that isn't a repository is its own project, with its folder's
+name. A folder inside another repository (a website inside a bigger checkout) is its own project.
+There's nothing to set up. Once there are two or more, the projects appear: on a wide window as a
+column on the left, otherwise as a row of names above the list. Each one shows its name on one line (a long one is cut in the middle, with the whole
+name on hover), where it lives when you have more than one computer, and how many tasks it has; the
+number turns to the needs-you colour when something there needs you. Projects with something that
+needs you come first, then the ones active most recently; pinned ones stay on top, and once you drag
+them into your own order that order wins. A project row's computers stay on one line: if they don't
+all fit, it says **+N** and the whole list is in its tooltip. A task that couldn't start because its folder
+isn't on that computer doesn't make a project of its own; it stays under **All**, where its fix is.
+Pick one to see only its tasks; **All** shows everything again. Under a project, **+** starts a new
+task in its folder.
+
+**Not in a project** holds the work that belongs to no folder; **On your computers** holds the
+errands and machine set-ups. **From** (GitHub, Obsidian and so on) is a filter over any project,
+not a project of its own.
+
+The project row's **⋯** changes how it is shown, and every change can be undone there: **Rename**,
+**Merge into…** (for two repositories you count as one, such as a fork), **Hide** (its tasks still
+count under **All** and when something there needs you, the project shows again), and **Pin**.
+Drag a project to put it in your order; the order is kept on the home, so every device sees it.
 
 **+ Add a folder**, at the foot of the column (or **+** at the end of the row of names), makes a
 project from a folder on any of your computers. Pick the computer first (each is shown as a small

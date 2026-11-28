@@ -101,13 +101,15 @@ type KeepBell struct {
 
 // KeepSheet is a Keep on On hand: the home's one model of its state.
 type KeepSheet struct {
-	ID      string     `json:"id"`
-	Title   string     `json:"title"`
-	Persona string     `json:"persona,omitempty"`
-	Life    string     `json:"life"` // on, paused, done, stopped
-	Run     string     `json:"run"`  // same, fresh, perItem
-	Wakes   []KeepWake `json:"wakes"`
-	Until   string     `json:"until,omitempty"`
+	ID          string     `json:"id"`
+	Title       string     `json:"title"`
+	ProjectKey  string     `json:"projectKey,omitempty"`
+	ProjectName string     `json:"projectName,omitempty"`
+	Persona     string     `json:"persona,omitempty"`
+	Life        string     `json:"life"` // on, paused, done, stopped
+	Run         string     `json:"run"`  // same, fresh, perItem
+	Wakes       []KeepWake `json:"wakes"`
+	Until       string     `json:"until,omitempty"`
 	// D650: the end as the head says it (a testable sentence and the look code
 	// runs), or noEnd; how many rounds it has run; why Ducter paused it, in words.
 	End         *KeepEnd        `json:"end,omitempty"`

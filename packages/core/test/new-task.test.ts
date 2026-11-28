@@ -107,6 +107,18 @@ test("a title is the first sentence of the words, short", () => {
   expect(titleFromWords("v1.2 release notes")).toBe("v1.2 release notes"); // a dot inside a word isn't a full stop
 });
 
+test("D654: a place that names the home stamps a local project key", async () => {
+  const { core, dir } = boot({ update: { homeName: "home-server" } });
+  const { opened } = fakeRunner(core);
+  const r = repo(dir);
+  const c = await client(core);
+  c.send({ t: "task_new", words: "修一下 tinycart 里失败的测试", place: { kind: "repo", device: "home-server", repoPath: r }, harness: "codex", clientId: "c1" });
+  await c.until((f) => f.t === "task_new_result");
+  const key = (opened[0] as { projectKey?: string }).projectKey;
+  expect(key).toBe(`folder:local:${r}`);
+  expect((opened[0] as { projectName?: string }).projectName).toBe("tinycart");
+});
+
 test("task_new opens a task with the user's words as they are, says nothing in the conversation, and tells the partner quietly", async () => {
   const { core, dir, woke } = boot();
   const { opened } = fakeRunner(core);
@@ -118,7 +130,10 @@ test("task_new opens a task with the user's words as they are, says nothing in t
   expect(res).toMatchObject({ ok: true, clientId: "c1", taskId: "t1" });
   expect(res.card).toMatchObject({ title: "修一下 tinycart 里失败的测试", openedBy: "you", project: "tinycart", place: { kind: "repo", repoPath: r, baseBranch: "main" } });
   // Verbatim: no rewrite, the brief is exactly what they typed.
-  expect(opened).toEqual([{ persona: "default", title: "修一下 tinycart 里失败的测试", brief: words, place: { kind: "repo", device: "local", repoPath: r, baseBranch: "main" }, project: "tinycart", harness: "codex", language: "zh", origin: "you" }]);
+  expect(opened).toMatchObject([{ persona: "default", title: "修一下 tinycart 里失败的测试", brief: words, place: { kind: "repo", device: "local", repoPath: r, baseBranch: "main" }, project: "tinycart", harness: "codex", language: "zh", origin: "you" }]);
+  // D654 (research/245 §3.2): core stamps the project's identity at open (no remote: its path).
+  expect((opened[0] as { projectKey?: string }).projectKey).toStartWith("folder:local:");
+  expect((opened[0] as { projectName?: string }).projectName).toBe("tinycart");
   const open = core.log.read({ stream: "task:t1", kinds: ["task_open"] })[0]!.body as Bodies["task_open"];
   expect(open.origin).toBe("you");
   // The conversation shows nothing: no ack, no message, no visible job line.

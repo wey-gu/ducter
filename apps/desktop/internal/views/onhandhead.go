@@ -583,8 +583,10 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 // board runs on (D315: the usual needs no saying on every card).
 func (a *App) whereMeta(task *store.Task) []string {
 	var meta []string
-	if a.oh.showProj && lensOf(task) != lensOther {
-		meta = append(meta, lensOf(task))
+	if a.oh.showProj && lensOf(task) != lensOther && lensOf(task) != lensComputers {
+		if n := task.ProjectName(); n != "" {
+			meta = append(meta, n)
+		}
 	}
 	p := task.Place()
 	if a.manyComputers() && p.Kind != "none" && p.Device != "" && p.Device != a.oh.usual {

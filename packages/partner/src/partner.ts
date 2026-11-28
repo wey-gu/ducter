@@ -1949,6 +1949,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       placement,
     );
     if (devices) deltas.push(devices);
+    // D654 (research/245 §3.2): the project rows by the names the person sees, so a
+    // project_change names one exactly instead of guessing a folder.
+    const projectLine = renderProjects(core.projectList?.() ?? []);
+    if (projectLine) deltas.push(projectLine);
     // D486: the person's other partners, while there are any (one partner: no line).
     // D536: with what each thinks (its own setting, else the first partner's, the default).
     // D571: the chat app this turn's words came from, so "can you switch?" gets the way that works there.
@@ -3773,6 +3777,54 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return r.ok ? { ok: true, note: "Taken apart; every task stays, and any part still in line starts now." } : r;
       }
       return { ok: false, error: "do is group, rename or ungroup" };
+    },
+  );
+
+  // D654 (research/245 §3.2): a project is its repository; the person may name it, count two
+  // remotes as one, hide it, pin it, or put it in their order, in words. Every change is undoable
+  // from the project row's menu.
+  tools.register(
+    "partner",
+    "project_change",
+    "Change how a project is shown in Tasks, only when the person says so in words (\"把 mem-identity 那些算进 mem\", \"把 mem 改名成 Mem\", \"隐藏这个项目\", \"把 mem 置顶\"). A project is one repository, already grouped from its origin; never change it just because two folders look alike. act: rename (name), merge (into: the project it belongs with, for a fork they count as one; undoable), unmerge, hide/show (hidden: true/false; its tasks still count under All and needs-you and it shows again when something there needs them), pin/unpin.",
+    {
+      type: "object",
+      properties: {
+        act: { type: "string", enum: ["rename", "merge", "unmerge", "hide", "show", "pin", "unpin"] },
+        project: { type: "string", description: "The project's name as Tasks shows it (or its key)" },
+        name: { type: "string", description: "rename: the new short name, in the user's language" },
+        into: { type: "string", description: "merge: the project it belongs with, as Tasks shows it" },
+      },
+      required: ["act", "project"],
+    },
+    async (args: { act?: unknown; project?: unknown; name?: unknown; into?: unknown }) => {
+      const act = String(args.act ?? "");
+      const list = core.projectList?.() ?? [];
+      const find = (q: unknown) => {
+        const w = typeof q === "string" ? q.trim().toLowerCase() : "";
+        if (!w) return undefined;
+        return list.find((p) => p.key.toLowerCase() === w || p.name.toLowerCase() === w || (p.aliases ?? []).some((a) => a.toLowerCase() === w));
+      };
+      const p = find(args.project);
+      if (!p) return { ok: false, error: `No project by that name in Tasks. Projects now: ${list.map((x) => x.name).join(", ") || "none"}. Say the one the user means, as its row shows it.` };
+      let change: import("@ducter/protocol").ProjectChange;
+      if (act === "rename") {
+        const name = typeof args.name === "string" ? args.name.trim() : "";
+        if (!name) return { ok: false, error: "rename needs a name" };
+        change = { act: "rename", key: p.key, name };
+      } else if (act === "merge") {
+        const into = find(args.into);
+        if (!into) return { ok: false, error: "Merge needs the project it belongs with, as its row shows it." };
+        if (into.key === p.key) return { ok: false, error: "They are already one project." };
+        change = { act: "merge", key: p.key, into: into.key };
+      } else if (act === "unmerge") change = { act: "unmerge", key: p.key };
+      else if (act === "hide" || act === "show") change = { act: "hide", key: p.key, hidden: act === "hide" };
+      else if (act === "pin" || act === "unpin") change = { act: "pin", key: p.key, pinned: act === "pin" };
+      else return { ok: false, error: "act is rename, merge, unmerge, hide, show, pin or unpin." };
+      const r = core.projectChange?.(change);
+      if (!r) return { ok: false, error: "Projects can't be changed on this home right now." };
+      if (!r.ok) return r;
+      return { ok: true, project: p.name, note: "Said in one short line in the user's words; its row in Tasks shows it, and the same ⋯ undoes it." };
     },
   );
 
@@ -6848,6 +6900,14 @@ export function renderDevices(
   const also = (home?.aliases ?? []).filter((a) => a.toLowerCase() !== home?.name.toLowerCase()).slice(0, 2);
   const homeWords = home ? `local (Ducter's home${home.name ? `: ${clipName(home.name)}` : ""}${also.length ? `, also called ${also.join(", ")}` : ""}${memWords(home.resources, home.heavyNow)}${browses(home.web)}${home.harnesses ? agentsWords(home.harnesses, ", no AI signed in", limits, "local", now) : ""}${codeWords(code, "local")})` : "local (Ducter's home)";
   return `[devices] ${[homeWords, ...shown.map(one)].join(" · ")}${more ? ` · and ${more} more computers` : ""}. True now: which agents are set up where, their usage limits, and which code is where, is only what this line says.${limits?.some((l) => l.state === "used_up") ? (handoff ? " By the user's setting, a task whose agent runs out is handed to another signed-in agent at once." : " By the user's setting (D297's default), a task whose agent runs out waits for the reset; handing it to another agent is the user's choice.") : ""} Put work where the user's words and these facts point (place.device; their words about computers in where); with neither, say what it needs and Ducter picks. Code not on that computer yet is cloned there first (place.remote).${workers.some((w) => w.resources) || home?.resources ? " Heavy work (builds, test suites, type checks, a browser or Playwright, a dev server, an eval) is needs.heavy and goes where there is room." : ""}${placementWords(placement)}${newTasks?.where || newTasks?.agent ? ` By the user's setting, new tasks start${newTasks.where ? ` on ${newTasks.where}` : ""}${newTasks.agent ? ` with ${newTasks.agent}` : ""} whenever it can do them: leave place.device${newTasks.agent ? " and harness" : ""} out unless the user's words name another.` : ""}`;
+}
+
+/** D654 (research/245 §3.2): the project column's names, for project_change. */
+export function renderProjects(list: import("@ducter/protocol").ProjectLens[]): string {
+  if (!list.length) return "";
+  const shown = list.slice(0, 16).map((p) => `${p.name}${p.hidden ? " (hidden)" : ""}${p.aliases?.length ? ` (with ${p.aliases.join(", ")})` : ""}`);
+  const more = list.length - shown.length;
+  return `[projects] ${shown.join(" · ")}${more > 0 ? ` · and ${more} more` : ""}. The project rows in Tasks, by the names the user sees. A project_change names one of these exactly (rename, merge into another); never guess a folder or a path.`;
 }
 
 /** D478: live tasks shown in the [live] line (the rest are named by count). */

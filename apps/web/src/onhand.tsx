@@ -9,21 +9,22 @@ import { cantClause } from "./cant.tsx";
 import type { ComponentChildren } from "preact";
 import { memo } from "preact/compat";
 import { useDwell, useResting } from "./alive.tsx";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
 import { still } from "./nav.ts";
 import { wideNow } from "./fold.ts";
-import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place } from "@ducter/protocol";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place, type ProjectChange } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A, type Wear } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
-import { Btn, Chev, Facts, MoreButton, TaskLink } from "./controls.tsx";
+import { Btn, Chev, Facts, Field, MoreButton, TaskLink } from "./controls.tsx";
+import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
 import { ago, clock, day, harnessName, spoken, when } from "./format.ts";
 import { CallRow } from "./phone.tsx";
-import { attention, canIntegrate, cantOf, endable, finished, harnessOf, headlineEvidence, LANE, placeOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
+import { attention, canIntegrate, cantOf, endable, finished, harnessOf, headlineEvidence, LANE, placeOf, projectGroupOf, projectNameOf, projectOf, reasonOf, reportOf, title, type Task } from "./store.ts";
 import { liveRow, liveWords, rowWords, shortTitle, StepMark, taskBlocks } from "./transcript.tsx";
 import { computerName, deviceWait, manyComputers } from "./where.ts";
 import { Avatar, DecisionCard, stateLabel } from "./views.tsx";
@@ -38,7 +39,7 @@ import { handover, isNewResult, lookedAt, statusOf, urgentOf, type Status } from
 import { figArt, OtherAsk, PartnerMark } from "./partners.tsx";
 import { boardGroups, finishedGroup, foldedRows, groupCount, markOf, type BoardGroup, type MemberRow } from "./groups-view.ts";
 import { linesOfPart } from "./asks.tsx";
-import { Menu, MenuItem } from "./menu.tsx";
+
 import { AwayX, FinishedActs, finishedMenu, runFinished, useSwipeAway, type Finished } from "./away.tsx";
 import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, PeekPicture, peekSaid, peekTask, QUIET_STEP_MS, saidOf, StuckActs, stuckClause, stuckOf, turnStart, useTick } from "./onhand-brief.tsx";
 import { healthLine, rhythm, RepeatGlyph, reviewLine } from "./past.tsx";
@@ -425,13 +426,17 @@ const Ring = ({ frac }: { frac: number }) => {
   );
 };
 
-/** The lens key a task is under: its project, else "~" (其他 / Other). */
+/**
+ * D654 (research/245 §3.2): the lens key a task is under, read from core's card. A repository
+ * is one project however many folders and computers it has; a folder with no remote is its own.
+ * A task of no project stands under 不在项目里 / Not in a project, or 电脑上的事 / On your computers
+ * when it is an errand or machine set-up.
+ */
 export const OTHER = "~";
-export const lensOf = (task: Task) => {
-  const p = placeOf(task);
-  return projectOf(task) || (p.kind === "repo" ? (p.repoPath.replace(/\/+$/, "").split("/").pop() ?? "") : p.kind === "folder" ? (p.path.replace(/\/+$/, "").split("/").pop() ?? "") : "") || OTHER;
-};
-export const lensName = (key: string) => (key === OTHER ? t("onhand.other") : key);
+export const COMPUTERS = "~computers";
+export const lensOf = (task: Task) => projectOf(task) || (projectGroupOf(task) === "computer" ? COMPUTERS : OTHER);
+export const lensName = (key: string) =>
+  key === OTHER ? t("onhand.other") : key === COMPUTERS ? t("onhand.computers") : (A.S.onHand?.projectList?.find((p) => p.key === key)?.name ?? key);
 
 const LENS = "ducter.onhand.lens";
 export function readLens(): string {
@@ -451,37 +456,60 @@ export function setLens(key: string) {
   A.changed();
 }
 
-export type LensGroup = { key: string; name: string; place?: Place; tasks: Task[]; where?: string[] };
-/** The board's projects, what needs you first, then the projects added by hand, Other last. */
+export type LensGroup = { key: string; name: string; place?: Place; tasks: Task[]; where?: string[]; pinned?: boolean; order?: number; hidden?: boolean; aliases?: string[] };
+/**
+ * The board's projects, in core's order (`OnHand.projectList`: pinned, then the person's drag order,
+ * else what needs the person first and the most recent activity). The names and flags come from core;
+ * nothing here reads a folder name.
+ */
 export function lensGroups(): LensGroup[] {
   const b = A.S.board();
+  const plist = A.S.onHand?.projectList ?? [];
+  const byKey = new Map(plist.map((p) => [p.key, p]));
   const out: LensGroup[] = [];
   const at = new Map<string, number>();
   let other: LensGroup | undefined;
+  let computers: LensGroup | undefined;
   for (const lane of b.lanes.slice(0, 4))
     for (const task of lane) {
       const k = lensOf(task);
-      if (k === OTHER) {
-        (other ??= { key: OTHER, name: t("onhand.other"), tasks: [] }).tasks.push(task);
+      if (k === OTHER || k === COMPUTERS) {
+        const g = k === OTHER ? (other ??= { key: OTHER, name: t("onhand.other"), tasks: [] }) : (computers ??= { key: COMPUTERS, name: t("onhand.computers"), tasks: [] });
+        g.tasks.push(task);
         continue;
       }
       let i = at.get(k);
-      if (i === undefined) at.set(k, (i = out.push({ key: k, name: k, tasks: [] }) - 1));
+      if (i === undefined) {
+        const p = byKey.get(k);
+        at.set(k, (i = out.push({ key: k, name: p?.name || projectNameOf(task) || k, tasks: [] }) - 1));
+      }
       const g = out[i]!;
-      const p = placeOf(task);
-      if (!g.place && (p.kind === "repo" || p.kind === "folder")) g.place = p;
+      const pl = placeOf(task);
+      if (!g.place && (pl.kind === "repo" || pl.kind === "folder")) g.place = pl;
       g.tasks.push(task);
     }
-  for (const p of A.S.onHand?.projects ?? []) if (!at.has(p.name)) at.set(p.name, out.push({ key: p.name, name: p.name, place: p.place, tasks: [] }) - 1);
+  // A folder added by hand shows before its first task; a project with no task and no add is no row.
+  for (const p of plist) {
+    if (at.has(p.key) || !p.added) continue;
+    at.set(p.key, out.push({ key: p.key, name: p.name, place: p.place, tasks: [] }) - 1);
+  }
   // D471: a project is a place work lives. One whose every task never started there (its folder
   // missing on that computer) is not one yet: its tasks stand under All, where their fix is.
   for (let i = out.length - 1; i >= 0; i--) {
     const g = out[i]!;
     if (g.tasks.length && g.tasks.every((x) => attention(x) === "failed" && !!cantOf(x))) out.splice(i, 1);
   }
-  // D455: where each project lives (one repo on two computers is one project), with two computers or more.
-  if (manyComputers())
-    for (const g of out) {
+  // D654: where it lives (one repo on many computers is one project) and how it was set.
+  for (const g of out) {
+    const p = byKey.get(g.key);
+    if (p) {
+      g.pinned = p.pinned;
+      g.order = p.order;
+      g.hidden = p.hidden;
+      g.aliases = p.aliases;
+      if (manyComputers() && p.devices?.length) g.where = p.devices;
+    }
+    if (!g.where && manyComputers()) {
       const ids: string[] = [];
       const add = (pl: Place) => {
         if (pl.kind !== "repo" && pl.kind !== "folder") return;
@@ -489,15 +517,28 @@ export function lensGroups(): LensGroup[] {
         if (!ids.includes(id)) ids.push(id);
       };
       for (const x of g.tasks) add(placeOf(x));
-      for (const p of A.S.onHand?.projects ?? []) if (p.name === g.name) add(p.place);
+      // An older home sends the folders added by hand without keys: their places still count.
+      for (const p of A.S.onHand?.projects ?? []) if ((p.key || p.name) === g.key) add(p.place);
       const home = (A.devices ?? []).find((d) => d.home)?.id;
       ids.sort((a, b) => Number(b === home || b === "local") - Number(a === home || a === "local"));
       g.where = ids.map((id) => computerName(id));
     }
-  if (other) out.push(other);
-  return out;
+  }
+  const needsHere = (g: LensGroup) => g.tasks.some((x) => attention(x) === "needs_you" || attention(x) === "failed" || stoppedWait(x));
+  // The person hid this project: its tasks still count under All and needs-you; it shows again the
+  // moment something there needs the person.
+  const shown = out.filter((g) => !g.hidden || needsHere(g));
+  // D654: core sends the order (pinned, the person's drag order, else needs-you then the most
+  // recent activity). An older home has no projectList: keep its urgency order.
+  if (plist.length) {
+    const at = new Map(plist.map((p, i) => [p.key, i]));
+    shown.sort((a, b) => (at.get(a.key) ?? Number.MAX_SAFE_INTEGER) - (at.get(b.key) ?? Number.MAX_SAFE_INTEGER));
+  }
+  if (other) shown.push(other);
+  if (computers) shown.push(computers);
+  return shown;
 }
-/** D341: the board read by where its tasks' to-dos come from: one group per to-do source with a bound task. */
+/** D341: where the board's bound tasks come from: a filter over any project, never a project row. */
 export type SourceGroup = { key: string; name: string; kind: string; tasks: Task[] };
 export function sourceGroups(): SourceGroup[] {
   const out = new Map<string, SourceGroup>();
@@ -515,19 +556,126 @@ export function sourceGroups(): SourceGroup[] {
     }
   return [...out.values()];
 }
-/** Offered from two groups (one project with errands beside it is already two kinds of work), or once a to-do source has a task. */
-export const lensOn = (groups: LensGroup[]) => groups.length >= 2 || (groups.length >= 1 && sourceGroups().length > 0);
-/** The lens kept on this device, if that project (or to-do source) is still there; else all. */
+/** Offered from two groups (one project with errands beside it is already two kinds of work). */
+export const lensOn = (groups: LensGroup[]) => groups.length >= 2;
+/** The lens kept on this device, if that project is still there; else all. */
 export function currentLens(groups: LensGroup[]): string {
   const k = readLens();
-  return k && lensOn(groups) && (groups.some((g) => g.key === k) || sourceGroups().some((g) => g.key === k)) ? k : "";
+  return k && lensOn(groups) && groups.some((g) => g.key === k) ? k : "";
 }
-/** The lanes narrowed to a lens (a project, or D341 a to-do source). */
-export const lensLanes = (lens: string): Task[][] => A.S.board().lanes.slice(0, 4).map((l) => (!lens ? l : lens.startsWith("src:") ? l.filter((x) => `src:${x.card?.source?.source ?? ""}` === lens) : l.filter((x) => lensOf(x) === lens)));
-/** Only all, and Other, hold what belongs to no task: the partner's own asks, task-less waits, calls. */
+/** The lanes narrowed to the lens and the 来自 / From filter (a source is a filter, never a lens). */
+export const lensLanes = (lens: string): Task[][] =>
+  A.S.board()
+    .lanes.slice(0, 4)
+    .map((l) => l.filter((x) => (!lens || lensOf(x) === lens) && (!L.source || `src:${x.card?.source?.source ?? ""}` === L.source)));
+/** Only all, and the two no-project lenses, hold what belongs to no task: the partner's own asks,
+ *  task-less waits, calls. */
 export const looseIn = (lens: string) => !lens || lens === OTHER;
 
-function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string; where?: string[] }) {
+/** D654: a project name is one line, cut in the middle when too long (the start and the end
+ *  stay), the whole in the tooltip and the ⋯ menu's head. Measured, never a guess at a width. */
+function MidName({ text, class: cls }: { text: string; class?: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const [shown, setShown] = useState(text);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      const width = el.clientWidth;
+      if (!width) return;
+      const cs = getComputedStyle(el);
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (!ctx) return;
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      if (ctx.measureText(text).width <= width) {
+        setShown(text);
+        return;
+      }
+      const ell = "…";
+      // A hyphenated name keeps its first and last part: nowledge-…-website.
+      const parts = text.split("-");
+      if (parts.length > 2) {
+        // nowledge-labs-website keeps its first and last part; the column has the room for it.
+        setShown(`${parts[0]}-${ell}-${parts[parts.length - 1]}`);
+        return;
+      }
+      let lo = 0;
+      let hi = Math.max(0, text.length - 1);
+      let best = 0;
+      while (lo <= hi) {
+        const n = (lo + hi) >> 1;
+        const left = Math.ceil(n / 2);
+        const right = Math.floor(n / 2);
+        const s = text.slice(0, left) + ell + (right ? text.slice(text.length - right) : "");
+        if (ctx.measureText(s).width <= width) {
+          best = n;
+          lo = n + 1;
+        } else hi = n - 1;
+      }
+      const left = Math.ceil(best / 2);
+      const right = Math.floor(best / 2);
+      setShown(best > 2 ? text.slice(0, left) + ell + (right ? text.slice(text.length - right) : "") : text.slice(0, 1) + ell);
+    };
+    fit();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : undefined;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [text]);
+  return (
+    <b ref={ref} class={cls} title={text}>
+      {shown}
+    </b>
+  );
+}
+
+/** D654: a project row's computers on one line, each its own element (D291), what fits then
+ *  +N; the whole list is in the row's accessible label. Never a wrapped or cut line. */
+function WhereLine({ where }: { where: string[] }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [state, setState] = useState<{ shown: string[]; rest: number }>({ shown: where, rest: 0 });
+  const key = where.join("|");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      const width = el.clientWidth;
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (!width || !ctx) {
+        setState({ shown: where, rest: 0 });
+        return;
+      }
+      const cs = getComputedStyle(el);
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      let used = 0;
+      let n = 0;
+      for (const w of where) {
+        const add = ctx.measureText(w).width + (n ? 8 : 0);
+        if (n > 0 && used + add > width) break;
+        used += add;
+        n++;
+      }
+      setState({ shown: where.slice(0, n), rest: where.length - n });
+    };
+    fit();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : undefined;
+    ro?.observe(el);
+    return () => ro?.disconnect();
+  }, [key]);
+  if (!where.length) return null;
+  return (
+    <span ref={ref} class="where" aria-hidden="true">
+      {state.shown.map((w) => (
+        <i key={w}>{w}</i>
+      ))}
+      {state.rest > 0 && <i class="more">+{state.rest}</i>}
+    </span>
+  );
+}
+
+function LensEntry({ k, name, tasks, on, tab, brand, where, hidden, pinned, renamed, aliases }: { k: string; name: string; tasks: Task[]; on: boolean; tab?: boolean; brand?: string; where?: string[]; hidden?: boolean; pinned?: boolean; renamed?: boolean; aliases?: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const statuses = tasks.map((x) => statusOf(x.id, attention(x), x.card?.updatedAt));
   // D467 round 3: the face only where something there needs you (a question, a stopped wait, a
   // task that didn't work out); otherwise the name and the count (D69: art must mean something).
@@ -535,25 +683,124 @@ function LensEntry({ k, name, tasks, on, tab, brand, where }: { k: string; name:
   // in a column say nothing either): the count, in the needs-you ink where something there needs you.
   const needsHere = tasks.some((x) => attention(x) === "needs_you" || attention(x) === "failed" || stoppedWait(x));
   const counts = foldCounts(statuses);
-  return (
-    <button class={`lens-row${on ? " on" : ""}${needsHere ? " needs" : ""}${k === OTHER ? " other" : ""}${k && A.arrived && [name, k].some((x) => x.toLowerCase() === A.arrived!.name.toLowerCase()) ? " arrived" : ""}`} aria-pressed={on} aria-label={spoken(A.L, name, ...(where?.length ? [t("onhand.where", where.join(t("onhand.where.and")))] : []), counts)} title={counts || undefined} onClick={() => setLens(k)}>
+  const project = k !== "" && k !== OTHER && k !== COMPUTERS;
+  const change = (c: ProjectChange) => A.send({ t: "project_change", change: c });
+  const saveName = () => {
+    if (renaming !== null && k) change({ act: "rename", key: k, name: renaming.trim() });
+    setRenaming(null);
+  };
+  const row = (
+    <button
+      class={`lens-row${on ? " on" : ""}${needsHere ? " needs" : ""}${k === OTHER || k === COMPUTERS ? " other" : ""}${project ? " has-menu" : ""}${k && A.arrived && [name, k].some((x) => x.toLowerCase() === A.arrived!.name.toLowerCase()) ? " arrived" : ""}`}
+      aria-pressed={on}
+      aria-label={spoken(A.L, name, ...(where?.length ? [t("onhand.where", where.join(t("onhand.where.and")))] : []), counts)}
+      title={counts || undefined}
+      draggable={!tab && project}
+      onDragStart={(e: DragEvent) => {
+        if (!project) return;
+        dragging = k;
+        e.dataTransfer?.setData("text/plain", k);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(e: DragEvent) => {
+        if (!project || !dragging || dragging === k) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e: DragEvent) => {
+        if (!project || !dragging || dragging === k) return;
+        e.preventDefault();
+        reorderProjects(dragging, k);
+        dragging = "";
+      }}
+      onClick={() => setLens(k)}
+    >
       <span class="nm">
         {/* The mark sits on the name's line, never above it (.nm stacks the name over its stat). */}
         <span class="nm-line">
           {brand && <BrandMark name={brand} size={14} />}
-          <b>{name}</b>
+          <MidName text={name} class="proj-name" />
         </span>
-        {/* D455: where it lives, each computer its own word (D291). */}
-        {!tab && where && where.length > 0 && (
-          <span class="where" aria-hidden="true">
-            {where.map((w) => (
-              <i key={w}>{w}</i>
-            ))}
-          </span>
-        )}
+        {/* D455: where it lives, each computer its own word (D291), in up to two lines. */}
+        {!tab && where && where.length > 0 && <WhereLine where={where} />}
       </span>
       {!tab && <span class={`n${needsHere ? " needs" : ""}`}>{tasks.length || ""}</span>}
     </button>
+  );
+  if (tab || !project) return row;
+  return (
+    <div class="lens-item">
+      {renaming !== null ? (
+        <div class="lens-rename">
+          <Field value={renaming} label={t("onhand.project.rename")} placeholder={t("onhand.project.rename.ph")} autoFocus onInput={setRenaming} onKeyDown={(e) => (e.key === "Enter" ? saveName() : e.key === "Escape" ? setRenaming(null) : undefined)} />
+        </div>
+      ) : (
+        row
+      )}
+      <span class="lens-more">
+        <MoreButton label={t("onhand.project.menu", name)} open={open} onClick={() => (setOpen(!open), setMerging(false))} />
+      </span>
+      {open && (
+        <Menu class="lens-menu" label={t("onhand.project.menu", name)} onClose={() => setOpen(false)}>
+          {merging ? (
+            <>
+              <MenuItem class="dmenu-head" onClick={() => {}}>{t("onhand.project.merge.title", name)}</MenuItem>
+              {lensGroups()
+                .filter((g) => g.key !== k && g.key !== OTHER && g.key !== COMPUTERS)
+                .map((g) => (
+                  <MenuItem key={g.key} onClick={() => (change({ act: "merge", key: k, into: g.key }), setMerging(false), setOpen(false))}>
+                    {g.name}
+                  </MenuItem>
+                ))}
+              <MenuSep />
+              <MenuItem onClick={() => setMerging(false)}>{t("onhand.project.back")}</MenuItem>
+            </>
+          ) : (
+            <>
+              <MenuHead>{name}</MenuHead>
+              <MenuItem onClick={() => (setOpen(false), setRenaming(name))}>{t("onhand.project.rename")}</MenuItem>
+              {renamed && <MenuItem onClick={() => (change({ act: "rename", key: k, name: "" }), setOpen(false))}>{t("onhand.project.rename.undo")}</MenuItem>}
+              <MenuItem onClick={() => setMerging(true)}>{t("onhand.project.merge")}</MenuItem>
+              {aliases && aliases.length > 0 && <MenuItem onClick={() => (change({ act: "unmerge", key: k }), setOpen(false))}>{t("onhand.project.unmerge")}</MenuItem>}
+              <MenuSep />
+              <MenuItem onClick={() => (change({ act: "pin", key: k, pinned: !pinned }), setOpen(false))}>{pinned ? t("onhand.project.unpin") : t("onhand.project.pin")}</MenuItem>
+              <MenuItem onClick={() => (change({ act: "hide", key: k, hidden: !hidden }), setOpen(false))}>{hidden ? t("onhand.project.show") : t("onhand.project.hide")}</MenuItem>
+            </>
+          )}
+        </Menu>
+      )}
+    </div>
+  );
+}
+
+/** A drag on a project row keeps the person's order (on the home, so every device sees it). */
+let dragging = "";
+function reorderProjects(from: string, to: string) {
+  const keys = lensGroups()
+    .filter((g) => g.key !== OTHER && g.key !== COMPUTERS)
+    .map((g) => g.key);
+  const a = keys.indexOf(from);
+  const b = keys.indexOf(to);
+  if (a < 0 || b < 0 || a === b) return;
+  keys.splice(a, 1);
+  keys.splice(b, 0, from);
+  A.send({ t: "project_change", change: { act: "order", keys } });
+}
+
+/** D341: 来自 / From is a filter over any project, never a row in the project column. */
+export function SourceChips() {
+  const groups = sourceGroups();
+  if (!groups.length) return null;
+  return (
+    <div class="src-chips" role="group" aria-label={t("todos.lens")}>
+      <small class="src-h">{t("todos.lens")}</small>
+      {groups.map((g) => (
+        <button key={g.key} class={`src-chip${L.source === g.key ? " on" : ""}`} aria-pressed={L.source === g.key} onClick={() => ((L.source = L.source === g.key ? "" : g.key), A.changed())}>
+          <BrandMark name={g.kind} size={13} />
+          <span>{g.name}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -567,18 +814,8 @@ export function LensColumn() {
       <LensEntry k="" name={t("onhand.lens.all")} tasks={lensLanes("").flat()} on={!lens} />
       <span class="gap" />
       {groups.map((g) => (
-        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} />
+        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} hidden={g.hidden} pinned={g.pinned} renamed={pinnedOf(g.key)?.renamed} aliases={g.aliases} />
       ))}
-      {/* D341: where the to-dos came from, after the projects. */}
-      {sourceGroups().length > 0 && (
-        <>
-          <span class="gap" />
-          <small class="lens-h">{t("todos.lens")}</small>
-          {sourceGroups().map((g) => (
-            <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} brand={g.kind} />
-          ))}
-        </>
-      )}
       {/* D455: a folder on any computer of the home, looked through by that computer. */}
       {A.ntBrowsable().length > 0 && (
         <button class="lens-add" type="button" title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
@@ -589,20 +826,71 @@ export function LensColumn() {
   );
 }
 
-/** The lens where there is no room for the column: one row of names, the chosen one raised. */
+/** The lens where there is no room for the column: one row of names that never wraps. What does
+ *  not fit goes into the one 更多 / More menu (D654, research/245 §3.2). */
 export function LensTabs({ inBoard }: { inBoard?: boolean }) {
+  const [more, setMore] = useState(false);
+  const [avail, setAvail] = useState(0);
+  const nav = useRef<HTMLElement>(null);
   const groups = lensGroups();
+  useLayoutEffect(() => {
+    const el = nav.current;
+    if (!el) return;
+    const measure = () => setAvail(el.clientWidth);
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : undefined;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [groups.length, inBoard]);
   if (!lensOn(groups)) return null;
   const lens = currentLens(groups);
+  const all = lensLanes("").flat();
+  // One row, never a wrap: a tab's room from its longest real string, the row's own width. What
+  // does not fit goes in 更多 / More.
+  const width = typeof window === "undefined" ? 390 : window.innerWidth;
+  const budget = Math.max(190, (avail || width) - 8);
+  const roomFor = (name: string) => 30 + [...name].reduce((n, ch) => n + (/[\u3000-\u9fff]/.test(ch) ? 15 : 8.6), 0);
+  let used = roomFor(t("onhand.lens.all"));
+  const shown: LensGroup[] = [];
+  const folded: LensGroup[] = [];
+  for (const g of groups) {
+    const w = roomFor(g.name) + (g.tasks.length ? 12 : 0);
+    if (shown.length === 0 || used + w <= budget) {
+      used += w;
+      shown.push(g);
+    } else folded.push(g);
+  }
+  const moreW = folded.length ? 54 : 0;
+  while (folded.length && used + moreW > budget + 30) {
+    const last = shown.pop();
+    if (!last) break;
+    used -= roomFor(last.name) + (last.tasks.length ? 12 : 0);
+    folded.unshift(last);
+  }
   return (
-    <nav class={`lens-tabs${inBoard ? " in-board" : ""}`} aria-label={t("onhand.lens")}>
-      <LensEntry k="" name={t("onhand.lens.all")} tasks={lensLanes("").flat()} on={!lens} tab />
-      {groups.map((g) => (
+    <nav ref={nav} class={`lens-tabs${inBoard ? " in-board" : ""}`} aria-label={t("onhand.lens")}>
+      <LensEntry k="" name={t("onhand.lens.all")} tasks={all} on={!lens} tab />
+      {shown.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab />
       ))}
-      {sourceGroups().map((g) => (
-        <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} tab brand={g.kind} />
-      ))}
+      {folded.length > 0 && (
+        <span class="lens-more-tab">
+          <Btn kind="text" size="sm" class="lens-more-btn" label={t("onhand.more")} onClick={() => setMore(!more)} />
+          {more && (
+            <Menu class="lens-menu" label={t("onhand.lens")} onClose={() => setMore(false)}>
+              {folded.map((g) => (
+                <MenuItem key={g.key} onClick={() => (setLens(g.key), setMore(false))}>
+                  {g.name}
+                </MenuItem>
+              ))}
+            </Menu>
+          )}
+        </span>
+      )}
       {/* D455: a folder on any computer of the home, at the end of the row. */}
       {A.ntBrowsable().length > 0 && (
         <button class="lens-add tab" type="button" aria-label={t("onhand.addfolder")} title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
@@ -611,6 +899,11 @@ export function LensTabs({ inBoard }: { inBoard?: boolean }) {
       )}
     </nav>
   );
+}
+
+/** The core's project row for a key (its renamed flag), from the home's list. */
+function pinnedOf(key: string) {
+  return A.S.onHand?.projectList?.find((p) => p.key === key);
 }
 
 /** The strip's four counts in a lens: needs you, working, waiting, done today (D310). */
@@ -709,7 +1002,7 @@ export function moodOf(n: number[]): "needsyou" | "working" | "waiting" | "done"
 function BoardTop({ lens, groups, findable, room }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room }) {
   const n = stateCounts(lens);
   L.filter = 0; // D467: no strip, so no filter; Find and the lens narrow
-  const g = groups.find((x) => x.key === lens && x.key !== OTHER);
+  const g = groups.find((x) => x.key === lens && x.key !== OTHER && x.key !== COMPUTERS);
   const mood = moodOf(n);
   // D471: the partner's one sentence over the board, and nothing more: every task is said once, by
   // its own row below (the brief's lines named tasks the rows named again, and disagreed with them).
@@ -725,6 +1018,7 @@ function BoardTop({ lens, groups, findable, room }: { lens: string; groups: Lens
           </p>
         </div>
       </div>
+      <SourceChips />
       {(g || findable) && (
         <div class="strip-row">
           {/* D457: a project with nothing yet (one just added) says its first step in words. */}
@@ -771,7 +1065,7 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null };
+export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "" };
 
 /** D315: where a card says its task is, each its own element (D291): its project when the board
  *  shows them all, never 其他 / Other, which says nothing; its computer only when it isn't the one
@@ -783,7 +1077,7 @@ export function whereMeta(task: Task): string[] {
   // its PR merged) says whose it is.
   // D511: so does a Keep's task anywhere but under its Keep (a question in 等你, Find, the rail).
   const helper = NESTED.has(task.id) ? "" : (task.card?.keep?.name ?? task.card?.helper?.name ?? "");
-  return [L.showProj && k !== OTHER ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
+  return [L.showProj && k !== OTHER && k !== COMPUTERS ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
 }
 
 /** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
@@ -912,11 +1206,12 @@ function useKeys(room: Room) {
       if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail));
       if ((e.key === "Enter" || e.key === "o") && L.focus && !rail) return void (e.preventDefault(), A.go({ name: "task", id: L.focus, full: A.route.name === "onhand" && !!A.route.full }));
       if (e.key === "x" && L.focus && room === "full") return void (e.preventDefault(), toggle(L.focus));
-      if (e.key === "Escape" && (L.sel.size || L.find || L.filter) && !rail) {
+      if (e.key === "Escape" && (L.sel.size || L.find || L.filter || L.source) && !rail) {
         e.preventDefault();
         if (L.sel.size) L.sel.clear();
         else if (L.find) L.find = "";
-        else L.filter = 0; // D261: then the strip's filter
+        else if (L.filter) L.filter = 0; // D261: then the strip's filter
+        else L.source = ""; // D654: then 来自 / From
         L.dropAsk = false;
         A.changed();
       }
@@ -1105,7 +1400,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   const at = task.card?.updatedAt;
   const stacked = room === "phone" || room === "side";
   // D471 round 2: stacked, the row says its project too (a quiet second line, never ahead of the task).
-  const meta = stacked && lensOf(task) !== OTHER && !whereMeta(task).includes(lensOf(task)) ? [lensOf(task), ...whereMeta(task)] : whereMeta(task);
+  const projKey = lensOf(task);
+  const meta = stacked && projKey !== OTHER && projKey !== COMPUTERS && !whereMeta(task).includes(lensName(projKey)) ? [lensName(projKey), ...whereMeta(task)] : whereMeta(task);
   const open = () => {
     L.focus = task.id;
     A.go({ name: "task", id: task.id, full: room === "full" });

@@ -24,6 +24,33 @@ import (
 // never cut. Mark a destructive item with Danger(), give one a drawn glyph
 // with Icon(menuGlyph(...)).
 
+// menuText is the shared text button that opens the one clay menu under it (D421): the tab row's
+// 更多 / More and any other "one more menu" a view needs, drawn by the set, never by the view.
+func (a *App) menuText(c *ui.Context, key, label string, build func(m *ui.Menu)) ui.Element {
+	t := a.T
+	b := ui.Row(c.Key("mt:"+key)).Gap(t.S1+2).Height(34).Padding(0, t.S3).Radius(t.RadiusMD).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().Shrink(0)
+	a.rowHover(c, b, groundPage(), false)
+	b.Children(func() {
+		uiText(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		a.glyph(c, 12, drawChevron(t.InkMuted, true))
+	})
+	a.menuButton(c, b, build)
+	return b
+}
+
+// menuMark is the one ⋯ that opens the clay menu (D421) for a row or a tile that has more than the
+// menu's own opener (a project's rename/merge/hide/pin). It is drawn by the set, never by a view.
+func (a *App) menuMark(c *ui.Context, key, label string, size float32, build func(m *ui.Menu)) ui.Element {
+	t := a.T
+	b := ui.Box(c.Key("mm:"+key)).Size(size, size).Radius(a.buttonRadius(size)).Label(label).Tooltip(label).
+		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnText, size, t.Surface)
+	b.Draw(drawMore(fg))
+	a.menuButton(c, b, build)
+	return b
+}
+
 // menuButton makes b, a ⋯ or a pop-up button the caller drew, open the clay
 // menu build fills, below it and lined up with its end (the ⋯ sits at a
 // card's or a header's end), or with its start when start is set.

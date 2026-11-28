@@ -111,6 +111,8 @@ export interface YoursInput {
   brief: string;
   place?: Place;
   project?: string;
+  projectKey?: string;
+  projectName?: string;
   harness?: string;
   model?: string;
   effort?: string;
@@ -141,6 +143,8 @@ export interface Routines {
   ever(): RoutineView[];
   /** The user's current zone, from the latest client hello (personal routines follow it). */
   setUserZone(tz: string): void;
+  /** D654 (research/245 §3.2): how a routine's folder becomes a project key (set by core). */
+  setProjectOf(f: ((place: Place) => Promise<{ key: string; name: string } | undefined>) | undefined): void;
   /** D627: a move freezes the clocks; release re-arms the active ones and catches up. */
   hold(): void;
   release(): void;
@@ -246,12 +250,15 @@ export function createRoutines(opts: {
   defaultZone?: string;
   /** D533: its Keep's rules as they are now, once the person changed them: told to every run. */
   rules?: (routineId: string) => string | undefined;
+  /** D654 (research/245 §3.2): a routine's project identity, from its folder, read once in core. */
+  projectOf?: (place: Place) => Promise<{ key: string; name: string } | undefined>;
 }): Routines {
   const { log, tasks, waiters } = opts;
   const clock = opts.clock ?? realClock;
   const states = new Map<string, State>();
   const byTask = new Map<string, string>(); // run task -> routine
   let userZone = opts.defaultZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let projectOf = opts.projectOf;
   let lastRead = 0;
   let stopped = false;
   let held = false;
@@ -382,6 +389,7 @@ export function createRoutines(opts: {
           brief: yourBrief,
           ...(r.place ? { place: r.place } : {}),
           project: r.project ?? "",
+          ...(r.projectKey ? { projectKey: r.projectKey, ...(r.projectName ? { projectName: r.projectName } : {}) } : {}),
           ...(r.harness ? { harness: r.harness, ...(r.model ? { model: r.model } : {}), ...(r.effort ? { effort: r.effort } : {}) } : {}),
           language: lang,
           origin: "you",
@@ -416,7 +424,7 @@ export function createRoutines(opts: {
     ].join("\n");
     try {
       // D533: the agent the person picked on its Keep's page, when they did.
-      const card = await runner.openTask({ persona: r.persona ?? opts.persona, title: runTitle, brief, ...(r.place ? { place: r.place } : {}), project: "", ...(r.harness ? { harness: r.harness } : {}) });
+      const card = await runner.openTask({ persona: r.persona ?? opts.persona, title: runTitle, brief, ...(r.place ? { place: r.place } : {}), project: r.project ?? "", ...(r.projectKey ? { projectKey: r.projectKey, ...(r.projectName ? { projectName: r.projectName } : {}) } : {}), ...(r.harness ? { harness: r.harness } : {}) });
       started(card.taskId);
     } catch (err) {
       afterFailure(s, { runId, scheduledFor: at, attempt, acted: false, coalesced, tokens: 0, ...(extra.observed ? { observed: extra.observed } : {}), ...(extra.detail ? { detail: extra.detail } : {}) }, (err as Error).message);
@@ -956,6 +964,7 @@ export function createRoutines(opts: {
       else if (t.watch && (t.check || t.event || t.judge)) throw new Error("a watch stands alone: no check, event or judge with it");
       const lang = input.language ?? langOfText(name, input.brief);
       const now = clock.now();
+      const pid = input.place && projectOf ? await projectOf(input.place).catch(() => undefined) : undefined;
       const r: RoutineBody = {
         routineId: newId("rt"),
         ...personaNow(),
@@ -964,6 +973,7 @@ export function createRoutines(opts: {
         triggerWords: input.triggerWords?.trim() || describeTrigger(t, lang),
         brief: input.brief.trim(),
         ...(input.place ? { place: input.place } : {}),
+        ...(pid ? { projectKey: pid.key, projectName: pid.name } : {}),
         reports: input.reports ?? "on_change",
         effect: input.effect ?? "read_only",
         budget: { monthTokens: Math.max(10_000, Math.round(input.monthTokens ?? DEFAULT_MONTH_TOKENS)) },
@@ -994,6 +1004,7 @@ export function createRoutines(opts: {
       else if (t.watch && (t.check || t.event || t.judge)) throw new Error("a watch stands alone: no check, event or judge with it");
       const lang = input.language ?? langOfText(name, input.brief);
       const now = clock.now();
+      const pid = input.place && projectOf ? await projectOf(input.place).catch(() => undefined) : undefined;
       const r: RoutineBody = {
         routineId: newId("rt"),
         ...personaNow(),
@@ -1002,6 +1013,7 @@ export function createRoutines(opts: {
         triggerWords: input.triggerWords?.trim() || describeTrigger(t, lang),
         brief: input.brief.trim(),
         ...(input.place ? { place: input.place } : {}),
+        ...(pid ? { projectKey: pid.key, projectName: pid.name } : {}),
         reports: input.reports ?? "every",
         effect: input.effect ?? "read_only",
         budget: { monthTokens: Math.max(10_000, Math.round(input.monthTokens ?? DEFAULT_MONTH_TOKENS)) },
@@ -1058,6 +1070,7 @@ export function createRoutines(opts: {
         reviewAt: iso(reviewAt),
         by: "you",
         ...(input.project ? { project: input.project } : {}),
+        ...(input.projectKey ? { projectKey: input.projectKey, ...(input.projectName ? { projectName: input.projectName } : {}) } : {}),
         ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}) } : {}),
       };
       const s: State = { r, fails: 0, unread: 0, monthTokens: 0, month: monthOf(now), lastScheduled: now };
@@ -1143,6 +1156,9 @@ export function createRoutines(opts: {
       if (tz === userZone) return;
       userZone = tz;
       for (const s of states.values()) if (s.r.trigger.kind === "time" && s.r.trigger.zone === "personal") arm(s);
+    },
+    setProjectOf(f) {
+      projectOf = f;
     },
     hold() {
       held = true;

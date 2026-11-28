@@ -1,0 +1,47 @@
+{
+  "format": "ducter-theme/1",
+  "name": { "en": "Midnight", "zh": "午夜" },
+  "tokens": {
+    "light": {
+      "bg": "#EEF2F7",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#F7FAFD",
+      "ink": "#1A2333",
+      "inkMuted": "#5A6677",
+      "accent": "#3F74C2",
+      "onAccent": "#FFFFFF",
+      "line": "#D8E0EA",
+      "userBubble": "#3F74C2",
+      "onUserBubble": "#FFFFFF",
+      "partnerBubble": "#FFFFFF",
+      "onPartnerBubble": "#1A2333",
+      "decide": { "dot": "#4A7FD4", "surface": "#DCE6F5", "ink": "#1F3A66" },
+      "progress": { "dot": "#3AA6A0", "surface": "#D8F0EE", "ink": "#14534F" },
+      "wait": { "dot": "#E0A93A", "surface": "#F7EDD8", "ink": "#6B4E00" },
+      "ok": { "dot": "#4C9A6E", "surface": "#DCF2E4", "ink": "#1F5E3A" },
+      "fail": { "dot": "#D45A6E", "surface": "#F8DEE4", "ink": "#7A2436" }
+    },
+    "dark": {
+      "bg": "#0E131B",
+      "surface": "#171E29",
+      "surfaceRaised": "#1D2532",
+      "ink": "#E8EDF5",
+      "inkMuted": "#9AA7BA",
+      "accent": "#7FB3FF",
+      "onAccent": "#0E131B",
+      "line": "#2A3444",
+      "userBubble": "#7FB3FF",
+      "onUserBubble": "#0E131B",
+      "partnerBubble": "#1D2532",
+      "onPartnerBubble": "#E8EDF5",
+      "decide": { "dot": "#7FB3FF", "surface": "#1E2C42", "ink": "#C6DBFF" },
+      "progress": { "dot": "#5CC8C1", "surface": "#12302D", "ink": "#B8EDE9" },
+      "wait": { "dot": "#F0C34C", "surface": "#33290F", "ink": "#F5DF9A" },
+      "ok": { "dot": "#63C98A", "surface": "#14311F", "ink": "#B4ECC8" },
+      "fail": { "dot": "#E8788C", "surface": "#361824", "ink": "#F5B4C1" }
+    }
+  },
+  "motion": { "personality": "calm", "press": 70, "enter": 220 },
+  "depth": "glow",
+  "density": "comfortable"
+}

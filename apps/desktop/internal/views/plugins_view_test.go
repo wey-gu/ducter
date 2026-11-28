@@ -62,7 +62,7 @@ func TestBackToPebbleRestoresPebble(t *testing.T) {
 // rendered tests below hold what a person sees.
 func midnightFrame(t *testing.T, active string) *protocol.ThemesFrame {
 	t.Helper()
-	raw, err := os.ReadFile("../../../../.plugins-repo/repo/plugins/midnight/theme.json")
+	raw, err := os.ReadFile("../../../../packages/core/test/fixtures/themes/midnight.json") // a copy of the official Midnight theme, so CI runs this
 	if err != nil {
 		t.Skipf("the Midnight example theme is not in this checkout: %v", err)
 	}

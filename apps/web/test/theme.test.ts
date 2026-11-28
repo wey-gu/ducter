@@ -35,7 +35,7 @@ test("Back to Pebble removes the injected style", () => {
 
 // The real Midnight theme (the plugin repository's theme.json): every surface follows it, the clay
 // included, and both papers set the same keys so no light value leaks into dark.
-const midnight = JSON.parse(readFileSync(new URL("../../../.plugins-repo/repo/plugins/midnight/theme.json", import.meta.url), "utf8"));
+const midnight = JSON.parse(readFileSync(new URL("../../../packages/core/test/fixtures/themes/midnight.json", import.meta.url) /* a copy of the official Midnight theme (github.com/wey-gu/ducter-plugins), so CI reads it */, "utf8"));
 
 test("both papers set the same variables (no light value leaks into dark)", () => {
   expect(Object.keys(modeToCss(midnight.tokens.dark, true)).sort()).toEqual(Object.keys(modeToCss(midnight.tokens.light)).sort());

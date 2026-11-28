@@ -110,7 +110,8 @@ describe("talking to a running Ducter", () => {
     expect(c.lines[0]).toBe("开始了：「修一下 tinycart 里失败的测试」· tinycart (main) · Codex（你选的）");
     expect(c.lines[1]).toBe(`看它做：ducter tail t1 --port ${core.port}   在应用里打开：ducter open t1 --port ${core.port}`);
     // Nothing in the conversation but the quiet note for the partner.
-    expect(core.log.read({ stream: "channel" }).map((e) => [e.kind, e.origin])).toEqual([["job_status", "user"]]);
+    // (D653's subject card has no message to hang from, so no client draws it.)
+    expect(core.log.read({ stream: "channel" }).filter((e) => e.kind !== "subject_card").map((e) => [e.kind, e.origin])).toEqual([["job_status", "user"]]);
   });
 
   test("task: outside a repo says how to name one; --repo none is no particular place", async () => {

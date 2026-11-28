@@ -24,7 +24,7 @@ describe("only shared controls (D161)", () => {
   test("controls.tsx is the registry: each control is exported once", () => {
     const reg = src("controls.tsx");
     const names = [...reg.matchAll(/^export function (\w+)/gm)].map((m) => m[1]);
-    expect(names).toEqual(["Btn", "NavBtn", "PlaceSeg", "PlacesMenu", "LinkBtn", "TextLink", "Chev", "NeedsDoor", "CountDoor", "CountPebble", "AddRow", "Toggle", "How", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "Fold", "StepNumber", "StepRow", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow", "Facts", "KindMark", "CalLeaf", "OpenRow", "Switch", "TextBox", "Field", "FindField", "CrumbStep", "OptionRow", "SectionHead", "Tag", "TimeCol", "EditRow", "NumberField", "IconBtn", "TrayRow", "Notice", "WorkHead", "CodeChip", "FileChip", "KeyHint", "FactPill", "TaskLink", "CodeToCopy", "AskText", "TableRow", "SelectionBar", "KeyCaps"]);
+    expect(names).toEqual(["Btn", "NavBtn", "PlaceSeg", "PlacesMenu", "LinkBtn", "TextLink", "Chev", "NeedsDoor", "CountDoor", "CountPebble", "AddRow", "Toggle", "How", "DangerButton", "MoreButton", "RenameTitle", "CoinButton", "SocketButton", "Chip", "Fold", "StepNumber", "StepRow", "SetupStep", "ListRow", "BackRow", "Seg", "AppTile", "Pill", "Choice", "MenuRow", "Facts", "KindMark", "CalLeaf", "OpenRow", "Switch", "TextBox", "Field", "FindField", "CrumbStep", "OptionRow", "SectionHead", "Tag", "TimeCol", "EditRow", "NumberField", "IconBtn", "TrayRow", "Notice", "WorkHead", "CodeChip", "FileChip", "KeyHint", "FactPill", "TaskLink", "CodeToCopy", "AskText", "TableRow", "SelectionBar", "KeyCaps"]);
     // design/ui.md lists the same set.
     const ui = readFileSync(new URL("../../../design/ui.md", import.meta.url), "utf8");
     for (const n of names) expect(ui).toContain(`\`${n}\``);
@@ -48,7 +48,7 @@ const DEFINE: Record<string, string> = {
 };
 const OLDER: Record<string, number> = {
   "apps-shelf.tsx": 1, "apps.tsx": 7, "fileview.tsx": 12, "first-words.tsx": 1, "handover.tsx": 5, "live.tsx": 5, "main.tsx": 1, "media.tsx": 5,
-  "memory.tsx": 2, "newtask.tsx": 1, "onhand.tsx": 5, "past-preview.tsx": 1, "phone-use.tsx": 4, "phone.tsx": 1, "pile.tsx": 1, "pins.tsx": 1,
+  "newtask.tsx": 1, "onhand.tsx": 5, "past-preview.tsx": 1, "phone-use.tsx": 4, "phone.tsx": 1, "pile.tsx": 1, "pins.tsx": 1,
   "reply.tsx": 3, "rich.tsx": 2, "sim.tsx": 1, "talk.tsx": 6, "task-sheet.tsx": 1, "transcript.tsx": 1, "views.tsx": 12, "voice.tsx": 4,
   "work.tsx": 6, "workbench.tsx": 1, "worker-mem.tsx": 1,
 };

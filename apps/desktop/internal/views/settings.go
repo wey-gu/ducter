@@ -206,6 +206,10 @@ func (a *App) openTab(tab string) {
 	}
 	a.Route, a.settings.tab = RouteSettings, tab
 	a.send(protocol.SettingsReq{T: "settings"})
+	// D664: opening Memory or Agent messaging looks at Nowledge Mem's setup again (read-only).
+	if tab == TabMemory || tab == TabPeers {
+		a.lookAtMemSetup(false)
+	}
 	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)
 	a.send(protocol.ConnectionsReq{T: "connections"})
 	// Where it runs; on Updates and about also so the home reads the

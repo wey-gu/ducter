@@ -677,6 +677,9 @@ type Store struct {
 	Mem      *protocol.MemView
 	// Bridge is the persona's own connection row (D205), as last sent.
 	Bridge *protocol.BridgeView
+	// SettingsN counts the settings frames applied (D664: the home's answer to a look again at
+	// Nowledge Mem's setup ends its spinner, even when nothing changed).
+	SettingsN int
 	// OwnAgents (D332): the AI agents the person runs themselves on the home.
 	OwnAgents []string
 	// Helpers (D494): the home's helpers, from the settings frame.
@@ -969,6 +972,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.BrainNow = f.BrainNow
 		s.BrainOptions = f.BrainOptions
 		s.Bridge = f.Bridge
+		s.SettingsN++
 		s.OwnAgents = f.OwnAgents
 		s.Helpers = f.Helpers
 		if f.Forgot != nil {

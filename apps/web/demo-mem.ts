@@ -2,16 +2,17 @@
 // seen in each state without touching the machine's real nmem or Mem. DEMO_MEM picks the state:
 // cloud (default: signed in to Nowledge Mem Cloud, the persona connected with your AI agents),
 // local (the Mem app on this computer), ready (signed in, not yet connected), signin (nmem here,
-// not signed in), install (no nmem here), none (memory on, no Mem answer at all).
+// not signed in), install (no nmem here), none (memory on, no Mem answer at all), old (D664: an nmem
+// too old to connect, 0.10.116: the setup's first step fails with its version).
 // D321: the pretend Mem has Mem's own kinds, answers search, and forgets and fixes in place.
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type DemoMem = "cloud" | "local" | "ready" | "signin" | "install" | "none";
+export type DemoMem = "cloud" | "local" | "ready" | "signin" | "install" | "none" | "old";
 
 export const demoMem = (): DemoMem => {
   const v = process.env.DEMO_MEM ?? "cloud";
-  return (["cloud", "local", "ready", "signin", "install", "none"] as const).includes(v as DemoMem) ? (v as DemoMem) : "cloud";
+  return (["cloud", "local", "ready", "signin", "install", "none", "old"] as const).includes(v as DemoMem) ? (v as DemoMem) : "cloud";
 };
 
 const SPACE = { id: "personal-4e742092-837d-4438-a2b3-55ada58d8e65", label: "Only me" };
@@ -75,7 +76,8 @@ export function fakeNmem(state: DemoMem, zh: boolean) {
   return async (args: string[]) => {
     const a = args.join(" ");
     if (state === "install" || state === "none") return undefined; // no nmem here
-    if (a === "--version") return { code: 0, out: "nmem 0.10.119", err: "" };
+    if (a === "--version") return { code: 0, out: state === "old" ? "nmem 0.10.116" : "nmem 0.10.119", err: "" };
+    if (state === "old") return { code: 1, out: "", err: "No such command" };
     if (a === "status") {
       if (state === "signin") return { code: 1, out: JSON.stringify({ status: "unauthorized" }), err: "" };
       return ok({ status: "ok", cli_version: "0.10.119", mode: state === "local" ? "local" : "remote", backend: state === "local" ? "local" : "cloud", update: { current: "0.10.119", latest: "0.10.119", update_available: false } });

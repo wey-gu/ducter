@@ -1119,9 +1119,9 @@ filled with `demo-settings-real.ts` (`DEMO_PARTNERS=1`), plus `demo-first.ts DEM
 - **Held**: Devices (64 rows, 40 clay, hairlines, versions, the night switch), Agent messaging (the
   picture names Ducter among an agent's words, D501's exception). The 640 form sheet stays at 1180;
   a phone or a split pane under 700 is now full height (D644 amendment, below).
-- **Proposed, not built**: one shared Mem setup group for Memory and Agent messaging; per-computer
-  version rows on the web; a live-step Mem setup checklist; a live D296 flow walk of every said line
-  and ask. (The Settings find/jump proposed here is built: D663, "Find a setting" below.)
+- **Proposed, not built**: per-computer version rows on the web; a live D296 flow walk of every
+  said line and ask. (Built since: the Settings find/jump, D663, "Find a setting" below; one shared
+  Mem setup group with live steps, D664 below.)
 - **Checked**: `bun run build:web`, both `tsc` gates, `bun test apps/web/test` 1286 / 0, the new
   `settings-polish-geometry.test.ts` (3 / 0: no control under 44 on touch or 36 on a desktop, no
   overflow at 320–1180), the settings suites 178 / 0, and the Mac's Mem-step test.
@@ -1226,3 +1226,26 @@ it, instead of opening pane after pane.
 - Shared pieces: `findBox` / `FindField`, `findHitRow` / `OptionRow` (`set-row sf-row`).
 - Shots: `.shots/setfind/web/` (390 and 1180), `.shots/setfind/mac/` (1150), zh and en, light and
   dark: empty, typing, a pane's name, nothing found, landed, settled.
+
+## One Nowledge Mem setup, its steps live (D664)
+
+D644 proposed it; D664 built it on both clients. Memory and Agent messaging draw **one** Nowledge Mem
+group (web `MemSetup` in `mem-setup.tsx`, Mac `memSetup` in `views/memsetup.go`), never two copies.
+
+- **Who:** F meets Nowledge Mem cold on Memory and needs to know what to do next and nothing else; C
+  whose sign-in lapsed or whose app is closed; H on Agent messaging asking why Claude Code can't reach
+  the partner.
+- **The steps, each its live state in words** (`mem-setup-view.ts`, the Mac's `memSetupOf`):
+  **Nowledge Mem 装好了 / Nowledge Mem is installed** (**在 {home} 上，版本 {v}**), **已登录 / Signed in**
+  (where it is kept), **记在只有你能看到的地方 / Kept where only you can see it** («Only me» in Nowledge
+  Mem; on Memory only once Mem names it), on Agent messaging **你的 agent 找得到我 / Your agents can reach
+  me**, and last **在 Nowledge Mem 里我叫「{name}」**. A problem's words and action are D646's table.
+- **The next step carries the one action** (Install, Update, a line to copy, Open Nowledge Mem, the
+  sign-in field in place, Check again, Connect); every step after it is muted and claims nothing.
+- **Done, one calm line:** **已连上，在 {home} 上 / Connected, on {home}** with **每一步 / Steps** to
+  reopen. Not done: **还差 n 步 / n steps to go** or **有一步没走通 / One step didn't go through**; on
+  Memory the group then comes first.
+- **Live, no loop:** looked at again when the pane opens, when the person comes back to it, and on
+  **再看一次**, with the shared spinner on the next step's mark until the home's settings frame answers.
+- Shots: `.shots/memsetup/` (web 390 and 1180, Mac 1150; zh and en; light and dark; fresh, half done,
+  a failed step, done and folded, done and open).

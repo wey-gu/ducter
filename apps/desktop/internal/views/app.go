@@ -169,7 +169,16 @@ type App struct {
 	bridgeLink string
 	// memReSign: Memory's 重新登录 was tapped, so the link field shows in place (D375).
 	memReSign bool
-	StatusErr string
+	// D664: the one Nowledge Mem setup (memsetup.go): its steps opened once all are done, a look
+	// again under way (since memLookedAt, until the settings frame after memLookFrom), the window's
+	// last active state as the setup saw it, and the step a 再看一次 was tapped on.
+	memSetupOpen   bool
+	memChecking    bool
+	memLookedAt    time.Time
+	memLookFrom    int
+	memSetupActive bool
+	memTriedStep   string
+	StatusErr      string
 	// Failed is set once a connection attempt failed, and cleared by a
 	// welcome: until the first welcome it shows the first-run screen.
 	Failed bool

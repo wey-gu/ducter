@@ -177,8 +177,9 @@ describe("Memory and Agent messaging (D404)", () => {
 
   test("a retry that meets the same missing tool says so", () => {
     expect(zh.t("mem.retry.same")).toBe("刚又试了一次，还是缺这个小工具。");
-    expect(src("apps/web/src/memory.tsx")).toContain('t("mem.retry.same")');
-    expect(src("apps/desktop/internal/views/memory_pane.go")).toContain('"mem.retry.same"');
+    // D664: said by the one setup's install step, on both clients.
+    expect(src("apps/web/src/mem-setup.tsx")).toContain('t("mem.retry.same")');
+    expect(src("apps/desktop/internal/views/memsetup.go")).toContain('"mem.retry.same"');
   });
 });
 

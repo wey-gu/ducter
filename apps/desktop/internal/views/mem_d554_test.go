@@ -54,7 +54,7 @@ func TestMemD554(t *testing.T) {
 				}
 				var r ui.Rect
 				found := false
-				for _, s := range []string{L.T("mem.health.ok"), L.T("mem.health.plugin", "Claude Code"), anchor} {
+				for _, s := range []string{L.T("memsetup.done", "hel"), L.T("mem.health.plugin", "Claude Code"), anchor} {
 					if state == "fresh" && s != anchor {
 						continue
 					}
@@ -106,7 +106,7 @@ func TestMemD554Words(t *testing.T) {
 			tt.Advance(150 * time.Millisecond)
 			tt.Frame()
 		}
-		for _, s := range []string{L.T("mem.health.ok"), L.T("mem.health.plugin", "Claude Code"), unjoin(keepClauses(L.T("mem.health.plugin.why.one")))} { // D556: one agent is 它
+		for _, s := range []string{L.T("memsetup.done", "hel"), L.T("mem.health.plugin", "Claude Code"), unjoin(keepClauses(L.T("mem.health.plugin.why.one")))} { // D556: one agent is 它
 			if !hasText(tt, s) {
 				t.Fatalf("%s: no %q in %q", lang, s, tt.Texts())
 			}

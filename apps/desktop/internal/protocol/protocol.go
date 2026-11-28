@@ -2370,6 +2370,9 @@ type MemHealth struct {
 // Mem's doctor on the home now; the settings frame follows.
 type MemHealthReq struct {
 	T string `json:"t"` // "mem_health"
+	// Setup (D664): also look at Nowledge Mem's setup again on the home (read-only); the home
+	// answers with a settings frame even when nothing changed.
+	Setup bool `json:"setup,omitempty"`
 }
 
 // MemGlance is Mem's count, what it knows about the person by Mem's own kinds

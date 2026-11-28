@@ -1555,7 +1555,15 @@ export function createWsHandler(deps: WsDeps) {
       case "mem_health": {
         // D375: 再看一次 / Check again on Settings › 记忆: read-only; the settings frame follows when it changed.
         ws.data.settings = true;
-        await deps.memHealth?.refresh();
+        if (!f.setup) {
+          await deps.memHealth?.refresh();
+          return;
+        }
+        // D664: the setup's look again (its pane opened, the person came back, 再看一次): Mem's doctor
+        // and the home's own look at nmem (version, sign-in, the place, the connection), both read-only,
+        // then this socket hears the result even when nothing changed, so its spinner ends.
+        await Promise.all([deps.memHealth?.refresh(), deps.bridgeLink?.lookAgain()]);
+        if (deps.settings) send(ws, await settingsFrame());
         return;
       }
       case "settings": {

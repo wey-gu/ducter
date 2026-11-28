@@ -118,6 +118,10 @@ export const wantOf = (r: Replying): ReplyWant => ({ seq: r.seq, ...(r.findId ? 
 
 /** D541: how many of another partner's newest events a peek asks for. */
 const PEEK_SIZE = 50;
+/** D664: the setup is looked at again at most this often when a pane opens or the person comes back. */
+export const MEM_LOOK_MS = 20_000;
+/** D664: how long the spinner waits for the home's answer before it lets go. */
+export const MEM_LOOK_WAIT_MS = 15_000;
 /** D552: how long a Mem install or update this window asked for reads busy without the home's word (the frame with its task comes in a second or two). */
 const MEM_SENDING_MS = 15_000;
 /** The most a cursor replay sends at once (core's ws.ts REPLAY_MAX). */
@@ -1264,6 +1268,8 @@ class AppState {
     this.settings = f.settings;
     this.mem = f.mem;
     this.bridge = f.bridge;
+    // D664: the home's answer to a look again (or any fresher frame) ends the setup's spinner.
+    this.memChecking = false;
     this.ownAgents = f.ownAgents ?? [];
     this.helpers = f.helpers ?? [];
     if (f.bridge?.state !== "connected") this.bridgeConfirm = false;
@@ -3030,6 +3036,26 @@ class AppState {
   /** D375: 再看一次 / Check again: read Mem's own doctor on the home now (the settings frame follows). */
   checkMemHealth() {
     this.send({ t: "mem_health" });
+  }
+  /** D664: a look again at Nowledge Mem's setup is under way (the next step shows the spinner). */
+  memChecking = false;
+  private memLookedAt = 0;
+  /**
+   * D664: look at Nowledge Mem's setup again on the home (read-only): when its pane opens, when the
+   * person comes back to it, and on 再看一次. The home answers with a fresh settings frame, which ends
+   * the spinner. At most once in MEM_LOOK_MS unless asked by a tap; never a loop.
+   */
+  lookAtMemSetup(tap = false) {
+    const now = Date.now();
+    if (!tap && now - this.memLookedAt < MEM_LOOK_MS) return;
+    this.memLookedAt = now;
+    this.memChecking = true;
+    this.send({ t: "mem_health", setup: true });
+    this.changed();
+    // A home that never answers (an older one) leaves no spinner behind.
+    setTimeout(() => {
+      if (this.memChecking && Date.now() - this.memLookedAt >= MEM_LOOK_WAIT_MS) (this.memChecking = false), this.changed();
+    }, MEM_LOOK_WAIT_MS);
   }
   /** D377: 读它们留下的记录 / 别再看了 for the person's own agents' records on a computer for tasks. */
   recordsAllow(device: string, on: boolean) {

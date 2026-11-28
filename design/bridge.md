@@ -310,6 +310,14 @@ and who to tell in Mem, is behind **详情** (`bridge.refused.detail`), as "Simp
 - **Nothing cached.** With Mem out of reach or signed out and no glance, Memory's "what I know about
   you" says Mem's own line (D590), never **我还不太了解你**: an empty page must not read as forgetting.
 
+### Said as a step of the one setup (D664)
+
+Since D664 a Mem state is not its own row on Memory or Agent messaging: it is a step of the one
+Nowledge Mem setup group (`settings.md` "One Nowledge Mem setup"), with this table's title, line and
+one action. Agent messaging's setup ends with **你的 agent 找得到我 / Your agents can reach me**: busy
+while the home connects by itself (`ready`, `connecting`), failed with a refusal's, a failure's or an
+unconfirmed connect's words, done once connected (or answered on another home, whose own row stays).
+
 ## Chosen scenarios (dogfood, 2026-11-09)
 
 From 14 scored candidates (research/37 §2), four are chosen. The J-numbered details below still hold:

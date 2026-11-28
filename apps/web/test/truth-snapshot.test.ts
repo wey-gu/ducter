@@ -185,4 +185,29 @@ describe("D661 turn 2: a stopped task that needs you", () => {
     expect(o.headLine("")).toBe(A.L.t("onhand.line.stopped.one"));
     A.S.tasks.clear();
   });
+
+  test("a failure is named failed, and a stop plus a failure says both", async () => {
+    const { A } = await import("../src/app.ts");
+    const o = await import("../src/onhand.tsx");
+    const { Store } = await import("../src/store.ts");
+    A.S = new Store();
+    A.L = strings("zh");
+    A.send = () => {};
+    A.S.welcomed = true;
+    const fact = "它停了 40 分钟，没说在等什么。";
+    const failed = [truth("failed", { taskId: "f1" }), truth("failed", { taskId: "f2" })];
+    const stopNeeds = { state: "needs_you", needs: "stopped", taskId: "sn1", waitsFor: fact, since: iso(-40 * 60_000) };
+    const boards = [
+      { truth: { needsYou: [], working: [], waiting: [], stopped: [], done: [], failed, asOf: 1, at: iso(0) }, tasks: [card("f1", "failed", { truth: truth("failed") }), card("f2", "failed", { truth: truth("failed") })], want: A.L.t("onhand.line.failed", 2) },
+      { truth: { needsYou: [stopNeeds], working: [], waiting: [], stopped: [], done: [], failed: [truth("failed", { taskId: "f1" })], asOf: 1, at: iso(0) }, tasks: [card("sn1", "needs_you", { updatedAt: iso(-40 * 60_000), truth: truth("needs_you", { needs: "stopped", waitsFor: fact }) }), card("f1", "failed", { truth: truth("failed") })], want: A.L.t("onhand.line.stopped.failed", 1, 1) },
+    ];
+    for (const b of boards) {
+      A.receive({ t: "on_hand", onHand: { tasks: b.tasks, counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 }, waiters: [], groups: [], truth: b.truth } } as never);
+      expect(o.headLine("")).toBe(b.want);
+    }
+    A.L = strings("en");
+    A.receive({ t: "on_hand", onHand: { tasks: [card("f1", "failed", { truth: truth("failed") }), card("f2", "failed", { truth: truth("failed") })], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 }, waiters: [], groups: [], truth: { needsYou: [], working: [], waiting: [], stopped: [], done: [], failed: [truth("failed", { taskId: "f1" }), truth("failed", { taskId: "f2" })], asOf: 1, at: iso(0) } } } as never);
+    expect(o.headLine("")).toBe("2 didn't work out.");
+    A.S.tasks.clear();
+  });
 });

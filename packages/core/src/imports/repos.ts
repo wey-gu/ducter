@@ -144,7 +144,7 @@ function sourceIdFor(url: string): string {
  * A repository's short name for a row: `owner/repo` from a git address, else the last path part.
  * The full URL stays in the tooltip and the row's ⋯.
  */
-function repoShortName(url: string): string {
+export function repoShortName(url: string): string {
   const u = url.trim();
   const scp = /^[^@\s]+@([^:\s]+):(.+?)(?:\.git)?\/?$/.exec(u);
   if (scp) return scp[2]!.replace(/\/+$/, "") || u;

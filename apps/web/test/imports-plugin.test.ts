@@ -24,13 +24,21 @@ test("the plugin row: installed, added by you, its repository, nobody's check", 
   expect(stateWords(row as never)).toBe("Installed");
 });
 
-test("every fact is its own element: added, author, repository, the check, the update", () => {
-  for (const k of ["imports.added", "imports.author", "imports.reviewed", "imports.unreviewed", "imports.update", "imports.state.update", "imports.consent.made.plugin"]) {
+test("the installed row is two lines: the source's short name, added, and the check, each its own element", () => {
+  for (const k of ["imports.added", "imports.reviewed", "imports.unreviewed", "imports.update", "imports.consent.made.plugin", "imports.avail.official"]) {
     expect(pane.includes(`"${k}"`)).toBe(true);
   }
-  expect(pane).toContain('{r.added && <p class="small muted import-added">{t("imports.added")}</p>}');
-  expect(pane).toContain('{r.repo && <p class="small muted import-repo">{r.repo}</p>}');
-  expect(pane).toContain('{r.unreviewed && <p class="small import-unreviewed">{t("imports.unreviewed")}</p>}');
+  expect(pane).toContain('class="import-source"');
+  expect(pane).toContain('{r.official ? t("imports.avail.official") : r.sourceName}');
+  expect(pane).toContain('{r.added && <span class="import-added">{t("imports.added")}</span>}');
+  expect(pane).toContain('{r.unreviewed && <span class="import-unreviewed">{t("imports.unreviewed")}</span>}');
+  expect(pane).toContain('{r.reviewed && <span class="import-reviewed">{t("imports.reviewed")}</span>}');
+  // The full URL is never the row's own text: only the tooltip and the ⋯ menu.
+  expect(pane).toContain('title={r.repo}');
+  expect(pane).toContain('<span class="import-avail-url">{r.repo}</span>');
+  expect(pane).not.toContain('t("imports.author")');
+  expect(pane).not.toContain('class="small muted import-repo"');
+  expect(pane).not.toContain('t("imports.state.update")');
   expect(pane).not.toContain('t("imports.added") + " "');
 });
 

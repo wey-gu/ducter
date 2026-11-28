@@ -67,7 +67,7 @@ function setup() {
     officialUrl: official.root,
     lookMs: 0,
   });
-  return { ...t, log, tasks, past, runtime, reader, holder, sources };
+  return { ...t, log, tasks, past, runtime, reader, holder, sources, official };
 }
 
 test("an added plugin is a row of its own: added by you, its repository, its author and what it reads", async () => {
@@ -82,6 +82,21 @@ test("an added plugin is a row of its own: added by you, its repository, its aut
   expect(row.repo).toBe(s.reader);
   expect(row.author).toBe("Ducter tests");
   expect(row.reads).toEqual(["./threads.json"]);
+  // The row shows the folder's short name, not the path; a folder isn't the official repository.
+  expect(row.official).toBeUndefined();
+  expect(row.sourceName).toBe("reader");
+  t_cleanup(s);
+});
+
+test("a plugin from the official repository is 官方仓库, never its URL, and not added by you", async () => {
+  const s = setup();
+  await s.sources.look(true);
+  const inst = await s.sources.install("official", "fixture-reader");
+  expect(inst).toMatchObject({ ok: true, needsConsent: true });
+  const row = s.sources.view().sources.find((x) => x.id === "fixture-reader")!;
+  expect(row).toMatchObject({ added: false, official: true, reviewed: true, unreviewed: false });
+  expect(row.repo).toBe(s.official.root);
+  expect(row.sourceName).toMatch(/official-repo$/);
   t_cleanup(s);
 });
 

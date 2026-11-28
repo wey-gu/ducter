@@ -155,28 +155,48 @@ var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
 // D467: the line is true to the board: when all that needs you is what
 // stopped or didn't work out, it says so, never 没有要你定的.
 func (a *App) headLine(b store.Board, lens string, n [4]int) string {
-	sp := a.splitOf(b)
-	// D661 turn 2: only a needs-you stop is counted by the strip; a fresh stop (truth Stopped)
-	// stands apart and must not make the question look like a stop. A home without truth keeps
-	// the old reading.
-	halted := len(sp.stopped) + len(sp.failed)
+	var stopped, failed int
 	if a.S.OnHand != nil && a.S.OnHand.Truth != nil {
-		halted = 0
-		for _, x := range sp.stopped {
-			if t := x.Truth(); t != nil && t.Needs == "stopped" {
-				halted++
+		// D661: one state per task. A needs-you item that isn't a stop needs a decision and leads;
+		// a board of only stops and failures is named by what each is, never a failure called a stop.
+		th := a.S.OnHand.Truth
+		for _, it := range th.NeedsYou {
+			if it.Needs == "stopped" && a.truthInLens(it, lens) {
+				stopped++
 			}
+		}
+		for _, it := range th.Failed {
+			if a.truthInLens(it, lens) {
+				failed++
+			}
+		}
+		if n[0] > 0 && n[0] > stopped {
+			if n[0] == 1 {
+				return a.L.T("onhand.say.needs.one")
+			}
+			return a.L.T("onhand.say.needs", n[0])
+		}
+		if stopped+failed > 0 {
+			return a.lookWords(stopped, failed)
+		}
+	} else {
+		// D467: the line is true to the body: what only stopped or didn't work out is said as it
+		// is, never 没有要你定的 and never a failure called a stop.
+		sp := a.splitOf(b)
+		stopped = len(sp.stopped)
+		failed = len(sp.failed)
+		look := stopped + failed
+		if n[0] > 0 && n[0] > look {
+			if n[0] == 1 {
+				return a.L.T("onhand.say.needs.one")
+			}
+			return a.L.T("onhand.say.needs", n[0])
+		}
+		if look > 0 {
+			return a.lookWords(stopped, failed)
 		}
 	}
 	switch {
-	case n[0] > 0 && n[0] <= halted && halted == 1:
-		return a.L.T("onhand.line.stopped.one")
-	case n[0] > 0 && n[0] <= halted:
-		return a.L.T("onhand.line.stopped", halted)
-	case n[0] == 1:
-		return a.L.T("onhand.say.needs.one")
-	case n[0] > 1:
-		return a.L.T("onhand.say.needs", n[0])
 	case n[1] > 0:
 		return a.L.T("onhand.line.working")
 	case n[2] > 0:
@@ -192,6 +212,24 @@ func (a *App) headLine(b store.Board, lens string, n [4]int) string {
 		return a.L.T("onhand.line.done")
 	}
 	return a.L.T("onhand.line.idle")
+}
+
+// lookWords names a board whose needs are only stops and failures, each by its own fact (D661: a
+// failure is never called a stop).
+func (a *App) lookWords(stopped, failed int) string {
+	switch {
+	case failed > 0 && stopped == 0:
+		if failed == 1 {
+			return a.L.T("onhand.line.failed.one")
+		}
+		return a.L.T("onhand.line.failed", failed)
+	case stopped > 0 && failed == 0:
+		if stopped == 1 {
+			return a.L.T("onhand.line.stopped.one")
+		}
+		return a.L.T("onhand.line.stopped", stopped)
+	}
+	return a.L.T("onhand.line.stopped.failed", stopped, failed)
 }
 
 // boardHead is the partner, its line, and under the line the strip of

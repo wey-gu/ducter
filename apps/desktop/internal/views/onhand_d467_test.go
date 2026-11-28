@@ -59,7 +59,7 @@ func TestOnHandByAttention(t *testing.T) {
 	if n[3] != app.doneToday(b) {
 		t.Fatalf("the strip says %d done today, the header %d", n[3], app.doneToday(b))
 	}
-	if got := app.headLine(b, "", n); got != app.L.T("onhand.line.stopped", 2) {
+	if got := app.headLine(b, "", n); got != app.L.T("onhand.line.stopped.failed", 1, 1) {
 		t.Fatalf("the line is not true to the board: %q", got)
 	}
 	app.Route = RouteOnHand
@@ -68,7 +68,7 @@ func TestOnHandByAttention(t *testing.T) {
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " | ")
 	// D471: the head is one sentence; each task says itself once, on its own row.
-	for _, want := range []string{"有 2 个停下了，要你看一眼。", "用手机把 Ducter 官网录一段屏发到 X", "它停了，没留下话。接着做，它从停下的地方接着来。", "停在了一个我没认出的错误上。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "15:37 回来"} {
+	for _, want := range []string{"有 1 个停下了，1 个没做成，要你看一眼。", "用手机把 Ducter 官网录一段屏发到 X", "它停了，没留下话。接着做，它从停下的地方接着来。", "停在了一个我没认出的错误上。", "接着做", "放下", "再试一次", "还有 1 个是昨天做完的", "15:37 回来"} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("missing %q in %s", want, all)
 		}
@@ -97,6 +97,29 @@ func TestOnHandByAttention(t *testing.T) {
 	// One card shape at one width: every card is the list's width.
 	if app.oh.listW <= 0 {
 		t.Fatal("no list width")
+	}
+}
+
+// D467 (the head line, truth of the board): a failure is named failed, never stopped; a stop plus
+// a failure says both.
+func TestHeadLineNamesFailed(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.LocaleFixed = true
+	now := time.Now()
+	app.Now = func() time.Time { return now }
+	iso := func(dd time.Duration) string { return now.Add(dd).UTC().Format(time.RFC3339) }
+	card := func(id string, a protocol.Attention, at time.Duration) protocol.TaskCard {
+		return protocol.TaskCard{TaskID: id, Title: "任务 " + id, Place: protocol.Place{Kind: "none"}, Harness: "codex", Attention: a, OpenedAt: iso(at - time.Hour), UpdatedAt: iso(at)}
+	}
+	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{
+		card("t_a", protocol.Failed, -time.Hour),
+		card("t_b", protocol.Failed, -2*time.Hour),
+	}}})
+	b := app.S.Board()
+	n := app.stateCounts(b, "")
+	if got := app.headLine(b, "", n); got != app.L.T("onhand.line.failed", 2) {
+		t.Fatalf("two failures read %q, want %q", got, app.L.T("onhand.line.failed", 2))
 	}
 }
 

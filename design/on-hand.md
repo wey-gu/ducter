@@ -105,8 +105,10 @@ task in {name}** where the bare ＋ stood.
    the phone) in the pose for the whole (its flag when anything needs you > reading while anything
    works > on its bench while all waits > smiling when what is left came back done > idle), and
    D315: **one short line** in its voice (`onhand.line.*`, the display face 22/700): **有 n 个待你处理。**
-   when anything needs you (when all of it stopped or didn't work out, **有一个停下了，要你看一眼。 / One
-   has stopped and needs a look.**, several **有 n 个停下了，要你看一眼。**); else **没有待你处理的，我在做。**
+   when anything needs you (when all of it stopped or didn't work out, each named by what it is:
+   stopped **有一个停下了，要你看一眼。 / One has stopped and needs a look.**, several **有 n 个停下了，
+   要你看一眼。**; failed **有 n 个没做成。 / n didn't work out.**; a mix **有 n 个停下了，m 个没做成，
+   要你看一眼。 / n stopped and m didn't work out; they need a look.**); else **没有待你处理的，我在做。**
    while anything works; else, when all waits, **没有待你处理的。最早 9:06 回来。** (one wait: **等结果的那个
    9:06 回来。**; none coming back on its own: **等结果的都没有新动静。**); else **今天就这些，都做完了。** or
    **手上没有事。** It never repeats a count. The long sentence (`headSay`, D287) stays the menu bar's.

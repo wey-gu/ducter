@@ -18,7 +18,7 @@ import type { Bodies, ImportAnswer, ImportSourceId, ImportSourceRow, ImportsView
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { iconDataUrl } from "./icon.ts";
 import { createPluginRuntime, type GitExec, type PluginEntry, type PluginRuntime } from "./plugins.ts";
-import { createRepositories, type RepositoryRuntime } from "./repos.ts";
+import { createRepositories, repoShortName, type RepositoryRuntime } from "./repos.ts";
 import { importInto } from "./service.ts";
 import { sandboxAvailable } from "./sandbox.ts";
 
@@ -207,6 +207,8 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
       ...(running.has(id) ? { running: true } : {}),
       added: !p.record.official,
       ...(repo ? { repo } : {}),
+      ...(p.record.official ? { official: true } : {}),
+      ...(repo ? { sourceName: repoShortName(repo) } : {}),
       ...(p.manifest?.author.name ?? p.record.author ? { author: p.manifest?.author.name ?? p.record.author } : {}),
       ...(reads.length ? { reads } : {}),
       ...(uses.length ? { uses } : {}),

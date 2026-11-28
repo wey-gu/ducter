@@ -26,6 +26,7 @@ func importFrame(over ...func(*protocol.ImportSourceRow)) protocol.ServerFrame {
 		Added:      true,
 		Author:     "Ducter tests",
 		Repo:       "https://example.test/fixture.git",
+		SourceName: "fixture",
 		Reads:      []string{"./threads.json", "~/Library/Notes/**/*.sqlite*"},
 		Unreviewed: true,
 	}
@@ -86,7 +87,7 @@ func TestImportsPane(t *testing.T) {
 		}
 		app.Receive(importFrame())
 		tt.Frame()
-		for _, want := range []string{L.T("settings.tab.import"), app.importsSay(), "Fixture Notes", L.T("imports.state.plugin"), L.T("imports.bring"), L.T("imports.added"), L.T("imports.author", "Ducter tests")} {
+		for _, want := range []string{L.T("settings.tab.import"), app.importsSay(), "Fixture Notes", L.T("imports.state.plugin"), L.T("imports.bring"), L.T("imports.added"), "fixture"} {
 			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}

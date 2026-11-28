@@ -22,6 +22,8 @@ export const SECTIONS: SetSection[] = [
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   // D330: in a browser on a computer it is 这台电脑 / This computer, with the clay laptop.
   { page: "phone", art: HANDHELD === "computer" ? "dev_laptop_awake" : "phone", title: "settings.phone" },
+  // D673 (research/248 phase 1): 插件 / Plugins, the pane where a look is managed as code.
+  { page: "plugins", art: "set_todos", title: "settings.tab.plugins" },
 ];
 
 /** The name a pane goes by in the list (Agent messaging's short one, D332). */

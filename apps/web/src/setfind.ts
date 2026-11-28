@@ -108,6 +108,9 @@ export const SET_INDEX: SetEntry[] = [
   { id: "versions", page: "devices", key: "settings.versions.title" },
   { id: "folder", page: "devices", key: "settings.folder.row" },
   // 这台手机 / This phone
+  // D673: the installed looks, Pebble first; and 插件 / Plugins, where they are managed.
+  { id: "looks", page: "phone", key: "settings.look.themes" },
+  { id: "plugins", page: "plugins", key: "plugins.theme.group" },
   { id: "theme", page: "phone", key: "settings.look.mode", value: () => t(`settings.look.mode.${savedPaper()}`) },
   { id: "density", page: "phone", key: "density.title", value: () => t(`density.${savedDensity()}`) },
   { id: "uilang", page: "phone", key: "settings.lang.title", value: () => t(`settings.lang.${A.uiLang}`) },

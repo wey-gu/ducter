@@ -5,13 +5,17 @@
 // row it appears on is Settings › 导入 / Import; `add` only says that consent is owed there.
 // `remove` removes the folder and ledger, hides what it brought in (the same import_removed the
 // pane writes), and forgets the consent so adding it again asks once more.
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { openLog } from "@ducter/core/src/log.ts";
 import { createRegistry } from "@ducter/core/src/registry.ts";
-import { createPluginRuntime, type PluginAnswer, type PluginEntry, type PluginRuntime } from "@ducter/core/src/imports/plugins.ts";
+import { createPluginRuntime, gitRunner, looksGit, splitRef, type PluginAnswer, type PluginEntry, type PluginRuntime } from "@ducter/core/src/imports/plugins.ts";
 import { createRepositories, type RepositoryRuntime } from "@ducter/core/src/imports/repos.ts";
+import { createThemeRuntime, type ThemeRuntime } from "@ducter/core/src/plugins/theme.ts";
+import { readManifest } from "@ducter/core/src/plugins/manifest.ts";
 import { IMPORTS_FILE } from "@ducter/core/src/imports/sources.ts";
+import { newTheme } from "./plugin-new.ts";
+import { checkTheme } from "./plugin-check.ts";
 import type { T } from "./i18n.ts";
 
 export interface PluginCmdCtx {
@@ -23,6 +27,8 @@ export interface PluginCmdCtx {
   print?: (s: string) => void;
   /** Injected in tests: the runtime (git, sandbox, curated list). */
   runtime?: PluginRuntime;
+  /** Injected in tests: the theme runtime (git seam). */
+  themes?: ThemeRuntime;
   /** Injected in tests: the repositories (official URL, git, the person's ledger). */
   repositories?: RepositoryRuntime;
 }
@@ -33,8 +39,12 @@ function makeRuntime(c: PluginCmdCtx): PluginRuntime {
   return c.runtime ?? createPluginRuntime({ dataDir: c.dataDir });
 }
 
-function makeRepositories(c: PluginCmdCtx, runtime: PluginRuntime): RepositoryRuntime {
-  return c.repositories ?? createRepositories({ dataDir: c.dataDir, plugins: runtime });
+function makeThemeRuntime(c: PluginCmdCtx): ThemeRuntime {
+  return c.themes ?? createThemeRuntime({ dataDir: c.dataDir });
+}
+
+function makeRepositories(c: PluginCmdCtx, runtime: PluginRuntime, themes: ThemeRuntime): RepositoryRuntime {
+  return c.repositories ?? createRepositories({ dataDir: c.dataDir, plugins: runtime, theme: themes });
 }
 
 function state(t: T, e: PluginEntry): string {
@@ -86,6 +96,7 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
   const t = c.t;
   const [what, value, third] = c.rest;
   const runtime = makeRuntime(c);
+  const themes = makeThemeRuntime(c);
 
   if (!what || what === "help") {
     print(t("plugin.usage"));
@@ -95,7 +106,7 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
   // D670: a plugin repository is a source. `source add|list|remove`; the official repository
   // is always there and can't be removed. Nothing is installed or run here.
   if (what === "source") {
-    const repos = makeRepositories(c, runtime);
+    const repos = makeRepositories(c, runtime, themes);
     const sub = value ?? "list";
     if (sub === "list") {
       const all = repos.list();
@@ -181,16 +192,58 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
       print(t("plugin.usage"));
       return 2;
     }
-    const a = await runtime.install(value);
-    if (c.json) print(JSON.stringify(a, null, 2));
-    else {
-      print(answerLine(t, a));
-      if (a.ok) {
-        print(a.reviewed ? t("plugin.added.reviewed") : t("plugin.added.unreviewed"));
-        if (a.needsConsent) print(t("plugin.added.consent"));
+    // D673: `add` installs an importer or a theme. A local folder or a git URL; the kind is
+    // read from the manifest, so one command installs both.
+    const raw = value.trim();
+    const local = !looksGit(raw) && existsSync(resolve(raw));
+    let peek: string | undefined;
+    try {
+      let dir: string;
+      if (local) {
+        dir = resolve(raw);
+      } else {
+        peek = mkdtempSync(join(c.dataDir, "plugin-peek-"));
+        const { url, ref } = splitRef(raw);
+        const git = gitRunner();
+        const cl = await git(["clone", "--quiet", url, peek]);
+        if (cl.code !== 0) {
+          print(t("plugin.error", { code: "git_failed", detail: cl.stderr.trim() || "git clone failed" }));
+          return 1;
+        }
+        if (ref) await git(["checkout", "--quiet", "--detach", ref], { cwd: peek });
+        dir = peek;
       }
+      let m: ReturnType<typeof readManifest> | undefined;
+      try {
+        m = readManifest(dir);
+      } catch {
+        m = undefined;
+      }
+      if (m && m.v2 && m.v2.kind === "theme") {
+        const a = await themes.install(raw);
+        if (c.json) print(JSON.stringify(a, null, 2));
+        else if (a.ok) print(t("plugin.theme.added", { name: a.name ?? a.id ?? raw }));
+        else print(t("plugin.error", { code: a.error ?? "failed", detail: a.detail ?? "" }));
+        return a.ok ? 0 : 1;
+      }
+      if (m && m.v2 && m.v2.kind === "importer") {
+        print(t("plugin.error", { code: "reserved_kind", detail: "a ducter-plugin/2 importer isn't installed yet; write ducter-plugin/1 (D668's shape)" }));
+        return 1;
+      }
+      // v1, or an unreadable folder: the importer runtime says what is wrong, in its own words.
+      const a = await runtime.install(raw);
+      if (c.json) print(JSON.stringify(a, null, 2));
+      else {
+        print(answerLine(t, a));
+        if (a.ok) {
+          print(a.reviewed ? t("plugin.added.reviewed") : t("plugin.added.unreviewed"));
+          if (a.needsConsent) print(t("plugin.added.consent"));
+        }
+      }
+      return a.ok ? 0 : 1;
+    } finally {
+      if (peek) rmSync(peek, { recursive: true, force: true });
     }
-    return a.ok ? 0 : 1;
   }
 
   if (what === "remove") {
@@ -222,7 +275,7 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
       return 2;
     }
     const installed = runtime.get(value);
-    const a = installed?.record.kind === "repo" ? await makeRepositories(c, runtime).update(value) : await runtime.update(value);
+    const a = installed?.record.kind === "repo" ? await makeRepositories(c, runtime, themes).update(value) : await runtime.update(value);
     if (c.json) print(JSON.stringify(a, null, 2));
     else if (!a.ok) print(t("plugin.error", { code: a.error ?? "update_failed", detail: a.detail ?? "" }));
     else if (a.upToDate) print(t("plugin.updated.upToDate", { id: value }));
@@ -231,6 +284,41 @@ export async function cmdPlugin(c: PluginCmdCtx): Promise<number> {
       print(a.needsConsent ? t("plugin.updated.consent") : t("plugin.updated.same"));
     }
     return a.ok ? 0 : 1;
+  }
+
+  if (what === "new") {
+    // D673: `ducter plugin new theme <dir>` writes a passing theme. The other kinds are
+    // owed later phases and refused with a clear message.
+    if (value !== "theme") {
+      print(t("plugin.new.kind"));
+      return 2;
+    }
+    if (!third) {
+      print(t("plugin.new.usage"));
+      return 2;
+    }
+    const r = newTheme(third);
+    if (c.json) print(JSON.stringify(r, null, 2));
+    else if (r.ok) print(t("plugin.new.done", { dir: third }));
+    else print(t("plugin.error", { code: r.error ?? "failed", detail: r.detail ?? "" }));
+    return r.ok ? 0 : 1;
+  }
+
+  if (what === "check") {
+    // D673: `ducter plugin check <dir>` for a theme: the host's own manifest and token
+    // gates plus the contrast floors, both modes.
+    if (!value) {
+      print(t("plugin.check.usage"));
+      return 2;
+    }
+    const r = checkTheme(value);
+    if (c.json) print(JSON.stringify(r, null, 2));
+    else {
+      print(t("plugin.check.head", { id: r.plugin?.id ?? "", kind: r.plugin?.kind ?? "", version: r.plugin?.version ?? "" }));
+      for (const ch of r.checks) print(t("plugin.check.row", { id: ch.id, ok: ch.ok ? t("plugin.check.ok") : t("plugin.check.fail"), detail: ch.detail ?? "" }));
+      print(r.summary);
+    }
+    return r.exit;
   }
 
   print(t("plugin.usage"));

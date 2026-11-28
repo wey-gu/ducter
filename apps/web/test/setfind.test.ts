@@ -23,7 +23,8 @@ const PANE_FILES: Record<string, string[]> = {
   chats: ["channels.tsx"],
   autofill: ["autofill.tsx"],
   devices: ["devcard.tsx", "folder-row.tsx", "updateall.tsx", "views.tsx"],
-  phone: ["views.tsx", "settings-more.tsx", "voice.tsx", "app-update.tsx", "settings-delight.tsx"],
+  phone: ["views.tsx", "settings-more.tsx", "voice.tsx", "app-update.tsx", "settings-delight.tsx", "plugins.tsx"],
+  plugins: ["plugins.tsx"],
 };
 
 /**
@@ -87,6 +88,7 @@ const NOT_SETTINGS: Record<string, string> = {
   "peers.none": "a state of Agent messaging",
   "peers.stuck.title": "a state of Agent messaging",
   "peers.notices.title": "a state of Agent messaging",
+  "imports.consent.online.unreviewed": "a step in installing an importer (its consent tick)",
 };
 
 describe("找设置 / Find a setting (D663)", () => {

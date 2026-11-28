@@ -22,27 +22,12 @@ const cheerFor = 1600 * time.Millisecond
 func (a *App) cheer() { a.settings.cheer = a.Now().UnixNano() }
 
 func (a *App) lookPanel(c *ui.Context) {
-	t := a.T
 	ss := &a.settings
 	a.panelHead(c, TabLook, a.L.T("settings.lede.look"))
 	a.lookPreview(c)
 	a.group(c, "look", a.L.T("settings.look.group"), "", func() {
-		a.sep(c)
-		if a.selectRow(c, "theme:pebble", a.L.T("settings.look.pebble"), true, false, func() {
-			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-				ui.Row(c).Gap(4).Shrink(0).Padding(t.S1).Radius(t.RadiusSM).Border(2, t.Ink).Children(func() {
-					for _, col := range []ui.Color{t.Bg, t.NeedsYou.Surface, t.Accent, t.Done.Surface, t.Ink} {
-						ui.Box(c).Size(18, 36).Radius(t.RadiusXS-2).Background(col).Border(1, t.Line)
-					}
-				})
-				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-					uiText(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(700)
-					a.note(c, a.L.T("settings.look.pebble.note"))
-				})
-			})
-		}) {
-			a.cheer()
-		}
+		// D673: the installed themes, Pebble first, 换回 Pebble always one tap away.
+		a.themeList(c, true)
 		// D302: light, dark, or as macOS is (the default), live.
 		modes := []string{"system", "light", "dark"}
 		msel := 0

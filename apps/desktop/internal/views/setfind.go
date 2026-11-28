@@ -143,6 +143,8 @@ var setIndex = []setEntry{
 	{id: "sound", tab: TabLook, key: "settings.sound.row"},
 	{id: "voicekey", tab: TabLook, key: "voice.settings.key"},
 	{id: "readback", tab: TabLook, key: "voice.settings.readback"},
+	// 插件 / Plugins (D673): the looks a person manages as code.
+	{id: "plugins", tab: TabPlugins, key: "plugins.theme.group"},
 	// 在哪儿运行 / Where it runs
 	{id: "devices", tab: TabRun, key: "settings.devices.link"},
 	{id: "lend", tab: TabRun, key: "lend.entry"},

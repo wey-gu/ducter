@@ -19,6 +19,7 @@ import { computeruse } from "./i18n-computeruse.ts";
 import { channelWords } from "./i18n-channels.ts";
 import { todoWords } from "./i18n-todos.ts";
 import { importWords } from "./i18n-imports.ts";
+import { pluginWords } from "./i18n-plugins.ts";
 import { setFindWords } from "./i18n-setfind.ts";
 import { groupWords } from "./i18n-groups.ts";
 import { asksWords } from "./i18n-asks.ts";
@@ -3808,6 +3809,9 @@ Object.assign(TABLES.en, todoWords.en);
 // D655: 导入 / Import (i18n-imports.ts).
 Object.assign(TABLES.zh, importWords.zh);
 Object.assign(TABLES.en, importWords.en);
+// D673: 插件 / Plugins and 外观 / Looks (i18n-plugins.ts).
+Object.assign(TABLES.zh, pluginWords.zh);
+Object.assign(TABLES.en, pluginWords.en);
 // D663: 找设置 / Find a setting (i18n-setfind.ts).
 Object.assign(TABLES.zh, setFindWords.zh);
 Object.assign(TABLES.en, setFindWords.en);

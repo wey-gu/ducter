@@ -57,7 +57,10 @@ export interface IndexEntry {
   version: string;
   commit: string;
   hash: string;
-  app: string;
+  /** The app whose conversations an importer reads; a theme has no app. */
+  app?: string;
+  /** D673: `theme` names a theme plugin (no `app`); an importer omits it. */
+  kind?: "theme";
   /** The app icon inside the plugin folder; `app.icon` in its manifest is the fallback. */
   icon?: string;
 }
@@ -108,6 +111,8 @@ export interface RepositoriesView {
 export interface RepositoryOptions {
   dataDir: string;
   plugins: PluginRuntime;
+  /** D673: the theme runtime shares the official index (its "Ducter checked this version"). */
+  theme?: import("../plugins/theme.ts").ThemeRuntime;
   now?: () => number;
   git?: GitExec;
   /** The official repository; tests and demos point it at a local fixture. */
@@ -128,6 +133,8 @@ export interface RepositoryRuntime {
   available(): AvailablePlugin[];
   onChange(fn: () => void): () => void;
   install(sourceId: string, id: string): Promise<PluginAnswer>;
+  /** D673: install a theme from a repository's index (the same pin and hash as an importer). */
+  installTheme(sourceId: string, id: string): Promise<import("../plugins/theme.ts").ThemeAnswer>;
   /** Move an installed repository plugin to what its source lists now. */
   update(id: string): Promise<PluginAnswer>;
   sourceOf(id: string | undefined): RepositorySource | undefined;
@@ -195,10 +202,13 @@ function readIndex(root: string): { entries: IndexEntry[]; problem?: "not_found"
     const icon = str(p.icon);
     if (!ID_RE.test(id) || seen.has(id)) continue;
     if (!path || isAbsolute(path) || path.split(/[\\/]/).includes("..")) continue;
-    if (!isVersion(version) || !COMMIT_RE.test(commit) || !HASH_RE.test(hash) || !app) continue;
+    if (!isVersion(version) || !COMMIT_RE.test(commit) || !HASH_RE.test(hash)) continue;
+    // A theme has no app; an importer must name the app it reads.
+    const kind = str(p.kind) === "theme" ? ("theme" as const) : undefined;
+    if (kind !== "theme" && !app) continue;
     if (icon && (isAbsolute(icon) || icon.split(/[\\/]/).includes(".."))) continue;
     seen.add(id);
-    entries.push({ id, path, version, commit, hash, app, ...(icon ? { icon } : {}) });
+    entries.push({ id, path, version, commit, hash, ...(app ? { app } : {}), ...(kind ? { kind } : {}), ...(icon ? { icon } : {}) });
   }
   return { entries };
 }
@@ -281,6 +291,7 @@ export function createRepositories(o: RepositoryOptions): RepositoryRuntime {
   // The plugin runtime's reviewed list starts from the last good official index, so a restart
   // (or an offline one) doesn't relabel a checked version as unchecked.
   o.plugins.setCurated(loadOfficialCache(o.dataDir));
+  o.theme?.setCurated(loadOfficialCache(o.dataDir));
 
   const all = (): RepositorySource[] => [{ id: OFFICIAL_SOURCE_ID, url: officialUrl, official: true }, ...repos];
   const get = (id: string) => all().find((r) => r.id === id);
@@ -397,7 +408,7 @@ export function createRepositories(o: RepositoryOptions): RepositoryRuntime {
       seen.add(entry.id);
       out.push({
         id: entry.id,
-        app: entry.app,
+        app: manifest.app.name,
         name: manifest.name.en,
         version: entry.version,
         commit: entry.commit,
@@ -454,6 +465,7 @@ export function createRepositories(o: RepositoryOptions): RepositoryRuntime {
       if (official?.state === "ready") {
         const entries = curatedOf(official);
         o.plugins.setCurated(entries);
+        o.theme?.setCurated(entries);
         saveOfficialCache(o.dataDir, entries);
       }
       refreshLatest();
@@ -548,6 +560,29 @@ export function createRepositories(o: RepositoryOptions): RepositoryRuntime {
     return installEntry(source, entry, false);
   }
 
+  async function installTheme(sourceId: string, id: string): Promise<import("../plugins/theme.ts").ThemeAnswer> {
+    const source = get(sourceId);
+    if (!source) return { ok: false, error: "not_found" };
+    let l = looked.get(sourceId)?.repo;
+    if (!l || l.state !== "ready") l = await lookOne(source, true);
+    const entry = l.entries.find((e) => e.id === id && e.kind === "theme");
+    if (!entry) return { ok: false, error: "not_found", detail: "its repository doesn't list that theme" };
+    const got = await checkout(source, entry);
+    try {
+      if (!got.dir) return { ok: false, error: got.error ?? "install_failed", ...(got.detail ? { detail: got.detail } : {}) };
+      return await o.theme!.installPrepared({
+        dir: got.dir,
+        source: source.url,
+        repoId: source.id,
+        official: source.official,
+        commit: entry.commit,
+        hash: entry.hash,
+      });
+    } finally {
+      if (got.staging) rmSync(got.staging, { recursive: true, force: true });
+    }
+  }
+
   async function update(id: string): Promise<PluginAnswer> {
     const p = o.plugins.get(id);
     if (!p) return { ok: false, error: "not_found" };
@@ -569,11 +604,12 @@ export function createRepositories(o: RepositoryOptions): RepositoryRuntime {
     look,
     snapshot: view,
     available: availableNow,
+    install,
+    installTheme,
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },
-    install,
     update,
     sourceOf: (id) => (id ? get(id) : undefined),
   };

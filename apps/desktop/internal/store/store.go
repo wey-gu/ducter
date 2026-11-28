@@ -660,6 +660,9 @@ type Store struct {
 	// ImportAnswers are the answers to a consent, a run or a removal (the views read and drop them).
 	Imports       *protocol.ImportsFrame
 	ImportAnswers []protocol.ImportsFrame
+	// Themes (D673): Settings › 外观和声音 / Look and sound's installed themes.
+	Themes       *protocol.ThemesFrame
+	ThemeAnswers []protocol.ThemesFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Lend is 加一台做事的电脑 / Add a computer for tasks's code as last said (D347):
@@ -906,6 +909,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "import_answer":
 		if f.Imports != nil {
 			s.ImportAnswers = append(s.ImportAnswers, *f.Imports)
+		}
+	case "themes":
+		if f.Themes != nil {
+			s.Themes = f.Themes
+		}
+	case "theme_answer":
+		if f.Themes != nil {
+			s.ThemeAnswers = append(s.ThemeAnswers, *f.Themes)
 		}
 	case "source_items_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result": // D359, D385: the pile's answers by clientId too
 		if f.Sources != nil {

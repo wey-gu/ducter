@@ -590,7 +590,9 @@ Go. All of it is in [Passwords & cards](passwords-and-cards.md).
 At the top is a small preview of the window as it looks now. Your partner smiles when you pick
 something.
 
-- **Look:** Pebble, the warm paper and clay look. More looks will appear here once they work.
+- **Look:** Pebble, the warm paper and clay look, first in the list. Looks you install appear
+  here too, each with a small preview of its colours; tap one to put it on the whole app, and
+  **Back to Pebble** is always one tap away. See [Plugins](plugins.md).
 - **Light and dark:** **Follow the system** (the default) turns the window dark when your Mac
   does, and back again, with a short fade. **Light** or **Dark** keeps it that way on this Mac.
 - **An opened task:** **Comfortable** (the default) or **Compact**, where your partner's picture

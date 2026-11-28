@@ -32,7 +32,7 @@ test("plugin add installs a pinned folder and says consent is owed in Settings",
   expect(text).toContain("Added Fixture Notes 0.1.0");
   expect(text).toContain("Nobody has checked it for you.");
   expect(text).toContain("Open Settings › Import");
-  expect(readFileSync(join(d.dir, "import-plugins.json"), "utf8")).toContain("fixture-reader");
+  expect(readFileSync(join(d.dir, "plugins.json"), "utf8")).toContain("fixture-reader");
   d.cleanup();
 });
 
@@ -127,4 +127,34 @@ test("the CLI parses `ducter plugin` with its words after it", () => {
   const r = parseArgs(["plugin", "add", "https://example.test/a#v1"]);
   expect(r.ok).toBe(true);
   if (r.ok) expect(r.args).toMatchObject({ command: "plugin", rest: ["add", "https://example.test/a#v1"] });
+});
+
+test("plugin new theme writes a passing plugin and check --json says 0 things to fix", async () => {
+  const d = tempDir();
+  const dir = join(d.dir, "calm");
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: false, rest: ["new", "theme", dir], print: () => {} })).toBe(0);
+  expect(existsSync(join(dir, "ducter-plugin.json"))).toBe(true);
+  expect(existsSync(join(dir, "theme.json"))).toBe(true);
+
+  const out: string[] = [];
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: true, rest: ["check", dir], print: (s) => out.push(s) })).toBe(0);
+  const r = JSON.parse(out.join("\n"));
+  expect(r.ok).toBe(true);
+  expect(r.plugin).toMatchObject({ id: "calm", kind: "theme" });
+  expect(r.summary).toBe("0 things to fix");
+  d.cleanup();
+});
+
+test("plugin check fails a deliberately low-contrast theme and a reserved kind", async () => {
+  const d = tempDir();
+  const bad = join(d.dir, "bad");
+  mkdirSync(bad, { recursive: true });
+  writeFileSync(join(bad, "ducter-plugin.json"), `${JSON.stringify({ format: "ducter-plugin/2", id: "bad", kind: "theme", version: "0.1.0", name: { en: "Bad" }, author: { name: "A" }, ducter: "^0.1", theme: { file: "theme.json" }, permissions: {} }, null, 2)}\n`);
+  writeFileSync(join(bad, "theme.json"), `${JSON.stringify({ format: "ducter-theme/1", name: { en: "Bad" }, tokens: { light: { bg: "#949494", ink: "#767676" }, dark: { bg: "#949494", ink: "#767676" } } }, null, 2)}\n`);
+  const out: string[] = [];
+  expect(await cmdPlugin({ t, dataDir: d.dir, json: true, rest: ["check", bad], print: (s) => out.push(s) })).toBe(1);
+  const r = JSON.parse(out.join("\n"));
+  expect(r.ok).toBe(false);
+  expect(r.checks.some((c: { id: string }) => c.id === "contrast" && c.ok === false)).toBe(true);
+  d.cleanup();
 });

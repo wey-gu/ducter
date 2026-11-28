@@ -31,6 +31,9 @@ export * from "./subject.ts";
 export * from "./task-groups.ts";
 export * from "./views.ts";
 export * from "./imports.ts";
+export * from "./plugins.ts";
+export * from "./theme.ts";
+export * from "./themes.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
 export * from "./handoff.ts";
@@ -83,6 +86,7 @@ import type { AppAnswer, AppCard, AppRef, AppsClientFrame, AppsServerFrame } fro
 import type { ChannelClientFrame, ChannelKind, ChannelServerFrame } from "./channels.ts";
 import type { SourceAsk, SourceItemRef, SourceOp, SourcesClientFrame, SourcesServerFrame } from "./task-sources.ts";
 import type { ImportsClientFrame, ImportsServerFrame } from "./imports.ts";
+import type { ThemesClientFrame, ThemesServerFrame } from "./themes.ts";
 import type { HandsetAsk, HandsetClientFrame, HandsetServerFrame, HandsetView } from "./handset.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
@@ -2159,6 +2163,8 @@ export type ClientFrame =
   | SourcesClientFrame
   // D655 (research/246): Settings › 导入 / Import, the consent, the offer and removal.
   | ImportsClientFrame
+  // D673 (research/248 phase 1): Settings › 外观和声音 / Look and sound's themes.
+  | ThemesClientFrame
   // D360: a group of tasks that are one piece of work (task-groups.ts).
   | TaskGroupFrame
   // D454: 移走 / Remove a finished card or group from Tasks.
@@ -2527,6 +2533,8 @@ export type ServerFrame =
   | SourcesServerFrame
   // D655 (research/246): Settings › 导入 / Import and the offer (imports.ts).
   | ImportsServerFrame
+  // D673 (research/248 phase 1): Settings › 外观和声音 / Look and sound's themes.
+  | ThemesServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

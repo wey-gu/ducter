@@ -90,6 +90,7 @@ import { ChatAppsSettings } from "./channels.tsx";
 import { SourceCardBody, TodoSourcesSettings, TS } from "./todos.tsx";
 import { ImportSettings } from "./imports.tsx";
 import { DensityRow, HandoffSettings, PaperRow, RecordsSettings } from "./settings-more.tsx";
+import { LookThemes, PluginsSettings } from "./plugins.tsx";
 import { AddSection, brainHeld, heldAt, NewTasksSection, noBrain, TasksSection, ThinksSection } from "./partner-story.tsx";
 import { ComposerReply, HoverReply, Imprint, PartReply, ReplyMenu, replyKey, replyOf, SelectText, SentImprint, useReplyGestures, replyLabel } from "./reply.tsx";
 import { dividerSeq, NewDivider, OlderWait, useFollow, useOlder, WayBack } from "./conv-follow.tsx";
@@ -3738,6 +3739,8 @@ function PhoneSettings() {
     <>
     {/* D445: Look and sound's preview stage, as the Mac's: a choice here shows at once. */}
     <LookPreview />
+    {/* D673: the installed themes, Pebble first, 换回 Pebble always one tap away. */}
+    <LookThemes />
     <section class="set">
       <div class="set-card">
         <PaperRow />
@@ -3911,6 +3914,7 @@ export function SettingsSheet() {
           {page === "autofill" && <AutofillSettings />}
           {page === "devices" && <DevicesSection open={dev} setOpen={setDev} />}
           {page === "phone" && <PhoneSettings />}
+          {page === "plugins" && <PluginsSettings />}
         </div>
       )}
     </Sheet>

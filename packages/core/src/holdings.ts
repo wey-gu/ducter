@@ -83,6 +83,13 @@ const SUMMARY = {
     issueClosed: "{names}都关闭了",
     prMergedOne: "{names}合并了",
     issueClosedOne: "{names}关闭了",
+    // how titles and refs are listed: 「A」「B」 side by side; bare refs part with 、
+    title: "「{t}」",
+    sep: "",
+    sepBare: "、",
+    lastSep: "",
+    lastSepBare: "、",
+    partsSep: "，",
   },
   en: {
     many: "{parts}; everything around them is wrapped up.",
@@ -92,6 +99,12 @@ const SUMMARY = {
     issueClosed: "{names} closed",
     prMergedOne: "{names} merged",
     issueClosedOne: "{names} closed",
+    title: "“{t}”",
+    sep: ", ",
+    sepBare: ", ",
+    lastSep: " and ",
+    lastSepBare: " and ",
+    partsSep: "; ",
   },
 } as const;
 
@@ -332,13 +345,13 @@ export function createHoldings(o: {
     // research/244 rule 4: its subject in words. A title when Ducter holds one (the hand-off's
     // item, the PR's standing, the task), else its full ref; never only "#n".
     const one = (n: (typeof named)[number]) =>
-      n.title ? (lang === "zh" ? `「${n.title}」` : `“${n.title}”`) : n.ref;
+      n.title ? fill(w.title, { t: n.title }) : n.ref;
     // The verb once, for the kind: 「A」「B」「C」都合并了, not 「A」已合并、「B」已合并…
     const list = (xs: (typeof named)[number][]) => {
       const q = xs.map(one);
-      // 「A」「B」 sit side by side; a bare ref has no quotes to part it, so it takes 、.
-      if (lang === "zh") return q.join(xs.every((x) => x.title) ? "" : "、");
-      return q.length <= 1 ? (q[0] ?? "") : `${q.slice(0, -1).join(", ")} and ${q.at(-1)}`;
+      if (q.length <= 1) return q[0] ?? "";
+      const titled = xs.every((x) => x.title);
+      return q.slice(0, -1).join(titled ? w.sep : w.sepBare) + (titled ? w.lastSep : w.lastSepBare) + q.at(-1);
     };
     const parts: string[] = [];
     const merged = named.filter((n) => n.kind === "pr");
@@ -349,7 +362,7 @@ export function createHoldings(o: {
     const text =
       named.length === 1
         ? fill(named[0]!.kind === "pr" ? w.onePr : w.oneIssue, { name: one(named[0]!) })
-        : fill(w.many, { parts: parts.join(lang === "zh" ? "，" : "; ") });
+        : fill(w.many, { parts: parts.join(w.partsSep) });
     for (const k of refs) summarized.add(k);
     o.log.append({
       stream: "channel",

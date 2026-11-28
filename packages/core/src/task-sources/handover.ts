@@ -49,6 +49,8 @@ const W = {
     reviewHold: "先不留",
     // research/244 rule 7: answered already, so the card reads as what was done, with titles.
     recordOn: "在{labels}下留了言：「{text}」",
+    recordItem: "「{title}」（{label}）",
+    recordGroupSep: "；",
     recordSep: "、",
     fixedIn: "已在 {where} 修好。",
     doneIn: "已在 {pr} 修好。",
@@ -79,6 +81,8 @@ const W = {
     reviewGo: "Comment",
     reviewHold: "Not now",
     recordOn: "Commented on {labels}: “{text}”",
+    recordItem: "“{title}” ({label})",
+    recordGroupSep: "; ",
     recordSep: ", ",
     fixedIn: "This was fixed in {where}. Closing.",
     doneIn: "Fixed in {pr}.",
@@ -1428,12 +1432,12 @@ export function createHandover(d: HandoverDeps): Handover {
       .map(([text, rows]) =>
         fill(w.recordOn, {
           labels: rows
-            .map(({ item }) => (lang === "zh" ? `「${item.title}」（${item.label || item.ref}）` : `“${item.title}” (${item.label || item.ref})`))
+            .map(({ item }) => fill(w.recordItem, { title: item.title, label: item.label || item.ref }))
             .join(w.recordSep),
           text,
         }),
       )
-      .join(lang === "zh" ? "；" : "; ");
+      .join(w.recordGroupSep);
     // The Go was given on the sheet that showed every line (D359's close sheet): recorded as given there and then.
     d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.reviewQ, { n: out.length }), record, goLabel: w.reviewGo, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review", item: out[0]!.item, groupId, items: out.map((x) => ({ item: x.item, text: x.text })) } } });
     d.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId, option: "go", by: "user" } });

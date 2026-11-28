@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -86,6 +87,9 @@ func (a *App) subjectCardRow(c *ui.Context, card protocol.SubjectCard) {
 			})
 			if card.Line != "" {
 				uiText(c.Key("line"), autospace(card.Line)).FontSize(t.XS).LineHeight(1.4).TextColor(t.InkMuted).Wrap()
+			}
+			if card.Took > 0 {
+				uiText(c.Key("took"), a.L.T("task.footer.took", a.duration(time.Duration(card.Took)*time.Millisecond))).FontSize(t.XS).LineHeight(1.4).TextColor(t.InkMuted).Wrap()
 			}
 			if card.Progress != "" && card.Progress != card.Line {
 				uiText(c.Key("progress"), autospace(card.Progress)).FontSize(t.XS).LineHeight(1.4).TextColor(t.InkMuted).Wrap()

@@ -38,7 +38,7 @@ function setup() {
     t.cleanup();
   });
   const msg = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "官网下载页的下载按钮点不了，帮我修一下。" } });
-  return { log, tasks, subjects, handoffs, woke, msg };
+  return { log, tasks, subjects, handoffs, woke, msg, clock };
 }
 
 /** A done report's first line while it still watches CI: card moves, the partner says nothing. */
@@ -49,6 +49,8 @@ test("one fix through hand-off, helper, PR, CI and merge is four lines, not thir
   openTask(log, "fix", "修官网下载页的下载按钮");
   // The work: progress is the card's, never a new line.
   for (const s of ["下载链接指到了一个已删除的文件", "改好了，开了 PR #578", "在等 CI"]) report(log, "fix", { state: "progress", summary: s });
+  // Before the result the card keeps the newest progress gist.
+  expect(subjects.cardOf("fix")).toMatchObject({ state: "working", line: "在等 CI" });
   // The PR is open and a check is armed: its done is not the final result.
   log.append({ stream: `task:fix`, origin: "system", kind: "owned_news", body: { taskId: "fix", pr: PR, news: [], seen: { since: AT, state: "open" } } });
   log.append({ stream: `task:fix`, origin: "task", kind: "waiter", body: { waiterId: "w1", taskId: "fix", state: "armed", reason: "CI 跑完", at: AT } });
@@ -97,7 +99,9 @@ test("one fix through hand-off, helper, PR, CI and merge is four lines, not thir
   expect(woke.length).toBe(finals);
   // The person's drawn conversation: the start, the one needs-you, the final result, the card.
   const card = subjects.cardOf("fix")!;
-  expect(card).toMatchObject({ key: `pr:${PR}`, msgSeq: msg.seq, title: "官网下载页的下载按钮", state: "done", taskId: "fix" });
+  expect(card).toMatchObject({ key: `pr:${PR}`, msgSeq: msg.seq, title: "官网下载页的下载按钮", state: "done", taskId: "fix", line: "PR #578 合并了" });
+  // The card is state, the partner's message is speech: never its sentence again.
+  expect(card.line).not.toBe("合并了，线上下载按钮好了。");
   const lines = 1 /* start */ + 1 /* needs-you */ + 1 /* final result */ + 1 /* card */;
   // Before: every report and every hand-over marker was its own line.
   const reports = ["fix", "rev"].reduce((n, id) => n + log.read({ stream: `task:${id}`, kinds: ["report"] }).length, 0);
@@ -129,12 +133,52 @@ test("who speaks: a progress never, a first failure once, a done once it is fina
   expect(woke.length).toBe(2);
 });
 
+test("after the result the card says the merged PR and how long it took, never the partner's words", () => {
+  const { log, subjects, clock } = setup();
+  openTask(log, "fix", "修官网下载页的下载按钮");
+  report(log, "fix", { state: "progress", summary: "改好了，开了 PR #578" });
+  expect(subjects.cardOf("fix")).toMatchObject({ state: "working", line: "改好了，开了 PR #578" });
+  clock.advance(17 * 60_000);
+  log.append({ stream: "task:fix", origin: "system", kind: "owned_news", body: { taskId: "fix", pr: PR, news: ["merged"], seen: { since: AT, state: "merged" } } });
+  report(log, "fix", { state: "done", summary: "合并了，线上下载按钮好了。" });
+  const card = subjects.cardOf("fix")!;
+  expect(card.line).toBe("PR #578 合并了");
+  expect(card.line).not.toBe("合并了，线上下载按钮好了。");
+  expect(card.took).toBe(17 * 60_000);
+  // A later report never says its sentence again, nor grows the time.
+  clock.advance(5 * 60_000);
+  report(log, "fix", { state: "done", summary: "又看了一遍，线上正常。" });
+  expect(subjects.cardOf("fix")).toMatchObject({ state: "done", line: "PR #578 合并了", took: 17 * 60_000 });
+});
+
+test("with no PR the card's result line is the report's evidence, not its summary", () => {
+  const { log, subjects } = setup();
+  openTask(log, "q", "Check the pricing page");
+  report(log, "q", { state: "done", summary: "The pricing page is correct now.", evidence: [{ kind: "test", label: "pricing tests pass", ref: "12/12" }] });
+  const card = subjects.cardOf("q")!;
+  expect(card).toMatchObject({ state: "done", line: "pricing tests pass" });
+  expect(card.line).not.toBe("The pricing page is correct now.");
+});
+
+test("a second partner's task card is in its own conversation, and says the fact", () => {
+  const { log, subjects } = setup();
+  const u = log.append({ stream: "channel:codex", persona: "codex", origin: "user", kind: "user_msg", body: { text: "Fix the shop's order page." } });
+  log.append({ stream: "task:shop", persona: "codex", origin: "partner", kind: "task_open", body: { taskId: "shop", title: "Fix the shop's order page.", place: { kind: "none" }, harness: "claude-code", brief: "Fix it." } });
+  report(log, "shop", { state: "done", summary: "Merged. The order page works now.", evidence: [{ kind: "diff", label: "order.ts changed", ref: "a.ts", check: "verified" }] });
+  const card = subjects.cardOf("shop")!;
+  expect(card).toMatchObject({ msgSeq: u.seq, state: "done", line: "order.ts changed", taskId: "shop" });
+  expect(card.line).not.toBe("Merged. The order page works now.");
+  const mine = log.read({ stream: "channel:codex", kinds: ["subject_card"] });
+  expect((mine.at(-1)!.body as { card: { taskId: string } }).card.taskId).toBe("shop");
+  expect(log.read({ stream: "channel", kinds: ["subject_card"] }).some((e) => (e.body as { card: { taskId?: string } }).card.taskId === "shop")).toBe(false);
+});
+
 test("a restart rebuilds the card and keeps an already-said done quiet", () => {
   const { log, tasks, msg } = setup();
   openTask(log, "a", "Fix the checkout");
-  report(log, "a", { state: "done", summary: "Fixed the checkout." });
+  report(log, "a", { state: "done", summary: "Fixed the checkout.", evidence: [{ kind: "test", label: "checkout tests pass", ref: "4/4" }] });
   const again = createSubjects({ log, tasks, handoffs: () => ({ all: () => [] }) });
-  expect(again.cardOf("a")).toMatchObject({ key: "task:a", msgSeq: msg.seq, state: "done", line: "Fixed the checkout." });
+  expect(again.cardOf("a")).toMatchObject({ key: "task:a", msgSeq: msg.seq, state: "done", line: "checkout tests pass" });
   const next = report(log, "a", { state: "done", summary: "Fixed it again, nothing new." });
   expect(again.shouldWake(next)).toBe(false);
 });

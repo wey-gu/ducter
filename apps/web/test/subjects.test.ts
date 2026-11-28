@@ -29,9 +29,9 @@ test("the card hangs from the message and is revised in place, one per subject",
   expect(row().cards![0]).toMatchObject({ state: "working", line: "改好了，在等 CI" });
   // A helper's card of the same task and the task's own card joining the hand-off's PR replace it.
   s.applyEvent(ev(3, "subject_card", { card: { key: "pr:acme/site#578", msgSeq: 1, title: "官网下载页的下载按钮", state: "waiting", line: "CI 的缓存要不要清掉重跑？", taskId: "fix", at: "2026-11-27T06:32:00.000Z" } }) as never);
-  s.applyEvent(ev(4, "subject_card", { card: { key: "pr:acme/site#578", msgSeq: 1, title: "官网下载页的下载按钮", state: "done", line: "合并了，线上下载按钮好了。", taskId: "fix", at: "2026-11-27T06:33:00.000Z" } }) as never);
+  s.applyEvent(ev(4, "subject_card", { card: { key: "pr:acme/site#578", msgSeq: 1, title: "官网下载页的下载按钮", state: "done", line: "PR #578 合并了", took: 17 * 60_000, taskId: "fix", at: "2026-11-27T06:33:00.000Z" } }) as never);
   expect(row().cards!.length).toBe(1);
-  expect(row().cards![0]).toMatchObject({ key: "pr:acme/site#578", state: "done", line: "合并了，线上下载按钮好了。" });
+  expect(row().cards![0]).toMatchObject({ key: "pr:acme/site#578", state: "done", line: "PR #578 合并了", took: 17 * 60_000 });
   // The card is not a row of its own.
   expect(s.channel.filter((e) => !e.user && !e.ai && !e.job).length).toBe(0);
 });
@@ -66,8 +66,12 @@ test("the state is one word per language, never a joined line", () => {
 test("the view draws the card under the message and the styles cover the phone", () => {
   expect(src("views.tsx")).toContain("<SubjectCards cards={cards} />");
   expect(src("subjects.tsx")).toContain('data-subject={c.key}');
+  // D653 polish: the time it took is its own element, never joined to the line.
+  expect(src("subjects.tsx")).toContain('class="subject-took"');
+  expect(src("subjects.tsx")).toContain('t("task.footer.took", duration(A.L, c.took))');
   const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
   expect(css).toContain(".subject-card {");
+  expect(css).toContain(".subject-took {");
   expect(css).toContain("@media (max-width: 460px)");
   expect(css).toContain(".subjects .amark.s-working");
 });

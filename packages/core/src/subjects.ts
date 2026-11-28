@@ -9,12 +9,19 @@
 // watches (an open PR, an armed wait, a loop) only revises the card; a second done on the same
 // subject wakes nobody. The partner still judges what to say when woken (principle 21).
 import type { Bodies, LogEvent, SubjectCard, TaskCard } from "@ducter/protocol";
-import { channelOf, subjectKey, subjectLine, subjectStateOf } from "@ducter/protocol";
+import { channelOf, subjectKey, subjectLine, subjectStateOf, words } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { HandoffBody } from "@ducter/protocol/src/handoff.ts";
+import { langOfText } from "./lang.ts";
 
 const GITHUB_REF = /(?:^|[\s(（「“"'])([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#(\d+)(?=$|[\s)）」”"',，。:：;；])/;
 const URL_REF = /https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/(?:pull|issues)\/(\d+)/i;
+
+/** A merged PR as the card's artifact line, in the task's language. */
+const ARTIFACT = {
+  zh: { merged: (n: string) => `PR #${n} 合并了` },
+  en: { merged: (n: string) => `PR #${n} merged` },
+};
 
 /** A GitHub ref in a string ("owner/repo#12", a PR URL), lower case: owner/repo#n. */
 export function githubRef(s: string | undefined): string | undefined {
@@ -130,20 +137,54 @@ export function createSubjects(d: SubjectsDeps): Subjects {
     for (const [k, v] of byKey) if (k !== c.key && v.taskId && v.taskId === c.taskId) byKey.delete(k);
     byKey.set(c.key, c);
     if (quiet) return;
-    const same = prev && prev.msgSeq === c.msgSeq && prev.title === c.title && prev.state === c.state && prev.line === c.line && (prev.progress ?? "") === (c.progress ?? "");
+    const same = prev && prev.msgSeq === c.msgSeq && prev.title === c.title && prev.state === c.state && prev.line === c.line && (prev.progress ?? "") === (c.progress ?? "") && (prev.took ?? 0) === (c.took ?? 0);
     if (same) return;
     // D312: the card lives in the task's own partner's conversation (a second partner's task never lands in the default's).
     const persona = c.taskId ? tasks.get(c.taskId)?.persona : undefined;
     log.append({ stream: channelOf(persona), origin: "system", kind: "subject_card", body: { card: c }, ...(persona ? { persona } : {}) } as never);
   };
 
+  /** The merged PR that is this subject's artifact: its own key first, else the newest merged. */
+  function mergedPrOf(taskId: string, key: string): string | undefined {
+    const merged = (tasks.get(taskId)?.prs ?? []).filter((p) => p.state === "merged");
+    const own = key.startsWith("pr:") ? key.slice(3).toLowerCase() : "";
+    const hit = merged.find((p) => p.pr.toLowerCase() === own) ?? [...merged].sort((a, b) => b.at.localeCompare(a.at))[0];
+    return hit?.pr;
+  }
+
+  /**
+   * The card is state, the partner's message is speech (D653 polish): after the result is said, the
+   * line is the concrete artifact and facts — the merged PR, else the report's evidence — never the
+   * report summary that the partner just said. Before that, the caller keeps the progress gist.
+   */
+  function resultLine(taskId: string, key: string, r: Bodies["report"]): string {
+    const pr = mergedPrOf(taskId, key);
+    if (pr) {
+      const lang = langOfText(r.summary, tasks.get(taskId)?.title);
+      return words(ARTIFACT, lang).merged(pr.slice(pr.lastIndexOf("#") + 1));
+    }
+    const ev = (r.evidence ?? []).find((e) => e.check !== "missing" && String(e.label ?? "").trim());
+    return ev ? subjectLine(ev.label) : "";
+  }
+
+  /** How long the work took, from its task's open to the final result; a minute's floor. */
+  function tookOf(taskId: string, at: string): number | undefined {
+    const opened = tasks.get(taskId)?.openedAt;
+    if (!opened) return undefined;
+    const ms = Date.parse(at) - Date.parse(opened);
+    return ms >= 60_000 ? ms : undefined;
+  }
+
   const cardFor = (taskId: string, at: string, report?: Bodies["report"], byState = false): SubjectCard => {
     const s = startOf(taskId, at);
     const c = tasks.get(taskId);
     const r = report ?? c?.lastReport;
     const w = c ? watching(taskId) : false;
+    const prevCard = byKey.get(s.key);
+    const owner = prevCard?.taskId ?? taskId;
     let state: SubjectCard["state"] = "working";
     let line = "";
+    let took: number | undefined;
     if (byState && c) {
       switch (c.attention) {
         case "done":
@@ -167,9 +208,16 @@ export function createSubjects(d: SubjectsDeps): Subjects {
       line = subjectLine(state === "waiting" ? c.reason ?? said ?? "" : said ?? c.reason ?? "");
     } else if (r) {
       state = subjectStateOf(r.state);
-      line = subjectLine(r.summary);
-      // A done report from a task still watching is not the final result: the card keeps working.
-      if (state === "done" && w) state = "working";
+      // The final result the partner speaks for: the card says the artifact, not its sentence.
+      const final = r.state === "done" && !r.direct && !w;
+      if (final) {
+        line = resultLine(owner, s.key, r);
+        took = tookOf(owner, at);
+      } else {
+        line = subjectLine(r.summary);
+        // A done report from a task still watching is not the final result: the card keeps working.
+        if (state === "done" && w) state = "working";
+      }
     } else if (c) {
       switch (c.attention) {
         case "done":
@@ -189,23 +237,25 @@ export function createSubjects(d: SubjectsDeps): Subjects {
       line = subjectLine(c.reason ?? "");
     }
     // A subject that finished stays finished: a late progress from a helper on the same PR never
-    // moves it back (its card is one place, and its result was said once).
-    const prev = byKey.get(s.key);
-    if (prev?.state === "done" && state !== "failed") {
+    // moves it back (its card is one place, and its result was said once). Its fact line and how
+    // long it took are frozen at the result, never re-worded by a later event.
+    if (prevCard?.state === "done" && state !== "failed") {
       state = "done";
-      line = prev.line || line;
+      line = prevCard.line || line;
+      took = prevCard.took;
     }
     const progress = state === "working" && r?.state === "progress" ? line : undefined;
     return {
       key: s.key,
       // One subject, one place: a helper's card joins the giver's, never moving it to another message.
-      msgSeq: prev?.msgSeq ?? s.msgSeq,
+      msgSeq: prevCard?.msgSeq ?? s.msgSeq,
       title: s.title,
       state,
       line: line || "",
       ...(progress ? { progress } : {}),
+      ...(took ? { took } : {}),
       // The card opens the task that started the subject (a helper never takes the card over).
-      taskId: prev?.taskId ?? taskId,
+      taskId: prevCard?.taskId ?? taskId,
       at,
     };
   };

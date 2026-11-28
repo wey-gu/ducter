@@ -36,7 +36,7 @@ func subjectCardApp(t *testing.T, lang i18n.Lang) *App {
 		}}),
 		protocol.NewEvent(5, at(3), "default", "channel", protocol.OriginSystem, protocol.KindSubjectCard, protocol.SubjectCardBody{Card: protocol.SubjectCard{
 			Key: "pr:acme/site#578", MsgSeq: 1, Title: "官网下载页的下载按钮", State: protocol.SubjectDone,
-			Line: "合并了，线上下载按钮好了。", TaskID: "fix", At: at(3),
+			Line: "PR #578 合并了", Took: 17 * 60 * 1000, TaskID: "fix", At: at(3),
 		}}),
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
@@ -50,13 +50,14 @@ func TestSubjectCardUnderTheMessage(t *testing.T) {
 			tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 			tt.Frame()
 			tt.Frame()
-			for _, want := range []string{"官网下载页的下载按钮", app.L.T("subject.done")} {
+			for _, want := range []string{"官网下载页的下载按钮", app.L.T("subject.done"), "PR #578 合并了", app.L.T("task.footer.took", app.duration(17*time.Minute))} {
 				if !hasText(tt, want) {
 					t.Errorf("%s %d: no %q in %q", lang, w, want, tt.Texts())
 				}
 			}
-			if !hasText(tt, "合并了，线上下载按钮好了。") {
-				t.Errorf("%s %d: the newest line is missing: %q", lang, w, tt.Texts())
+			// The card is state, the partner's message is speech: its sentence is never the card's line.
+			if hasText(tt, "合并了，线上下载按钮好了。") {
+				t.Errorf("%s %d: the partner's sentence came back on the card: %q", lang, w, tt.Texts())
 			}
 			// One card per subject: the old key's line is gone.
 			if hasText(tt, "改好了，在等 CI") {

@@ -5,6 +5,7 @@
 import type { SubjectCard } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { AskMark } from "./asks.tsx";
+import { duration } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -50,6 +51,7 @@ export function SubjectCards({ cards }: { cards: SubjectCard[] }) {
                     {c.line}
                   </span>
                 )}
+                {!!c.took && <span class="subject-took">{t("task.footer.took", duration(A.L, c.took))}</span>}
                 {c.progress && c.progress !== c.line && (
                   <span class="subject-progress" dir="auto">
                     {c.progress}

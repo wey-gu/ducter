@@ -69,9 +69,10 @@ describe("D645 B1: a GitHub fact is read where gh is", () => {
     expect(h.tasks.get(PR_LOOP_TASK)?.attention).toBe("done");
     expect(h.work.loops.get(PR_LOOP_TASK)?.state).toBe("ended");
     expect(h.work.loops.get(PR_LOOP_TASK)?.endedBy).toBe("condition");
-    const sums = h.aiMsgs();
-    expect(sums).toHaveLength(1);
-    expect(sums[0]!.settled).toMatchObject({ prs: 1 });
+    // D667: the merge is one fact on the task's card ("PR #11408 merged"), never a summary message.
+    expect(h.aiMsgs().filter((m) => m.settled)).toHaveLength(0);
+    const facts = h.log.read({ stream: `task:${PR_LOOP_TASK}`, kinds: ["subject_info"] }).map((e) => (e.body as { text: string }).text);
+    expect(facts.some((t) => t.includes("11408"))).toBe(true);
   });
 
   test("a look about the machine still runs there: only GitHub facts move", async () => {

@@ -143,7 +143,10 @@ describe("D628: a wait that keeps coming back backs off", () => {
     expect(backed.ok).toBe(true);
     expect(backed.repeats).toBe(WAIT_REPEAT_N + 1);
     expect((Date.parse(backed.at!) - clock.now()) / 60_000).toBeGreaterThanOrEqual(60);
+    // D667: the person is told once, as a fact on the task's card, never as its own message.
     const notes = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).filter((e) => !!(e.body as Bodies["ai_msg"]).waitSlow);
-    expect(notes).toHaveLength(1);
+    expect(notes).toHaveLength(0);
+    const facts = core.log.read({ kinds: ["subject_info"], limit: 200 });
+    expect(facts).toHaveLength(1);
   });
 });

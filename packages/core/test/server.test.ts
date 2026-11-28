@@ -77,18 +77,18 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
 
   core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "old" } }); // seq 1
   core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "seen" } }); // seq 2
-  openTask(core.log, "t1"); // seq 3 (task stream: not replayed)
+  openTask(core.log, "t1"); // seq 3 (task stream: not replayed), and D653's subject card for it on the channel: seq 4
   core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "assistant", text: "thinking" } });
-  core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "new" } }); // seq 5
+  core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "new" } }); // seq 6
 
   const c = new WsClient(core.url);
   stops.push(() => c.ws.close());
   await c.open();
   c.send({ t: "hello", cursor: 2 });
   const welcome = await c.until((f) => f.t === "welcome");
-  expect(welcome).toMatchObject({ persona: "default", personaName: "Ducter", headSeq: 5 });
+  expect(welcome).toMatchObject({ persona: "default", personaName: "Ducter", headSeq: 6 }); // D653: the task's subject card is one more channel event
   await c.until((f) => f.t === "on_hand");
-  expect(c.events().map((e) => e.seq)).toEqual([5]);
+  expect(c.events().map((e) => e.kind)).toEqual(["subject_card", "ai_msg"]); // after the cursor: the card (seq 4) and "new" (seq 6)
   const oh = c.frames.find((f) => f.t === "on_hand") as Extract<ServerFrame, { t: "on_hand" }>;
   expect(oh.onHand.tasks.map((t) => t.taskId)).toEqual(["t1"]);
   expect(oh.onHand.tasks[0]!.openedAt).toBe(core.log.read({ kinds: ["task_open"] })[0]!.ts);
@@ -215,7 +215,7 @@ test("ws: hello without cursor replays the last 200 channel events, superseded r
   expect(evs.length).toBe(199); // 200 read, one superseded revision dropped
   expect(evs.every((e) => e.stream === "channel")).toBe(true);
   expect(evs.some((e) => e.seq === lm.seq)).toBe(false);
-  expect(evs.at(-1)!.supersedes).toBe(lm.seq);
+  expect(evs.filter((e) => e.kind === "living_msg").at(-1)!.supersedes).toBe(lm.seq); // D653: a subject card may come after it
   // D509: scrolled to the top, the older ones come a page at a time until there are none.
   const pages: number[][] = [];
   let before = evs[0]!.seq;

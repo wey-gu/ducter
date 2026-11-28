@@ -6,6 +6,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LogEvent, ServerFrame } from "@ducter/protocol";
 import { startCore } from "../src/core.ts";
+import { FakeClock } from "../src/clock.ts";
+import { SUBJECT_LIVE_MS } from "../src/quiet-gap.ts";
 import { createUpdatedLine, notesIn, updatedWords } from "../src/updated-line.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -122,7 +124,8 @@ test("read from a card that day: not said; a card read another day doesn't silen
 
 test("the home says it in the conversation at the app's hello, once; notes_seen is taken", async () => {
   const t = tempDir();
-  const opts = (version: string) => ({ dataDir: t.dir, port: 0, batchMs: 5, update: { version }, deviceProbes: { cua: async () => null, harnesses: async () => [], kind: async () => "laptop" as const } });
+  const clock = new FakeClock(Date.parse("2026-11-17T09:00:00Z"));
+  const opts = (version: string) => ({ dataDir: t.dir, port: 0, batchMs: 5, clock, update: { version }, deviceProbes: { cua: async () => null, harnesses: async () => [], kind: async () => "laptop" as const } });
   const hello = async (core: ReturnType<typeof startCore>, then?: (ws: WebSocket) => void) => {
     const frames: ServerFrame[] = [];
     const ws = new WebSocket(core.url);
@@ -144,6 +147,9 @@ test("the home says it in the conversation at the app's hello, once; notes_seen 
 
     core = startCore(opts("0.0.72"));
     core.setPartner({ onTrigger: () => {} });
+    // research/244 rule 6: the person just wrote, so the update note waits for a quiet moment.
+    expect(await hello(core)).toEqual([]);
+    clock.advance(SUBJECT_LIVE_MS + 1_000);
     const said = await hello(core);
     expect(said.length).toBe(1);
     expect(said[0]).toMatchObject({ origin: "partner", stream: "channel" });

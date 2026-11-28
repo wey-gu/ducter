@@ -47,6 +47,9 @@ const W = {
     reviewQ: "在这 {n} 个下面留言？",
     reviewGo: "留言",
     reviewHold: "先不留",
+    // research/244 rule 7: answered already, so the card reads as what was done, with titles.
+    recordOn: "在{labels}下留了言：「{text}」",
+    recordSep: "、",
     fixedIn: "已在 {where} 修好。",
     doneIn: "已在 {pr} 修好。",
     done: "做完了。",
@@ -75,6 +78,8 @@ const W = {
     reviewQ: "Comment on these {n}?",
     reviewGo: "Comment",
     reviewHold: "Not now",
+    recordOn: "Commented on {labels}: “{text}”",
+    recordSep: ", ",
     fixedIn: "This was fixed in {where}. Closing.",
     doneIn: "Fixed in {pr}.",
     done: "Done.",
@@ -1415,8 +1420,22 @@ export function createHandover(d: HandoverDeps): Handover {
     const w = W[lang];
     const decisionId = newId("d_");
     handled.add(decisionId);
+    // research/244 rule 7: this card is answered here and then; it may never read as a question.
+    // Group the rows by the line each one got, and name every to-do by its title (rule 4).
+    const byText = new Map<string, { item: SourceItemRef }[]>();
+    for (const x of out) byText.set(x.text, [...(byText.get(x.text) ?? []), { item: x.item }]);
+    const record = [...byText.entries()]
+      .map(([text, rows]) =>
+        fill(w.recordOn, {
+          labels: rows
+            .map(({ item }) => (lang === "zh" ? `「${item.title}」（${item.label || item.ref}）` : `“${item.title}” (${item.label || item.ref})`))
+            .join(w.recordSep),
+          text,
+        }),
+      )
+      .join(lang === "zh" ? "；" : "; ");
     // The Go was given on the sheet that showed every line (D359's close sheet): recorded as given there and then.
-    d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.reviewQ, { n: out.length }), goLabel: w.reviewGo, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review", item: out[0]!.item, groupId, items: out.map((x) => ({ item: x.item, text: x.text })) } } });
+    d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.reviewQ, { n: out.length }), record, goLabel: w.reviewGo, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review", item: out[0]!.item, groupId, items: out.map((x) => ({ item: x.item, text: x.text })) } } });
     d.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId, option: "go", by: "user" } });
     let done = 0;
     let failed = 0;

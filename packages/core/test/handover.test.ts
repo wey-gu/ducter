@@ -401,6 +401,9 @@ test("review together: a fixed comment names each item's own merged PR; an open 
   expect(card.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#11108", "acme/mem#11156"]);
   expect(card.src!.items!.map((x) => x.text)).toEqual(["Fixed in #11163.", "Fixed in #11163."]);
   expect(card.question).toBe("在这 2 个下面留言？");
+  // research/244 rule 7: it was answered here and then, so it reads as what was done, with titles,
+  // never as a question (E3's "在这 3 个下面留言？" logging an answer).
+  expect(card.record).toBe("在「Fix the settings card's label」（#11108）、「Fix the settings card's scroll」（#11156）下留了言：「Fixed in #11163.」");
 });
 
 test("plan first: Hold keeps it waiting; a reply goes to the plan's own task, which plans again in place", async () => {

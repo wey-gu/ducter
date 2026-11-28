@@ -40,10 +40,15 @@ conventions, and gives two owners for one field, so conflicts need rules. One ow
   the take was skipped and the brief names exactly one open issue: `bindStaged`'s fallback).
 - **New task:** **从待办里选 / Pick from your to-dos** lists the open ones (search, due dates, 在做 for one that
   has a live task: picking it opens that task, never a second one). The pick fills the words and binds.
-- **New ones (新的来了):** **说一声 / Say so** (GitHub's default): a look that finds new ones wakes the
-  partner, at most once per source per 3 hours, and it offers them in one line. **不用说 / Stay quiet**
-  (Obsidian's default: a personal list churns; it waits to be asked). **直接接下 / Take it on**: the
-  standing go, at most 5 a day per source; the sixth is offered.
+- **New ones (新的来了):** **说一声 / Say so** (GitHub's default): new ones are an offer, and an offer
+  waits for a quiet moment (research/244 rules 5 and 6): while the person wrote in the last few
+  minutes or a card is open it is held, and in quiet hours it waits for morning. Then the batch
+  becomes **one card**: its question says how many are new (a single one names its title), and the
+  card lists each to-do by its title once: **接下 / Take them** · **现在不 / Not now**
+  (the default; left alone it fades like every D453 offer and says nothing). The partner is not woken
+  to ask in its own words: the card is the question. **不用说 / Stay quiet** (Obsidian's default: a
+  personal list churns; it waits to be asked). **直接接下 / Take it on**: the standing go, at most 5 a
+  day per source; the sixth is offered.
 - **The standing go is learned, X2's way:** after two to-dos the person took from one source in 14 days
   finished well (D395: never at the take, never beside a task that couldn't start or failed), one card
   once, when the second finishes: **以后 GitHub 上标给你的，直接接下？** (Obsidian: **以后 Obsidian 里的待办，直接接下？**) with

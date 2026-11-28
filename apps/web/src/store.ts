@@ -8,6 +8,7 @@ import type { ActivityStep, Attention, Bodies, BridgeReceipt, ClientFrame, Deliv
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { askOpen } from "@ducter/protocol/src/open-asks.ts";
+import { keepsPoints } from "@ducter/protocol/src/ask-words.ts";
 import { addSpan, cutSpans, covers, indexAdd, indexJoin, keepFor, lowerBound, nextAsk, spanOfPage, type Ask, type SessionIndex, type Span, type View } from "@ducter/protocol/src/session.ts";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -642,8 +643,10 @@ export class Store {
         // message of its own.
         if (b.decisionId) {
           const d = this.decisions.get(b.decisionId);
-          if (d) d.said = b.text;
-          else this.decisions.set(b.decisionId, { decisionId: b.decisionId, question: "", goLabel: "", defaultOption: "hold", reversible: false, seq: 0, said: b.text });
+          if (!d) this.decisions.set(b.decisionId, { decisionId: b.decisionId, question: "", goLabel: "", defaultOption: "hold", reversible: false, seq: 0, said: b.text });
+          // research/244 rule 5: the card keeps its own question when the words drop a point or the
+          // object; the words are not drawn as a second line restating it.
+          else if (keepsPoints(d.question, b.text)) d.said = b.text;
           return void this.bySeq.set(ev.seq, null);
         }
         // D385: a set of to-dos is posted while the partner is still writing its line about it:

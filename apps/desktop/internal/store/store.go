@@ -1474,7 +1474,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 				d = &DecisionState{Decision: protocol.Decision{DecisionID: b.DecisionID}}
 				s.Decisions[b.DecisionID] = d
 			}
-			d.Said = b.Text
+			// research/244 rule 5: the card keeps its own question when the words drop a point or
+			// the object; the words are not drawn as a second line restating it.
+			if protocol.KeepsPoints(d.Question, b.Text) {
+				d.Said = b.Text
+			}
 			s.bySeq[ev.Seq] = nil
 			return
 		}

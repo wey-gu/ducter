@@ -9550,6 +9550,11 @@ a.cal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 .ask-line { display: flex; align-items: flex-start; gap: 8px; }
 .ask-line > .kind-mark { flex: none; margin-top: 2px; opacity: 0.72; }
 .ask-line > .ask-words { min-width: 0; }
+/* research/244 rule 7: an already-answered decision (a group review) reads as what was done. It
+   keeps the column's measure and wraps like any line, never one long line off the edge. */
+.askq.record { width: 100%; min-width: 0; max-width: min(100%, 46rem); }
+.askq.record > .ask-words { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink-soft); font-size: var(--sm); line-height: 1.55; }
+.askq.record > .ask-words .ask-text { font-size: inherit; }
 .decision .q > .kind-mark { vertical-align: -3px; margin-inline-end: 8px; color: var(--needs-ink); opacity: 0.7; }
 
 /* After Go or Hold: the card settles in place. */
@@ -25484,6 +25489,8 @@ img[src*="art/fig/sprout"] { filter: none !important; }
 .ask-said {
   -webkit-user-select: text;
   user-select: text;
+  /* research/244 rule 5: a question that keeps its own numbered points keeps its line breaks. */
+  white-space: pre-wrap;
   /* D607: prose wraps anywhere a URL, path or hash needs it (no word-break: CJK already wraps). */
   overflow-wrap: anywhere;
 }

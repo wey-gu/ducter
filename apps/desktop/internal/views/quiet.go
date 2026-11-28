@@ -409,6 +409,12 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	task := a.S.Task(id)
 	key := "d" + d.DecisionID
 	inTask := a.Route == RouteTask && a.TaskID == id
+	// research/244 rule 7: a decision answered before it was drawn reads as what was done, never
+	// as a question with buttons (the group review's comments).
+	if d.Record != "" && (d.Resolved != nil || d.Pending != "") {
+		a.partnerWords(c, d.Record)
+		return
+	}
 	words := a.questionOf(d)
 	if d.Said != "" && !inTask {
 		words = d.Said

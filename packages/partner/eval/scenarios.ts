@@ -134,7 +134,7 @@ export type Step =
   // `space` (D334, with scenario.spaces): the Space it was sent in ("ws-everyone"); default the person's own.
   | { peer: { from: string; text: string; answer?: boolean; unchecked?: true; space?: string } }
   // D341 (scenario.todos): a look at GitHub found these issues new (taken: under the standing go).
-  | { todosNew: { refs: string[]; taken?: boolean } }
+  | { todosNew: { refs: string[]; taken?: boolean; offer?: boolean } }
   // D473: the seeded task with this key couldn't start (the runner's card: why, where, the fixes core
   // found). Core's mender climbs its ladder; with nothing left to try it hands the task to the partner.
   | { cantStart: { task: string; cant: import("../../protocol/src/index.ts").CantStart; line: string } }
@@ -1414,6 +1414,42 @@ export const scenarios: Scenario[] = [
     expect: { sentences: 2, opens: 0, noSend: true, msgs: [1, 1], maxChars: 80, relayed: true, forbid: [CONSUMER_PLUMBING, /test\/lru\.test\.ts|fake clock/] },
     rubric:
       "D129: the user sees the task's question only through the partner, with its buttons under the partner's words. One short Chinese message (at most 2 short sentences) that asks it in the partner's own everyday words (e.g. 'lru 的测试也是靠 sleep 等的，要一起改掉吗？'), never pasting the task's wording or its file path, never naming the buttons, never answering the question itself.",
+  },
+  {
+    id: "question-stands-alone-zh",
+    category: "needs_input",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "PR #11230 那个远程访问设置的改动，按你说的接着弄" },
+      { task: { key: "remote", title: "远程访问设置：按方案改 #11230", repo: "~/dev/mem", branch: "ducter/remote-settings", ack: "我接着按设计稿补齐远程访问设置。", state: "working" } },
+    ],
+    steps: [
+      {
+        report: {
+          task: "remote",
+          body: {
+            state: "needs_input",
+            summary: "三处都改好了，还有四处要你定。",
+            questions: [
+              {
+                id: "q1",
+                text: "PR #11230 的远程访问设置还有四点要定：1. 移除「本机访问也需要密钥」这个开关吗？ 2. 同事建议的提示加在哪一页？ 3. 「远程访问」那段文案改成什么？ 4. 要不要补一个本机访问的测试？",
+                blocking: true,
+                default: "按建议都做",
+                reversible: true,
+              },
+            ],
+            evidence: [],
+          },
+        },
+      },
+    ],
+    // research/244 rule 5: with four points the card keeps the task's own question; the partner does
+    // not restate it (one added fact the card lacks is allowed, nothing else).
+    expect: { sentences: 1, opens: 0, noSend: true, msgs: [0, 1], maxChars: 90, relayed: false },
+    rubric:
+      "research/244 rule 5: with four points, the card keeps the task's own question with every point; the partner says NOTHING (a single added fact the card lacks is allowed, e.g. a deadline, and nothing else). It does not restate that there are four things, does not name them, names no file path or internal id, and never answers for the user.",
   },
   {
     id: "needs-input-en",
@@ -3519,9 +3555,11 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     todos: true,
     seed: [{ user: "今天先这样，有新的事再说" }, { ai: "好，有事我再找你。" }],
-    steps: [{ todosNew: { refs: ["wey-gu/ducter#9"] } }],
-    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 160, notCalled: ["task_open"], noTodoCard: true },
-    rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). It offers it in one short Chinese line (naming #9 and what it is) and asks whether to take it. It starts nothing and opens no task.",
+    // research/244 rule 5: the offer is one code-owned card, not a partner bubble; the partner
+    // says nothing over it.
+    steps: [{ todosNew: { refs: ["wey-gu/ducter#9"], offer: true } }],
+    expect: { opens: 0, msgs: [0, 0], maxChars: 0, questionMax: 80, notCalled: ["task_open"], noTodoCard: true },
+    rubric: "A look at GitHub found one issue newly assigned to the user (wey-gu/ducter#9, a docs typo). Ducter's code shows one offer card: its question says one is new and names it, and the card lists it; the partner adds no message of its own. It starts nothing and opens no task.",
   },
   // D395 (hel, 2026-11-19): the author's first real hand-off. A to-do on nowledge-co/mem, whose
   // code is only on the MacBook (the home is a server with no clone); "仔细" in his words.

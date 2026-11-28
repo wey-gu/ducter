@@ -158,7 +158,11 @@ The set card is never pinned (D381 keeps partner-made lists only).
   will comment on and the exact text each gets. **在这 n 个下面留言 / Comment on these n** is the Go for
   those comments only: one decision (D359's close sheet's pattern), each comment a `source_write` in
   替你做过的; the already-fixed ones also close; the rest close when their PR merges. The per-task write-back cards of
-  D341 are not raised for a group's parts while the group is under way.
+  D341 are not raised for a group's parts while the group is under way. **An already-answered review
+  never reads as a question** (research/244 rule 7): the decision is logged with `record`, the words
+  of what was done, naming each to-do by its title and the line it got (**在「设置卡的标签」（#11108）、
+  「设置卡的滚动」（#11156）下留了言：「Fixed in #11163.」**); both clients draw that record, with no
+  question and no buttons.
 
 ## 7. Mechanics (as designed; §9 is what was built)
 

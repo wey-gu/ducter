@@ -256,6 +256,9 @@ interface TurnState {
   heldPromise?: boolean;
   /** D570: the lines this turn already put in the conversation (messages and acks): the same words never go out twice in one turn. */
   saidLines?: Set<string>;
+  /** research/244 rule 10: the subject this turn is about (its task, its to-do): D570's window
+   *  widened from one turn to the subject. */
+  subject?: string;
   /** D462, D490: the pending line waited across a call that does something: a line written after the call says it instead. */
   heldAcross?: boolean;
   /** D490: a line this turn carried the partner's [[later]] mark (it promised to come back), and its words. */
@@ -470,6 +473,10 @@ export function isTrigger(e: LogEvent): boolean {
   if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
   // D587: a done made in a turn the person opened in the task (direct) wakes nobody: they read it there.
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress" && !((e.body as Bodies["report"]).state === "done" && (e.body as Bodies["report"]).direct);
+  if (e.kind === "source_seen") {
+    const b = e.body as Bodies["source_seen"];
+    if (b.change === "new" && b.offered) return false;
+  }
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
   if (e.kind === "waiter") {
     const w = e.body as Bodies["waiter"];
@@ -526,6 +533,8 @@ function overlap(a: string, b: string): number {
 }
 const HOW_KNOW = /怎么知道|咋知道|从哪(里|儿)?(知道|看到)|哪(里|儿)?来的|how (did|do) you know|where did you (get|see|find)/i;
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
+/** One subject's line is said once within this window (D570 widened from one turn to the subject). */
+export const SAME_LINE_MS = 30 * 60_000;
 
 /**
  * Secret-shaped strings never reach a task (G-safety G3): the user's words are copied into the
@@ -870,6 +879,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const askedFor = new Map<string, string>(); // spike: decisionId -> the Bridge request it asked about
   /** D490: what the partner marked [[later]] and the tasks that keep it (state.json), shown until it is said. */
   let promises: OpenPromise[] = [];
+  /** research/244 rule 10: what was said about which subject lately (D570 widened; state.json). */
+  let recent: { text: string; subject: string; at: number }[] = [];
   let promisesShown: OpenPromise[] = []; // D490: the ones this turn's input showed
 
   // What the live (or last) session's context holds, in tokens: the harness's own count after each
@@ -881,9 +892,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string; inflight?: { seqs: number[]; from: number }; contextTokens?: number; promises?: OpenPromise[] };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string; inflight?: { seqs: number[]; from: number }; contextTokens?: number; promises?: OpenPromise[]; recent?: { text: string; subject: string; at: number }[] };
       inflight = s.inflight;
       if (Array.isArray(s.promises)) promises = s.promises.filter((p) => typeof p?.text === "string" && Array.isArray(p.tasks)).slice(-PROMISES_MAX);
+      if (Array.isArray(s.recent)) recent = s.recent.filter((r) => typeof r?.text === "string" && typeof r?.subject === "string" && Number.isFinite(r?.at)).slice(-40);
       lastSessionId = s.sessionId;
       lastPromptHash = s.promptHash;
       lastActivity = s.lastActivity ?? 0;
@@ -896,7 +908,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash, contextTokens, ...(inflight ? { inflight } : {}), ...(promises.length ? { promises } : {}) }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash, contextTokens, ...(inflight ? { inflight } : {}), ...(promises.length ? { promises } : {}), ...(recent.length ? { recent } : {}) }));
     } catch (err) {
       onError(err);
     }
@@ -1137,6 +1149,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // D570 (live, hel: "好，授权码出来了我马上给你。" twice, 0.8 s apart): the correction turn's call took
     // the held line as its ack, then the model wrote the same line again. One turn says one thing once.
     if (!decisionId && turn?.saidLines?.has(raw)) return;
+    // research/244 rule 10: D570 widened from one turn to the subject. The same words about the
+    // same task/to-do are not said again inside the window (hel: one sentence twice in 80 s).
+    const subject = turn?.subject;
+    if (!decisionId && subject) {
+      const at = now();
+      recent = recent.filter((r) => at - r.at < SAME_LINE_MS);
+      if (recent.some((r) => r.text === raw && sharesSubject(r.subject, subject))) return;
+      recent = [...recent.filter((r) => !(r.text === raw && r.subject === subject)), { text: raw, subject, at }].slice(-40);
+    }
     // D303: each ```ducter-ui block, validated, stands in the text as its plain form; the block
     // goes with the message for the apps to draw. A task's question carries words only.
     const rich = parseRich(raw, userLang());
@@ -2081,7 +2102,65 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const w = cs?.find((c) => c.home)?.web?.where;
     if (w === "chrome" || w === "ducter") homeWeb = w;
   };
+  /**
+   * research/244 rule 10: what this turn is about, as keys that may be shared by two lines (the
+   * task, its PRs and its to-do). Two lines about a shared key are about one subject.
+   */
+  function subjectOf(batch: LogEvent[]): string {
+    const keys = new Set<string>();
+    for (const e of batch) {
+      const b = e.body as { taskId?: string; state?: string; evidence?: { ref?: string }[]; item?: { ref?: string }; pr?: string; task?: { taskId?: string } };
+      if (b?.taskId) keys.add(`task:${b.taskId}`);
+      if (e.kind === "source_seen" && b.item?.ref) keys.add(`ref:${b.item.ref.toLowerCase()}`);
+      if (e.kind === "report") for (const x of b.evidence ?? []) if (x?.ref) keys.add(`ref:${String(x.ref).toLowerCase()}`);
+      if (e.kind === "owned_news" && b.pr) keys.add(`ref:${b.pr.toLowerCase()}`);
+      if (e.kind === "job_status" && b.taskId) keys.add(`task:${b.taskId}`);
+      const c = b.taskId ? core.tasks.get(b.taskId) : undefined;
+      for (const p of c?.prs ?? []) keys.add(`ref:${p.pr.toLowerCase()}`);
+    }
+    return [...keys].sort().join("|");
+  }
+  const sharesSubject = (a: string, b: string) => {
+    if (!a || !b) return false;
+    const x = new Set(a.split("|"));
+    return b.split("|").some((k) => x.has(k));
+  };
+  /**
+   * research/244 rule 10: a report older than the subject's last result is never said. Within one
+   * turn, only the newest report of a task is shown, and a progress report after that task already
+   * finished in the same turn is dropped.
+   */
+  function freshReports(batch: LogEvent[]): LogEvent[] {
+    const by = new Map<string, { newest: number; terminal?: number }>();
+    for (const e of batch) {
+      if (e.kind !== "report") continue;
+      const r = e.body as Bodies["report"];
+      const prev = by.get(r.taskId) ?? { newest: -Infinity };
+      const terminal = r.state === "done" || r.state === "failed";
+      by.set(r.taskId, { newest: Math.max(prev.newest, e.seq), ...(terminal ? { terminal: Math.max(prev.terminal ?? -Infinity, e.seq) } : prev.terminal !== undefined ? { terminal: prev.terminal } : {}) });
+    }
+    return batch.filter((e) => {
+      if (e.kind !== "report") return true;
+      const r = e.body as Bodies["report"];
+      const b = by.get(r.taskId);
+      if (!b) return true;
+      // A terminal result (done/failed) is the subject's last word: only the newest one is said.
+      if (r.state === "done" || r.state === "failed") return b.terminal === e.seq;
+      // Progress: only the newest, and never after the result in the same turn.
+      return b.terminal === undefined && b.newest === e.seq;
+    });
+  }
+
   async function runTurn(batch: LogEvent[]): Promise<HoldHit | undefined> {
+    // research/244 rule 10: never say a report older than the subject's last result.
+    const live = freshReports(batch);
+    if (!live.length) {
+      handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
+      saveState();
+      return undefined;
+    }
+    const droppedSeqs = batch.filter((e) => !live.includes(e)).map((e) => e.seq);
+    batch = live;
     const userEvents = batch.filter((e) => e.kind === "user_msg");
     const userTexts = userEvents.map((e) => (e.body as Bodies["user_msg"]).text);
     let replyTo: number | undefined = userEvents[userEvents.length - 1]?.seq;
@@ -2141,7 +2220,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const internal = batch.length > 0 && batch.every((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).local);
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (core.noticedSources) core.noticedSources.links = core.noticedSources.whys = undefined; // D388: only a noticed call of this turn counts
-    turn = { triggers: batch, userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, internal, results, recalls: 0, noted: [], early: [] };
+    turn = { triggers: batch, subject: subjectOf(batch), userTexts, checked: new Set(), replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, lang, quiet, internal, results, recalls: 0, noted: [], early: [] };
     const day = [...batch].reverse().find((e) => e.kind === "day_after");
     if (day) turn.dayAfter = { items: (day.body as Bodies["day_after"]).items };
     // D640 (#254): a report that becomes a question's card carries its files on that card
@@ -2224,7 +2303,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       appendNoted(turn);
       await settleOwed(batch, turnFrom);
       confirmResults(batch);
-      handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
+      handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq), ...droppedSeqs);
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else (corrections.length = 0), (relang.length = 0);
     } finally {

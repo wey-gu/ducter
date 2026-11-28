@@ -193,15 +193,18 @@ asks first: **Remove GitHub? Tasks it took stay; I'll stop watching their change
 write back.** Tasks already taken keep their to-do and its mark, but nothing is read from that app for
 them again, and nothing is written back to it. After you remove it, the same sentence says what stays.
 
-- **Say so** (GitHub's default): your partner mentions new ones in one short line, and asks which to
-  take.
+- **Say so** (GitHub's default): when something new comes, your partner waits for a quiet moment
+  (not while you're writing or a card is open, and not at night) and then shows one card naming each
+  new to-do, with **Take them** and **Not now**. **Not now** is the default: left alone, the card
+  fades and nothing is said about it.
 - **Stay quiet** (Obsidian's default): it waits until you ask.
 - **Take it on**: new ones start without asking, up to five a day. Your partner offers this once,
   after a couple you took from the same place have finished well.
 
 After you choose, your partner says what will now happen, once the change has gone through: *Got it:
 new to-dos become tasks on their own*, *Got it: I'll tell you in the conversation when a new one
-comes*, or *Got it: I won't mention new ones; I'll look when you ask*.
+comes*, or *Got it: I won't mention new ones; I'll look when you ask*. The card asked about one at a
+time is the same card: it never asks in words and never starts anything without its Go.
 
 ## When it's done
 

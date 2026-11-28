@@ -86,6 +86,7 @@ function srcKind(src: NonNullable<DecisionState["src"]>): string {
       return "computer";
     case "plan":
     case "batch":
+    case "offer":
     case "picks":
       return "todo";
   }

@@ -78,6 +78,7 @@ const PrMark = () => (
 );
 import { figArt, PartnerMark, PartnersBack, PartnersSection, PassedFrom, RailToggle, Stone } from "./partners.tsx";
 import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
+import { pointCount } from "@ducter/protocol/src/ask-words.ts";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useSplit, useWide } from "./wide.ts";
@@ -1188,6 +1189,16 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
   // never shows in the conversation first. D587: the one waiting line at the conversation's end
   // stands for it.
   if (wait > 0) return null;
+  // research/244 rule 7: a decision answered before it was drawn reads as what was done, never as
+  // a question with buttons (the group review's comments).
+  if (d.record && (d.resolved || d.pending))
+    return (
+      <div ref={ref} class={`partner askq record${flash ? " flash" : ""}`} id={`d-${d.decisionId}`} data-reply={rk} data-seq={seq}>
+        <div class="ask-words">
+          <AskText text={d.record} />
+        </div>
+      </div>
+    );
   // D151: a sign-in ask opens the live view instead of Go.
   // D193: a call's Go card or a question from the line: the whole card, in the conversation too.
   if (d.call)
@@ -1373,7 +1384,8 @@ export function Ask({ d, taskId, buttons = true, rk, seq }: { d: DecisionState; 
 const RELAY_MS = 60_000;
 function relayDueIn(d: DecisionState): number {
   // D587: a direct done's ask is never relayed: its own words show at once.
-  if (!d.taskId || d.said || d.direct || A.status === "offline" || !d.askedAt) return 0;
+  // research/244 rule 5: a question of three or more points is the card's own, never relayed.
+  if (!d.taskId || d.said || d.direct || pointCount(d.question) >= 3 || A.status === "offline" || !d.askedAt) return 0;
   const at = Date.parse(d.askedAt);
   return Number.isNaN(at) ? 0 : Math.max(0, at + RELAY_MS - Date.now());
 }

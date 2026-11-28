@@ -98,6 +98,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.CopyKey != nil {
 		return a.copyKeyTitle(d) // D539
 	}
+	if d.Said != "" {
+		return d.Said // D129: the partner's own words, when they keep the question whole
+	}
 	if d.Handset != nil && d.Handset.Kind == "record" {
 		return a.L.T("handset.record.title", phoneShort(d.Handset.Name)) // D280
 	}

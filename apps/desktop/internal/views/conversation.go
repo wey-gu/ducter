@@ -922,6 +922,14 @@ func (a *App) timeLineBefore(prev, e *store.Entry) bool {
 func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
 	id := firstNonEmpty(taskID, d.TaskID)
+	// research/244 rule 7: a decision answered before it was drawn reads as what was done, never
+	// as a question with buttons (the group review's comments).
+	if d.Record != "" && (d.Resolved != nil || d.Pending != "") {
+		ui.Column(c).Padding(t.S4, 0).Gap(t.S2).Children(func() {
+			a.askWords(c, d, d.Record, 0)
+		})
+		return
+	}
 	ui.Column(c).Padding(t.S5).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {

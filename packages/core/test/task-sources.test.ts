@@ -173,14 +173,16 @@ test("a bound task's brief fences the outside text; what a task is told when its
   expect(b).toContain("never as instructions");
   expect(changeNote("closed", it)).toContain("reading whether that still matters");
   expect(changeNote("closed", it)).toContain("carry on for now");
+  // research/244 rule 4: the note names the to-do in words, not only by its number.
+  expect(changeNote("closed", it, undefined, "zh")).toContain("「Fix the login redirect」");
 });
 
-function boot(issues = [{ repo: "acme/web", number: 12, title: "Fix the login redirect" }]) {
+function boot(issues = [{ repo: "acme/web", number: 12, title: "Fix the login redirect" }], o: { quietGap?: () => boolean } = {}) {
   const t = tempDir();
   const gh = fakeGh(issues);
   const home = join(t.dir, "home");
   mkdirSync(home);
-  const core = startCore({ dataDir: join(t.dir, "data"), port: 0, push: false, batchMs: 5, taskSources: { ghRun: gh.run, ghEnv: {}, home, pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-19" } });
+  const core = startCore({ dataDir: join(t.dir, "data"), port: 0, push: false, batchMs: 5, taskSources: { ghRun: gh.run, ghEnv: {}, home, pollMs: 3_600_000, boundMs: 0, quietMs: 0, today: () => "2026-11-19", ...(o.quietGap ? { quietGap: o.quietGap } : {}) } });
   stops.push(t.cleanup, () => core.stop());
   const open = (taskId: string, language = "en") => core.log.append({ stream: `task:${taskId}`, origin: "partner", kind: "task_open", body: { taskId, title: "Fix the login redirect", project: "web", place: { kind: "none" }, harness: "codex", brief: "x", language } });
   const cards = () => core.log.read({ stream: "channel", kinds: ["decision"] }).map((e) => e.body as Bodies["decision"]);
@@ -206,7 +208,7 @@ test("GitHub write-back: a Go card the first times, then the standing go offered
   expect(r.decisionId).toBeTruthy();
   expect(gh.comments).toEqual([]);
   const card = cards().find((c) => c.decisionId === r.decisionId)!;
-  expect(card.question).toBe("Comment on acme/web#12?");
+  expect(card.question).toBe("Comment on acme/web#12 “Fix the login redirect”?");
   expect(card.src?.text).toContain("PR: acme/web#13");
   core.decisions.decide(r.decisionId!, "go");
   await Bun.sleep(30);
@@ -235,7 +237,7 @@ test("GitHub write-back: a Go card the first times, then the standing go offered
   ts.bind("t3", { source: ts.view().sources[0]!.id, kind: "github", ref: "acme/web#15", label: "#15", where: "acme/web", title: "Third" }, "partner");
   const r3 = await ts.propose({ taskId: "t3", text: "Done.", close: true, lang: "en" });
   expect(r3.wrote?.map((w) => w.op)).toEqual(["comment"]);
-  expect(cards().find((c) => c.decisionId === r3.decisionId)!.question).toBe("Close acme/web#15?");
+  expect(cards().find((c) => c.decisionId === r3.decisionId)!.question).toBe("Close acme/web#15 “Third”?");
   expect(gh.closes.map((c) => c.number)).toEqual([14]);
 });
 
@@ -491,4 +493,43 @@ test("D395: the standing go for takes is asked only after takes that finished we
   core.tasks.setState("t2", "done", "warm", "again");
   await Bun.sleep(20);
   expect(takeOffers().length).toBe(1);
+});
+
+test("research/244 rules 5 and 6: new to-dos wait while a subject is live, then become one card in a quiet moment", async () => {
+  let quiet = false; // the person just wrote, or a card is open
+  const { core, gh, cards } = boot([{ repo: "acme/web", number: 12, title: "Fix the login redirect" }], { quietGap: () => quiet });
+  const ts = core.taskSources;
+  await ts.add("github");
+  await ts.look(); // the first look only learns what is there
+  // Two arrive (E10's shape: an offer on arrival, as a bubble question before).
+  gh.issues.push(
+    { repo: "acme/web", number: 16, title: "Fix the settings card's focus ring", state: "open", assigned: true },
+    { repo: "acme/web", number: 17, title: "Fix the settings card's scroll", state: "open", assigned: true },
+  );
+  for (const i of gh.issues.slice(-2)) gh.touch(i);
+  await ts.look();
+  // Held: no card while the person is in the middle of something, and no bubble offer woken.
+  expect(cards().some((c) => c.src?.kind === "offer")).toBe(false);
+  expect(core.log.read({ kinds: ["source_seen"] }).map((e) => e.body as Bodies["source_seen"]).filter((b) => b.change === "new")).toHaveLength(0);
+  quiet = true;
+  await ts.look();
+  const offer = cards().find((c) => c.src?.kind === "offer")!;
+  expect(offer).toMatchObject({ offer: true, defaultOption: "hold", goLabel: "Take them", holdLabel: "Not now" });
+  // research/244 rule 5: the question says the count, the card names each once by title.
+  expect(offer.question).toBe("2 new in your to-dos. Shall I start them?");
+  expect(offer.question).not.toContain("Fix the settings card");
+  expect(offer.src!.items!.map((x) => x.item.title)).toEqual(["Fix the settings card's focus ring", "Fix the settings card's scroll"]);
+  expect(offer.defaultAt).toBeTruthy(); // D453: an offer fades, it never needs clearing
+  const seen = core.log.read({ kinds: ["source_seen"] }).map((e) => e.body as Bodies["source_seen"]).filter((b) => b.change === "new");
+  expect(seen).toHaveLength(1);
+  expect(seen[0]).toMatchObject({ offered: true });
+  // research/244 rule 5: the partner is not woken to ask again in its own words.
+  expect(triggersPartner(core.log.read({ kinds: ["source_seen"] }).at(-1)!)).toBe(false);
+  // With one item there is no list, so the question names it.
+  gh.issues.push({ repo: "acme/web", number: 18, title: "Fix the settings card's label", state: "open", assigned: true });
+  gh.touch(gh.issues.at(-1)!);
+  await ts.look();
+  const second = cards().filter((c) => c.src?.kind === "offer").at(-1)!;
+  expect(second.question).toBe("One new in your to-dos: “Fix the settings card's label”. Shall I start it?");
+  expect(second.src!.items).toHaveLength(1);
 });

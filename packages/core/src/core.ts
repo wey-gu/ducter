@@ -71,7 +71,8 @@ import { asSeenBy, createWhose, partnerView } from "./partner-view.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { handleDoorbell } from "./doorbell.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
-import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
+import { createPusher, inQuiet, openPushStore, type Pusher, type PushStore } from "./push.ts";
+import { quietGap } from "./quiet-gap.ts";
 import { createApnsSender, createAppPushSender, http2Transport, loadApnsConfig, type ApnsSender, type ApnsTransport } from "./apns.ts";
 import { createActivitySender, createAmbient, openAmbientStore } from "./ambient.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
@@ -543,7 +544,13 @@ export function triggersPartner(e: LogEvent): boolean {
   // D341: new to-dos in a source the person wants told (or taken under the standing go); a write
   // they said Go to that didn't go through. A to-do closed by someone else while its task runs is a
   // fact the partner judges (research/244 §5.3); one already handled or a finished task logs none.
-  if (e.kind === "source_seen") return (e.body as Bodies["source_seen"]).change === "new" || (e.body as Bodies["source_seen"]).change === "closed";
+  if (e.kind === "source_seen") {
+    const b = e.body as Bodies["source_seen"];
+    // research/244 rule 5: an offer is a card of code's own (Go takes them); the partner is not
+    // woken to say a bubble question over it.
+    if (b.change === "new" && b.offered) return false;
+    return b.change === "new" || b.change === "closed";
+  }
   if (e.kind === "source_write") {
     const w = e.body as Bodies["source_write"];
     return w.state === "failed" && w.by === "go";
@@ -2153,6 +2160,23 @@ export function startCore(opts: CoreOptions = {}): Core {
     // The person's own skills as their tasks see them: Claude Code's, else Codex's, on the home.
     skills: async () => (await runner?.inventory?.("claude-code", "skills", homedir())) ?? (await runner?.inventory?.("codex", "skills", homedir())),
   });
+  // research/244 rule 6: the update note is news, not an interruption. It is said at the first
+  // quiet moment (no card open, the person not just here, not quiet hours); whatever hello asked
+  // for waits here until then.
+  let updateHeld: { lang: string; tz?: string } | undefined;
+  const flushUpdate = () => {
+    if (!updateHeld) return;
+    if (!quietGap({ log, decisions, now: clock.now(), quiet: push.settings().quiet ?? null })) return;
+    const o = updateHeld;
+    updateHeld = undefined;
+    const line = updatesRef?.told.due(o);
+    if (line) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: line } });
+  };
+  const sayUpdateNow = (o: { lang: string; tz?: string }) => {
+    // A newer hello's language wins; the pending version is still one line.
+    updateHeld = o;
+    flushUpdate();
+  };
   const ws = createWsHandler({
     home: {
       fp: identity.fp,
@@ -2170,7 +2194,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
+    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, sayUpdate: (o) => sayUpdateNow(o), agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;
@@ -2303,6 +2327,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
   updatesRef = updates;
+  // research/244 rule 6: a held update note is said at the next quiet gap, not only at a hello.
+  const updateTimer = setInterval(flushUpdate, 30_000);
+  (updateTimer as { unref?: () => void }).unref?.();
   // D156: the AI agents' own versions and their updates (agents.ts). No channel is read in tests
   // unless a fetch is given.
   const a = opts.agents ?? {};
@@ -2779,6 +2806,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     dayOf: (ms) => dayKey(ms, zone()),
     lang: () => (langNow().startsWith("zh") ? "zh" : "en"),
     name: () => persona.name,
+    // research/244 rule 6: new to-dos wait for a quiet moment (no card open, the person not just
+    // here, not quiet hours) and become one card then.
+    quietGap: () => quietGap({ log, decisions, now: clock.now(), quiet: push.settings().quiet ?? null }),
     // D359: a handed-over to-do opens like 交给{name} on On hand: its repository's folder, its words as the brief.
     openTask: async (item, extra) => {
       // D395: the one resolver task_open uses: the computer with its code (or a clone first).
@@ -3430,6 +3460,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       proactive.stop();
       calendar.stop();
       taskSources.stop();
+      clearInterval(updateTimer);
       changes.stop();
       pusher.stop();
       channels.stop();

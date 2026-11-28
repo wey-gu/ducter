@@ -145,6 +145,11 @@ export interface WsDeps {
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
+  /**
+   * research/244 rule 6: the update note waits for a quiet moment. Core says it now, or holds it
+   * until the person is no longer in the middle of something (and not quiet hours).
+   */
+  sayUpdate?: (o: { lang: string; tz?: string }) => void;
   /** D156: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
   /** D363: putting an agent on a device, signing it in there, looking again (core.ts routes it). */
@@ -871,8 +876,8 @@ export function createWsHandler(deps: WsDeps) {
           try {
             if (ws.data.device && typeof f.version === "string") told.sawApp(ws.data.device.id, f.version);
             if (!ws.data.partner && (f.client === "desktop" || f.client === "web")) {
-              const line = told.due({ lang: ws.data.locale ?? "en", ...(ws.data.tz ? { tz: ws.data.tz } : {}) });
-              if (line) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: line } });
+              // research/244 rule 6: not in the middle of a subject, not at night: core holds it.
+              deps.sayUpdate?.({ lang: ws.data.locale ?? "en", ...(ws.data.tz ? { tz: ws.data.tz } : {}) });
             }
           } catch (err) {
             console.warn("[ws] updated line:", (err as Error).message);

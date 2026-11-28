@@ -36,7 +36,12 @@ func TestComposerHoldsKeys(t *testing.T) {
 	theme.LoadFonts()
 	var sent []any
 	app := New(store.New(), theme.Pebble(), i18n.New(i18n.ZH))
-	app.Send = func(f any) error { sent = append(sent, f); return nil }
+	app.Send = func(f any) error {
+		if _, th := f.(protocol.ThemesReq); !th {
+			sent = append(sent, f)
+		}
+		return nil
+	} // D673: the theme read on each socket is not a message
 	app.S.Welcomed, app.Status = true, client.Connected
 	if app.SendMessage("here: ghp_abcdefghijklmnopqrstu") || len(sent) != 0 || app.held == nil {
 		t.Fatalf("not held: sent %v", sent)
@@ -59,7 +64,12 @@ func TestComposerHoldsKeys(t *testing.T) {
 func TestSendBeforeWelcomeWaits(t *testing.T) {
 	var sent []any
 	app := New(store.New(), theme.Pebble(), i18n.New(i18n.EN))
-	app.Send = func(f any) error { sent = append(sent, f); return nil }
+	app.Send = func(f any) error {
+		if _, th := f.(protocol.ThemesReq); !th {
+			sent = append(sent, f)
+		}
+		return nil
+	} // D673: the theme read on each socket is not a message
 	if !app.SendMessage("a long first message, typed while Ducter was still starting") {
 		t.Fatal("not accepted")
 	}

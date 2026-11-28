@@ -14,7 +14,12 @@ func connectedApp(t *testing.T) (*App, *[]any) {
 	t.Helper()
 	var sent []any
 	app := New(store.New(), theme.Pebble(), i18n.New(i18n.EN))
-	app.Send = func(f any) error { sent = append(sent, f); return nil }
+	app.Send = func(f any) error {
+		if _, th := f.(protocol.ThemesReq); !th {
+			sent = append(sent, f)
+		}
+		return nil
+	} // D673: the theme read on each socket is not a message
 	app.Status = client.Connected
 	app.Receive(protocol.ServerFrame{T: "welcome", Persona: "p", HeadSeq: 0})
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{}})

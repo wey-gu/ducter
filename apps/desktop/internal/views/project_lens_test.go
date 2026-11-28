@@ -81,7 +81,13 @@ func TestProjectLensReadsCore(t *testing.T) {
 func TestProjectMenuSendsOneChange(t *testing.T) {
 	app := projectApp(t)
 	_, sent := iaApp(t, i18n.EN)
-	app.Send = func(f any) error { *sent = append(*sent, f); return nil }
+	*sent = nil // only what the project menu sends
+	app.Send = func(f any) error {
+		if _, th := f.(protocol.ThemesReq); !th {
+			*sent = append(*sent, f)
+		}
+		return nil
+	} // D673: the theme read on each socket is not a message
 	app.projectChange(protocol.ProjectChange{Act: "rename", Key: "github.com/nowledge-co/mem", Name: "Mem"})
 	app.projectChange(protocol.ProjectChange{Act: "merge", Key: "github.com/nowledge-co/mem-backbone", Into: "github.com/nowledge-co/mem"})
 	app.projectChange(protocol.ProjectChange{Act: "hide", Key: "github.com/nowledge-co/mem-backbone", Hidden: true})

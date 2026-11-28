@@ -47,7 +47,8 @@ func TestOwnPhoneServerHome(t *testing.T) {
 		app.openTab(TabAccounts)
 		tt := ui.NewTesterWith(app.View, 1280, 1800, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
-		all := strings.Join(tt.Texts(), "\n")
+		// The Plugins tab (D673) is not a word about plugging a phone in.
+		all := strings.ReplaceAll(strings.Join(tt.Texts(), "\n"), "Plugins", "")
 		for _, never := range []string{"brew", "USB", "插到", "Plug", "再找一次", "Look again"} {
 			if strings.Contains(all, never) {
 				t.Errorf("%s: a server home's card says %q: %q", lang, never, tt.Texts())

@@ -89,10 +89,52 @@ describe("D661: one state per task, derived once", () => {
     expect(truthOf({ now, card: offer }).state).not.toBe("needs_you");
   });
 
-  test("a fresh stop is stopped; after half an hour it is the person's", () => {
+  test("every needs-you line names its object, never a bare choice", () => {
+    // A generic real question gets the task's title first.
+    const generic = { ...ZQ, pendingDecision: { ...ZQ.pendingDecision!, question: "要合并吗？" } };
+    const g = truthOf({ now, card: generic });
+    expect(g.needs).toBe("question");
+    expect(g.waitsFor).toContain("核对数据迁移设计");
+    // A Keep's held item names the Keep.
+    const k = truthOf({ now, card: JX, keepItem: { taskId: JX.taskId, at: "you", yours: "要合并吗？" }, keepName: "PR Babysitter" });
+    expect(k.needs).toBe("keep");
+    expect(k.waitsFor).toContain("PR Babysitter");
+    // A finished task's ready PR names the PR.
+    const ready = { ...JX, attention: "done" as const, prs: [{ pr: "nowledge-co/mem#11230", url: "https://github.com/nowledge-co/mem/pull/11230", state: "open" as const, at: new Date(now - 60_000).toISOString(), standing: { at: new Date(now - 60_000).toISOString(), approvedBy: ["wey-gu"], checks: { total: 2, passed: 2, failed: [], pending: [] } } }] };
+    const r = truthOf({ now, card: ready });
+    expect(r.needs).toBe("ready");
+    expect(r.waitsFor).toContain("#11230");
+    // A blind GitHub read names the computer and the fix.
+    const b = truthOf({ now, card: PR });
+    expect(b.needs).toBe("blind");
+    expect(b.waitsFor).toContain("haswell");
+    expect(b.waitsFor).toContain("gh");
+  });
+
+  test("a paused routine and a call name their own objects too", () => {
+    const all = onHandTruth({
+      now,
+      day: "2026-11-27",
+      tasks: [],
+      keeps: [{ id: "kp_r", title: "自动 PR 评审", life: "paused", pausedBy: "system", pausedWhy: "「自动 PR 评审」这个月的用量到了上限（20M）。要放宽吗？", routineId: "rt_r" }],
+      calls: [{ callId: "c1", state: "question", name: "Sushi Saito" }],
+    });
+    const routine = all.needsYou.find((x) => x.routineId === "rt_r");
+    expect(routine?.needs).toBe("routine");
+    expect(routine?.waitsFor).toContain("自动 PR 评审");
+    const call = all.needsYou.find((x) => x.callId === "c1");
+    expect(call?.needs).toBe("question");
+    expect(call?.waitsFor).toContain("Sushi Saito");
+  });
+
+  test("a fresh stop is stopped; after half an hour it is the person's, with the fact and no bare question", () => {
     const fresh = { ...TM, attention: "blocked" as const, prs: undefined, lastReport: undefined, updatedAt: new Date(now - 5 * 60_000).toISOString() };
     expect(truthOf({ now, card: fresh }).state).toBe("stopped");
-    const old = { ...fresh, updatedAt: new Date(now - 40 * 60_000).toISOString() };
-    expect(truthOf({ now, card: old }).state).toBe("needs_you");
+    const old = { ...fresh, title: "核对数据迁移设计", updatedAt: new Date(now - 40 * 60_000).toISOString(), waitsFor: "这个任务停下吗？" };
+    const t = truthOf({ now, card: old });
+    expect(t.state).toBe("needs_you");
+    expect(t.needs).toBe("stopped");
+    expect(t.waitsFor).toBe("它停下了，没说在等什么。"); // the time is the row's right edge, never twice
+    expect(t.waitsFor).not.toContain("停下吗");
   });
 });

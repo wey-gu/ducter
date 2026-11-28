@@ -124,7 +124,11 @@ task in {name}** where the bare ＋ stood.
    nothing asked (D467), and after its half hour it is 等你. A Keep's held item and a routine Ducter
    paused for a budget or a sign-in count as 等你 through the same function. D584: a row whose story
    is only the state's own word (**在做 / 做完了**, a task that said nothing yet) has no second line:
-   its time (**在做 3 分钟了 / 7:52 做完**) says it.
+   its time (**在做 3 分钟了 / 7:52 做完**) says it. D661 turn 2: a stopped task that now needs the
+   person never asks the old bare **这个任务停下吗？**; its line is the fact (**它停了 40 分钟，没说在等什么。/
+   It stopped 40 minutes ago without saying what it waits for.**) and its row offers **接着做 / 放下**
+   (Continue / Put down). A real question names its object; a Keep, a PR, a blind read and a call each
+   name theirs.
    **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
    classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D472's line and its
    real fix, one implementation with the task's page, `cant.tsx` / `cant.go`: **拉一份到 {computer} 上**,

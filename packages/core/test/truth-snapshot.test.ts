@@ -30,8 +30,9 @@ describe("D661: the snapshot ships the one truth", () => {
     expect(oh.truth).toBeTruthy();
     expect(oh.counts).toEqual({ needs_you: 1, working: 1, waiting: 0, done_today: 0 });
     expect(oh.truth!.needsYou.map((x) => x.taskId)).toEqual(["t1"]);
-    expect(oh.truth!.needsYou[0]!.waitsFor).toBe("这个任务停下吗？");
-    expect(oh.tasks.find((c) => c.taskId === "t1")?.truth).toMatchObject({ state: "needs_you", waitsFor: "这个任务停下吗？" });
+    expect(oh.truth!.needsYou[0]!.needs).toBe("stopped");
+    expect(oh.truth!.needsYou[0]!.waitsFor).toContain("没说在等什么");
+    expect(oh.tasks.find((c) => c.taskId === "t1")?.truth).toMatchObject({ state: "needs_you", needs: "stopped" });
     expect(oh.tasks.find((c) => c.taskId === "t2")?.truth?.state).toBe("working");
   });
 
@@ -45,7 +46,8 @@ describe("D661: the snapshot ships the one truth", () => {
     const oh = core.tasks.onHand();
     expect(oh.truth!.needsYou.map((x) => x.taskId)).toEqual(["t1"]);
     expect(oh.tasks[0]!.truth?.state).toBe("needs_you");
-    expect(oh.tasks[0]!.truth?.waitsFor).toBe("这个任务停下吗？");
+    expect(oh.tasks[0]!.truth?.needs).toBe("stopped");
+    expect(oh.tasks[0]!.truth?.waitsFor).toContain("没说在等什么");
   });
 
   test("a report's one line lands on the card, and the newest report's line wins", async () => {

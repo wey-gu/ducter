@@ -156,7 +156,18 @@ var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
 // stopped or didn't work out, it says so, never 没有要你定的.
 func (a *App) headLine(b store.Board, lens string, n [4]int) string {
 	sp := a.splitOf(b)
+	// D661 turn 2: only a needs-you stop is counted by the strip; a fresh stop (truth Stopped)
+	// stands apart and must not make the question look like a stop. A home without truth keeps
+	// the old reading.
 	halted := len(sp.stopped) + len(sp.failed)
+	if a.S.OnHand != nil && a.S.OnHand.Truth != nil {
+		halted = 0
+		for _, x := range sp.stopped {
+			if t := x.Truth(); t != nil && t.Needs == "stopped" {
+				halted++
+			}
+		}
+	}
 	switch {
 	case n[0] > 0 && n[0] <= halted && halted == 1:
 		return a.L.T("onhand.line.stopped.one")
@@ -434,7 +445,13 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				sw = a.L.T("note.mend_"+mendHow, mendName) // D473: what Ducter is doing about it
 			}
 			if stopped || failed {
-				sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
+				// D661 turn 2: a stopped task that needs the person says its fact, never a bare
+				// question; its Continue / Put down are the row's choices.
+				if t := task.Truth(); t != nil && t.Needs == "stopped" && strings.TrimSpace(t.WaitsFor) != "" {
+					sw = t.WaitsFor
+				} else {
+					sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
+				}
 			}
 			if att == protocol.Blocked && !stopped && !mending {
 				sw = a.waitCardWords(task, sw) // D467: never the title again

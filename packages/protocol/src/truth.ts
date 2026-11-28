@@ -11,6 +11,14 @@
 export type TruthState = "working" | "needs_you" | "waiting" | "stopped" | "done" | "failed";
 
 /**
+ * Why a task needs the person, so its row can say what happened and what the choice is:
+ * question (a real question, named), stopped (nothing asked; a fact, with Continue/Put down),
+ * blind (a read no computer can run), ready (a PR to merge), keep (a Keep's held item),
+ * routine (a routine Ducter paused).
+ */
+export type TruthNeed = "question" | "stopped" | "blind" | "ready" | "keep" | "routine";
+
+/**
  * What a waiting task waits on, named so the row can say it: `name` is the thing (a PR's checks, a
  * computer, an agent's answer), `back` when it comes back on its own. `blind` says the read fails
  * (no gh on that computer); after its quiet that is needs_you with `fix`.
@@ -26,6 +34,8 @@ export interface TruthWait {
 /** One task's derived state (on its card, and inside an OnHandTruth item). */
 export interface TaskTruth {
   state: TruthState;
+  /** needs_you: why, so the row's words and its choices match the fact. */
+  needs?: TruthNeed;
   /** needs_you: one line, in the task's language, of what it waits for. */
   waitsFor?: string;
   /** waiting: the named thing that comes back by itself. */

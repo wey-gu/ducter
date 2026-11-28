@@ -259,3 +259,31 @@ func TestTruthSnapshotWordsZHAndEN(t *testing.T) {
 		t.Errorf("en holder.on: %q, want %q", got, want)
 	}
 }
+
+// D661 turn 2: a stopped task that now needs the person stands where its row can offer Continue /
+// Put down, and its line is the fact (how long, and that it did not say), never a bare question.
+func TestTruthStoppedNeedsRow(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.LocaleFixed = true
+	card := snapshotCard("stopped-needs", protocol.NeedsYou, "")
+	card.UpdatedAt = time.Now().Add(-40 * time.Minute).UTC().Format(time.RFC3339)
+	card.Truth = &protocol.TaskTruth{State: protocol.TruthNeedsYou, Needs: "stopped", WaitsFor: "它停了 40 分钟，没说在等什么。"}
+	truth := &protocol.OnHandTruth{NeedsYou: []protocol.TruthItem{{TaskTruth: *card.Truth, TaskID: "stopped-needs"}}}
+	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{card}, Truth: truth}})
+	task := app.S.Task("stopped-needs")
+	if task.Attention() != protocol.Blocked {
+		t.Fatalf("attention %q, want Blocked", task.Attention())
+	}
+	if !app.stoppedWait(task) {
+		t.Fatal("a needs-you stopped task must be a stopped row")
+	}
+	if got := app.storyOf(task).words; got != "它停了 40 分钟，没说在等什么。" {
+		t.Fatalf("line %q", got)
+	}
+	if got := app.stateCounts(app.S.Board(), "")[0]; got != 1 {
+		t.Fatalf("needs-you count %d, want 1", got)
+	}
+	if got := app.headLine(app.S.Board(), "", app.stateCounts(app.S.Board(), "")); got != app.L.T("onhand.line.stopped.one") {
+		t.Fatalf("head %q", got)
+	}
+}

@@ -34,6 +34,9 @@ interface Row {
 
 const MAX_INDEXED_CHARS = 16_000;
 
+/** Views derived from other events, never searched: a hit lands on the source (D653's subject card restates a report). */
+const DERIVED_KINDS = new Set(["subject_card"]);
+
 /** Collects searchable text from an event body (skips raw harness payloads). */
 export function textOf(body: unknown): string {
   const out: string[] = [];
@@ -143,7 +146,7 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
     // Seq is taken inside the write transaction, so it stays gapless and unique.
     e.seq = (maxSeq.get() as { h: number }).h + 1;
     insert.run(e.seq, e.ts, e.persona, e.stream, e.origin, e.kind, JSON.stringify(e.body), e.supersedes ?? null);
-    const text = textOf(e.body);
+    const text = DERIVED_KINDS.has(e.kind) ? "" : textOf(e.body);
     if (text) {
       insertFts.run(e.seq, text);
       insertBg.run(e.seq, indexText(text));

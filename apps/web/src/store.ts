@@ -191,7 +191,12 @@ const TRUTH_LANE: Record<TruthState, Attention> = {
 };
 export const attention = (t: Task): Attention => {
   const truth = t.card?.truth?.state;
-  if (truth && (!t.state || t.state.attention === t.card?.attention)) return TRUTH_LANE[truth];
+  if (truth && (!t.state || t.state.attention === t.card?.attention)) {
+    // D661 turn 2: a stopped task that now needs the person stands where its row can offer
+    // Continue / Put down, never as a bare question card.
+    if (truth === "needs_you" && t.card?.truth?.needs === "stopped") return "blocked";
+    return TRUTH_LANE[truth];
+  }
   return t.state?.attention ?? t.card?.attention ?? "queued";
 };
 /** D310: how many of these tasks are 今天做完 / Done today, by the one rule every surface uses

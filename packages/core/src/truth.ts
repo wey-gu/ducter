@@ -30,7 +30,7 @@ const W = {
     blindFix: "在 {home} 上读，或在 {device} 上装上 gh。",
     blindNoHome: "在一台有 gh 的电脑上读，或在这台上装上 gh。",
     away: "在等 {device} 连上：它回来就接着做。",
-    awayFix: "打开那台电脑，它就接着做。",
+    awayFix: "打开 {device}，它就接着做。",
     asleep: "这台电脑睡着了，它醒来就接着做。",
     bridge: "在等 {who} 回话。",
     limit: "等 {agent} 的额度恢复。",
@@ -40,6 +40,15 @@ const W = {
     timer: "在等 {what}。",
     genericWait: "在等它自己回来。",
     nextRound: "下一轮会接着看。",
+    stopAgo: "它停下了，没说在等什么。", // when: the row's right edge already says it (D471); never twice
+    namedAsk: "「{object}」在等你：{q}",
+    askWaiting: "「{title}」在等你回答。",
+    callWaiting: "给「{name}」的电话在等你回答。",
+    callWaitingAny: "一通电话在等你回答。",
+    stopJust: "它刚停下，没说在等什么。",
+    keepWait: "「{keep}」在等你回答。",
+    callWait: "「{who}」在等你回答。",
+    callGeneric: "一通电话在等你回答。",
     pr: {
       checks: "{pr} 的检查还在跑。",
       failing: "{pr} 的检查没过。",
@@ -56,7 +65,7 @@ const W = {
     blindFix: "Read it on {home}, or install gh on {device}.",
     blindNoHome: "Read it on a computer that has gh, or install gh here.",
     away: "Waiting for {device} to come back; it carries on then.",
-    awayFix: "Turn that computer on and it carries on.",
+    awayFix: "Turn {device} on and it carries on.",
     asleep: "That computer is asleep; it carries on when it wakes.",
     bridge: "Waiting for {who} to answer.",
     limit: "Waiting for {agent}'s limit to reset.",
@@ -66,6 +75,15 @@ const W = {
     timer: "Waiting for {what}.",
     genericWait: "Waiting for it to come back by itself.",
     nextRound: "The next round will look again.",
+    stopAgo: "It stopped without saying what it waits for.",
+    namedAsk: "“{object}” is waiting for you: {q}",
+    askWaiting: "“{title}” is waiting for your answer.",
+    callWaiting: "The call to {name} is waiting for you.",
+    callWaitingAny: "A call is waiting for you.",
+    stopJust: "It just stopped without saying what it waits for.",
+    keepWait: "\"{keep}\" is waiting for your answer.",
+    callWait: "The call to {who} is waiting for you.",
+    callGeneric: "A call is waiting for you.",
     pr: {
       checks: "{pr}'s checks are still running.",
       failing: "{pr}'s checks failed.",
@@ -109,6 +127,24 @@ function prLine(said: PrSaid, ref: string, lang: LangTag): string {
   }
 }
 
+/** A bare choice with no object is the old template D647 removed. */
+const BARE_STOP = /^(这个任务(要)?停下吗[？?]?|要停下吗[？?]?|should (this task|it) stop[？?]?|stop (this task|it)[？?]?)$/i;
+
+/** A question that names its object; a generic one gets the task's title first. */
+function namedQuestion(q: string, card: TaskCard, lang: LangTag, keepName?: string): string {
+  const s = q.trim();
+  if (/#\d+|[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+|「|"|“/.test(s) || s.length > 32) return s;
+  const object = keepName?.trim() || card.title;
+  return fill(words(W, lang).namedAsk, { object, q: s });
+}
+
+/** The fact a stopped task says, never a bare question: how long and that it did not say. */
+function stoppedLine(card: TaskCard, now: number, lang: LangTag, w: (typeof W)["zh"] | (typeof W)["en"]): string {
+  const at = Date.parse(card.updatedAt || card.openedAt);
+  // How long is the row's right edge (D471); the line says only the fact, never the time twice.
+  return Number.isFinite(at) && now - at >= 60_000 ? w.stopAgo : w.stopJust;
+}
+
 /** What this task's one state is, from its facts. Never a model, never a client. */
 export interface TruthInput {
   now: number;
@@ -121,6 +157,8 @@ export interface TruthInput {
   subject?: { state: "working" | "waiting" | "done" | "failed"; line?: string };
   /** D511: the Keep's held item, when a Keep holds this task (its "you"/"ready" is a fact). */
   keepItem?: Pick<KeepItem, "at" | "yours" | "pr" | "said">;
+  /** D511: the Keep's name, so a generic held-item wait still names its object. */
+  keepName?: string;
   /** D473: Ducter is mending it right now: it is at work, not the person's. */
   mending?: boolean;
 }
@@ -130,22 +168,30 @@ export function truthOf(i: TruthInput): TaskTruth {
   const lang = langOf(card);
   const w = words(W, lang);
   const since = card.turnAt ?? card.updatedAt;
-  const ask = questionFor(card)?.trim();
+  // D647: a bare「这个任务停下吗？」is not a question any more. It is a stopped task's old
+  // template; the row says the fact (how long, and that it did not say) and offers Continue /
+  // Put down. A real question that names its object is still a question.
+  const asked = questionFor(card)?.trim();
+  const waited = card.waitsFor?.trim();
+  const ask = asked && !BARE_STOP.test(asked) ? asked : waited && !BARE_STOP.test(waited) ? waited : undefined;
 
   // D473: a repair under way is work, never a stop.
   if (i.mending) return { state: "working", since };
 
-  // 1. An open question, a person's answer owed: needs_you, with its one line.
+  // 1. An open question, a person's answer owed: needs_you, with its one named line.
   const later = card.pendingDecision?.later;
-  if (ask && !later) return { state: "needs_you", waitsFor: ask, since };
-  if (card.waitsFor?.trim()) return { state: "needs_you", waitsFor: card.waitsFor.trim(), since };
+  if (ask && !later) return { state: "needs_you", needs: "question", waitsFor: namedQuestion(ask, card, lang, i.keepName), since };
 
   // 2. A Keep's held item that waits for the person (a PR ready to merge is theirs; D508).
-  if (i.keepItem?.at === "you") return { state: "needs_you", waitsFor: i.keepItem.yours?.trim() || w.keepYou, since };
+  if (i.keepItem?.at === "you") {
+    const yours = i.keepItem.yours?.trim();
+    const line = yours && !BARE_STOP.test(yours) ? namedQuestion(yours, card, lang, i.keepName) : i.keepName ? fill(w.keepWait, { keep: i.keepName }) : w.keepYou;
+    return { state: "needs_you", needs: "keep", waitsFor: line, since };
+  }
   if (i.keepItem?.at === "ready") {
     const ref = i.keepItem.pr;
-    const line = ref ? fill(w.keepReady, { pr: prShort(ref) }) : w.keepYou;
-    return { state: "needs_you", waitsFor: line, since };
+    const line = ref ? fill(w.keepReady, { pr: prShort(ref) }) : i.keepName ? fill(w.keepWait, { keep: i.keepName }) : w.keepYou;
+    return { state: "needs_you", needs: "ready", waitsFor: line, since };
   }
 
   // 3. D508: a finished task whose PR is open is not done. Ready is the person's; anything else is
@@ -155,7 +201,7 @@ export function truthOf(i: TruthInput): TaskTruth {
     if (pr) {
       const line = prLine(pr.said, pr.pr.pr, lang);
       return pr.stands === "needs"
-        ? { state: "needs_you", waitsFor: line, since }
+        ? { state: "needs_you", needs: "ready", waitsFor: line, since }
         : { state: "waiting", wait: { name: line }, since };
     }
     return { state: "done", since };
@@ -164,7 +210,7 @@ export function truthOf(i: TruthInput): TaskTruth {
   if (card.attention === "dropped" || card.attention === "superseded") return { state: "stopped", since };
 
   // 4. A question put off until later: it waits on the clock, then asks again.
-  if (ask && later) return { state: "waiting", wait: { name: ask, back: later }, since };
+  if (ask && later) return { state: "waiting", wait: { name: namedQuestion(ask, card, lang, i.keepName), back: later }, since };
 
   // 5. A live turn (or a queued start): working. A question above it wins. D661's invariant:
   //    a turn that ended leaves working at once, so `working` needs the live residency `hot` too; a
@@ -185,7 +231,7 @@ export function truthOf(i: TruthInput): TaskTruth {
   if (reason.startsWith("device:unreachable:")) {
     const device = reason.slice("device:unreachable:".length) || "";
     const quiet = i.now - Date.parse(card.updatedAt || card.openedAt);
-    if (Number.isFinite(quiet) && quiet >= DEVICE_AFTER_MS) return { state: "needs_you", waitsFor: fill(w.awayFix, { device }), since };
+    if (Number.isFinite(quiet) && quiet >= DEVICE_AFTER_MS) return { state: "needs_you", needs: "blind", waitsFor: fill(w.awayFix, { device }), since };
     return { state: "waiting", wait: { name: fill(w.away, { device }) }, since };
   }
   if (i.waiter) {
@@ -204,18 +250,20 @@ export function truthOf(i: TruthInput): TaskTruth {
     const device = blind.device || blind.home || "";
     const fix = blind.home ? fill(w.blindFix, { device, home: blind.home }) : w.blindNoHome;
     const wait = { name: fill(w.blind, { device }), blind: true, fix } satisfies TruthWait;
-    if (Number.isFinite(quiet) && quiet >= BLIND_AFTER_MS) return { state: "needs_you", waitsFor: `${wait.name} ${fix}`.trim(), wait, since };
+    if (Number.isFinite(quiet) && quiet >= BLIND_AFTER_MS) return { state: "needs_you", needs: "blind", waitsFor: `${wait.name} ${fix}`.trim(), wait, since };
     return { state: "waiting", wait, since };
   }
 
   // 8. Blocked with nothing named: a rest. Fresh, it is stopped; after its quiet it is the person's
   //    (D467's 停下了, with 接着做 and 放下). D653's subject line is a fact of the same work and the
   //    task's own words when the card has no question of its own.
-  if (card.attention === "needs_you") return { state: "needs_you", waitsFor: ask || i.subject?.line?.trim() || card.reason?.trim() || w.stop, since };
+  if (card.attention === "needs_you") {
+    return { state: "needs_you", needs: "stopped", waitsFor: stoppedLine(card, i.now, lang, w), since };
+  }
   if (card.attention === "blocked") {
     const quiet = i.now - Date.parse(card.updatedAt || card.openedAt);
     if (Number.isFinite(quiet) && quiet < STOPPED_AFTER_MS) return { state: "stopped", since };
-    return { state: "needs_you", waitsFor: w.stop, since };
+    return { state: "needs_you", needs: "stopped", waitsFor: stoppedLine(card, i.now, lang, w), since };
   }
   return { state: "stopped", since };
 }
@@ -251,8 +299,8 @@ export interface OnHandTruthInput {
   day: string;
   tasks: TaskCard[];
   keeps?: { id: string; title: string; life: string; pausedWhy?: string; pausedBy?: "user" | "partner" | "system"; routineId?: string; projectKey?: string; items?: Pick<KeepItem, "taskId" | "at" | "yours" | "pr" | "said">[]; persona?: string }[];
-  asks?: { persona: string; decisionId: string; question: string; at: string; keepId?: string; routineId?: string }[];
-  calls?: { callId: string; state: string; persona?: string; since?: string }[];
+  asks?: { persona: string; decisionId: string; question: string; at: string; keepId?: string; routineId?: string; title?: string }[];
+  calls?: { callId: string; state: string; persona?: string; since?: string; name?: string }[];
   waiters?: { waiterId: string; taskId?: string; reason?: string; state?: string; persona?: string }[];
   waiterOf?: (taskId: string) => Pick<WaiterView, "reason" | "limit" | "check" | "event" | "nextLookAt" | "at"> | undefined;
   bridgeOf?: (taskId: string) => { who?: string } | undefined;
@@ -305,7 +353,7 @@ export function onHandTruth(i: OnHandTruthInput): OnHandTruthLite {
     const t = truthOf({
       now: i.now,
       card: c,
-      ...(held ? { keepItem: held.item } : {}),
+      ...(held ? { keepItem: held.item, keepName: held.title } : {}),
       ...(i.waiterOf?.(c.taskId) ? { waiter: i.waiterOf(c.taskId) } : {}),
       ...(i.bridgeOf?.(c.taskId) ? { bridge: i.bridgeOf(c.taskId) } : {}),
       ...(i.subjectOf?.(c.taskId) ? { subject: i.subjectOf(c.taskId) } : {}),
@@ -326,7 +374,8 @@ export function onHandTruth(i: OnHandTruthInput): OnHandTruthLite {
   // D312: another partner's own open question is on On hand too; the home knows every one.
   for (const a of i.asks ?? []) {
     if (out.needsYou.some((x) => x.decisionId === a.decisionId || (a.keepId && x.keepId === a.keepId))) continue;
-    out.needsYou.push(truthItem({ state: "needs_you", waitsFor: a.question, since: a.at }, { askId: a.decisionId, decisionId: a.decisionId, persona: a.persona, line: a.question, ...(a.keepId ? { keepId: a.keepId } : {}), ...(a.routineId ? { routineId: a.routineId } : {}) }));
+    const line = a.question?.trim() && !BARE_STOP.test(a.question.trim()) ? a.question.trim() : a.title ? fill(words(W, langOf({ title: a.title })).askWaiting, { title: a.title }) : a.question;
+    out.needsYou.push(truthItem({ state: "needs_you", needs: "question", waitsFor: line, since: a.at }, { askId: a.decisionId, decisionId: a.decisionId, persona: a.persona, line, ...(a.keepId ? { keepId: a.keepId } : {}), ...(a.routineId ? { routineId: a.routineId } : {}) }));
   }
 
   // D650 (B11): a routine Ducter paused needs a decision; its own words are the line. A person's
@@ -334,13 +383,16 @@ export function onHandTruth(i: OnHandTruthInput): OnHandTruthLite {
   for (const k of i.keeps ?? []) {
     if (k.life !== "paused" || k.pausedBy === "user" || k.pausedBy === "partner" || !k.pausedWhy) continue;
     if (out.needsYou.some((x) => x.keepId === k.id || (k.routineId && x.routineId === k.routineId))) continue;
-    out.needsYou.push(truthItem({ state: "needs_you", waitsFor: k.pausedWhy, since: undefined }, { keepId: k.id, line: k.pausedWhy, ...(k.projectKey ? { projectKey: k.projectKey } : {}), ...(k.persona ? { persona: k.persona } : {}) }));
+    out.needsYou.push(truthItem({ state: "needs_you", needs: "routine", waitsFor: k.pausedWhy, since: undefined }, { keepId: k.id, ...(k.routineId ? { routineId: k.routineId } : {}), line: k.pausedWhy, ...(k.projectKey ? { projectKey: k.projectKey } : {}), ...(k.persona ? { persona: k.persona } : {}) }));
   }
 
   // A live call is work the person is in; one waiting for Go is the person's.
   for (const c of i.calls ?? []) {
     if (!["waiting", "calling", "talking", "question"].includes(c.state)) continue;
-    if (c.state === "question") out.needsYou.push(truthItem({ state: "needs_you", waitsFor: "It is asking you.", since: c.since }, { callId: c.callId, persona: c.persona }));
+    if (c.state === "question") {
+      const line = c.name ? fill(words(W, langOf({ title: c.name })).callWaiting, { name: c.name }) : words(W, langOf({ title: "" })).callWaitingAny;
+      out.needsYou.push(truthItem({ state: "needs_you", needs: "question", waitsFor: line, since: c.since }, { callId: c.callId, persona: c.persona }));
+    }
     else out.working.push(truthItem({ state: "working", since: c.since }, { callId: c.callId, persona: c.persona }));
   }
 

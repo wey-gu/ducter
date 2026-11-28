@@ -1123,9 +1123,9 @@ export function startCore(opts: CoreOptions = {}): Core {
           .openIds()
           .map((id) => decisions.get(id))
           .filter((d): d is NonNullable<typeof d> => !!d && !d.taskId && !d.offer)
-          .map((d) => ({ persona: "default", decisionId: d.decisionId, question: d.question, at: d.defaultAt ?? new Date(clock.now()).toISOString(), ...(d.keep?.id ? { keepId: d.keep.id } : {}), ...(d.routineId ? { routineId: d.routineId } : {}) })),
+          .map((d) => ({ persona: "default", decisionId: d.decisionId, question: d.question, at: d.defaultAt ?? new Date(clock.now()).toISOString(), ...(d.keep?.id ? { keepId: d.keep.id } : {}), ...(d.keep?.title ? { title: d.keep.title } : {}), ...(d.routineId ? { routineId: d.routineId } : {}) })),
       ],
-      ...(o.calls?.length ? { calls: o.calls.map((c) => ({ callId: c.callId, state: c.state })) } : {}),
+      ...(o.calls?.length ? { calls: o.calls.map((c) => ({ callId: c.callId, state: c.state, ...(c.plan?.name ? { name: c.plan.name } : {}) })) } : {}),
       waiters: o.waiters.map((w) => ({ waiterId: w.waiterId, ...(w.taskId ? { taskId: w.taskId } : {}), ...(w.reason ? { reason: w.reason } : {}), state: w.state, ...(w.persona ? { persona: w.persona } : {}) })),
       waiterOf: (id) => o.waiters.find((w) => w.taskId === id && w.state === "armed"),
       bridgeOf: (id) => bridgeWaits.get(id),
@@ -1151,7 +1151,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         });
         return { ...c, truth: t };
       }
-      const t = { state: it.state, ...(it.waitsFor ? { waitsFor: it.waitsFor } : {}), ...(it.wait ? { wait: it.wait } : {}), ...(it.since ? { since: it.since } : {}) };
+      const t = { state: it.state, ...(it.needs ? { needs: it.needs } : {}), ...(it.waitsFor ? { waitsFor: it.waitsFor } : {}), ...(it.wait ? { wait: it.wait } : {}), ...(it.since ? { since: it.since } : {}) };
       return { ...c, truth: t };
     });
     return { ...o, tasks, truth, counts: countsOfTruth(truth) };

@@ -808,7 +808,8 @@ export function createKeeps(o: {
   const roundSig = (r: Round): string => `${r.did ?? firstLine(r.report) ?? ""}|${r.changed ? "1" : "0"}`;
   /** The newest rounds that read the same, newest first, a running one and an edit aside. */
   function trailingSame(raw: Round[]): Round[] {
-    const rs = raw.filter((r) => r.state !== "running" && r.woke !== "edit" && r.woke !== "ring");
+    // A skipped run (missed, over budget) did nothing: it neither breaks nor counts toward a stall.
+    const rs = raw.filter((r) => r.state !== "running" && r.state !== "skipped" && r.woke !== "edit" && r.woke !== "ring");
     if (!rs.length) return [];
     const sig = roundSig(rs[0]!);
     let i = 0;

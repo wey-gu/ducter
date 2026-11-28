@@ -38,6 +38,8 @@ reaches the task. One that stopped with nothing still running is a stopped task 
 
 A row says what the task itself said, in one short line in your language. Until that line is ready,
 the task's own words are shown muted behind **It said:**, so they are never your partner speaking.
+A task that stopped never asks the old bare "Should this task stop?"; it says how long it has been
+stopped and that it did not say what it waits for, with **Continue** and **Put down** beside it.
 When several things stand on one pull request, it appears once, under the thing that holds it; the
 others are quiet facts on that row (**By …**, **Review: …**, **Handed to …**), each on its own.
 

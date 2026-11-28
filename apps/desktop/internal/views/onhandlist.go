@@ -206,6 +206,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		}
 		return rowStory{words: q, tone: "needs"}
 	case protocol.Blocked:
+		// D661 turn 2: a stopped task that needs the person says its fact, never a bare question.
+		if t := task.Truth(); t != nil && t.Needs == "stopped" && strings.TrimSpace(t.WaitsFor) != "" {
+			return rowStory{words: t.WaitsFor, tone: "needs"}
+		}
 		// D382: a question put off: when it asks again, and what.
 		if w, ok := a.laterRow(task); ok {
 			return rowStory{words: w}

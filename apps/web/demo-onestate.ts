@@ -22,6 +22,15 @@ const iso = (ms: number) => new Date(now + ms).toISOString();
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 
+// The stopped card's own fact says "停了 40 分钟": seed its last state forty minutes back on the
+// core's clock, then move the clock to now so the report/gist and the shot are current.
+const skew = { ms: -40 * MIN };
+const clock = {
+  now: () => Date.now() + skew.ms,
+  setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+  clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>),
+};
+
 const dataDir = process.env.DUCTER_DATA_DIR ?? mkdtempSync(join(tmpdir(), "ducter-onestate-"));
 const fresh = process.env.DUCTER_DATA_DIR ? false : true;
 if (!process.env.DUCTER_DATA_DIR) process.env.DUCTER_DATA_DIR = dataDir;
@@ -31,7 +40,7 @@ writeFileSync(join(dataDir, "projects.json"), JSON.stringify({ version: 2, proje
   "folder:haswell:/home/w/ducter/projects/mem": "folder:local:/home/w/ducter/projects/mem",
 }, hidden: [], pinned: [], order: [] }, null, 2));
 
-const seed = openLog({ path: join(dataDir, "ducter.db"), persona: "default" });
+const seed = openLog({ path: join(dataDir, "ducter.db"), persona: "default", clock });
 const task = (id: string, title: string, brief: string, attention: Bodies["task_state"]["attention"], residency: Bodies["task_state"]["residency"], place: Bodies["task_open"]["place"] = { kind: "none" }) => {
   seed.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title, project: "", place, harness: "codex", brief, language: zh ? "zh" : "en" } });
   seed.append({ stream: `task:${id}`, origin: "system", kind: "task_state", body: { taskId: id, attention, residency } });
@@ -86,6 +95,7 @@ seed.close?.();
 
 const core = startCore({
   dataDir,
+  clock,
   port: Number(process.env.DUCTER_PORT ?? 7911),
   ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
@@ -127,6 +137,7 @@ core.log.append({ stream: `task:4rg2ebi7`, origin: "task", kind: "report", body:
 // start so it is the card's newest fact.
 await Bun.sleep(80);
 core.log.append({ stream: `task:zqcpawnf`, origin: "system", kind: "task_state", body: { taskId: "zqcpawnf", attention: "blocked", residency: "warm", waitsFor: w("这个任务停下吗？", "Should this task stop?") } });
+skew.ms = 0;
 
 const sync = core.keeps.sync();
 console.log("[demo] keeps", sync, core.keeps.sheets("default").length);

@@ -113,12 +113,16 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: t("onhand.github.blind", blind.device || blind.home || "", blind.home || blind.device || "") };
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    // D539: a copy card says what it copies where, in the reader's words. A question is the task's,
-    // never wrapped in 它说: the person is the one owed an answer.
-    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || task.card?.truth?.waitsFor || task.card?.waitsFor || r?.questions?.[0]?.text || gist || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words. D661 turn 2: the one
+    // truth's line wins — a stopped task says its fact and its own choices, never a bare question;
+    // a real question names its object.
+    const q = (d?.copyKey ? copyKeyTitle(d) : "") || task.card?.truth?.waitsFor || d?.question || r?.questions?.[0]?.text || gist || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
+    // D661 turn 2: a stopped task that needs the person says its fact (how long, and that it did
+    // not say), never the old bare question; its Continue / Put down are the row's own choices.
+    if (task.card?.truth?.needs === "stopped" && task.card.truth.waitsFor) return { words: task.card.truth.waitsFor, tone: "needs" };
     // D382: a question put off: when it asks again, and what.
     const later = A.S.pendingDecision(task.id);
     if (later?.later) return { words: t("later.row", soon(later.later), later.said || later.question) };
@@ -1039,11 +1043,14 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
 export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
   const truth = A.S.onHand?.truth;
   if (truth) {
-    // D661 (research/245 §3.3): the counts are the snapshot's, and what has halted is its
-    // stopped and failed lists. A question leads; only a board of stops alone says stopped.
-    const halted = truthInLens(truth.stopped, lens).length + truthInLens(truth.failed, lens).length;
-    if (n[0]) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
-    if (halted) return halted === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", halted);
+    // D661 turn 2: a stopped task that is now needs-you counts in its stopped list, so a board of
+    // only stops says so; a real question leads.
+    const stoppedNeeds = truthInLens(truth.needsYou, lens).filter((x) => x.needs === "stopped").length;
+    // Only needs-you items are in n[0]; the stopped/failed lists stand apart from it, so they
+    // must not be added to its halted count (a fresh stop is not the person's yet).
+    const halted = stoppedNeeds;
+    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
   } else {
     // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
     const parts = boardParts(lensLanes(lens), now);
@@ -1534,7 +1541,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // D467: a waiting line that only says the title again gives way to what the task last said, else
   // when it looks again, else nothing (the heartbeat says when it is back).
   // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
-  const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
+  const truthStopped = task.card?.truth?.needs === "stopped";
+  const stuck = room !== "rail" && (stopped || failed) && !truthStopped ? stuckOf(task) : undefined;
   // D584: a story that is only the state's own word (在做 / 做完了) is what the row's time already
   // says (在做 3 分钟了 / 7:52 做完): the status is said once, the second line left out.
   const bare = !stuck && !mend && s.words === stateLabel(a);

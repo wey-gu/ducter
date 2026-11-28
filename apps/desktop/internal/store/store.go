@@ -271,6 +271,11 @@ func (t *Task) Title() string {
 // already moved past the card; the old lookup is the fallback for a home without it.
 func (t *Task) Attention() protocol.Attention {
 	if t.Card != nil && t.Card.Truth != nil && (t.State == nil || t.State.Attention == t.Card.Attention) {
+		// D661 turn 2: a stopped task that now needs the person stands where its row can offer
+		// Continue / Put down, never as a bare question card.
+		if t.Card.Truth.State == protocol.TruthNeedsYou && t.Card.Truth.Needs == "stopped" {
+			return protocol.Blocked
+		}
 		if a, ok := attentionOfTruth(t.Card.Truth.State); ok {
 			return a
 		}

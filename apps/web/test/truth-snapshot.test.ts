@@ -141,3 +141,48 @@ describe("D661: the web reads the snapshot's one truth", () => {
     A.S.tasks.clear();
   });
 });
+
+describe("D661 turn 2: a stopped task that needs you", () => {
+  test("stands as a stopped row with its fact, never a bare question", async () => {
+    const { A } = await import("../src/app.ts");
+    const o = await import("../src/onhand.tsx");
+    const { Store, attention } = await import("../src/store.ts");
+    A.S = new Store();
+    A.L = strings("zh");
+    A.send = () => {};
+    A.S.welcomed = true;
+    const fact = "它停了 40 分钟，没说在等什么。";
+    const c = card("sn1", "needs_you", {
+      title: "核对数据迁移设计并补齐统一备份与恢复",
+      updatedAt: iso(-40 * 60_000),
+      truth: truth("needs_you", { needs: "stopped", waitsFor: fact }),
+    });
+    A.receive({
+      t: "on_hand",
+      onHand: {
+        tasks: [c],
+        counts: { needs_you: 1, working: 0, waiting: 0, done_today: 0 },
+        waiters: [],
+        groups: [],
+        truth: {
+          needsYou: [{ state: "needs_you", needs: "stopped", taskId: "sn1", waitsFor: fact, since: iso(-40 * 60_000) }],
+          working: [],
+          waiting: [],
+          stopped: [],
+          done: [],
+          failed: [],
+          asOf: 1,
+          at: iso(0),
+        },
+      },
+    } as never);
+    const task = A.S.tasks.get("sn1")!;
+    expect(attention(task)).toBe("blocked");
+    expect(o.stoppedWait(task)).toBe(true);
+    expect(o.storyOf(task).words).toBe(fact);
+    expect(o.storyOf(task).words).not.toContain("停下吗");
+    expect(o.stateCounts("")).toEqual([1, 0, 0, 0]);
+    expect(o.headLine("")).toBe(A.L.t("onhand.line.stopped.one"));
+    A.S.tasks.clear();
+  });
+});

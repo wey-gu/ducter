@@ -1212,7 +1212,9 @@ type TruthWait struct {
 
 // TaskTruth is one task's derived state (D661).
 type TaskTruth struct {
-	State    TruthState `json:"state"`
+	State TruthState `json:"state"`
+	// Needs (D661 turn 2): question | stopped | blind | ready | keep | routine.
+	Needs    string     `json:"needs,omitempty"`
 	WaitsFor string     `json:"waitsFor,omitempty"`
 	Wait     *TruthWait `json:"wait,omitempty"`
 	Since    string     `json:"since,omitempty"`

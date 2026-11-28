@@ -60,77 +60,104 @@ func (a *App) onHand(c *ui.Context) {
 		if keepOpen && w >= railFrom {
 			a.keepRail(c)
 		}
-		a.toastsOver(ui.Scroll(c.Key("board")).Grow(1).MinWidth(0)).Children(func() {
-			ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
-				if empty {
-					ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-						a.avatar(c, theme.Idle, 120)
-						uiText(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
-					})
-					ui.Column(c.Key("past")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() { a.pastEndLine(c) }) // D285
-					return
-				}
-				if keepOpen {
-					avail := w - 2*t.S6
-					if w >= railFrom {
-						avail -= keepRailW
+		// D662: a selection's bar stands under the board, so the rows scroll above it.
+		lbAll := sourceBoard(lensBoard(b, lens), a.oh.source)
+		barOn := !empty && !keepOpen && a.listOn(lbAll) && len(a.oh.tbl.sel) > 0
+		ui.Column(c.Key("board-pane")).Grow(1).MinWidth(0).MinHeight(0).Children(func() {
+			a.toastsOver(ui.Scroll(c.Key("board")).Grow(1).MinWidth(0).MinHeight(0)).Children(func() {
+				ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
+					if empty {
+						ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+							a.avatar(c, theme.Idle, 120)
+							uiText(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
+						})
+						ui.Column(c.Key("past")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() { a.pastEndLine(c) }) // D285
+						return
 					}
-					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
-					return
-				}
-				lb := sourceBoard(lensBoard(b, lens), a.oh.source)
-				// D467: no day beside the board: it said again what the
-				// column says. The list's width is the cards' room.
-				avail := w - 2*t.S6
-				if column {
-					avail -= lensColW
-				}
-				// D467: from peekFrom the peek sits in on the focused task.
-				peekOn := w >= peekFrom
-				if peekOn {
-					avail -= peekW + t.S6
-				}
-				a.oh.listW = min(float32(onHandMeasure), avail)
-				if peekOn {
-					a.oh.listW = max(min(float32(onHandMeasure+80), avail), 420)
-				}
-				ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
-					ui.Column(c.Key("list")).Gap(t.S6).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
-						if !column && lensOn(groups) {
-							a.lensTabs(c, groups, lens)
+					if keepOpen {
+						avail := w - 2*t.S6
+						if w >= railFrom {
+							avail -= keepRailW
 						}
-						find = a.boardTop(c, lb, groups, lens)
-						// D467 round 4: no forecast band: the brief's 接下来 says what comes next.
-						if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
-							a.callRows(c) // D193: the calls, live and today's
-						}
-						a.onHandList(c, lb)
-						if a.oh.filter == 0 {
-							switch lens {
-							case "":
-								if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 看守中
-									a.routineShelf(c, false)
-								}
-							case lensOther:
-								a.routineShelf(c, true)
-							default:
-								if g := groupOf(groups, lens); g != nil {
-									a.lensRoutines(c, g)
+						ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
+						return
+					}
+					lb := sourceBoard(lensBoard(b, lens), a.oh.source)
+					// D467: no day beside the board: it said again what the
+					// column says. The list's width is the cards' room.
+					avail := w - 2*t.S6
+					if column {
+						avail -= lensColW
+					}
+					// D662: 列表 takes the board's width (up to listMax) and has no peek: the row is the peek.
+					listOn := a.listOn(lb)
+					// D467: from peekFrom the peek sits in on the focused task.
+					peekOn := w >= peekFrom && !listOn
+					if peekOn {
+						avail -= peekW + t.S6
+					}
+					a.oh.listW = min(float32(onHandMeasure), avail)
+					if peekOn {
+						a.oh.listW = max(min(float32(onHandMeasure+80), avail), 420)
+					}
+					if listOn {
+						a.oh.listW = min(float32(listMax), avail)
+					}
+					ui.Row(c.Key("board-row")).Gap(t.S6).Justify(ui.Center).AlignItems(ui.Start).Children(func() {
+						ui.Column(c.Key("list")).Gap(t.S6).Width(a.oh.listW).Shrink(1).MinWidth(0).Children(func() {
+							if !column && lensOn(groups) {
+								a.lensTabs(c, groups, lens)
+							}
+							find = a.boardTop(c, lb, groups, lens)
+							// D467 round 4: no forecast band: the brief's 接下来 says what comes next.
+							if loose(lens) && (a.oh.filter == 0 || a.oh.filter == 2) {
+								a.callRows(c) // D193: the calls, live and today's
+							}
+							if listOn {
+								a.onHandTable(c, lb, a.oh.listW)
+								a.pastEndLine(c)
+								return
+							}
+							a.onHandList(c, lb)
+							if a.oh.filter == 0 {
+								switch lens {
+								case "":
+									if a.S.OnHand == nil || a.S.OnHand.Keeps == nil { // D511: routines are Keeps, under 看守中
+										a.routineShelf(c, false)
+									}
+								case lensOther:
+									a.routineShelf(c, true)
+								default:
+									if g := groupOf(groups, lens); g != nil {
+										a.lensRoutines(c, g)
+									}
 								}
 							}
+							// D285: 做过的事 › is On hand's last line, under the list.
+							// research/109: as the row's third child it sat beside the
+							// day and ran out of the window on a 1280 Mac.
+							a.pastEndLine(c)
+						})
+						if peekOn {
+							a.peek(c)
 						}
-						// D285: 做过的事 › is On hand's last line, under the list.
-						// research/109: as the row's third child it sat beside the
-						// day and ran out of the window on a 1280 Mac.
-						a.pastEndLine(c)
 					})
-					if peekOn {
-						a.peek(c)
-					}
 				})
 			})
+			if barOn {
+				bar := ui.Row(c.Key("selbar-row")).Justify(ui.Center).Padding(t.S2, t.S6, t.S4, t.S6).Shrink(0).Children(func() {
+					ui.Column(c.Key("selbar-col")).Width(a.oh.listW).MaxWidthPercent(100).Children(func() { a.bulkBar(c, tableTasks(lbAll)) })
+				})
+				a.toastsAbove(bar)
+			}
 		})
 	})
+	// D662: the list's own keys before On hand's (⌘1 / ⌘2 are the app's, boardStep).
+	if lb := sourceBoard(lensBoard(b, lens), a.oh.source); !empty && !keepOpen && !a.oh.sw && !a.nt.open && !a.addf.open {
+		if a.listOn(lb) && !(find.Valid() && find.Focused()) && a.tableKeys(c) {
+			return
+		}
+	}
 	a.onHandKeys(c, find)
 }
 

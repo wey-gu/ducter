@@ -878,7 +878,7 @@ export function LensColumn() {
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} hidden={g.hidden} pinned={g.pinned} renamed={pinnedOf(g.key)?.renamed} aliases={g.aliases} />
       ))}
-      {/* D-PENDING (research/245 §3.5): the saved views, under the projects. */}
+      {/* D662 (research/245 §3.5): the saved views, under the projects. */}
       <BoardViews tasks={lensLanes("").flat()} />
       {/* D455: a folder on any computer of the home, looked through by that computer. */}
       {A.ntBrowsable().length > 0 && (
@@ -1116,7 +1116,7 @@ function BoardTop({ lens, groups, findable, room, mode, onMode, showMode }: { le
             </button>
           )}
           <span class="grow" />
-          {/* D-PENDING (research/245 §3.5): one board, two ways to look: offered from eight tasks on,
+          {/* D662 (research/245 §3.5): one board, two ways to look: offered from eight tasks on,
               kept per device, never the default by itself. */}
           {showMode && mode && onMode && <Seg label={t("onhand.view.label")} value={mode} options={[{ v: "overview", label: t("onhand.overview") }, { v: "list", label: t("onhand.list") }]} onPick={onMode} />}
           {findable && <Find />}
@@ -1155,7 +1155,7 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "", /** D-PENDING (research/245 §3.5): the view this device chose, its filter and sort. */ mode: readMode() as "overview" | "list", tfilter: {} as import("@ducter/protocol").TaskFilter, sort: "urgency" as import("@ducter/protocol").TaskSort, pickOp: "" as "" | "move" | "reassign", gPending: 0 };
+export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "", /** D662 (research/245 §3.5): the view this device chose, its filter and sort. */ mode: readMode() as "overview" | "list", tfilter: {} as import("@ducter/protocol").TaskFilter, sort: "urgency" as import("@ducter/protocol").TaskSort, pickOp: "" as "" | import("@ducter/protocol").BulkOp, gPending: 0 };
 
 /** D661 (research/245 §3.3 rule 5): who else holds the outside thing, in words: a task's
  *  agent on its computer ("Mac 上的 Antigravity" / "Antigravity on Mac"), a Keep by its name, a
@@ -1321,17 +1321,9 @@ function keyIDs(): string[] {
   return L.sel.size ? [...L.sel] : L.focus ? [L.focus] : [];
 }
 
-/** e / p / ⌘⌫: act on the selection (or the focused row), then let go of it. */
-function selectAct(op: "end" | "pause" | "drop") {
-  const ids = keyIDs();
-  if (!ids.length) return;
-  A.bulk(ids, op);
-  L.sel.clear();
-  A.changed();
-}
-
-/** m / a: move or reassign needs a choice, so the bar opens it (the focused row joins the selection). */
-function pickAct(op: "move" | "reassign") {
+/** e / p / ⌘⌫ / m / a: the selection's bar takes the gesture (the focused row joins an empty
+ *  selection). e, p and ⌘⌫ raise its one ask; m and a open its menu. A key never acts unasked. */
+function barAct(op: import("@ducter/protocol").BulkOp) {
   const ids = keyIDs();
   if (!ids.length) return;
   if (!L.sel.size) L.sel.add(L.focus);
@@ -1351,12 +1343,16 @@ function useKeys(room: Room) {
       const rail = room === "rail";
       const list = !!A.listMode && room === "full" && !rail;
       const mod = e.metaKey || e.ctrlKey;
-      // D-PENDING (research/245 §3.5): ⌘1 概览 / ⌘2 列表 on the board (the toggle's own keys). The
-      // conversation keeps Esc and the breadcrumb; elsewhere the app's ⌘1 / ⌘2 are untouched.
-      if (list && mod && !e.altKey && (e.code === "Digit1" || e.code === "Digit2")) {
+      // D662 (research/245 §3.5): ⌘2 on the board (already 任务 / Tasks) goes on to 列表 / List,
+      // ⌘1 in the list comes back to 概览 / Overview; ⌘1 on Overview is the app's own (the
+      // conversation). So each key is one step, and the app's ⌘1 / ⌘2 keep their meaning.
+      const offered = !!A.listOffered && room === "full";
+      if (offered && mod && !e.altKey && !e.shiftKey && ((e.code === "Digit2" && L.mode === "overview") || (e.code === "Digit1" && L.mode === "list"))) {
         e.preventDefault();
         const m = e.code === "Digit1" ? "overview" : "list";
-        if (L.mode !== m) (L.mode = m), writeMode(m), A.changed();
+        L.mode = m;
+        writeMode(m);
+        A.changed();
         return;
       }
       if (list && mod && !e.altKey && e.code === "KeyA") {
@@ -1369,7 +1365,7 @@ function useKeys(room: Room) {
       }
       if (list && mod && !e.altKey && e.code === "Backspace") {
         e.preventDefault();
-        selectAct("drop");
+        barAct("drop");
         return;
       }
       if (list && mod && !e.altKey && e.code === "KeyK") {
@@ -1390,15 +1386,7 @@ function useKeys(room: Room) {
           document.querySelector<HTMLElement>(".filter-chip")?.focus();
           return;
         }
-        if (e.key === "e") return void (e.preventDefault(), selectAct("end"));
-        if (e.key === "p") return void (e.preventDefault(), selectAct("pause"));
-        if (e.key === "m") return void (e.preventDefault(), pickAct("move"));
-        if (e.key === "a") return void (e.preventDefault(), pickAct("reassign"));
-        if (e.key === "g") {
-          e.preventDefault();
-          L.gPending = Date.now();
-          return;
-        }
+        // g p / g s first: the p after a g is the project, not Pause.
         if (L.gPending && Date.now() - L.gPending < 1200 && (e.key === "p" || e.key === "s")) {
           e.preventDefault();
           L.gPending = 0;
@@ -1410,6 +1398,16 @@ function useKeys(room: Room) {
           A.changed();
           return;
         }
+        L.gPending = 0;
+        if (e.key === "g") {
+          e.preventDefault();
+          L.gPending = Date.now();
+          return;
+        }
+        if (e.key === "e") return void (e.preventDefault(), barAct("end"));
+        if (e.key === "p") return void (e.preventDefault(), barAct("pause"));
+        if (e.key === "m") return void (e.preventDefault(), barAct("move"));
+        if (e.key === "a") return void (e.preventDefault(), barAct("reassign"));
       }
       if (e.key === "j" || e.key === "ArrowDown") return void (e.preventDefault(), move(1, rail, e.shiftKey));
       if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail, e.shiftKey));
@@ -2070,10 +2068,11 @@ export function OnHandList({ room }: { room: Room }) {
   L.usual = usualComputer(all);
   const q = L.find.trim();
   const rail = room === "rail";
-  // D-PENDING (research/245 §3.5): 概览 / Overview or 列表 / List. List is offered from eight tasks
+  // D662 (research/245 §3.5): 概览 / Overview or 列表 / List. List is offered from eight tasks
   // on, kept per device, and never becomes the default by itself. A rail stays rows.
   const listOn = !rail && L.mode === "list" && all.length >= LIST_FROM;
   A.listMode = listOn;
+  A.listOffered = !rail && all.length >= LIST_FROM;
   A.applyView = (v) => {
     L.tfilter = { ...v.filter };
     L.sort = v.sort;

@@ -71,6 +71,8 @@ type state struct {
 	Folded []string `json:"folded,omitempty"`
 	// BenchWidth is the workbench's width, dragged (D244); 0: 520.
 	BenchWidth float32 `json:"benchWidth,omitempty"`
+	// BoardMode is Tasks' way of looking on this Mac (D662): "" Overview, "list" List.
+	BoardMode string `json:"boardMode,omitempty"`
 	// BgTray is "shut" when the opened task's background tray is folded on
 	// this Mac (D521); open by default.
 	BgTray string `json:"bgTray,omitempty"`

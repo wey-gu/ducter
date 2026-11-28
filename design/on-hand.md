@@ -534,6 +534,58 @@ the peek; `{mac,web}-r2-…` and the frame sequences `{mac,web}-r2-motion-01..06
 A task's `wait_for` is refused when its reason reads as notes (`shorthand` in `core/src/work.ts`)
 or its check only reads the clock (`clockCheck`). The reason is shown to the person as written.
 
+## 列表 / List (D662, research/245 §3.5)
+
+**Who.** The heavy multi-agent developer: 20 to 100 tasks over four to six repositories, three
+computers and four or more agents, helpers and loops running overnight. The consumer with 3 to 8
+tasks never sees it; the fresh user has 1 or 2.
+
+**Felt before / after.** Before: 吃力 — scanning 22 cards with no way to say "all of these, end",
+and the same PR or project read three ways. After: 好用 — one dense row per task, one key to end
+ten finished things, and the confirmation says exactly what will and won't happen.
+
+**How it starts.** Nothing to set up. From eight tasks on, the board's head offers **概览 / Overview**
+and **列表 / List** (a segmented choice beside Find); ⌘2 on the board goes on to List, ⌘1 in the
+List comes back to Overview (on Overview ⌘1 is still the conversation). The choice is kept per
+device and is never made by itself.
+
+**The table.** One row per task (a card shown under another holder's PR is not a second row,
+D661), 32 tall, a shared control (`tableRow` / `TableRow`): the state's drawn glyph (D661's state;
+a failure in the done tier), the title (13/600), then in 12: project, computer, AI agent, age (the
+state's own time), last step (the gist; before it, the task's own words muted behind 它说 / It
+said), PR and CI, each its own cell, never joined. Under 760 wide the computer and agent columns
+step out (their filter chips stay); a phone shows a two-line row (the title, then the glyph,
+project, age and last step as separate facts). The list has no peek beside it: the row is the
+peek, and the table takes the board's width up to 1060.
+
+**Sort and filter.** By urgency (needs-you, stopped, working, waiting, done; the oldest first in a
+tier), by last change, or by age. Chips for state, project, computer, AI agent and from-source (a
+chip with one value is not drawn); the project column stays, and 来自 / From's own chips still
+narrow the board on the Mac. **存成视图 / Save as view** keeps the filter, the sort and the mode
+with a name on the home (`views.json`, the `view_save` frame), so every device has it; it is
+listed under the projects as **视图 / Views**, after the three built-ins, each shown only while it
+has rows: **今天要我看的 / Needs me today**, **跑了很久的 / Running long** (working or in rounds
+for over six hours), **PR 在等 / PRs waiting**. Under eight tasks there are no views either.
+
+**Many at once.** x picks a row, ⌘-click picks, ⇧-click and ⇧↑↓ extend, ⌘A picks every row the
+filter shows. A picked set raises the selection bar (`selectionBar` / `SelectionBar`) at the
+board's foot: **已选 n 个 / n selected**, then **结束 / End**, **暂停 / Pause**, **接着做 /
+Continue**, **换到… / Move to…**, **换人做… / Reassign…**, **放下 / Put down** (each only when it
+fits one of the picked), and **取消选择 / Deselect**. A press (or e, p, m, a, ⌘⌫) never acts: it
+raises the one ask in the bar that names the count and what is skipped — 「8 个里 2 个正在做，会做完
+这一轮再停。」 / "Of 8, 2 are working; they stop when this round ends." — with **就这样 / Do it**
+and **先不 / Not now**. Core runs each task through its own path (`work.endTask`, the runner's
+interrupt, reopen and drop, the loadout switch), logs one `task_bulk` record for the gesture, and
+answers once; the toast says what was done with **撤销 / Undo** for ten seconds. A working task
+is never cut mid-turn: its end is queued and lands when its turn ends (Undo cancels it). A Keep
+that owns an ended task stops with it, on the same clock.
+
+**Keys.** j/k or ↑↓ move, ⏎ opens, Esc lets go (the ask, then the selection, then the filter, then
+Find), x picks, ⇧ extends, ⌘A picks all, / finds, f the first filter chip (web), g p the row's
+project, g s its state, e ends, p pauses, m moves, a reassigns, ⌘⌫ puts down. They are said once
+at the list's foot in drawn caps (`keyCaps` / `KeyCaps`); ⌘⌫ is written 「⌘ 退格」 / "⌘ Delete"
+(⌫ is not a glyph a phone draws as text, D211).
+
 ## Keys
 
 j/k and the arrows walk what is drawn, Enter opens, `/` finds, Esc lets go of a selection, then

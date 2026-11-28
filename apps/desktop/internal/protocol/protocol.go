@@ -1416,6 +1416,8 @@ type OnHand struct {
 	// Truth (D661, research/245 §3.3): the one computed state every
 	// surface reads.
 	Truth *OnHandTruth `json:"truth,omitempty"`
+	// Views (D662): the person's saved views, kept on the home.
+	Views []BoardView `json:"views,omitempty"`
 }
 
 // TaskHelper (D507) names the helper a task's work came to.
@@ -3273,10 +3275,13 @@ type ServerFrame struct {
 	// Keep (D511): keep_result's page (ID is the Keep's); absent: no such Keep.
 	Keep *KeepPage `json:"keep,omitempty"`
 	// KeepEdit (D533): keep_changed and keep_proposal, read on their own.
-	KeepEdit    *KeepEditFrame `json:"-"`
-	Persona     string         `json:"persona,omitempty"`
-	PersonaName string         `json:"personaName,omitempty"`
-	Machine     string         `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	KeepEdit *KeepEditFrame `json:"-"`
+	// D662: task_bulk_result / task_bulk_undone, and view_saved's views, read on their own.
+	Bulk        *BulkResult `json:"-"`
+	Views       []BoardView `json:"-"`
+	Persona     string      `json:"persona,omitempty"`
+	PersonaName string      `json:"personaName,omitempty"`
+	Machine     string      `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
 	// a socket silent for 45 s may be closed and dialled again.
 	Ping bool `json:"ping,omitempty"`
@@ -3782,6 +3787,10 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeApps(data, ServerFrame{T: head.T})
 	case "keep_changed", "keep_proposal":
 		return decodeKeepEdit(data, ServerFrame{T: head.T})
+	case "task_bulk_result", "task_bulk_undone":
+		return decodeBulk(data, ServerFrame{T: head.T})
+	case "view_saved":
+		return decodeViews(data, ServerFrame{T: head.T})
 	case "mention_list", "slash_list":
 		// D534: the composers' @ and / lists ("items" and "entries" are their own shapes).
 		return decodeMentions(data, ServerFrame{T: head.T})

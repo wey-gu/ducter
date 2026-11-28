@@ -1,4 +1,4 @@
-// D-PENDING (research/245 §3.5): 视图 / Views. One saved way of looking at On hand: its filter, its
+// D662 (research/245 §3.5): 视图 / Views. One saved way of looking at On hand: its filter, its
 // sort and its mode. A person's views are kept on the home (<dataDir>/views.json) so every device
 // has them; the three built-ins are sent with the board and shown only while they have rows.
 //

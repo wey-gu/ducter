@@ -4229,9 +4229,11 @@ class AppState {
   /** D602: the task whose 结束任务 asks in place (its one line under the head), or none. */
   ending?: string;
 
-  /** D-PENDING (research/245 §3.5): On hand is in 列表 / List now (set by the board each render), so
+  /** D662 (research/245 §3.5): On hand is in 列表 / List now (set by the board each render), so
    *  its keys and the wide layout know; and the one way a saved view is applied. */
   listMode = false;
+  /** The board has eight tasks or more, so the toggle (and its ⌘1 / ⌘2) is offered. */
+  listOffered = false;
   applyView?: (v: import("@ducter/protocol").BoardView) => void;
 
   /** D602: 结束任务 / End task: a finished task an open PR still holds lets each one go (it stays open on GitHub). */
@@ -4248,7 +4250,7 @@ class AppState {
     this.changed();
   }
 
-  /** D-PENDING (research/245 §3.5): one gesture on a selection; core runs each through its own
+  /** D662 (research/245 §3.5): one gesture on a selection; core runs each through its own
    *  path and answers once. The bar asks first; this only sends. */
   bulk(taskIds: string[], op: import("@ducter/protocol").BulkOp, opts: { device?: string; harness?: string; model?: string } = {}) {
     if (!taskIds.length) return;
@@ -4260,7 +4262,7 @@ class AppState {
     this.send({ t: "task_bulk_undo", batchId });
   }
 
-  /** D-PENDING (research/245 §3.5): 存成视图 / Save as view, and removing one of the person's own. */
+  /** D662 (research/245 §3.5): 存成视图 / Save as view, and removing one of the person's own. */
   viewSave(view: import("@ducter/protocol").BoardView, remove = false) {
     this.send({ t: "view_save", view, ...(remove ? { remove: true } : {}) });
   }

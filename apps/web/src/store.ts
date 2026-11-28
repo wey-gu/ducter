@@ -306,7 +306,7 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
-  /** D-PENDING (research/245 §3.5): the person's saved views, from the home. */
+  /** D662 (research/245 §3.5): the person's saved views, from the home. */
   views: import("@ducter/protocol").BoardView[] = [];
   /** D454: tasks and groups removed from Tasks on this screen, before the home's next On hand says so. */
   awayNow = new Set<string>();

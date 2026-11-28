@@ -1,4 +1,4 @@
-// D-PENDING (research/245 §3.5): many tasks at once, each through its own path. A selection's one
+// D662 (research/245 §3.5): many tasks at once, each through its own path. A selection's one
 // gesture is never a second way to act: end goes through the task's end (and a Keep's stop), pause
 // through the runner's interrupt, continue through reopen, move and reassign through the one
 // loadout switch, put down through drop. This file only decides who is skipped, runs them in
@@ -143,7 +143,8 @@ export function createBulk(port: BulkPort) {
       const b: Batch = { id: batchId, op: req.op, until: port.now() + BULK_UNDO_MS, reverse: [], pending: new Set(pending.map((x) => x.id)), keeps: new Map() };
       batches.set(batchId, b);
       // Old batches are gone; their actions are not undone.
-      for (const [id, x] of batches) if (x.until < port.now() - BULK_UNDO_MS) batches.delete(id);
+      // A batch still holding a queued end stays until that end lands.
+      for (const [id, x] of batches) if (x.until < port.now() - BULK_UNDO_MS && !x.pending.size) batches.delete(id);
 
       let done = 0;
       const keepIds = new Map<string, string>(); // keep id -> the task that brought it in (for a queued end)
@@ -225,6 +226,7 @@ export function createBulk(port: BulkPort) {
     async turnEnded(taskId: string): Promise<void> {
       for (const b of batches.values()) {
         if (!b.pending.delete(taskId)) continue;
+        if (!b.pending.size && port.now() > b.until) batches.delete(b.id);
         await port.end(taskId).catch(() => undefined);
         const k = port.keepOf(taskId);
         if (k) await port.stopKeep(k.id).catch(() => undefined);
@@ -235,7 +237,7 @@ export function createBulk(port: BulkPort) {
       const b = batches.get(batchId);
       if (!b) return { ok: false, undone: 0, message: "That is too long ago to undo." };
       if (port.now() > b.until) {
-        batches.delete(batchId);
+        if (!b.pending.size) batches.delete(batchId);
         return { ok: false, undone: 0, message: "That is too long ago to undo." };
       }
       batches.delete(batchId);

@@ -1,4 +1,4 @@
-// D-PENDING (research/245 §3.5): saved views, kept on the home so every device has them. A view is
+// D662 (research/245 §3.5): saved views, kept on the home so every device has them. A view is
 // the list's filter, its sort and its mode with a name the person gave it. The file is user data
 // like projects.json and settings.json: read once, written whole, never in the Log.
 //

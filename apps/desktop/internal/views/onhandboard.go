@@ -283,6 +283,8 @@ func (a *App) projectColumn(c *ui.Context, b store.Board, groups []lensGroup, le
 					}
 					a.lensRow(c, g.key, g.name, g.tasks, lens == g.key, g.key == lensOther || g.key == lensComputers, "", g.where, g)
 				}
+				// D662: the saved views, under the projects.
+				a.viewRows(c, b)
 				// D455: on any computer of the home (its own, a worker's, this
 				// Mac's), never only this Mac's picker.
 				if ok, _ := a.afComputers(); len(ok) > 0 {
@@ -723,7 +725,9 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 		g := groupOf(groups, lens)
 		here := g != nil && g.key != lensOther && g.kind == ""
 		total := n[0] + n[1] + n[2] + n[3]
-		if !here && total < findFrom {
+		// D662: 概览 / 列表 from eight tasks on; never for the consumer's few.
+		offered := a.listOffered(b)
+		if !here && total < findFrom && !offered {
 			return
 		}
 		ui.Row(c.Key("tools-row")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -742,6 +746,15 @@ func (a *App) boardTop(c *ui.Context, b store.Board, groups []lensGroup, lens st
 				}
 			}
 			ui.Spacer(c)
+			if offered {
+				sel := 0
+				if a.Local.BoardList() {
+					sel = 1
+				}
+				if pick := a.choices(c, "board-mode", a.L.T("onhand.view.label"), []string{a.L.T("onhand.overview"), a.L.T("onhand.list")}, sel); pick >= 0 && pick != sel {
+					a.setBoardList(pick == 1)
+				}
+			}
 			if total >= findFrom {
 				ui.Row(c.Key("findbox")).Width(260).Shrink(1).MinWidth(180).Children(func() { find = a.findField(c) })
 			}

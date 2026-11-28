@@ -1726,14 +1726,14 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "view_save": {
-        // D-PENDING (research/245 §3.5): a view saved on the home (views.json), so every device has it.
+        // D662 (research/245 §3.5): a view saved on the home (views.json), so every device has it.
         const r = core.viewSave?.(f.view, f.remove === true);
         if (!r) throw new Error("views can't be kept here");
         if (!r.ok) throw new Error(r.error);
         return send(ws, { t: "view_saved", views: r.views });
       }
       case "task_bulk": {
-        // D-PENDING (research/245 §3.5): the selection's one gesture. Every task goes through its
+        // D662 (research/245 §3.5): the selection's one gesture. Every task goes through its
         // own door in core; the batch is logged once and its undo lasts ten seconds.
         if (!core.bulk) throw new Error("Many at once isn't available here.");
         const r = await core.bulk({ op: f.op, taskIds: Array.isArray(f.taskIds) ? f.taskIds.filter((x): x is string => typeof x === "string") : [], ...(typeof f.device === "string" && f.device ? { device: f.device } : {}), ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}), ...(typeof f.model === "string" && f.model ? { model: f.model } : {}) });

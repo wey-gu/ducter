@@ -1214,16 +1214,17 @@ export function AskText({ text }: { text: string }) {
 }
 
 /**
- * D-PENDING (research/245 §3.5): one row of the dense table (列表 / List). A shared control so the
+ * D662 (research/245 §3.5): one row of the dense table (列表 / List). A shared control so the
  * list view draws no row of its own: 32 pt, the keys' row outlined, a picked row's own tint, the
  * whole row one click that opens it (⌘-click and Shift-click pick: the caller says through onPick).
  * It holds cells, not a title: the columns and their order belong to the list (the shared table
  * row keeps the row, never the table's meaning).
  */
-export function TableRow(p: { at: boolean; selected: boolean; label: string; class?: string; onOpen: () => void; onPick?: (e: MouseEvent) => boolean; children: ComponentChildren }) {
+export function TableRow(p: { at: boolean; selected: boolean; label: string; row?: string; class?: string; onOpen: () => void; onPick?: (e: MouseEvent) => boolean; children: ComponentChildren }) {
   return (
     <div
       role="row"
+      data-row={p.row}
       tabIndex={-1}
       aria-selected={p.selected}
       aria-label={p.label}
@@ -1240,7 +1241,7 @@ export function TableRow(p: { at: boolean; selected: boolean; label: string; cla
 }
 
 /**
- * D-PENDING (research/245 §3.5): the bar a selection raises at the list's foot. Its count, exactly
+ * D662 (research/245 §3.5): the bar a selection raises at the list's foot. Its count, exactly
  * the actions that fit the selection, its one ask in place, and 取消选择 / Clear; the whole bar is
  * the shared control, so every client's many-at-once reads the same.
  */
@@ -1259,7 +1260,7 @@ export function SelectionBar(p: { label: string; children: ComponentChildren; on
   );
 }
 
-/** D-PENDING (research/245 §3.5): the keys said once at a list's foot (D457's drawn caps): each pair
+/** D662 (research/245 §3.5): the keys said once at a list's foot (D457's drawn caps): each pair
  *  a cap and what it does, in the small muted type. The Mac's `keyCaps`. */
 export function KeyCaps(p: { items: { keys: string; words: string }[] }) {
   return (

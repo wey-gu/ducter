@@ -194,7 +194,7 @@ export interface CoreApi {
   projectChange?(change: import("./index.ts").ProjectChange): { ok: true; changed: import("./index.ts").ProjectChange } | { ok: false; error: string };
   /** D654: the project rows as they stand (for the partner's answer and the project_change tool). */
   projectList?(): import("./index.ts").ProjectLens[];
-  /** D-PENDING (research/245 §3.5): the person's saved views on the home (views.json). */
+  /** D662 (research/245 §3.5): the person's saved views on the home (views.json). */
   views?(): import("./views.ts").BoardView[];
   /** Save one (or remove one of the person's own): the views after the change. */
   viewSave?(view: import("./views.ts").BoardView, remove?: boolean): { ok: true; views: import("./views.ts").BoardView[] } | { ok: false; error: string };

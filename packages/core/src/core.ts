@@ -918,7 +918,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
     ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
   });
-  // D-PENDING (research/245 §3.5): 列表's filter + sort + mode, saved with a name on the home.
+  // D662 (research/245 §3.5): 列表's filter + sort + mode, saved with a name on the home.
   const boardViews = createViews({ dataDir, onChange: () => onHandChanged() });
   // D654: one computer, one project key: a place that says the home's name is the home, and a
   // worker's name is its id.
@@ -2156,7 +2156,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
-  // D-PENDING (research/245 §3.5): the list's many-at-once. Every op goes through the task's own
+  // D662 (research/245 §3.5): the list's many-at-once. Every op goes through the task's own
   // door; the batch is logged once, and its undo lives ten seconds.
   const bulk = createBulk({
     task: (id) => {
@@ -2196,10 +2196,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     now: () => clock.now(),
   });
+  // A queued end lands at the turn's boundary: the task's state leaves working (its turn ended,
+  // whatever it ended in), never mid-turn.
   log.subscribe((e) => {
-    if (e.kind !== "task_event") return;
-    const b = e.body as import("@ducter/protocol").Bodies["task_event"];
-    if ((b.raw as { kind?: string } | undefined)?.kind === "turn_ended") void bulk.turnEnded(b.taskId);
+    if (e.kind !== "task_state") return;
+    const b = e.body as import("@ducter/protocol").Bodies["task_state"];
+    if (b.attention !== "working" && b.attention !== "queued") void bulk.turnEnded(b.taskId);
   });
   api.bulk = (req) => bulk.run(req);
   api.bulkUndo = (id) => bulk.undo(id);

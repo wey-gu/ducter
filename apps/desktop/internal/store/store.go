@@ -531,7 +531,9 @@ type Store struct {
 	KeepsVersion int
 	// KeepChanged and KeepProposals (D533) are, by Keep, the last edit's
 	// result (keep_changed) and the rules read from edited words (keep_proposal).
-	KeepChanged   map[string]*protocol.KeepEditFrame
+	KeepChanged map[string]*protocol.KeepEditFrame
+	// Views (D662) are the person's saved views as the home last said them.
+	Views         []protocol.BoardView
 	KeepProposals map[string]*protocol.KeepEditFrame
 
 	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
@@ -1092,7 +1094,10 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "on_hand":
 		if f.OnHand != nil {
 			s.applyOnHand(f.OnHand)
+			s.Views = f.OnHand.Views
 		}
+	case "view_saved":
+		s.Views = f.Views
 	case "channel_history":
 		s.applyOlder(f) // D509 (older.go)
 	case "task_history":

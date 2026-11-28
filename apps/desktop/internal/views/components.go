@@ -1481,3 +1481,59 @@ func (a *App) dateLeaf(c *ui.Context, month, day, weekday string, color ui.Color
 		})
 	}
 }
+
+// ---------- D662: the dense table's row and the selection's bar ----------
+
+// tableRowH is one row of the dense table (列表 / List, D662): 32 tall.
+const tableRowH = 32
+
+// tableRow is one row of the dense table (D662, research/245 §3.5): 32
+// tall, the cells side by side, the keys' row outlined in the accent, a
+// picked row in its own tint, the one row hover (D529) otherwise. The
+// whole row is one press; it reports the press and the modifiers held, so
+// ⌘-click and ⇧-click can pick (the caller decides). It holds cells, not a
+// meaning: the columns belong to the list. The web's TableRow.
+func (a *App) tableRow(c *ui.Context, key, label string, at, sel bool, cells func()) (bool, ui.Modifiers) {
+	t := a.T
+	row := ui.Row(c.Key("tr:"+key)).Height(tableRowH).Shrink(0).Gap(t.S2).Padding(0, t.S3).AlignItems(ui.Center).MinWidth(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).AccessSelected(sel).Focusable()
+	if sel {
+		row.Background(t.Accent.Alpha(0.12))
+	} else {
+		a.rowHover(c, row, groundNeutral(), false)
+	}
+	if at {
+		row.InsetShadow(0, 0, 0, 2, t.Accent) // outlined inside: nothing in the row moves
+	}
+	row.Children(cells)
+	return row.Clicked(), row.ClickModifiers()
+}
+
+// selectionBar is the bar a selection raises at the list's foot (D662):
+// its count, the actions (or the one ask) the caller draws, and 取消选择 /
+// Deselect at the far end. A floating clay sheet, so the rows scroll under
+// it. It says whether Deselect was pressed. The web's SelectionBar.
+func (a *App) selectionBar(c *ui.Context, label, clearLabel string, body func()) bool {
+	t := a.T
+	cleared := false
+	ui.Row(c.Key("selbar")).Gap(t.S2).Padding(t.S2, t.S3).AlignItems(ui.Center).Wrap().MinWidth(0).
+		Radius(t.RadiusMD).Background(t.Surface).Border(1, t.Line).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).
+		Role(ui.RoleToolbar).Label(label).Children(func() {
+		uiText(c.Key("n"), label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(0)
+		body()
+		ui.Spacer(c)
+		cleared = a.quietButton(c, "sel-clear", clearLabel, "", false, 0)
+	})
+	return cleared
+}
+
+// keyCaps says a list's keys once at its foot (D457's drawn caps): each
+// pair a cap and what it does, wrapping. The web's KeyCaps.
+func (a *App) keyCaps(c *ui.Context, key string, items [][2]string) {
+	t := a.T
+	ui.Row(c.Key("keycaps:" + key)).Gap(t.S3).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
+		for i, x := range items {
+			a.keyHint(c, strconv.Itoa(i), x[0], x[1])
+		}
+	})
+}

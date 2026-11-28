@@ -91,6 +91,21 @@ func (l *Local) SetBenchWidth(w float32) {
 	l.save()
 }
 
+// BoardList says whether this Mac looks at Tasks as 列表 / List (D662); never by itself.
+func (l *Local) BoardList() bool { return l != nil && l.st.BoardMode == "list" }
+
+// SetBoardList keeps the way of looking on this Mac.
+func (l *Local) SetBoardList(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.BoardMode = ""
+	if on {
+		l.st.BoardMode = "list"
+	}
+	l.save()
+}
+
 // BgTrayShut says whether the opened task's background tray is folded (D521).
 func (l *Local) BgTrayShut() bool { return l != nil && l.st.BgTray == "shut" }
 

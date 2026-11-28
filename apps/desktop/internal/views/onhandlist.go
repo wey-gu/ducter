@@ -94,6 +94,8 @@ type onHandState struct {
 	// A drag on a project row keeps the person's order (the Mac and the wide web).
 	projDrag           bool
 	projFrom, projOver string
+	// D662: 列表 / List (onhandtable.go).
+	tbl tableState
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac

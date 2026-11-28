@@ -1,4 +1,4 @@
-// D-PENDING (research/245 §3.5): 列表 / List, the dense table of the same board. One row per task,
+// D662 (research/245 §3.5): 列表 / List, the dense table of the same board. One row per task,
 // 32 pt tall, its one state glyph, its title, project, computer, agent, age, last step, and PR and
 // CI as cells of their own. The list is a way of looking, never a second board: the filter, the
 // sort and the mode are one saved view, and the same tasks, state and actions stand behind it.
@@ -17,6 +17,7 @@ import { attention, harnessOf, placeOf, reportOf, title, type Task } from "./sto
 import { computerName, computers } from "./where.ts";
 import { firstSentence } from "./onhand-brief.tsx";
 import { shortTitle } from "./transcript.tsx";
+import { sourceGroups } from "./onhand.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -87,10 +88,16 @@ export function prWaiting(task: Task): boolean {
   return !!prNo(task);
 }
 
-/** 来自 / From: the source's kind (a GitHub issue, an Obsidian note, a Linear ticket). */
+/** 来自 / From: the to-do source a task came from (its id; D341), the same key the board's 来自
+ *  chips use. */
 export function sourceOf(task: Task): string {
   const s = task.card?.source as { kind?: string; source?: string } | undefined;
-  return s?.kind ?? s?.source ?? "";
+  return s?.source ?? s?.kind ?? "";
+}
+
+/** A source's name as the 来自 chips say it (GitHub, the vault's name). */
+export function sourceName(id: string): string {
+  return sourceGroups().find((g) => g.key === `src:${id}`)?.name ?? id;
 }
 
 export function taskMatches(task: Task, f: TaskFilter, now = Date.now()): boolean {
@@ -178,7 +185,7 @@ export function ageText(task: Task, now = Date.now()): string {
  *  the board's whole width (no peek), so 1180 and 1400 both hold every column. */
 export function listGrid(width: number): { template: string; compact: boolean } {
   if (width < 700) return { template: "1fr", compact: true };
-  return { template: "24px minmax(150px, 1.15fr) minmax(78px, .7fr) minmax(72px, .6fr) minmax(78px, .62fr) 64px minmax(140px, 1.15fr) 56px 64px", compact: false };
+  return { template: "20px minmax(160px, 1.7fr) minmax(72px, .65fr) minmax(56px, .5fr) minmax(72px, .6fr) 64px minmax(120px, 1.1fr) 56px 60px", compact: false };
 }
 
 // ---------- the view, the filters and the keys' foot ----------
@@ -245,10 +252,10 @@ function FilterBar(p: {
         { v: "waiting", label: t("onhand.state.waiting") },
         { v: "done", label: t("onhand.state.done") },
       ])}
-      {chip("project", p.filter.project ? (projects.find(([k]) => k === p.filter.project)?.[1] ?? p.filter.project) : t("onhand.filter.project"), !!p.filter.project, projects.map(([k, n]) => ({ v: k, label: n })))}
-      {chip("computer", p.filter.computer ? computerName(p.filter.computer) : t("onhand.filter.computer"), !!p.filter.computer, computers.map((v) => ({ v, label: computerName(v) })))}
-      {chip("agent", p.filter.agent ? harnessName(p.filter.agent) : t("onhand.filter.agent"), !!p.filter.agent, agents.map((v) => ({ v, label: harnessName(v) })))}
-      {chip("source", p.filter.source ? p.filter.source : t("onhand.filter.source"), !!p.filter.source, sources.map((v) => ({ v, label: v })))}
+      {(projects.length > 1 || !!p.filter.project) && chip("project", p.filter.project ? (projects.find(([k]) => k === p.filter.project)?.[1] ?? p.filter.project) : t("onhand.filter.project"), !!p.filter.project, projects.map(([k, n]) => ({ v: k, label: n })))}
+      {(computers.length > 1 || !!p.filter.computer) && chip("computer", p.filter.computer ? computerName(p.filter.computer) : t("onhand.filter.computer"), !!p.filter.computer, computers.map((v) => ({ v, label: computerName(v) })))}
+      {(agents.length > 1 || !!p.filter.agent) && chip("agent", p.filter.agent ? harnessName(p.filter.agent) : t("onhand.filter.agent"), !!p.filter.agent, agents.map((v) => ({ v, label: harnessName(v) })))}
+      {sources.length > 0 && chip("source", p.filter.source ? sourceName(p.filter.source) : t("onhand.filter.source"), !!p.filter.source, sources.map((v) => ({ v, label: sourceName(v) })))}
       <span class="grow" />
       <span class="fchip-wrap">
         <Btn kind="text" size="sm" class="filter-chip" label={t(`onhand.sort.${p.sort}`)} chev expanded={open === "sort"} onClick={() => setOpen(open === "sort" ? "" : "sort")} />
@@ -286,7 +293,7 @@ function KeysFoot() {
   return (
     <KeyCaps
       items={[
-        { keys: "j k", words: t("onhand.keys.move") },
+        { keys: "j k", words: t("onhand.keys.walk") },
         { keys: "⏎", words: t("onhand.keys.open") },
         { keys: "esc", words: t("onhand.keys.back") },
         { keys: "x", words: t("onhand.keys.pick") },
@@ -300,7 +307,7 @@ function KeysFoot() {
         { keys: "p", words: t("onhand.keys.pause") },
         { keys: "m", words: t("onhand.keys.move") },
         { keys: "a", words: t("onhand.keys.agent") },
-        { keys: "⌘ 退格", words: t("onhand.keys.drop") },
+        { keys: t("onhand.keys.drop.cap"), words: t("onhand.keys.drop") },
         { keys: "⌘K", words: t("onhand.keys.act") },
       ]}
     />
@@ -350,10 +357,21 @@ export function bulkAskWords(ask: BulkAsk, rows: Task[], target?: string): strin
   }
 }
 
-function BulkBar(p: { rows: Task[]; pick?: "" | "move" | "reassign"; onPicked?: () => void; onBulk: (ask: BulkAsk) => void; onClear: () => void }) {
+/** What a key asked the bar to do: a menu to pick from (m, a) or its one ask (e, p, ⌘⌫). */
+export type BarPick = "" | import("@ducter/protocol").BulkOp;
+
+function BulkBar(p: { rows: Task[]; pick?: BarPick; onPicked?: () => void; onBulk: (ask: BulkAsk) => void; onClear: () => void }) {
   const [ask, setAsk] = useState<BulkAsk | null>(null);
-  const [menu, setMenu] = useState<"" | "move" | "reassign">(p.pick ?? "");
-  useEffect(() => setMenu(p.pick ?? ""), [p.pick]);
+  const [menu, setMenu] = useState<"" | "move" | "reassign">("");
+  // A key's gesture lands here: m and a open their menu, e, p and ⌘⌫ raise the one ask. A key never
+  // acts without it (§3.5: one confirmation that names the count and what is skipped).
+  useEffect(() => {
+    const k = p.pick ?? "";
+    if (!k) return;
+    if (k === "move" || k === "reassign") setMenu(k);
+    else setAsk({ op: k });
+    p.onPicked?.();
+  }, [p.pick]);
   const c = bulkCounts(p.rows);
   const machines = computers();
   const agents = [...new Set(p.rows.map((x) => x.card?.harness ?? "").filter(Boolean))];
@@ -372,7 +390,7 @@ function BulkBar(p: { rows: Task[]; pick?: "" | "move" | "reassign"; onPicked?: 
           <Btn kind="text" size="sm" label={t("onhand.bulk.pause")} disabled={!c.pause} onClick={() => setAsk({ op: "pause" })} />
           <Btn kind="text" size="sm" label={t("onhand.bulk.continue")} disabled={!c.cont} onClick={() => setAsk({ op: "continue" })} />
           <span class="fchip-wrap">
-            <Btn kind="text" size="sm" label={t("onhand.bulk.move")} chev expanded={menu === "move"} disabled={!c.move} onClick={() => setMenu(menu === "move" ? "" : "move")} />
+            <Btn kind="text" size="sm" label={t("onhand.bulk.move")} expanded={menu === "move"} disabled={!c.move} onClick={() => setMenu(menu === "move" ? "" : "move")} />
             {menu === "move" && (
               <Menu class="bulk-menu" label={t("onhand.bulk.move")} onClose={() => (setMenu(""), p.onPicked?.())}>
                 {machines.map((d) => (
@@ -384,7 +402,7 @@ function BulkBar(p: { rows: Task[]; pick?: "" | "move" | "reassign"; onPicked?: 
             )}
           </span>
           <span class="fchip-wrap">
-            <Btn kind="text" size="sm" label={t("onhand.bulk.reassign")} chev expanded={menu === "reassign"} disabled={!c.reassign} onClick={() => setMenu(menu === "reassign" ? "" : "reassign")} />
+            <Btn kind="text" size="sm" label={t("onhand.bulk.reassign")} expanded={menu === "reassign"} disabled={!c.reassign} onClick={() => setMenu(menu === "reassign" ? "" : "reassign")} />
             {menu === "reassign" && (
               <Menu class="bulk-menu" label={t("onhand.bulk.reassign")} onClose={() => (setMenu(""), p.onPicked?.())}>
                 {agents.map((h) => (
@@ -431,7 +449,7 @@ function ListRow(p: { task: Task; at: boolean; sel: boolean; room: string; onOpe
   const dev = pl.kind === "none" ? "" : ((pl as { device?: string }).device ?? "local");
   const label = `${t(`onhand.state.${s}`)} ${title(task)}`;
   return (
-    <TableRow at={p.at} selected={p.sel} label={label} class={`lrow s-${s}${p.room === "phone" ? " compact" : ""}`} onOpen={p.onOpen} onPick={p.onPick}>
+    <TableRow at={p.at} selected={p.sel} label={label} row={task.id} class={`lrow s-${s}${p.room === "phone" ? " compact" : ""}`} onOpen={p.onOpen} onPick={p.onPick}>
       <span class="c-state" title={t(`onhand.state.${s}`)}>
         <RowMark s={s} />
       </span>
@@ -466,7 +484,7 @@ export function ListBoard(p: {
   onOpen: (id: string) => void;
   onClear: () => void;
   onBulk: (ask: BulkAsk) => void;
-  pick?: "" | "move" | "reassign";
+  pick?: BarPick;
   onPicked?: () => void;
 }) {
   const [compact, setCompact] = useState(p.room === "phone");
@@ -482,7 +500,7 @@ export function ListBoard(p: {
         <FilterBar tasks={p.tasks} filter={p.filter} sort={p.sort} onFilter={p.onFilter} onSort={p.onSort} onSave={p.onSave} />
         <div class="otable compact" role="table" aria-label={t("onhand.list")}>
           {p.rows.map((task) => (
-            <TableRow key={task.id} at={p.focus === task.id} selected={p.sel.has(task.id)} label={title(task)} class={`lrow compact s-${truthState(task)}`} onOpen={() => p.onOpen(task.id)} onPick={(e) => p.onPick(task.id, e)}>
+            <TableRow key={task.id} row={task.id} at={p.focus === task.id} selected={p.sel.has(task.id)} label={title(task)} class={`lrow compact s-${truthState(task)}`} onOpen={() => p.onOpen(task.id)} onPick={(e) => p.onPick(task.id, e)}>
               <span class="c-title" title={title(task)}>{shortTitle(title(task)) || t("task.unknown")}</span>
               <span class="c-meta">
                 <RowMark s={truthState(task)} />
@@ -528,6 +546,8 @@ export function ListBoard(p: {
 /** The saved views under the projects, in the project column: the built-ins first (only those with
  *  rows), then the person's own. */
 export function BoardViews(p: { tasks: Task[] }) {
+  // The consumer stays calm: under eight tasks there are no views, as there is no list.
+  if (p.tasks.length < LIST_FROM) return null;
   const vs = savedViews(p.tasks);
   if (!vs.length) return null;
   return (

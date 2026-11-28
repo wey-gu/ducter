@@ -1604,20 +1604,10 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 				s.Decisions[b.DecisionID] = d
 			}
 			// research/244 rule 5: the card keeps its own question when the words drop a point or
-			// the object; the words are not drawn as a second line restating it. research/247
-			// Brief A: the object in words is the task's and the to-do's own title, not only a #ref.
-			var objects []string
-			if d.Src != nil {
-				objects = append(objects, d.Src.Item.Title)
-			}
-			if t := s.Tasks[d.TaskID]; t != nil {
-				if t.Card != nil {
-					objects = append(objects, t.Card.Title)
-				} else if t.Open != nil {
-					objects = append(objects, t.Open.Title)
-				}
-			}
-			if protocol.KeepsPoints(d.Question, b.Text, objects...) {
+			// a #ref; the words are not drawn as a second line restating it. The task's or to-do's
+			// own title is never required here (the card already names it), so a key ask and any
+			// code-built card keep their partner's preface as before.
+			if protocol.KeepsPoints(d.Question, b.Text) {
 				d.Said = b.Text
 			}
 			s.bySeq[ev.Seq] = nil

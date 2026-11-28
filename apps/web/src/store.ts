@@ -703,13 +703,11 @@ export class Store {
         if (b.decisionId) {
           const d = this.decisions.get(b.decisionId);
           if (!d) this.decisions.set(b.decisionId, { decisionId: b.decisionId, question: "", goLabel: "", defaultOption: "hold", reversible: false, seq: 0, said: b.text });
-          // research/244 rule 5: the card keeps its own question when the words drop a point or the
-          // object; the words are not drawn as a second line restating it. research/247 Brief A:
-          // the object in words is the task's and the to-do's own title, not only a #ref.
-          else {
-            const task = d.taskId ? this.tasks.get(d.taskId) : undefined;
-            if (keepsPoints(d.question, b.text, [d.src?.item?.title, task?.card?.title ?? task?.open?.title])) d.said = b.text;
-          }
+          // research/244 rule 5: the card keeps its own question when the words drop a point or
+          // a #ref; the words are not drawn as a second line restating it. The task's or to-do's
+          // own title is never required here (the card already names it), so a key ask and any
+          // code-built card keep their partner's preface as before.
+          else if (keepsPoints(d.question, b.text)) d.said = b.text;
           return void this.bySeq.set(ev.seq, null);
         }
         // D385: a set of to-dos is posted while the partner is still writing its line about it:

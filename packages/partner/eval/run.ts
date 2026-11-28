@@ -33,7 +33,7 @@ import { neverPick, saidPick } from "../../core/src/loadout.ts";
 import { createLocalAgents } from "../../core/src/local-agents/index.ts";
 import { createWorkerRecords } from "../../core/src/worker-records.ts";
 import { writeSession } from "../../core/test/fixtures-agents.ts";
-import { dotsShift, writeAgibarFacts, writeDotsFacts } from "./noticed-facts.ts";
+import { dotsShift, hourShift, writeAgibarFacts, writeDotsFacts } from "./noticed-facts.ts";
 import { logUserMessage } from "../../core/src/reply.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner } from "../src/index.ts";
@@ -621,7 +621,9 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D243: what Ducter noted by itself on dots' day (synthetic facts around now). D581: dots' day is
   // at 17:00 here, whatever hour the run starts (the core's clock below is moved with it): run
   // before 07:40, tomorrow's 19:40 flight was more than COMING_MS away, so noticed rightly left it out.
-  const shift = sc.noticed === "dots" ? dotsShift() : 0;
+  // A scenario whose words name a time of day ("at 3pm today", "move it to 17:00") runs at its own
+  // hour: on the real clock its verdict hung on when the run started (0.1.103: 3pm had passed).
+  const shift = sc.noticed === "dots" ? dotsShift() : sc.hour !== undefined ? hourShift(sc.hour) : 0;
   if (sc.noticed === "dots") writeDotsFacts(dataDir, Date.now() + shift);
   // D388: one plan, three sources (the calendar, a weekly report, the event page).
   if (sc.noticed === "agibar") writeAgibarFacts(dataDir);

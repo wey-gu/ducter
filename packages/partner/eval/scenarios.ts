@@ -430,6 +430,8 @@ export interface Scenario {
    * dots spoke four times (research/81). The `noticed` tool answers from them.
    */
   noticed?: "dots" | "agibar";
+  /** The hour of day (here, today) the run's clock reads, for a scenario whose words name a time of day. */
+  hour?: number;
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
   /**
@@ -1744,6 +1746,7 @@ export const scenarios: Scenario[] = [
   },
   {
     id: "timer-set-en",
+    hour: 10,
     category: "timer",
     lang: "en",
     steps: [{ user: "Remind me at 3pm today to reply to the HawDB contributor about the load-test numbers." }],
@@ -3884,6 +3887,7 @@ export const scenarios: Scenario[] = [
   },
   {
     id: "calendar-clash-zh",
+    hour: 10,
     category: "calendar",
     lang: "zh",
     calendar: true,

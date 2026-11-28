@@ -21,6 +21,7 @@ line.
 
 ## Work handed to a helper, after D598 (`standing-work.md` "What is built")
 
+- [ ] **Three partner scenarios at 0/5 in 0.1.103's eval, not from its diff.** `heavy-verify-zh` (the heavy check placed on the home with 1.0 GB free, or asked which computer), `call-emergency-en` (says the local 995 from the time zone instead of the 911 the person named) and `wp-partner-who-zh` (lists three partners in five lines, want at most three) failed in the full run and twice alone; 0.1.103 changed no persona text and none of the lines these read. Trigger: the next persona or tool change touching placement, calls or partners; read their transcripts first. Two time-of-day scenarios that failed the same way (`timer-set-en`, `calendar-clash-zh`) were the eval's real clock and now run at a fixed hour (`hour` on a scenario).
 - [ ] **On hel:** the next PR a dev task hands to the Babysitter shows under 手上的事 with its round, the claim reaches the
   dev task, and no stall line comes. Trigger: the first release with D598 on hel.
 - [ ] **D596's hand-off** (push, open the PR, hand it over without a card) calls `agent_message` to the helper's name

@@ -20,8 +20,13 @@ function tomorrowAt(hh: number, mm: number, now = Date.now()): Date {
  * the hour the run started.
  */
 export function dotsShift(now = Date.now()): number {
+  return hourShift(17, now);
+}
+
+/** How far to move the clock so it reads `hour`:00 here today, whatever hour the run starts. */
+export function hourShift(hour: number, now = Date.now()): number {
   const d = new Date(now);
-  d.setHours(17, 0, 0, 0);
+  d.setHours(hour, 0, 0, 0);
   return d.getTime() - now;
 }
 

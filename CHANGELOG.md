@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.103 - 2026-11-28
+
+<!-- whats-new
+zh: 插件可以从插件仓库带进来；找设置；连上 Mem 一步一步来
+en: Plugins from plugin repositories; Find a setting; Mem set up step by step
+-->
+
+**Plugins**
+- Settings, Import lists what plugin repositories offer, beside what you already brought in. The
+  official repository is always there and you can add your own. Lody now comes in as a plugin.
+- A plugin reads only what it says it reads, in a sandbox, and asks before anything it would do
+  online. One nobody has checked for you asks a second time.
+
+**Settings**
+- Find a setting: type a few words at the top of Settings and go straight to the switch or row.
+- Memory walks you through connecting Nowledge Mem step by step, and says how many steps are left.
+- A connection says what is true: checking, connected, or what is missing, with Try again on
+  every source that isn't ready.
+
+**A truer conversation**
+- Asked when a PR can merge, your partner's first answer already gives its reviews and checks.
+- A task's waits and claims are facts on its card, not messages of their own.
+- The Tasks head names failed tasks as failed, and fixed words like Not in a project wrap instead
+  of being cut.
+
 ## 0.1.102 - 2026-11-28
 
 <!-- whats-new

@@ -12,7 +12,12 @@ const fs = require("node:fs");
 
 const statePath = process.env.DUCTER_FAKE_LODY_STATE;
 const read = () => JSON.parse(fs.readFileSync(statePath, "utf8"));
-const out = (s) => process.stdout.write(`${s}\n`);
+// Output is gathered and written once, and the process exits only after it drained: a large
+// `history` written then cut short by process.exit() arrives truncated through a pipe on a slow
+// machine (CI read 2,700 of 4,002 messages).
+const buf = [];
+const out = (s) => buf.push(`${s}\n`);
+const finish = () => process.stdout.write(buf.join(""), () => process.exit(0));
 const fail = (s, code = 1) => {
   process.stderr.write(`${s}\n`);
   process.exit(code);
@@ -32,12 +37,13 @@ const st = (() => {
 })();
 if (st.signedIn === false) fail("Not logged in. Run `lody login` first.");
 
+function main() {
 const [group, sub, ...rest] = process.argv.slice(2);
 const workspaceOf = (slug) => (st.workspaces || []).find((w) => w.slug === slug || w.id === slug);
 
 if (group === "workspace" && sub === "list") {
   out(JSON.stringify({ ok: true, workspaces: (st.workspaces || []).map(({ id, name, slug }) => ({ id, name, slug })) }));
-  process.exit(0);
+  return finish();
 }
 
 if (group !== "session") fail(`fake lody: unknown command ${group} ${sub ?? ""}`, 2);
@@ -58,7 +64,7 @@ if (sub === "list") {
   const next = from + size;
   const more = next < all.length;
   out(JSON.stringify({ ok: true, workspaceId: w.id, items: page, ...(more ? { hasMore: true, nextCursor: `p:${next}` } : { hasMore: false }) }));
-  process.exit(0);
+  return finish();
 }
 
 const id = rest[0];
@@ -72,14 +78,16 @@ if (w && w.encrypted) fail("Update the owner machine to access encrypted Roost h
 if (sub === "history") {
   if (!has("--all")) fail("fake lody: the reader asks for --all");
   for (const e of found.s.history || []) out(JSON.stringify({ workspaceId: w?.id, sessionId: id, ...e }));
-  process.exit(0);
+  return finish();
 }
 
 if (sub === "show") {
   const { history, show, ...own } = found.s;
   const meta = { id, machineId: "machine_home", createdAt: "2026-01-01T00:00:00.000Z", userId: "u1", ...own, ...(show ?? {}) };
   out(JSON.stringify({ ok: true, workspace: { id: w?.id, name: w?.name, slug: w?.slug }, session: meta, historyCount: (found.s.history || []).length, latestHistoryAt: (found.s.history || []).at(-1)?.timestamp, messageQueueCount: 0 }));
-  process.exit(0);
+  return finish();
 }
 
 fail(`fake lody: unknown session command ${sub}`, 2);
+}
+main();

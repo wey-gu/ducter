@@ -7,10 +7,11 @@
 //
 // Nothing here changes what Ducter does. It is the author's instrument (`ducter proactive week`),
 // never a scorecard shown to the person.
-import type { Bodies, FindKind, FindRung, LogEvent, OfferCounts, ProactiveMode, ShadowWeek, WeekReport, WeekRow } from "@ducter/protocol";
+import type { Bodies, FindKind, FindRung, LogEvent, OfferCounts, ProactiveMode, ShadowGate, ShadowWeek, WeekReport, WeekRow } from "@ducter/protocol";
 import { findFrom } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { dayKey } from "./detect.ts";
+import { shadowItemId, shadowItems, verdictOf, withLabels } from "./shadow-review.ts";
 
 const DAY = 86_400_000;
 /** At most this many weeks back. */
@@ -82,6 +83,9 @@ export interface WeekInput {
   weights?: { kind: Partial<Record<FindKind, number>>; sender: Record<string, number> };
   /** D502: the shadow passes (`shadow_finds`, partner stream) in the same span; absent or none: no shadow section. */
   shadow?: LogEvent[];
+  /** D674: the person's verdicts (`shadow_labels`, any age) and the gate now. */
+  labels?: LogEvent[];
+  gate?: ShadowGate;
 }
 
 /** The report from the Log's events (any order is read as the Log's: by seq). */
@@ -161,10 +165,13 @@ export function weekReport(events: LogEvent[], o: WeekInput): WeekReport {
   }
   for (const row of rows) row.takenUp = row.takenUp.sort((a, b) => a.at.localeCompare(b.at)).slice(-TAKEN_LIST);
   for (const row of rows) {
-    const s = shadowWeek((o.shadow ?? []).filter((e) => {
-      const d = dayKey(Date.parse(e.ts), o.zone);
-      return d >= row.from && d <= plusDays(row.from, 6);
-    }));
+    const s = shadowWeek(
+      (o.shadow ?? []).filter((e) => {
+        const d = dayKey(Date.parse(e.ts), o.zone);
+        return d >= row.from && d <= plusDays(row.from, 6);
+      }),
+      o.labels,
+    );
     if (s) row.shadow = s;
   }
 
@@ -175,7 +182,7 @@ export function weekReport(events: LogEvent[], o: WeekInput): WeekReport {
     .slice(0, SENDERS_LIST)
     .map(([sender, v]) => ({ sender, w: round(v) }));
   const kind = Object.fromEntries(Object.entries(w.kind).map(([k, v]) => [k, round(v ?? 1)])) as Partial<Record<FindKind, number>>;
-  return { at: new Date(o.now).toISOString(), zone: o.zone, mode: o.mode, weeks: rows, weights: { kind, senders } };
+  return { at: new Date(o.now).toISOString(), zone: o.zone, mode: o.mode, weeks: rows, weights: { kind, senders }, ...(o.gate && o.shadow?.length ? { gate: o.gate } : {}) };
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
@@ -188,20 +195,31 @@ export const SHADOW_LIST = 6;
  * detector also has, those only the model has (what promotion would add), and the detectors' joins
  * no finding touched. Passes that never asked the model (budget, no facts, failed) count nothing.
  */
-export function shadowWeek(events: LogEvent[]): ShadowWeek | undefined {
+export function shadowWeek(events: LogEvent[], labels?: LogEvent[]): ShadowWeek | undefined {
   const runs = events.filter((e) => e.kind === "shadow_finds").map((e) => ({ at: e.ts, r: e.body as Bodies["shadow_finds"] })).filter((x) => !x.r.skipped);
   if (!runs.length) return;
   const findings = runs.flatMap((x) => x.r.findings.map((f) => ({ ...f, at: x.at })));
   const touched = new Set(findings.flatMap((f) => f.facts));
   const detectorsOnly = new Set(runs.flatMap((x) => x.r.detectorsOnly.filter((d) => !d.facts.some((id) => touched.has(id))).map((d) => d.key)));
   const only = findings.filter((f) => !f.alsoBy.length);
+  // D674: the week's items (findings and the detectors' joins) with the person's verdicts.
+  const items = withLabels(shadowItems(events), labels ?? []);
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const counted = labels?.length
+    ? { items: items.length, labelled: items.filter((i) => verdictOf(i)).length, yes: items.filter((i) => verdictOf(i) === "yes").length, no: items.filter((i) => verdictOf(i) === "no").length, stopped: items.filter((i) => i.stopped).length }
+    : undefined;
   return {
     runs: runs.length,
     findings: findings.length,
     both: findings.length - only.length,
     shadowOnly: only.length,
     detectorsOnly: detectorsOnly.size,
-    list: only.slice(-SHADOW_LIST).map((f) => ({ text: f.text, confidence: f.confidence, facts: f.facts.length, at: f.at })),
+    list: only.slice(-SHADOW_LIST).map((f) => {
+      const v = byId.get(shadowItemId("shadow", f.key));
+      const verdict = v ? verdictOf(v) : undefined;
+      return { text: f.text, confidence: f.confidence, facts: f.facts.length, at: f.at, ...(verdict ? { verdict } : {}) };
+    }),
+    ...(counted ? { labels: counted } : {}),
   };
 }
 

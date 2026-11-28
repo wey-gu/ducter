@@ -42,6 +42,8 @@ export interface Args {
   days?: number; // proactive replay --days <n> (D388): how many days back, 1–7; usage --days <n> (D588): 1–31
   noWeb?: boolean; // proactive replay --no-web (D388): no web look for an open question
   weeks?: number; // proactive week --weeks <n> (D464): how many weeks back, 1–12
+  week?: boolean; // proactive review --week (D674): only the last full week, the unit the gate counts
+  labels?: string[]; // proactive review --label <id>=yes|no|stop (D674), repeatable
   plan?: boolean; // move --plan (D504): only the plan, nothing changed; move --to <computer> reuses `to`
   bundle?: string; // move --bundle <file>: one encrypted archive of what moves
   receive?: string; // move --receive <file>: import a bundle into an empty data folder
@@ -194,6 +196,15 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--no-web":
         args.noWeb = true;
         continue;
+      case "--week":
+        args.week = true;
+        continue;
+      case "--label": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        (args.labels ??= []).push(v.trim());
+        continue;
+      }
       case "--plan":
         args.plan = true;
         continue;

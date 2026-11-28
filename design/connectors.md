@@ -403,9 +403,33 @@ beside the detectors and changing nothing they do, a **shadow pass** asks the ge
   that are fine; 2 of noise), each with everyday facts beside its story, scored on the facts cited.
   On haiku: 13/13 found and 0 false findings in both zh and en (D502 for the runs; the ledgers
   were written with the prompt, so this is an upper bound).
-- **Promotion (D502):** nothing is shown until the author's labelled week on his own home
-  (`todo.md`). Then each shadow finding is said as an offer only if the labels give it recall over
-  the detectors at no worse precision, and a detector retires once shadow covers its shape.
+- **The verdict (D674, research/247 Brief B; `proactive/shadow-review.ts`):**
+  - *The review:* every item the passes recorded since last week's Monday: each model finding
+    (with `alsoBy` when a detector has it too) and each detectors' join no finding touched, once
+    (a stable id from its source and fact set), with its words, the facts it joined (source,
+    header, sender, day: the finding's `rows`, logged with the pass) and what it would do first.
+    Once a week the morning note (its first with something unanswered and unsaid) carries
+    `shadowReview {count, until}`: one quiet link at the note's foot (D482's row) that fades at
+    the next morning. It is never in the notification, never needs-you, never a card of its own;
+    a quiet morning with only this offer shows the note unpushed, like D304's. The same list is
+    **`ducter proactive review [--week] [--label id=yes|no|stop]`** (frames `shadow_review`,
+    `shadow_label`, answered with `shadow_review_result`).
+  - *The verdicts:* 应该早说 (yes), 不该说 (no), 这类以后都别标 (a "no" that stops its sort: a
+    finding's fact types, or a detector's kind), each a `shadow_labels` event `{runId, findingId,
+    verdict, stop?, at}` on the partner stream; the same verdict twice is one event, the latest
+    counts, a stopped sort's unanswered items count as "no". Nothing wakes the partner.
+  - *The gate (`promoteShadow`, code):* on the weeks that are over (Monday to Sunday in the
+    person's zone) with a pass and every item answered: detectors flagged = their joins plus the
+    findings they also have; shadow flagged = its findings; found = flagged and 应该早说. It
+    passes only when together they found more than the detectors alone and shadow's precision is
+    at least theirs (with nothing of theirs answered, theirs counts as 1: the strict reading). A
+    detector's shape is *covered* when shadow found all its yes items on two labelled weeks; that
+    is reported (`proactive review`, `proactive week`), and the detectors keep running. The Log
+    alone reproduces the answer; the model never decides it.
+  - *After the gate, and only then:* the morning's candidates gain the fresh (≤ 2 days) shadow-only
+    findings not said, not answered 不该说 and not of a stopped sort, as kind `mismatch` offers
+    (never urgent, D453's lane), with one read-only look-up step whose data is the finding's words
+    fenced as data. Before the gate no finding becomes an `ai_msg`, a need or a task.
 
 ## 5. When it speaks: one ladder, one switch
 

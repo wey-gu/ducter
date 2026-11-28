@@ -12,8 +12,8 @@
 // no message. Shadow: the record goes to the Log (`shadow_finds`, partner stream) with the
 // detectors' candidates on the same facts beside it, for `ducter proactive week` to compare. Nothing
 // is shown to the person until D502's promotion rule is met (the author's labelled week).
-import type { FindKind, ShadowDrop, ShadowFinding, ShadowRun } from "@ducter/protocol";
-import { langName, type LangTag } from "@ducter/protocol";
+import type { FindKind, FindSrc, ShadowDrop, ShadowFact, ShadowFinding, ShadowRun } from "@ducter/protocol";
+import { langName, words, type LangTag } from "@ducter/protocol";
 import type { Candidate } from "./candidate.ts";
 import type { Fact } from "./ledger.ts";
 
@@ -152,6 +152,19 @@ export function guardFindings(raw: RawFinding[], shown: Fact[]): Guarded {
   return { kept, dropped: [...drops].map(([why, n]) => ({ why, n })) };
 }
 
+/** D674: where a fact was read, by its type and its source's id (never by its words). */
+export function factSrc(f: Fact): FindSrc {
+  if (f.type === "plan") return f.src;
+  if (f.type === "meeting") return "calendar";
+  if (f.ref.service === "web") return "web";
+  return "mail";
+}
+
+/** D674: a fact as the review card shows it: its header, its sender, where and when. */
+export function shadowFact(f: Fact): ShadowFact {
+  return { id: f.id, type: f.type, src: factSrc(f), label: f.label, ...(f.sender && f.sender !== f.label ? { from: f.sender } : {}), at: f.at };
+}
+
 /** Kinds that remind rather than find: never "the same finding" as a conflict on their facts. */
 const HEADS_UP = new Set<FindKind>(["coming_up", "meeting"]);
 
@@ -181,7 +194,15 @@ export async function shadowPass(p: PassInput): Promise<ShadowRun> {
   const shown = crossFacts(p.facts, p.now);
   const joins = p.candidates.filter(isJoin);
   const base: ShadowRun = { runId: p.runId, by: p.by, facts: shown.length, findings: [], repeats: 0, dropped: [], detectorsOnly: [], tokens: 0 };
-  const only = (touched: Set<string>) => joins.filter((c) => !c.facts.some((id) => touched.has(id))).map((c) => ({ key: c.key, kind: c.kind, facts: [...new Set(c.facts)] }));
+  const byId = new Map(p.facts.map((f) => [f.id, f]));
+  const rowsOf = (ids: string[]) => ids.flatMap((id) => (byId.has(id) ? [shadowFact(byId.get(id)!)] : []));
+  const only = (touched: Set<string>) =>
+    joins
+      .filter((c) => !c.facts.some((id) => touched.has(id)))
+      .map((c) => {
+        const facts = [...new Set(c.facts)];
+        return { key: c.key, kind: c.kind, facts, ...(c.words ? { text: words(c.words, p.ctx.lang) } : {}), said: facts.some((id) => p.saidFacts.has(id)), rows: rowsOf(facts) };
+      });
   if (!p.ask) return { ...base, skipped: "no_model", detectorsOnly: only(new Set()) };
   if (p.over) return { ...base, skipped: "budget", detectorsOnly: only(new Set()) };
   if (!shown.length) return { ...base, skipped: "no_facts" };
@@ -210,7 +231,7 @@ export async function shadowPass(p: PassInput): Promise<ShadowRun> {
       continue;
     }
     p.seen[f.key] = p.now;
-    findings.push({ ...f, alsoBy: alsoByOf(f.facts), said: f.facts.some((id) => p.saidFacts.has(id)) });
+    findings.push({ ...f, alsoBy: alsoByOf(f.facts), said: f.facts.some((id) => p.saidFacts.has(id)), rows: rowsOf(f.facts) });
   }
   return { ...base, findings, repeats, dropped: g.dropped, detectorsOnly: only(touched), tokens };
 }

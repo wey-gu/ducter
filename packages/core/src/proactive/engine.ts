@@ -77,7 +77,9 @@ import type { ReplyTarget } from "./candidate.ts";
 import { KIND_WORDS, W } from "./words.ts";
 import { codeCandidates, LEADS_MAX, spotsToCandidates, type Lead, type Spotter, type Upcoming } from "./wider.ts";
 import { CROSS_RUNS_A_DAY, CROSS_TOKENS_A_DAY, shadowPass, type CrossAsk } from "./cross.ts";
-import type { ShadowRun } from "@ducter/protocol";
+import type { ShadowReview, ShadowRun } from "@ducter/protocol";
+import { mondayOf } from "./week.ts";
+import { gateSince, labelShadow, promotedCandidates, promoteShadow, readShadowLog, reviewSince, shadowItems, shadowReview, unlabelled, withLabels } from "./shadow-review.ts";
 
 export const PROACTIVE_FILE = "proactive.json";
 const MIN = 60_000;
@@ -274,6 +276,8 @@ interface State {
   morningDay?: string;
   /** D304: the week (its Monday) whose first morning note already offered 这周记下的 / What it learned this week. */
   learnedWeek?: string;
+  /** D674: the week (its Monday) whose morning note already offered the shadow's review. */
+  shadowWeek?: string;
   /** D281: decisions the morning note already named as waiting (each is named once, never again). */
   toldPending?: string[];
   /** D388: the questions a said find left open (a plan's day or time), until a later source answers them. */
@@ -489,6 +493,10 @@ export interface Proactive {
    * after the morning note): logged as `shadow_finds` on the partner stream, never shown or said.
    */
   cross(by?: ShadowRun["by"]): Promise<ShadowRun>;
+  /** D674: the review of what the shadow noticed (the card's list; week: the last full week), with the gate now. */
+  shadowReview(week?: boolean): ShadowReview;
+  /** D674: one verdict on a listed item, kept once; the review after it. */
+  shadowLabel(findingId: string, verdict: "yes" | "no" | "stop"): { review: ShadowReview } | { error: string };
   /** D403: 撤回 / Undo on a drafted reply inside its window: nothing is sent and its Go is asked again. False when it can't be undone. */
   undo(findId: string): boolean;
   /** Something the accounts card shows changed (a look, a find, a tile). */
@@ -1052,6 +1060,37 @@ export function createProactive(o: ProactiveOptions): Proactive {
     return { count };
   }
 
+  /** D674: the items the passes recorded since `since`, with the person's labels on them. */
+  function shadowLabelled(since: number) {
+    const { runs, labels } = readShadowLog(o.log, since);
+    const facts = new Map(ledger.all().map((f) => [f.id, f]));
+    return withLabels(shadowItems(runs, (id) => facts.get(id)), labels);
+  }
+
+  /**
+   * D674: once a week (its first morning note with something to ask), the note offers the
+   * review of what the shadow noticed and didn't say: how many still wait for a word, and when the
+   * line fades (the next morning). Nothing waiting, or offered already this week: nothing.
+   */
+  function shadowOffer(): { count: number; until: string } | undefined {
+    const monday = mondayOf(today());
+    if (st.shadowWeek === monday) return undefined;
+    const at = now();
+    const since = Date.parse(`${reviewSince(at, zone())}T00:00:00Z`) - DAY;
+    const count = unlabelled(shadowReview(shadowLabelled(since), { now: at, zone: zone() }).items).length;
+    if (count < 1) return undefined;
+    st.shadowWeek = monday;
+    const tomorrow = new Date(Date.parse(`${today()}T12:00:00Z`) + DAY).toISOString().slice(0, 10);
+    return { count, until: new Date(morningOf(tomorrow)).toISOString() };
+  }
+
+  /** D674: the gate from the Log; past it, the fresh shadow-only findings as the morning's offers. Before it: none. */
+  function promoted(): Candidate[] {
+    const at = now();
+    const items = shadowLabelled(gateSince(at, zone()));
+    return promotedCandidates(items, promoteShadow(items, { now: at, zone: zone() }), at);
+  }
+
   /** D458: what the ledger says is coming in the next days (a trip, a meeting, a plan), for Mem's preferences. */
   function upcoming(at: number): Upcoming[] {
     const out: Upcoming[] = [];
@@ -1115,7 +1154,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     let kept: { c: Candidate; text: string }[];
     try {
       // D458: the morning also reads past the accounts (only offers: never on 只说急的).
-      const more = why === "morning" && m !== "urgent" ? await wide() : [];
+      const more = why === "morning" && m !== "urgent" ? [...(await wide()), ...promoted()] : [];
       kept = await judged([...detect(ledger, { ...dctx(), now: at }), ...more], why === "morning" ? "morning" : "day");
     } finally {
       focusNow = [];
@@ -1135,6 +1174,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       await withDrafts(pick);
       const line = todayLine(z);
       const learned = learnedOffer();
+      const shadowRev = shadowOffer();
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
@@ -1148,9 +1188,11 @@ export function createProactive(o: ProactiveOptions): Proactive {
       // D173: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
       const leftOut = W.leftOut(z, { ...st.left, more: st.more });
       for (const r of mine) r.state = "said";
-      if (!pick.length && !ownFinds.length && !extra.length && !line && learned) {
+      // D674: the shadow's review rides on the note like D304's offer: never pushed, never needs-you.
+      const offers = { ...(learned ? { learned } : {}), ...(shadowRev ? { shadowReview: shadowRev } : {}) };
+      if (!pick.length && !ownFinds.length && !extra.length && !line && (learned || shadowRev)) {
         // D304: a quiet morning that opens the week: only the offer, shown, never pushed (it can wait).
-        const e = note({ noteId, rung: "morning", opening: W.open(z), finds: [], learned, ...(leftOut ? { leftOut } : {}) });
+        const e = note({ noteId, rung: "morning", opening: W.open(z), finds: [], ...offers, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
       } else if (!pick.length && !ownFinds.length && !extra.length && !line) {
         // A quiet day (D173): nothing sent and nothing shown. The partner alone knows it looked.
@@ -1159,7 +1201,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
       } else if (!pick.length && !ownFinds.length && !extra.length) {
         // D281: nothing new noticed, but the day holds something of Ducter's own: the one line, passive.
         const opening = `${W.open(z)}${words(OWN, z).gap}${line}`;
-        const e = note({ noteId, rung: "morning", opening, finds: [], ...(learned ? { learned } : {}), ...(leftOut ? { leftOut } : {}) });
+        const e = note({ noteId, rung: "morning", opening, finds: [], ...offers, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
         notify("passive", line, noteId);
       } else {
@@ -1169,7 +1211,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
         if (askHow) (st.cadenceAsked = true), (st.cadenceNote = noteId);
         // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
         const opening = line ? `${W.open(z)}${words(OWN, z).gap}${line}` : W.open(z);
-        const e = note({ noteId, rung: "morning", opening, finds, ...(learned ? { learned } : {}), ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
+        const e = note({ noteId, rung: "morning", opening, finds, ...offers, ...(leftOut ? { leftOut } : {}), ...(askHow ? { ask: "cadence" as const } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
         st.day.said += pick.length;
         notify("passive", W.lockBody(z, finds.map((f) => f.text)), noteId);
@@ -2343,6 +2385,17 @@ export function createProactive(o: ProactiveOptions): Proactive {
       if (m.triage) resumeBackfills();
     },
     cross: (by = "asked") => crossNow(by),
+    shadowReview(week) {
+      const at = now();
+      return shadowReview(shadowLabelled(gateSince(at, zone())), { now: at, zone: zone(), ...(week ? { week } : {}) });
+    },
+    shadowLabel(findingId, verdict) {
+      const at = now();
+      const items = shadowLabelled(gateSince(at, zone()));
+      const r = labelShadow(o.log, items, findingId, verdict, at);
+      if (!r.ok) return { error: r.error };
+      return { review: shadowReview(shadowLabelled(gateSince(at, zone())), { now: at, zone: zone() }) };
+    },
     undo(findId) {
       const f = st.finds[findId];
       if (!f || f.send?.state !== "sending") return false;

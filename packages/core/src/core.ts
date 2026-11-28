@@ -57,6 +57,7 @@ import { createProactive, type Proactive } from "./proactive/engine.ts";
 import { dayAfterFacts } from "./day-after.ts";
 import { replayProactive } from "./proactive/replay.ts";
 import { readShadowEvents, readWeekEvents, weekReport, weeksSince, WEEKS_DEFAULT, WEEKS_MAX } from "./proactive/week.ts";
+import { readShadowLog } from "./proactive/shadow-review.ts";
 import { W } from "./proactive/words.ts";
 import { modelTriage, type Triage } from "./proactive/triage.ts";
 import { modelDrafter } from "./proactive/reply.ts";
@@ -3428,7 +3429,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const now = clock.now();
     const z = zone();
     const since = weeksSince(now, z, weeks);
-    return weekReport(readWeekEvents(log, since), { now, zone: z, weeks, mode: settings.get().proactive ?? "off", weights: proactive.weights(), shadow: readShadowEvents(log, since) });
+    // D674: the shadow's labels (any age) and its gate now, from the Log alone.
+    return weekReport(readWeekEvents(log, since), { now, zone: z, weeks, mode: settings.get().proactive ?? "off", weights: proactive.weights(), shadow: readShadowEvents(log, since), labels: readShadowLog(log, since).labels, gate: proactive.shadowReview().gate });
   };
   // D368: read once at the start, so the partner's first turn already has the day's focus (never awaited).
   void workingMemory.refresh().catch(() => undefined);

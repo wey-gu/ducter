@@ -82,6 +82,8 @@ type Finds struct {
 	Added int `json:"added,omitempty"`
 	// D304: the week's first morning note offers to show what it noted this week.
 	Learned *Learned `json:"learned,omitempty"`
+	// D674: once a week, the review of what it noticed and didn't say (shadow.go).
+	ShadowReview *ShadowOffer `json:"shadowReview,omitempty"`
 }
 
 // Learned is how many things it noted about the person in the last 7 days.

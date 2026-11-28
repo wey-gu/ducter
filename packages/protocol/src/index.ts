@@ -1060,7 +1060,10 @@ export interface Bodies {
   // answered: the ask was answered (the clients show the controls settled, not live).
   // learned (D304): the week's first morning note offers, in one line, to show what it noted about
   // the person in the last 7 days (count), opening 这周记下的 / What it learned this week.
-  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number; learned?: { count: number } };
+  // shadowReview (D674): once a week the morning note also offers, in one quiet line at its
+  // foot, the review of what Ducter noticed and didn't say (count: items still unlabelled); the line
+  // fades at `until` (the next morning). Never in the notification, never needs-you.
+  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number; learned?: { count: number }; shadowReview?: { count: number; until: string } };
   // A find changed: Go or Hold on its step, passed its date (过了), or the person's reaction
   // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
   // D403: until (sending): when the reply goes; decisionId (unsent, send_failed): the find's Go asked again; error (send_failed): why, in a few words.
@@ -1072,6 +1075,10 @@ export interface Bodies {
   // D502: one shadow pass of cross-source findings (the cheap model over the ledger's facts), on the
   // "partner" stream: never shown, never wakes the partner; read by `ducter proactive week`.
   shadow_finds: import("./proactive.ts").ShadowRun;
+  // D674: the person's verdict on one shadow item (应该早说 / 不该说, or 这类以后都别标 as a
+  // "no" with stop), from the review card or `ducter proactive review --label`; the same verdict
+  // twice is one event. Partner stream: never shown, never wakes the partner; read by the gate.
+  shadow_labels: import("./proactive.ts").ShadowLabel;
   connection_call: {
     callId: string;
     connectionId: string;
@@ -2018,6 +2025,10 @@ export type ClientFrame =
   | { t: "proactive_week"; weeks?: number }
   // D502: `ducter proactive cross`: one shadow pass of cross-source findings now, logged like the daily one; answered with proactive_cross_result.
   | { t: "proactive_cross" }
+  // D674: the review of what the shadow noticed (the card's list; week: the last full week only); answered with shadow_review_result.
+  | { t: "shadow_review"; week?: boolean }
+  // D674: one verdict on a listed item: yes 应该早说, no 不该说, stop 这类以后都别标; answered with shadow_review_result.
+  | { t: "shadow_label"; findingId: string; verdict: "yes" | "no" | "stop" }
   // D473: `ducter repairs`: the last `weeks` (1–12) of failures and self-repairs counted from the Log; answered with repairs_week_result.
   | { t: "repairs_week"; weeks?: number }
   // D588: `ducter usage`: the tokens tasks used over the last `days` (1–31) in the person's days (`tz`: minutes east of UTC), counted from the Log; answered with usage_days_result.
@@ -2455,6 +2466,7 @@ export type ServerFrame =
   | { t: "proactive_replay_result"; report?: import("./proactive.ts").ReplayReport; error?: string }
   | { t: "proactive_week_result"; report?: import("./proactive.ts").WeekReport; error?: string }
   | { t: "proactive_cross_result"; run?: import("./proactive.ts").ShadowRun; error?: string }
+  | { t: "shadow_review_result"; review?: import("./proactive.ts").ShadowReview; error?: string }
   | { t: "repairs_week_result"; report?: import("./mend.ts").RepairReport; error?: string }
   // D588: `ducter usage`: what the tasks used, answered on the asking socket only.
   | { t: "usage_days_result"; report?: import("./usage.ts").UsageReport; error?: string }

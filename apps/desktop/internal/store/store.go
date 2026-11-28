@@ -523,6 +523,8 @@ type Store struct {
 	Mentions MentionsState
 	// Did is 替你做过的 / Done for you (D300, did.go).
 	Did DidState
+	// Shadow is the review of what the shadow noticed (D674, shadow.go).
+	Shadow ShadowState
 	// D591: the week's count (usage.go).
 	Usage UsageState
 	// KeepPages (D511) are the Keeps' pages this window read (keep_result),
@@ -1179,6 +1181,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.applyPastSteps(f) // D391 (past.go)
 	case "did_result":
 		s.applyDid(f) // D300 (did.go)
+	case "shadow_review_result":
+		s.applyShadow(f) // D674 (shadow.go)
 	case "usage_days_result":
 		s.applyUsage(f) // D591 (usage.go)
 	case "mem_answered":

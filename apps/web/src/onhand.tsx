@@ -18,7 +18,7 @@ import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A, type Wear } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
-import { Btn, Chev, Facts, Field, MoreButton, TaskLink } from "./controls.tsx";
+import { Btn, Chev, Facts, Field, MoreButton, Seg, TaskLink } from "./controls.tsx";
 import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
@@ -45,6 +45,7 @@ import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, Pee
 import { healthLine, rhythm, RepeatGlyph, reviewLine } from "./past.tsx";
 import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
+import { ListBoard, BoardViews, LIST_FROM, listRows, listTasks, readMode, truthState, writeMode, type BulkAsk } from "./onhand-list.tsx";
 import { cutAtWord } from "@ducter/protocol";
 import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 
@@ -877,6 +878,8 @@ export function LensColumn() {
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} hidden={g.hidden} pinned={g.pinned} renamed={pinnedOf(g.key)?.renamed} aliases={g.aliases} />
       ))}
+      {/* D-PENDING (research/245 §3.5): the saved views, under the projects. */}
+      <BoardViews tasks={lensLanes("").flat()} />
       {/* D455: a folder on any computer of the home, looked through by that computer. */}
       {A.ntBrowsable().length > 0 && (
         <button class="lens-add" type="button" title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
@@ -1083,7 +1086,7 @@ export function moodOf(n: number[]): "needsyou" | "working" | "waiting" | "done"
 /** The board's head (D287): the partner, its face saying how the whole stands, and its one sentence;
  *  under it the strip of four counts (each one a filter; pressed again, or Esc, lets go), Find from
  *  ten tasks, New task here under a project. */
-function BoardTop({ lens, groups, findable, room }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room }) {
+function BoardTop({ lens, groups, findable, room, mode, onMode, showMode }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room; mode?: "overview" | "list"; onMode?: (m: "overview" | "list") => void; showMode?: boolean }) {
   const n = stateCounts(lens);
   L.filter = 0; // D467: no strip, so no filter; Find and the lens narrow
   const g = groups.find((x) => x.key === lens && x.key !== OTHER && x.key !== COMPUTERS);
@@ -1113,6 +1116,9 @@ function BoardTop({ lens, groups, findable, room }: { lens: string; groups: Lens
             </button>
           )}
           <span class="grow" />
+          {/* D-PENDING (research/245 §3.5): one board, two ways to look: offered from eight tasks on,
+              kept per device, never the default by itself. */}
+          {showMode && mode && onMode && <Seg label={t("onhand.view.label")} value={mode} options={[{ v: "overview", label: t("onhand.overview") }, { v: "list", label: t("onhand.list") }]} onPick={onMode} />}
           {findable && <Find />}
         </div>
       )}
@@ -1149,7 +1155,7 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "" };
+export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "", /** D-PENDING (research/245 §3.5): the view this device chose, its filter and sort. */ mode: readMode() as "overview" | "list", tfilter: {} as import("@ducter/protocol").TaskFilter, sort: "urgency" as import("@ducter/protocol").TaskSort, pickOp: "" as "" | "move" | "reassign", gPending: 0 };
 
 /** D661 (research/245 §3.3 rule 5): who else holds the outside thing, in words: a task's
  *  agent on its computer ("Mac 上的 Antigravity" / "Antigravity on Mac"), a Keep by its name, a
@@ -1223,11 +1229,19 @@ const typing = () => {
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable);
 };
 
-function move(by: number, open: boolean) {
+function move(by: number, open: boolean, shift = false) {
   const o = L.order;
   if (!o.length) return;
   const i = o.indexOf(L.focus);
   const next = o[i < 0 ? (by > 0 ? 0 : o.length - 1) : Math.max(0, Math.min(o.length - 1, i + by))]!;
+  if (shift && A.listMode && !open) {
+    if (!L.anchor) L.anchor = L.focus;
+    if (L.anchor) extend(next);
+    L.focus = next;
+    A.changed();
+    requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
+    return;
+  }
   L.focus = next;
   L.walked = true; // D471: the peek follows what the keys moved to
   if (open) A.go({ name: "task", id: next, full: A.route.name !== "conv" && !!A.route.full });
@@ -1302,29 +1316,109 @@ function extend(id: string) {
   A.changed();
 }
 
+/** The rows a list key acts on: the selection, else the row the keys are on. */
+function keyIDs(): string[] {
+  return L.sel.size ? [...L.sel] : L.focus ? [L.focus] : [];
+}
+
+/** e / p / ⌘⌫: act on the selection (or the focused row), then let go of it. */
+function selectAct(op: "end" | "pause" | "drop") {
+  const ids = keyIDs();
+  if (!ids.length) return;
+  A.bulk(ids, op);
+  L.sel.clear();
+  A.changed();
+}
+
+/** m / a: move or reassign needs a choice, so the bar opens it (the focused row joins the selection). */
+function pickAct(op: "move" | "reassign") {
+  const ids = keyIDs();
+  if (!ids.length) return;
+  if (!L.sel.size) L.sel.add(L.focus);
+  L.pickOp = op;
+  A.changed();
+}
+
 /** j/k (or the arrows) walk the list, Enter opens, x selects, / finds, Esc lets go first. In the
  *  rail beside an opened task, j/k open the next one. */
 function useKeys(room: Room) {
   useEffect(() => {
     if (room === "phone") return;
     const k = (e: KeyboardEvent) => {
-      if (A.sheet || A.live || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (A.sheet || A.live || e.defaultPrevented) return;
       // D325: the locator's card has its own keys (the arrows move its choice).
       if ((e.target as Element | null)?.closest?.(".locator")) return;
+      const rail = room === "rail";
+      const list = !!A.listMode && room === "full" && !rail;
+      const mod = e.metaKey || e.ctrlKey;
+      // D-PENDING (research/245 §3.5): ⌘1 概览 / ⌘2 列表 on the board (the toggle's own keys). The
+      // conversation keeps Esc and the breadcrumb; elsewhere the app's ⌘1 / ⌘2 are untouched.
+      if (list && mod && !e.altKey && (e.code === "Digit1" || e.code === "Digit2")) {
+        e.preventDefault();
+        const m = e.code === "Digit1" ? "overview" : "list";
+        if (L.mode !== m) (L.mode = m), writeMode(m), A.changed();
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "KeyA") {
+        e.preventDefault();
+        L.sel.clear();
+        for (const id of L.order) L.sel.add(id);
+        L.anchor = L.order[0] ?? "";
+        A.changed();
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "Backspace") {
+        e.preventDefault();
+        selectAct("drop");
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "KeyK") {
+        e.preventDefault();
+        document.querySelector<HTMLElement>(".sel-bar .btn")?.focus();
+        return;
+      }
+      if (mod || e.altKey) return;
       if (e.key === "/" && !typing()) {
         const f = document.getElementById("onhand-find");
         if (f) return void (e.preventDefault(), f.focus());
       }
       if (typing()) return;
-      const rail = room === "rail";
-      if (e.key === "j" || e.key === "ArrowDown") return void (e.preventDefault(), move(1, rail));
-      if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail));
+      if (list) {
+        if (e.key === "x" && L.focus) return void (e.preventDefault(), toggle(L.focus));
+        if (e.key === "f") {
+          e.preventDefault();
+          document.querySelector<HTMLElement>(".filter-chip")?.focus();
+          return;
+        }
+        if (e.key === "e") return void (e.preventDefault(), selectAct("end"));
+        if (e.key === "p") return void (e.preventDefault(), selectAct("pause"));
+        if (e.key === "m") return void (e.preventDefault(), pickAct("move"));
+        if (e.key === "a") return void (e.preventDefault(), pickAct("reassign"));
+        if (e.key === "g") {
+          e.preventDefault();
+          L.gPending = Date.now();
+          return;
+        }
+        if (L.gPending && Date.now() - L.gPending < 1200 && (e.key === "p" || e.key === "s")) {
+          e.preventDefault();
+          L.gPending = 0;
+          const task = A.S.tasks.get(L.focus);
+          if (!task) return;
+          if (e.key === "p") L.tfilter = { ...L.tfilter, project: task.card?.projectKey ?? "" };
+          else L.tfilter = { ...L.tfilter, state: truthState(task) };
+          if (!L.tfilter.project) delete L.tfilter.project;
+          A.changed();
+          return;
+        }
+      }
+      if (e.key === "j" || e.key === "ArrowDown") return void (e.preventDefault(), move(1, rail, e.shiftKey));
+      if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail, e.shiftKey));
       if ((e.key === "Enter" || e.key === "o") && L.focus && !rail) return void (e.preventDefault(), A.go({ name: "task", id: L.focus, full: A.route.name === "onhand" && !!A.route.full }));
-      if (e.key === "x" && L.focus && room === "full") return void (e.preventDefault(), toggle(L.focus));
-      if (e.key === "Escape" && (L.sel.size || L.find || L.filter || L.source) && !rail) {
+      if (e.key === "Escape" && (L.sel.size || L.find || L.filter || L.source || Object.keys(L.tfilter).length) && !rail) {
         e.preventDefault();
         if (L.sel.size) L.sel.clear();
         else if (L.find) L.find = "";
+        else if (Object.keys(L.tfilter).length) L.tfilter = {};
         else if (L.filter) L.filter = 0; // D261: then the strip's filter
         else L.source = ""; // D654: then 来自 / From
         L.dropAsk = false;
@@ -1976,6 +2070,61 @@ export function OnHandList({ room }: { room: Room }) {
   L.usual = usualComputer(all);
   const q = L.find.trim();
   const rail = room === "rail";
+  // D-PENDING (research/245 §3.5): 概览 / Overview or 列表 / List. List is offered from eight tasks
+  // on, kept per device, and never becomes the default by itself. A rail stays rows.
+  const listOn = !rail && L.mode === "list" && all.length >= LIST_FROM;
+  A.listMode = listOn;
+  A.applyView = (v) => {
+    L.tfilter = { ...v.filter };
+    L.sort = v.sort;
+    L.mode = v.mode;
+    writeMode(v.mode);
+    A.changed();
+  };
+  if (listOn) {
+    const rows = listRows(all, L.tfilter, L.sort, q);
+    L.order = rows.map((x) => x.id);
+    for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
+    const setMode = (m: "overview" | "list") => {
+      if (L.mode === m) return;
+      L.mode = m;
+      writeMode(m);
+      A.changed();
+    };
+    return (
+      <div class={`onhand-list room-${room} list-mode${entering ? " entering" : ""}`}>
+        {room !== "full" && <LensTabs />}
+        {room === "full" && <LensTabs inBoard />}
+        <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} mode={L.mode} onMode={setMode} showMode={all.length >= LIST_FROM} />
+        <ListBoard
+          room={room === "phone" ? "phone" : room === "side" ? "side" : "full"}
+          tasks={all}
+          rows={rows}
+          filter={L.tfilter}
+          sort={L.sort}
+          mode={L.mode}
+          focus={L.focus}
+          sel={L.sel}
+          onFilter={(f) => ((L.tfilter = f), A.changed())}
+          onSort={(x) => ((L.sort = x), A.changed())}
+          onSave={(name) => A.viewSave({ id: `v_${Date.now().toString(36)}`, name, filter: { ...L.tfilter }, sort: L.sort, mode: L.mode })}
+          onFocus={(id) => ((L.focus = id), (L.walked = true), A.changed())}
+          onPick={(id, e) => pickClick(e, id, room)}
+          onOpen={(id) => openRow(id, room)}
+          onClear={() => (L.sel.clear(), A.changed())}
+          onBulk={(ask) => {
+            const ids = [...L.sel];
+            if (!ids.length) return;
+            A.bulk(ids, ask.op, { ...(ask.device ? { device: ask.device } : {}), ...(ask.harness ? { harness: ask.harness } : {}) });
+            L.sel.clear();
+            A.changed();
+          }}
+          pick={L.pickOp}
+          onPicked={() => (L.pickOp = "")}
+        />
+      </div>
+    );
+  }
   const f = rail ? 0 : L.filter;
   const show = (i: number) => !f || f === i;
   const keep = (ts: Task[]) => (q ? ts.filter((x) => matches(x, q)) : ts);
@@ -2059,7 +2208,7 @@ export function OnHandList({ room }: { room: Room }) {
         <>
           {room !== "full" && <LensTabs />}
           {room === "full" && <LensTabs inBoard />}
-          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} />
+          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} mode={all.length >= LIST_FROM ? "overview" : undefined} showMode={all.length >= LIST_FROM} onMode={(m) => { L.mode = m; writeMode(m); A.changed(); }} />
         </>
       )}
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}

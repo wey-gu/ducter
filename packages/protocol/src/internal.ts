@@ -194,6 +194,15 @@ export interface CoreApi {
   projectChange?(change: import("./index.ts").ProjectChange): { ok: true; changed: import("./index.ts").ProjectChange } | { ok: false; error: string };
   /** D654: the project rows as they stand (for the partner's answer and the project_change tool). */
   projectList?(): import("./index.ts").ProjectLens[];
+  /** D-PENDING (research/245 §3.5): the person's saved views on the home (views.json). */
+  views?(): import("./views.ts").BoardView[];
+  /** Save one (or remove one of the person's own): the views after the change. */
+  viewSave?(view: import("./views.ts").BoardView, remove?: boolean): { ok: true; views: import("./views.ts").BoardView[] } | { ok: false; error: string };
+  /** One action on a selection, each task through its own path, logged once as a batch. */
+  bulk?(req: { op: import("./views.ts").BulkOp; taskIds: string[]; device?: string; harness?: string; model?: string }): Promise<{ batchId: string; op: import("./views.ts").BulkOp; total: number; done: number; skipped: number; pending: number; keeps: number; undoUntil: string; message?: string }>;
+  /** Undo one batch within its ten seconds. */
+  bulkUndo?(batchId: string): Promise<{ ok: boolean; undone: number; message?: string }>;
+
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string; /** D549 */ trouble?: { kind: string } }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
   /**

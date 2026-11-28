@@ -1212,3 +1212,64 @@ export function AskText({ text }: { text: string }) {
     </span>
   );
 }
+
+/**
+ * D-PENDING (research/245 §3.5): one row of the dense table (列表 / List). A shared control so the
+ * list view draws no row of its own: 32 pt, the keys' row outlined, a picked row's own tint, the
+ * whole row one click that opens it (⌘-click and Shift-click pick: the caller says through onPick).
+ * It holds cells, not a title: the columns and their order belong to the list (the shared table
+ * row keeps the row, never the table's meaning).
+ */
+export function TableRow(p: { at: boolean; selected: boolean; label: string; class?: string; onOpen: () => void; onPick?: (e: MouseEvent) => boolean; children: ComponentChildren }) {
+  return (
+    <div
+      role="row"
+      tabIndex={-1}
+      aria-selected={p.selected}
+      aria-label={p.label}
+      class={`table-row${p.at ? " at" : ""}${p.selected ? " sel" : ""}${p.class ? ` ${p.class}` : ""}`}
+      onClick={(e) => {
+        if ((e.target as Element | null)?.closest?.("button, a")) return;
+        if (p.onPick?.(e)) return;
+        p.onOpen();
+      }}
+    >
+      {p.children}
+    </div>
+  );
+}
+
+/**
+ * D-PENDING (research/245 §3.5): the bar a selection raises at the list's foot. Its count, exactly
+ * the actions that fit the selection, its one ask in place, and 取消选择 / Clear; the whole bar is
+ * the shared control, so every client's many-at-once reads the same.
+ */
+export function SelectionBar(p: { label: string; children: ComponentChildren; onClear?: () => void; clearLabel?: string }) {
+  return (
+    <div class="sel-bar" role="toolbar" aria-label={p.label}>
+      <b>{p.label}</b>
+      {p.children}
+      {p.onClear && (
+        <>
+          <span class="grow" />
+          <Btn kind="text" size="sm" class="sel-clear" label={p.clearLabel ?? p.label} onClick={p.onClear} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** D-PENDING (research/245 §3.5): the keys said once at a list's foot (D457's drawn caps): each pair
+ *  a cap and what it does, in the small muted type. The Mac's `keyCaps`. */
+export function KeyCaps(p: { items: { keys: string; words: string }[] }) {
+  return (
+    <span class="key-caps">
+      {p.items.map((x) => (
+        <span key={x.keys} class="key-cap">
+          <kbd>{x.keys}</kbd>
+          <span>{x.words}</span>
+        </span>
+      ))}
+    </span>
+  );
+}

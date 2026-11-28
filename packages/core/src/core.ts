@@ -134,6 +134,8 @@ import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/proto
 import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
+import { createViews } from "./views.ts";
+import { createBulk } from "./bulk.ts";
 import { createProjectIdentities } from "./project-identity.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
 import { createOnHandAway } from "./onhand-away.ts";
@@ -916,6 +918,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
     ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
   });
+  // D-PENDING (research/245 §3.5): 列表's filter + sort + mode, saved with a name on the home.
+  const boardViews = createViews({ dataDir, onChange: () => onHandChanged() });
   // D654: one computer, one project key: a place that says the home's name is the home, and a
   // worker's name is its id.
   const canonicalDevice = (dev: string): string => {
@@ -1170,7 +1174,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     const groups = taskGroups.list().filter((g) => !onHandAway.isGroup(g.id));
     // D481: every question open at the home, as of now: the one source of truth every client closes its stale cards by.
     const openAsks = { ids: decisions.openIds(), asOf: log.head() };
-    const final = { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), openAsks };
+    const savedViews = boardViews.list();
+    const final = { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), ...(savedViews.length ? { views: savedViews } : {}), openAsks };
     return opts.truth === false ? final : truthDecorate(final);
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
@@ -1707,6 +1712,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     return r.ok ? { ok: true, changed: change } : r;
   };
   api.projectList = () => tasks.onHand().projectList ?? [];
+  api.views = () => boardViews.list();
+  api.viewSave = (view, remove) => {
+    if (remove) return boardViews.remove(view.id);
+    const r = boardViews.save(view);
+    return r.ok ? { ok: true, views: r.views } : r;
+  };
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2145,6 +2156,53 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
+  // D-PENDING (research/245 §3.5): the list's many-at-once. Every op goes through the task's own
+  // door; the batch is logged once, and its undo lives ten seconds.
+  const bulk = createBulk({
+    task: (id) => {
+      const c = tasks.get(id);
+      if (!c) return undefined;
+      const place = (c as { place?: import("@ducter/protocol").Place }).place;
+      return { id: c.taskId, title: c.title, attention: c.attention, harness: c.harness, ...(c.model ? { model: c.model } : {}), device: place && "device" in place && place.device ? place.device : "local", ...(c.imported ? { imported: true } : {}) };
+    },
+    end: (id) => work.endTask(id),
+    interrupt: async (id) => {
+      if (!runner?.interrupt) throw new Error("Pausing isn't available here.");
+      await runner.interrupt(id);
+    },
+    reopen: async (id) => {
+      if (!runner?.reopen) throw new Error("Continue isn't available here.");
+      await runner.reopen(id);
+    },
+    drop: async (id) => {
+      if (runner?.drop) await runner.drop(id);
+      const now = tasks.get(id);
+      if (now && now.attention !== "dropped") tasks.setState(id, "dropped", now.residency);
+    },
+    undrop: async (id) => (runner?.undrop ? runner.undrop(id) : { ok: false, message: "Undo isn't available." }),
+    switch: (id, to) => {
+      const c = tasks.get(id);
+      if (!c) return Promise.resolve({ ok: false, message: "I can't find that task." });
+      const harness = to.harness ?? c.harness;
+      return loadout.switchTask(id, harness, to.model ?? (harness === c.harness ? c.model : undefined), runner, to.device);
+    },
+    keepOf: (id) => ((k) => (k ? { id: k.id, name: k.name } : undefined))(keeps.ofTask(id)),
+    stopKeep: async (id) => {
+      const r = await keeps.change(id, { act: { action: "stop" } }, { by: "you" });
+      return r.ok ? { ok: true } : { ok: false, message: r.error };
+    },
+    logBatch: (b) => {
+      log.append({ stream: "channel", origin: "user", kind: "task_bulk", body: { op: b.op, taskIds: b.taskIds, done: b.done, skipped: b.skipped, pending: b.pending, ...(b.keeps.length ? { keeps: b.keeps } : {}) } });
+    },
+    now: () => clock.now(),
+  });
+  log.subscribe((e) => {
+    if (e.kind !== "task_event") return;
+    const b = e.body as import("@ducter/protocol").Bodies["task_event"];
+    if ((b.raw as { kind?: string } | undefined)?.kind === "turn_ended") void bulk.turnEnded(b.taskId);
+  });
+  api.bulk = (req) => bulk.run(req);
+  api.bulkUndo = (id) => bulk.undo(id);
 
   // D627: freeze for a move. The work clock holds every routine/loop/wait/owned timer, Keeps
   // holds its sweeps and doorbells, the chat apps stop polling (their cursors are written), and a

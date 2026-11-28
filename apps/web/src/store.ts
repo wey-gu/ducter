@@ -306,6 +306,8 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
+  /** D-PENDING (research/245 §3.5): the person's saved views, from the home. */
+  views: import("@ducter/protocol").BoardView[] = [];
   /** D454: tasks and groups removed from Tasks on this screen, before the home's next On hand says so. */
   awayNow = new Set<string>();
   waiters = new Map<string, WaiterView>();
@@ -438,6 +440,9 @@ export class Store {
       case "on_hand":
         this.applyOnHand(f.onHand);
         return;
+      case "view_saved":
+        this.views = f.views;
+        return;
       case "folder_changes": {
         const ft = this.tasks.get(f.taskId);
         if (ft) ft.folder = f.changes ?? undefined;
@@ -513,6 +518,7 @@ export class Store {
 
   private applyOnHand(o: OnHand) {
     this.onHand = o;
+    this.views = o.views ?? [];
     if (o.waiters) {
       const armed = new Set(o.waiters.map((w) => w.waiterId));
       for (const w of o.waiters) this.waiters.set(w.waiterId, w);

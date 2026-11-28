@@ -78,7 +78,7 @@ func (a *App) onHand(c *ui.Context) {
 					ui.Row(c.Key("keep-row")).Justify(ui.Center).Children(func() { a.keepPage(c, min(avail, 1060)) })
 					return
 				}
-				lb := lensBoard(b, lens)
+				lb := sourceBoard(lensBoard(b, lens), a.oh.source)
 				// D467: no day beside the board: it said again what the
 				// column says. The list's width is the cards' room.
 				avail := w - 2*t.S6

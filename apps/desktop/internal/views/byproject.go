@@ -9,56 +9,73 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Projects (D128, D186, D261): one group per project (a folder the user
-// works in: a repo's or one they added by hand), 其他 / Other for the
-// tasks of no place. On hand draws them as its lens (onhandboard.go);
-// what starts later or repeats in a folder shows under its project
-// (D185); a project added by hand shows before its first task.
+// Projects (D128, D186, D261): one group per project. D654 (research/245 §3.2): a project is
+// its repository, derived once in core; the Mac reads the card's key and name and never derives one
+// from a folder. 其他 / Other became 不在项目里 / Not in a project, and 电脑上的事 / On your computers
+// holds the errands and machine set-ups.
 
 type projectGroup struct {
+	key      string
 	name     string
 	place    *protocol.Place // a group's folder, for its "+"
 	tasks    []*store.Task
 	routines []protocol.Routine
+	added    bool // a project added by hand (D186)
+	where    []string
+	pinned   bool
+	hidden   bool
+	renamed  bool
+	order    *int
+	aliases  []string
 }
 
-// projectOf is the group a task goes in: the card's project, else its
-// folder's name, else "" (Other).
-func projectOf(task *store.Task) string {
+// lensKey is the lens a task is under: core's project key, else 电脑上的事 or 不在项目里.
+func lensKey(task *store.Task) string {
+	if k := task.ProjectKey(); k != "" {
+		return k
+	}
+	// An older home sends only the project's name (core's old field): it stays that task's lens.
 	if p := task.Project(); p != "" {
 		return p
 	}
-	if pl := task.Place(); pl.Kind == "repo" || pl.Kind == "folder" {
-		return lastPath(placePath(pl))
+	if task.ProjectGroup() == "computer" {
+		return lensComputers
 	}
-	return ""
+	return lensOther
 }
 
-// routineProject is the group a routine goes in: its project, else its
-// folder's name, else "" (no group: it stays on the shelf).
+// routineProject is the key a routine goes in: its stamped project, else its place's key is not
+// known here (the home stamps it); a routine with no key stays on the shelf.
 func routineProject(r protocol.Routine) string {
-	if r.Project != "" {
-		return r.Project
+	if r.ProjectKey != "" {
+		return r.ProjectKey
 	}
-	if r.Place != nil && (r.Place.Kind == "repo" || r.Place.Kind == "folder") {
-		return lastPath(placePath(*r.Place))
-	}
-	return ""
+	return r.Project
 }
 
-// projectGroups are the board's tasks by project, in the order their first
-// task comes on the board (what needs the user first, then working,
-// waiting, done today); then the projects added by hand with nothing yet;
-// Other last. Routines with a folder join their project's group.
-func projectGroups(b store.Board, added []protocol.ProjectView, routines []protocol.Routine) []projectGroup {
+// projectGroups are the board's tasks by project, in the order their first task comes on the
+// board (what needs the user first), then the projects added by hand with nothing yet, then the
+// two no-project lenses. Names, hidden, pinned and order come from the home's project list.
+func projectGroups(b store.Board, list []protocol.ProjectLens, routines []protocol.Routine) []projectGroup {
 	var out []projectGroup
 	at := map[string]int{}
-	group := func(name string, pl *protocol.Place) *projectGroup {
-		i, ok := at[name]
+	byKey := map[string]protocol.ProjectLens{}
+	for _, p := range list {
+		byKey[p.Key] = p
+	}
+	group := func(key string, pl *protocol.Place) *projectGroup {
+		i, ok := at[key]
 		if !ok {
 			i = len(out)
-			at[name] = i
-			out = append(out, projectGroup{name: name})
+			at[key] = i
+			g := projectGroup{key: key, name: key}
+			if p, ok := byKey[key]; ok {
+				g.name = p.Name
+				g.pinned, g.hidden, g.renamed, g.order = p.Pinned, p.Hidden, p.Renamed, p.Order
+				g.where = p.Devices
+				g.aliases = p.Aliases
+			}
+			out = append(out, g)
 		}
 		g := &out[i]
 		if pl != nil && g.place == nil && (pl.Kind == "repo" || pl.Kind == "folder") {
@@ -67,34 +84,63 @@ func projectGroups(b store.Board, added []protocol.ProjectView, routines []proto
 		}
 		return g
 	}
-	var other *projectGroup
+	var other, computers *projectGroup
 	for _, lane := range b.Lanes {
 		for _, task := range lane {
-			name := projectOf(task)
-			if name == "" {
+			key := lensKey(task)
+			switch key {
+			case lensOther:
 				if other == nil {
-					other = &projectGroup{}
+					other = &projectGroup{key: lensOther}
 				}
 				other.tasks = append(other.tasks, task)
 				continue
+			case lensComputers:
+				if computers == nil {
+					computers = &projectGroup{key: lensComputers}
+				}
+				computers.tasks = append(computers.tasks, task)
+				continue
 			}
 			pl := task.Place()
-			g := group(name, &pl)
+			g := group(key, &pl)
+			if g.name == key {
+				if n := task.ProjectName(); n != "" {
+					g.name = n
+				}
+			}
 			g.tasks = append(g.tasks, task)
 		}
 	}
 	for _, r := range routines {
-		if name := routineProject(r); name != "" {
-			g := group(name, r.Place)
+		if key := routineProject(r); key != "" && key != lensOther && key != lensComputers {
+			g := group(key, r.Place)
+			if g.name == key && r.ProjectName != "" {
+				g.name = r.ProjectName
+			}
 			g.routines = append(g.routines, r)
 		}
 	}
-	for _, p := range added {
-		pl := p.Place
-		group(p.Name, &pl)
+	for _, p := range list {
+		if _, ok := at[p.Key]; ok {
+			continue
+		}
+		if !p.Added {
+			continue
+		}
+		var pl *protocol.Place
+		if p.Place != nil {
+			x := *p.Place
+			pl = &x
+		}
+		g := group(p.Key, pl)
+		g.added = true
 	}
 	if other != nil {
 		out = append(out, *other)
+	}
+	if computers != nil {
+		out = append(out, *computers)
 	}
 	return out
 }

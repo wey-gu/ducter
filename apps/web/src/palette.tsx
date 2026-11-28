@@ -14,7 +14,7 @@ import { openIt as openMade, kindWord, Tile } from "./made.tsx";
 import { storyOf, switchList } from "./onhand.tsx";
 import { dateOf, Glyph, Marked, openPast } from "./past.tsx";
 import { askSteps, forgetSteps, PV, startRedo } from "./past-preview.tsx";
-import { attention, placeOf, projectOf, reportOf, title, type Task } from "./store.ts";
+import { attention, placeOf, projectGroupOf, projectNameOf, projectOf, reportOf, title, type Task } from "./store.ts";
 import { shortTitle } from "./transcript.tsx";
 import { stateLabel } from "./views.tsx";
 import { computerName, manyComputers } from "./where.ts";
@@ -80,7 +80,7 @@ function itemOfTask(x: Task): PastItem {
   return {
     taskId: x.id,
     title: title(x),
-    project: projectOf(x),
+    project: projectNameOf(x),
     harness: x.card?.harness ?? x.open?.harness ?? "",
     ...((x.card?.model ?? x.open?.model) ? { model: x.card?.model ?? x.open?.model } : {}),
     ...(manyComputers() && dev ? { computer: computerName(dev) } : {}),
@@ -113,7 +113,7 @@ function liveRow(x: Task): TaskRow {
     id: x.id,
     title: shortTitle(title(x)),
     harness: x.card?.harness ?? x.open?.harness ?? "",
-    facts: [projectOf(x) || (p.kind === "repo" ? p.repoPath.split("/").pop() : ""), p.kind === "repo" && p.branch ? <span class="k-mono">{p.branch}</span> : undefined, manyComputers() && dev ? computerName(dev) : undefined],
+    facts: [projectNameOf(x) || (p.kind === "repo" ? p.repoPath.split("/").pop() : ""), p.kind === "repo" && p.branch ? <span class="k-mono">{p.branch}</span> : undefined, manyComputers() && dev ? computerName(dev) : undefined],
     state: { word: stateLabel(a), ...(a === "needs_you" ? { tone: "needs" } : a === "failed" ? { tone: "failed" } : {}) },
     done: !ACTIVE.has(a),
     place: p,

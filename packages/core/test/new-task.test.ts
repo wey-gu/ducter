@@ -118,7 +118,10 @@ test("task_new opens a task with the user's words as they are, says nothing in t
   expect(res).toMatchObject({ ok: true, clientId: "c1", taskId: "t1" });
   expect(res.card).toMatchObject({ title: "修一下 tinycart 里失败的测试", openedBy: "you", project: "tinycart", place: { kind: "repo", repoPath: r, baseBranch: "main" } });
   // Verbatim: no rewrite, the brief is exactly what they typed.
-  expect(opened).toEqual([{ persona: "default", title: "修一下 tinycart 里失败的测试", brief: words, place: { kind: "repo", device: "local", repoPath: r, baseBranch: "main" }, project: "tinycart", harness: "codex", language: "zh", origin: "you" }]);
+  expect(opened).toMatchObject([{ persona: "default", title: "修一下 tinycart 里失败的测试", brief: words, place: { kind: "repo", device: "local", repoPath: r, baseBranch: "main" }, project: "tinycart", harness: "codex", language: "zh", origin: "you" }]);
+  // D654 (research/245 §3.2): core stamps the project's identity at open (no remote: its path).
+  expect((opened[0] as { projectKey?: string }).projectKey).toStartWith("folder:local:");
+  expect((opened[0] as { projectName?: string }).projectName).toBe("tinycart");
   const open = core.log.read({ stream: "task:t1", kinds: ["task_open"] })[0]!.body as Bodies["task_open"];
   expect(open.origin).toBe("you");
   // The conversation shows nothing: no ack, no message, no visible job line.

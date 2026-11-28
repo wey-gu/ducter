@@ -175,6 +175,15 @@ export interface CoreApi {
   keepNow?(taskId: string): string | undefined;
   /** D522: one short, tool-less question on the cheapest model of the agent the partner thinks with, for a new task's branch words (runner/src/branch-name.ts); absent in tests and stubs (then: the fallback name). */
   branchAsk?(prompt: string): Promise<string>;
+  /** D654 (research/245 §3.2): a place's project identity, read once in core: the
+   *  repository's normalized origin (else its computer and path), and the short name to show.
+   *  Absent in tests and stubs: the card falls back to its place's folder name. */
+  projectKeyFor?(place: Place): Promise<{ key: string; name: string; remote?: string }>;
+  /** D654 (research/245 §3.2): the partner's one way to change projects in words: rename,
+   *  merge (an alias, undoable), hide, pin, or set the order. */
+  projectChange?(change: import("./index.ts").ProjectChange): { ok: true; changed: import("./index.ts").ProjectChange } | { ok: false; error: string };
+  /** D654: the project rows as they stand (for the partner's answer and the project_change tool). */
+  projectList?(): import("./index.ts").ProjectLens[];
   /** D476: the home itself as the partner's [devices] line names it: its name, its other names, its agents as last probed. */
   homeDevice?(): { name: string; aliases?: string[]; harnesses?: { id: string; installed?: boolean; loggedIn: boolean; version?: string; /** D549 */ trouble?: { kind: string } }[]; /** D538 */ resources?: import("./index.ts").DeviceResources } | undefined;
   /**
@@ -879,7 +888,7 @@ export interface Runner {
   // adopt (D299): a session the person ran in their own agent outside Ducter, carried on as this
   // task in its own folder: its conversation (the person's words and the agent's) goes into the
   // task's history; the same agent resumes it by id, another agent starts from what it said.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string; /** D522: the to-do's number(s) its branch starts with (`11028`, `11028-11029`) */ todo?: string }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; /** D654 (research/245 §3.2): core's project identity, stamped at open. */ projectKey?: string; projectName?: string; projectGroup?: "computer" | "none"; harness?: string; model?: string; effort?: string; language?: LangTag; origin?: "you"; needs?: TaskNeeds; workKind?: WorkKind; media?: MediaRef[]; from?: string; fromStep?: number; fromCommit?: string; adopt?: AdoptSession; /** D476 */ bound?: import("./index.ts").TaskBound; /** D479 */ replaces?: string; /** D522: the to-do's number(s) its branch starts with (`11028`, `11028-11029`) */ todo?: string }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.

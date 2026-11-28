@@ -205,7 +205,11 @@ export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.
 export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };
 /** D202: the effort it runs at, when the user picked one ("" = the model's own default). */
 export const effortOf = (t: Task) => { const w = whoOf(t); return w ? w.effort ?? "" : t.open?.effort || t.card?.effort || ""; };
-export const projectOf = (t: Task) => t.open?.project ?? t.card?.project ?? "";
+// D654 (research/245 §3.2): the card carries the project's identity and name from core. The
+// web never derives either from a folder name again; `project` stays only for an older home.
+export const projectOf = (t: Task) => t.open?.projectKey ?? t.card?.projectKey ?? t.open?.project ?? t.card?.project ?? "";
+export const projectNameOf = (t: Task) => t.open?.projectName ?? t.card?.projectName ?? projectOf(t);
+export const projectGroupOf = (t: Task): "computer" | "none" | "" => t.open?.projectGroup ?? t.card?.projectGroup ?? "";
 export const bodyReasonOf = (t: Task) => t.open?.bodyReason || t.card?.bodyReason || "";
 export const finished = (t: Task) => ["done", "done_claimed", "failed"].includes(attention(t));
 

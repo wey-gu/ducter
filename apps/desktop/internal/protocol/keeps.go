@@ -103,6 +103,8 @@ type KeepBell struct {
 type KeepSheet struct {
 	ID          string          `json:"id"`
 	Title       string          `json:"title"`
+	ProjectKey  string          `json:"projectKey,omitempty"`
+	ProjectName string          `json:"projectName,omitempty"`
 	Persona     string          `json:"persona,omitempty"`
 	Life        string          `json:"life"` // on, paused, done, stopped
 	Run         string          `json:"run"`  // same, fresh, perItem

@@ -125,13 +125,14 @@ import { browseFolders, changeDucterFolder, cloneProject, createFoundRepos, ghIn
 import { BROWSE_MAX, folderRoots, insideRoots, listFolders, projectRepos, realFs, type BrowseResult } from "@ducter/protocol/src/repos.ts";
 import { cloneRepo, type CloneResult } from "@ducter/protocol/src/clone.ts";
 import { answerClones, remoteKey, type ClonesAnswer } from "@ducter/protocol/src/clones.ts";
-import { folderInfo, realGit as realGitInfo, type FolderInfo } from "@ducter/protocol/src/folder-info.ts";
+import { folderInfo, projectShortName, realGit as realGitInfo, type FolderInfo } from "@ducter/protocol/src/folder-info.ts";
 import { createPlaces, createRepoWhere, type WhereComputer } from "./repo-where.ts";
 import { newProjectFolder, type NewFolderResult } from "@ducter/protocol/src/new-folder.ts";
 import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/protocol/src/git-login.ts";
 import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
+import { createProjectIdentities } from "./project-identity.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
 import { createOnHandAway } from "./onhand-away.ts";
 import { createAsks, type Asks } from "./asks.ts";
@@ -891,6 +892,15 @@ export function startCore(opts: CoreOptions = {}): Core {
     remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
     ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
   });
+  // D654 (research/245 §3.2): the project identity, read once per folder per computer.
+  const projectIdentities = createProjectIdentities({
+    projects,
+    ...(opts.git ? { git: opts.git } : {}),
+    remoteFolder: (dev, path) =>
+      computers.folderInfo(dev, path, 8_000).then((r) => (r === "offline" ? ("offline" as const) : r.remote ? { remote: r.remote } : {})),
+    nameOf: (dev) => (dev === "local" ? computers.homeName() : computers.nameOf(dev) ?? dev),
+    changed: () => onHandChanged(),
+  });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
   let autofillRef: Autofill | undefined;
   const savedPhone = () => {
@@ -1040,8 +1050,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
-    const on = backgroundIndex.decorate(keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))))));
+    const base = backgroundIndex.decorate(keepsDecorate(helpersDecorate(turnsDecorate(mendingDecorate(decorateBrowsing(changes.decorate(limitsDecorate(work.decorate(o)))))))));
     const added = projects.list();
+    // D654 (research/245 §3.2): the project decorator sees the folders added by hand too, so a
+    // project with no task yet is a row (and the partner's project_change can find its key).
+    const on = projectIdentities.decorate(added.length ? { ...base, projects: added } : base);
     const calls = phone.calls();
     // D312: every partner's own open questions, so On hand lists another partner's (a client leaves out the one it shows).
     const asks: PartnerAsk[] = partners.questions();
@@ -1548,6 +1561,19 @@ export function startCore(opts: CoreOptions = {}): Core {
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
   const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D654 (research/245 §3.2): a place's project identity, the one derivation every surface reads.
+  api.projectKeyFor = async (place) => {
+    const id = await projectIdentities.read(place);
+    const path = place.kind === "repo" ? place.repoPath : place.kind === "folder" ? place.path : "";
+    const name = id.remote ? projectShortName(id.remote) : basename(path.replace(/\/+$/, ""));
+    return { key: id.key, name: id.key ? name || id.key : "", ...(id.remote ? { remote: id.remote } : {}) };
+  };
+  work.routines.setProjectOf?.((place) => api.projectKeyFor!(place).then((p) => (p.key ? { key: p.key, name: p.name } : undefined)));
+  api.projectChange = (change) => {
+    const r = projects.change(change);
+    return r.ok ? { ok: true, changed: change } : r;
+  };
+  api.projectList = () => tasks.onHand().projectList ?? [];
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();

@@ -15,28 +15,59 @@ Words are the glossary's (`product-model.md`); the visuals are Pebble's (`ui.md`
 
 | Axis | What it answers | How it is shown | Kept |
 |---|---|---|---|
-| **Project** (lens) | Which part of my life or work is moving? | A column at the left of the board (Mac ≥ 1100 pt, web ≥ 1120 px); a row of names when narrower and on the phone | Per device (`OnHandLens` on the Mac, `ducter.onhand.lens` on the web) |
+| **Project** (lens) | Which repository, or part of my work, is moving? | A column at the left of the board (Mac ≥ 1100 pt, web ≥ 1120 px); a row of names when narrower and on the phone, never wrapping (what does not fit is in **更多 / More**) | Per device (`OnHandLens` on the Mac, `ducter.onhand.lens` on the web) |
 | **State** (filter) | What needs me, what works, what waits, what got done? | The strip: four counts, each a filter; the board's sections | Not kept: Esc or a second press lets go |
+| **From** (filter, D654) | Is this work from GitHub, Obsidian, Linear? | **来自 / From** chips over any project | Not kept: Esc lets go |
 
-A task's project is its `project`, else its folder's name, else **其他 / Other**. Nothing is set
-up: the column shows from two groups. Projects added by hand (D186) show before their first task.
-What belongs to no task (the partner's own asks, task-less waits, calls) shows under All and Other.
+**D654 (research/245 §3.2): a project's identity is its repository.** Core derives
+`projectKey`/`projectName` once (the normalized `origin`: `github.com/owner/repo`, `git@` and
+`https` alike, `.git` stripped, case-folded) and every client reads the card. A folder with no
+remote is its own project, keyed by its computer and path. A nested repository (the website inside
+the mem checkout) is its own origin, so its own project. Machines and worktrees are attributes,
+never projects. A task of no folder stands under **不在项目里 / Not in a project**, or under
+**电脑上的事 / On your computers** when it is an errand or a machine set-up. Projects added by hand
+(D186) are still rows, before their first task. What belongs to no task (the partner's own asks,
+task-less waits, calls) shows under All and 不在项目里.
 
 ## The project column
 
-`全部 / All`, each project in the order its most urgent task comes, then Other. A row:
+`全部 / All`, each project in the order that matters now: pinned first, then the person's drag
+order, else a project with something that needs the person, then the most recent activity; then
+不在项目里 and 电脑上的事. Core sends that order (`OnHand.projectList`), and both clients draw it.
+A row:
 
-- the name (Other in muted ink);
+- the name: the repository's short name (`mem`, `mem-backbone`, `nowledge-labs-website`), or
+  `owner/repo` when two repositories share one; the person's rename wins. It is one line, cut in
+  the middle when too long (`nowledge-…-website`, the start and the end kept), the whole in the
+  row's tooltip and the ⋯ menu's head. **其他 / Other** is now **不在项目里 / Not in a project**,
+  in muted ink; a person's asks and task-less waits stay there;
 - D455: with two or more computers, under it every computer the project lives on (where its tasks
-  ran, its routines start and it was added; one origin on two computers is one project), home
-  first, each its own small word, read aloud **在 {computers} 上 / on {computers}**;
+  ran, its routines start and it was added; one origin on any number of computers is one project),
+  home first, on one line, each its own small word (never joined), read aloud **在 {computers} 上 /
+  on {computers}**; what does not fit is **+N**, and the whole list is in the row's tooltip;
 - D471: no line counts (a sum of branches says nothing about a project) and no faces;
 - its count, in the needs-you ink where something there needs you (a question, a wait that
   stopped, a task that didn't work out); in the narrow row of names, the name itself in that ink.
 
-D471: the name is said whole, in up to two lines, never cut to the same few letters as its
-neighbour. A project whose every task never started there (its folder missing on that computer,
+D471 (amended): the name is never two ragged lines at a hyphen; one line with a middle ellipsis
+keeps its start and end. A project whose every task never started there (its folder missing on that computer,
 D395) is no project yet: no row; its tasks stand under All, where their fix is. All counts every task.
+
+**Managing a project, with zero setup.** Everything is on the row's ⋯ (D421's one menu), and every
+one is reversible from the same menu: **改名 / Rename** (kept per project key on the home, so every
+device sees it; **恢复原名 / Undo rename**), **合并到… / Merge into…** (for two remotes the person
+counts as one, a fork; it records an alias, **取消合并 / Undo merge**), **隐藏 / Hide** (its tasks
+still count under 全部 and in needs-you; a hidden project with something needing the person shows
+again), **置顶 / Pin** (pinned rows first, then by urgency). A drag on a project row keeps the
+person's order on the Mac and the wide web; the order is kept on the home too. The partner can do
+the same in words through one `project_change` tool (D175's eval owed).
+
+**The tab row never wraps.** On the phone and the narrow web, one row of names; what does not fit
+goes into one **更多 / More** menu. The column and the row keep the same order and the same names.
+
+**Origin is a filter, not a project.** 来自 GitHub, Obsidian and Linear are **来自 / From** chips
+over any project lens ("mem, from GitHub issues"), never a row in the project column. The D341
+summary card stays on the board. No project lens is made from a to-do source.
 
 The chosen row is the knob (D270: the card's white on its clay ledge). Opening a task turns the board into the rail (D244), narrowed by the
 same lens, whose head names it and goes back. With one project there is no lens to name, but the head stays: **‹ 任务 / Tasks** goes back

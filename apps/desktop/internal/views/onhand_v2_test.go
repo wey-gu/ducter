@@ -178,7 +178,7 @@ func TestOnHandLensAndStrip(t *testing.T) {
 	tt.Frame()
 	tt.Frame()
 	all := strings.Join(tt.Texts(), " ")
-	for _, want := range []string{"All", "ducter", "hawdb", "mem", "Other", "Retest", "Continue", "Put down", "more you've seen", "back at"} {
+	for _, want := range []string{"All", "ducter", "hawdb", "mem", "Not in a project", "Retest", "Continue", "Put down", "more you've seen", "back at"} {
 		if want == "Retest" {
 			continue
 		}

@@ -328,30 +328,34 @@ func TestTodoLens(t *testing.T) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	groups := app.lensGroups(app.S.Board())
+	// D654 (research/245 §3.2): 来自 / From is a filter over any project lens, never a row.
+	groups := app.sourceLensGroups(app.S.Board())
 	g := groupOf(groups, "src:src_gh")
 	if g == nil || len(g.tasks) != 2 || g.kind != "github" {
-		t.Fatalf("the GitHub lens: %+v", g)
+		t.Fatalf("the GitHub filter: %+v", g)
 	}
 	if v := groupOf(groups, "src:src_life"); v == nil || v.name != "Life" {
-		t.Fatalf("the vault's lens: %+v", v)
+		t.Fatalf("the vault's filter: %+v", v)
+	}
+	if lens := app.lensGroups(app.S.Board()); groupOf(lens, "src:src_gh") != nil {
+		t.Fatal("a to-do source is a project row again")
 	}
 	if err := tt.Click("GitHub"); err != nil {
 		t.Fatal(err)
 	}
 	todoFrames(tt, 2)
-	if app.Local.Lens() != "src:src_gh" || app.currentLens(app.lensGroups(app.S.Board())) != "src:src_gh" {
-		t.Fatalf("the lens kept is %q", app.Local.Lens())
+	if app.oh.source != "src:src_gh" {
+		t.Fatalf("the source filter is %q", app.oh.source)
 	}
-	b := lensBoard(app.S.Board(), "src:src_gh")
+	b := sourceBoard(app.S.Board(), "src:src_gh")
 	n := 0
 	for _, l := range b.Lanes {
 		n += len(l)
 	}
 	if n != 2 {
-		t.Errorf("the GitHub lens shows %d tasks, want 2", n)
+		t.Errorf("the GitHub filter shows %d tasks, want 2", n)
 	}
-	app.Local.SetLens("")
+	app.oh.source = ""
 }
 
 // New task: 从待办里选 asks for the open to-dos, a pick fills the words

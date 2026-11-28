@@ -403,6 +403,39 @@ func (t *Task) Project() string {
 	return ""
 }
 
+// ProjectKey (D654, research/245 §3.2): the project identity core derived. Never a folder
+// name: the Mac reads what the home sent.
+func (t *Task) ProjectKey() string {
+	if t.Open != nil && t.Open.ProjectKey != "" {
+		return t.Open.ProjectKey
+	}
+	if t.Card != nil {
+		return t.Card.ProjectKey
+	}
+	return ""
+}
+
+// ProjectName is the name the project row shows, from core (its rename, else the repo's name).
+func (t *Task) ProjectName() string {
+	if t.Open != nil && t.Open.ProjectName != "" {
+		return t.Open.ProjectName
+	}
+	if t.Card != nil && t.Card.ProjectName != "" {
+		return t.Card.ProjectName
+	}
+	// An older home sends only the project's old name; it is still core's, never re-derived here.
+	return t.Project()
+}
+
+// ProjectGroup: "computer" for 电脑上的事 / On your computers (an errand or machine set-up), "none"
+// for 不在项目里 / Not in a project; "" when the task has a project key.
+func (t *Task) ProjectGroup() string {
+	if t.Card != nil {
+		return t.Card.ProjectGroup
+	}
+	return ""
+}
+
 func (t *Task) BodyReason() string {
 	if t.Open != nil && t.Open.BodyReason != "" {
 		return t.Open.BodyReason

@@ -477,16 +477,18 @@ type ReadReceipt struct {
 }
 
 type TaskOpen struct {
-	TaskID     string `json:"taskId"`
-	Title      string `json:"title"`
-	Project    string `json:"project"`
-	Place      Place  `json:"place"`
-	Harness    string `json:"harness"`
-	Model      string `json:"model,omitempty"`
-	Effort     string `json:"effort,omitempty"` // D202
-	Brief      string `json:"brief"`
-	BodyReason string `json:"bodyReason,omitempty"`
-	Language   string `json:"language,omitempty"` // D292: a BCP 47 tag ("ko", "zh-Hant"; old "zh" / "en" are tags too), the language the user reads its reports in
+	TaskID      string `json:"taskId"`
+	Title       string `json:"title"`
+	Project     string `json:"project"`
+	ProjectKey  string `json:"projectKey,omitempty"`
+	ProjectName string `json:"projectName,omitempty"`
+	Place       Place  `json:"place"`
+	Harness     string `json:"harness"`
+	Model       string `json:"model,omitempty"`
+	Effort      string `json:"effort,omitempty"` // D202
+	Brief       string `json:"brief"`
+	BodyReason  string `json:"bodyReason,omitempty"`
+	Language    string `json:"language,omitempty"` // D292: a BCP 47 tag ("ko", "zh-Hant"; old "zh" / "en" are tags too), the language the user reads its reports in
 	// Origin "you" (D128): the user opened it themselves (New task, `ducter task`);
 	// empty: the partner did.
 	Origin string `json:"origin,omitempty"`
@@ -701,6 +703,9 @@ type Routine struct {
 	By      string `json:"by,omitempty"`
 	Place   *Place `json:"place,omitempty"`
 	Project string `json:"project,omitempty"`
+	// D654 (research/245 §3.2): the project identity stamped when it was made.
+	ProjectKey  string `json:"projectKey,omitempty"`
+	ProjectName string `json:"projectName,omitempty"`
 	// D245: kept from running by an account error; it tries again by itself.
 	Backoff *RoutineBackoff `json:"backoff,omitempty"`
 }
@@ -1073,10 +1078,16 @@ func NewEvent(seq int64, ts, persona, stream string, origin Origin, kind string,
 // ---------- On hand snapshot ----------
 
 type TaskCard struct {
-	TaskID            string    `json:"taskId"`
-	Persona           string    `json:"persona"`
-	Title             string    `json:"title"`
-	Project           string    `json:"project"`
+	TaskID  string `json:"taskId"`
+	Persona string `json:"persona"`
+	Title   string `json:"title"`
+	Project string `json:"project"`
+	// D654 (research/245 §3.2): the project's identity and name, derived once in core. The
+	// Mac reads these; it never derives a project from a folder name again.
+	ProjectKey        string    `json:"projectKey,omitempty"`
+	ProjectName       string    `json:"projectName,omitempty"`
+	ProjectGroup      string    `json:"projectGroup,omitempty"` // computer | none
+	WorkKind          string    `json:"workKind,omitempty"`
 	Place             Place     `json:"place"`
 	Harness           string    `json:"harness"`
 	Model             string    `json:"model,omitempty"`
@@ -1248,6 +1259,9 @@ type OnHand struct {
 	Missed []Waiter `json:"missed,omitempty"`
 	// Projects (D186) the user added by hand, shown before any task.
 	Projects []ProjectView `json:"projects,omitempty"`
+	// ProjectList (D654, research/245 §3.2): every project lens with the person's names,
+	// merges, hidden, pinned and order.
+	ProjectList []ProjectLens `json:"projectList,omitempty"`
 	// Calls (D193): live, waiting for Go, or ended today; newest first.
 	Calls []CallBody `json:"calls,omitempty"`
 	// Asks (D312): with more than one partner, every partner's own open
@@ -3087,6 +3101,8 @@ type ClientFrame struct {
 	Stop       bool           `json:"stop,omitempty"`    // update_all
 	Dismiss    bool           `json:"dismiss,omitempty"` // update_all
 	Version    string         `json:"version,omitempty"` // notes_seen
+	// D654 (research/245 §3.2): the project row's ⋯.
+	Change *ProjectChange `json:"change,omitempty"`
 }
 
 // ---------- Server -> client frames ----------
@@ -3857,6 +3873,33 @@ type ProjectView struct {
 	AddedAt string `json:"addedAt"`
 	// Remote (D455): a repo's origin; one repo on two computers is one project.
 	Remote string `json:"remote,omitempty"`
+	Key    string `json:"key,omitempty"` // D654: the project identity
+}
+
+// ProjectLens (D654, research/245 §3.2) is one row of the project column: its identity, the
+// name the person sees, where it lives, and how they set it.
+type ProjectLens struct {
+	Key     string   `json:"key"`
+	Name    string   `json:"name"`
+	Devices []string `json:"devices,omitempty"`
+	Hidden  bool     `json:"hidden,omitempty"`
+	Pinned  bool     `json:"pinned,omitempty"`
+	Renamed bool     `json:"renamed,omitempty"`
+	Order   *int     `json:"order,omitempty"`
+	Added   bool     `json:"added,omitempty"`
+	Place   *Place   `json:"place,omitempty"`
+	Aliases []string `json:"aliases,omitempty"`
+}
+
+// ProjectChange (D654, research/245 §3.2) is one change from the project row's ⋯.
+type ProjectChange struct {
+	Act    string   `json:"act"`
+	Key    string   `json:"key,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Into   string   `json:"into,omitempty"`
+	Hidden bool     `json:"hidden,omitempty"`
+	Pinned bool     `json:"pinned,omitempty"`
+	Keys   []string `json:"keys,omitempty"`
 }
 
 // TaskNewOptions asks what the New task card offers at Place (nil: this

@@ -177,6 +177,13 @@ core.setPartner({ onTrigger() {} });
 if (want !== "fresh" && want !== "sign_in") core.persona.mem = { agentId: "ducter", owned: true };
 core.settings.setMemState(want === "fresh" || want === "sign_in" ? "missing" : "connected");
 core.settings.set({ language: zh ? "zh" : "en", ...(want === "off" ? { memory: false } : {}) });
+// D652: DEMO_MEM_DONE=failed makes the pretend Mem refuse a correction (its sign-in lapsed), so
+// a shot can show the failed line; ok answers as the demo Mem does. Unset: the hooks are the demo's own.
+if (process.env.DEMO_MEM_DONE) {
+  const failed = process.env.DEMO_MEM_DONE === "failed";
+  core.settings.setForgetter(async () => (failed ? { ok: false, reason: "not_configured", why: "signed_out" } : { ok: true }));
+  core.settings.setReplacer(async (id, title) => (failed ? { ok: false, reason: "not_configured", why: "signed_out" } : { ok: true, id: `${id}_fixed` }));
+}
 
 // What it noted, as the partner writes it: a stated preference, a decision, a fact about the work.
 const H = 3600_000;

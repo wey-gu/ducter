@@ -37,9 +37,10 @@ seedConnection(core.dataDir, mem);
 if (memOn) core.settings.setMemState("connected");
 // D321: forgetting and fixing on the Memory page reach the pretend Mem.
 if (memOn) {
-  const { demoForget, demoFix } = await import("./demo-mem.ts");
+  const { demoForget, demoFix, demoReplace } = await import("./demo-mem.ts");
   core.settings.setForgetter(demoForget);
   core.settings.setCorrector(demoFix);
+  core.settings.setReplacer(demoReplace);
 }
 // A quiet partner: the seed below writes its words, so a live reply would only be noise.
 core.setPartner({ onTrigger() {} });

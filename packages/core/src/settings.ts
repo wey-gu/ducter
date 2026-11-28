@@ -4,7 +4,7 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemCheckAnswer, MemItem, MemView, NewTasks, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import type { Bodies, MemCheckAnswer, MemDoneOp, MemDoneWhy, MemItem, MemView, NewTasks, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { FIRST_MEETS, isFirstMeet, DEFAULT_AFTER_CHOICES, DEFAULT_PROACTIVE, HARNESSES, PROACTIVE_MODES, isHarnessId, normalizeTag, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
@@ -19,8 +19,15 @@ const HIDDEN_MAX = 500;
 export interface GlanceOps {
   forgot(id: string): void;
   fixed(id: string, title: string): void;
+  /** D652: a corrected row is a new memory (the old one superseded): its id changes. */
+  replaced(oldId: string, newId: string, title: string, kind?: MemItem["kind"]): void;
   find(q: string): Promise<MemItem[] | undefined>;
 }
+
+/** D652: what the partner's Mem client answers for one write, before it is said to the page. */
+export type MemWriteResult = { ok: boolean; id?: string; reason?: string; why?: "missing" | "signed_out" | "off"; message?: string };
+/** D652: the page's answer for 改 / 忘掉: Mem took it, or why not in D590's three words. */
+export type MemDoneResult = { ok: true; title?: string; id?: string } | { ok: false; why: MemDoneWhy };
 
 interface SettingsFile {
   language?: TalkLanguage;
@@ -103,8 +110,13 @@ export interface SettingsStore extends SettingsApi {
   /** D465: settle one of Mem's asks; true when Mem took it. */
   answerMem(id: string, answer: MemCheckAnswer): Promise<boolean>;
   /** D321: Settings › 记忆's own rows, by Mem's id: forget one in Mem; fix its words in Mem. True when Mem did. */
-  forgetMem(id: string): Promise<boolean>;
-  fixMem(id: string, title: string): Promise<boolean>;
+  forgetMem(id: string): Promise<MemDoneResult>;
+  /** D652: the corrected words replace the old memory by id (new memory + `m supersede`), same kind. */
+  fixMem(id: string, title: string, kind?: MemItem["kind"]): Promise<MemDoneResult>;
+  /** D652: the partner's Mem client's own supersede, so the page's 改 retires a memory by id, whoever wrote it. */
+  setReplacer(fn: (id: string, title: string, kind?: MemItem["kind"]) => Promise<MemWriteResult>): void;
+  /** D652: Mem's feedback verb, once its nmem has one (`m feedback`); the intent is Logged either way. */
+  setFeedback(fn: (id: string, note?: string) => Promise<boolean>): void;
   /** D321: search Mem for the page (titles only); undefined when Mem didn't answer. */
   findMem(q: string): Promise<MemItem[] | undefined>;
   /** Forgets one noted line (D304: or one 想起了 line's memory): in Mem when possible, else hidden here. */
@@ -167,7 +179,7 @@ export function openSettings(opts: {
   };
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
-  let forgetter: ((id: string) => Promise<boolean>) | undefined;
+  let forgetter: ((id: string) => Promise<MemWriteResult>) | undefined;
   let memHooks: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0] | undefined;
   let glance: (() => MemView["glance"]) | undefined;
   let glanceOps: GlanceOps | undefined;
@@ -266,6 +278,17 @@ export function openSettings(opts: {
     return opts.log.read({ stream: "channel", kinds: ["memory_recalled"], limit: 500 }).filter((e) => hidden.has(e.seq)).map((e) => e.seq);
   };
   let corrector: ((id: string, title: string) => Promise<boolean>) | undefined;
+  let replacer: ((id: string, title: string, kind?: MemItem["kind"]) => Promise<MemWriteResult>) | undefined;
+  let feeder: ((id: string, note?: string) => Promise<boolean>) | undefined;
+  /** D652: Mem's own reason in D590's words, for the page's failed line. */
+  const memWhy = (r: { reason?: string; why?: string }): MemDoneWhy =>
+    r.why === "signed_out" ? "signed_out" : r.why === "off" ? "off" : r.why === "missing" ? "missing" : r.reason === "unavailable" ? "unreachable" : "refused";
+  /** D652: tell Mem the recall was wrong when it can; the Log holds the intent either way. */
+  const feedbackMem = async (id: string, op: MemDoneOp, note?: string) => {
+    const sent = feeder ? await feeder(id, note).catch((err) => (console.warn("[settings] telling Mem a memory was wrong failed:", (err as Error).message), false)) : false;
+    opts.log.append({ stream: "channel", origin: "system", kind: "memory_feedback", body: { memoryId: id, op, ...(note ? { note } : {}), sent } });
+    return sent;
+  };
 
   return {
     get,
@@ -275,6 +298,12 @@ export function openSettings(opts: {
     },
     setCorrector(fn) {
       corrector = fn;
+    },
+    setReplacer(fn) {
+      replacer = fn;
+    },
+    setFeedback(fn) {
+      feeder = fn;
     },
     setMemHooks(h) {
       memHooks = h;
@@ -309,17 +338,33 @@ export function openSettings(opts: {
       glanceOps = ops;
     },
     async forgetMem(id) {
-      if (!forgetter || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
-      const ok = await forgetter(id).catch((err) => (console.warn("[settings] forgetting in Mem failed:", (err as Error).message), false));
-      if (ok) glanceOps?.forgot(id);
-      return ok;
+      if (!forgetter || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return { ok: false, why: forgetter ? "refused" : "missing" };
+      const title = glance?.()?.about.find((x) => x.id === id)?.title;
+      const r = await forgetter(id).catch((err) => (console.warn("[settings] forgetting in Mem failed:", (err as Error).message), { ok: false as const, reason: "unavailable" as const }));
+      if (!r.ok) return { ok: false, why: memWhy(r) };
+      glanceOps?.forgot(id);
+      void feedbackMem(id, "forget");
+      return { ok: true, ...(title ? { title } : {}) };
     },
-    async fixMem(id, title) {
+    async fixMem(id, title, kind) {
       const words = title.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
-      if (!corrector || !words || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      if (!words || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) return { ok: false, why: "refused" };
+      // D652: the replacement supersedes that id (a memory another tool wrote included). An
+      // older partner's client has only `correct`, which edits in place; the result is still a
+      // correction that sticks, just without the two-copy audit trail.
+      if (replacer) {
+        const r = await replacer(id, words, kind).catch((err) => (console.warn("[settings] fixing in Mem failed:", (err as Error).message), { ok: false as const, reason: "unavailable" as const }));
+        if (!r.ok) return { ok: false, why: memWhy(r) };
+        glanceOps?.replaced(id, r.id ?? id, words, kind);
+        void feedbackMem(id, "fix", words);
+        return { ok: true, title: words, ...(r.id ? { id: r.id } : {}) };
+      }
+      if (!corrector) return { ok: false, why: "missing" };
       const ok = await corrector(id, words).catch((err) => (console.warn("[settings] fixing in Mem failed:", (err as Error).message), false));
-      if (ok) glanceOps?.fixed(id, words);
-      return ok;
+      if (!ok) return { ok: false, why: "refused" };
+      glanceOps?.fixed(id, words);
+      void feedbackMem(id, "fix", words);
+      return { ok: true, title: words };
     },
     async findMem(q) {
       return glanceOps ? glanceOps.find(q) : undefined;
@@ -496,7 +541,7 @@ export function openSettings(opts: {
       let how: "mem" | "hidden" = "hidden";
       if (id && forgetter) {
         try {
-          if (await forgetter(id)) how = "mem";
+          if ((await forgetter(id)).ok) how = "mem";
         } catch (err) {
           console.warn("[settings] forgetting in Mem failed:", (err as Error).message);
         }

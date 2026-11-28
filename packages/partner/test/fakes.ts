@@ -232,7 +232,7 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
   const abouts: number[] = [];
   const archived: string[] = [];
   // D304: every seeded memory has Mem's id and source (the person's words to Ducter by default).
-  const all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
+  let all = seed.map((m, i) => ({ ...m, id: m.id ?? `mem-seed-${i + 1}`, source: m.source ?? "ducter" }));
   const memory: MemoryClient = {
     async search(query, limit) {
       searches.push({ query, limit });
@@ -266,7 +266,11 @@ export function fakeMemory(seed: { id?: string; title: string; content: string; 
     async add(m) {
       if (opts.down) return downResult(opts.down);
       added.push(m);
-      return { ok: true, id: `mem-${added.length}` };
+      // D652: the id the person named is superseded (whoever wrote it); its title comes back,
+      // as Mem's own supersede would report it.
+      const old = m.replaces ? all.find((x) => x.id === m.replaces) : undefined;
+      if (old) all = all.filter((x) => x.id !== old.id);
+      return { ok: true, id: `mem-${added.length}`, ...(old ? { replaced: { id: old.id, title: old.title } } : {}) };
     },
   };
   return { memory, searches, added, threadSearches, abouts, archived };

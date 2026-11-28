@@ -3,7 +3,7 @@ import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow, brainOptions } from "./brain.ts";
 import { CLIENT_SHAPES, HARNESSES, harnessName, isHarnessId, isProactiveYesNo, PILE_GROUPS, shapeOfModel, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, KeepChange, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, KeepChange, ClientKind, Delivery, FileOpenError, LogEvent, MediaRef, MemCheckAnswer, MemItem, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -952,10 +952,12 @@ export function createWsHandler(deps: WsDeps) {
         const wanted = liveRefs(f.text ?? "", cleanRefs(f.refs));
         const held = wanted.length && deps.mentions ? await deps.mentions.resolve(wanted).catch(() => []) : [];
         const refs = held.length ? { refs: held } : {};
+        // D652: the id the person's 这条不对 tap named, for the partner's correction; shaped here.
+        const corrects = typeof f.corrects === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(f.corrects) ? { corrects: f.corrects } : {};
         // D309: words to a second partner go into its own conversation; D312: a reply quotes within it.
         if (ws.data.partner && deps.partners?.has(ws.data.partner)) {
           // D516: iMessage on a Mac showing it: the bridge marks the turn by its via and answers there.
-          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...refs, stream: channelOf(ws.data.partner) });
+          logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...refs, ...corrects, stream: channelOf(ws.data.partner) });
           return;
         }
         // D405: typed in an app's sheet: about that app.
@@ -964,7 +966,7 @@ export function createWsHandler(deps: WsDeps) {
         // D511: typed on a Keep's page: about that Keep (the partner changes it with keep_change).
         const kp = typeof f.keep === "string" ? deps.past?.keeps?.get(f.keep) : undefined;
         const keep = kp ? { keep: { id: kp.keepId, title: kp.title } } : {};
-        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app, ...keep, ...refs });
+        logUserMessage(log, decisions, { text: f.text ?? "", clientId: f.clientId, media, ...(f.reply ? { reply: f.reply } : {}), ...(via ? { via } : {}), ...app, ...keep, ...refs, ...corrects });
         return; // the partner is triggered by core's user_msg subscription
       }
       case "partners": {
@@ -1584,12 +1586,18 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "mem_forget":
       case "mem_fix": {
-        // D321: the Memory page's own rows. A change pushes a fresh frame to every subscriber (the
-        // glance changed); Mem didn't do it: answer this one, so the row comes back as it was.
+        // D321: the Memory page's own rows. D652: the page hears from Mem, not from its own tap:
+        // a success (the fresh settings frame already follows) says the partner's line; a refusal
+        // answers this socket alone with the row as it was and why, in D590's words. No optimistic
+        // change is the page's, so a refusal has nothing to undo.
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
-        const ok = f.t === "mem_forget" ? await deps.settings.forgetMem(String(f.id ?? "")) : await deps.settings.fixMem(String(f.id ?? ""), String(f.title ?? ""));
-        if (!ok) send(ws, await settingsFrame());
+        const op = f.t === "mem_fix" ? "fix" : "forget";
+        const r =
+          f.t === "mem_fix"
+            ? await deps.settings.fixMem(String(f.id ?? ""), String(f.title ?? ""), f.kind && ["preference", "decision", "fact", "other"].includes(f.kind) ? (f.kind as MemItem["kind"]) : undefined)
+            : await deps.settings.forgetMem(String(f.id ?? ""));
+        send(ws, { t: "mem_done", id: String(f.id ?? ""), op, ok: r.ok, ...(r.ok ? { ...(r.title ? { title: r.title } : {}), ...(r.id ? { newId: r.id } : {}) } : { why: r.why }) } as ServerFrame);
         return;
       }
       case "mem_answer": {

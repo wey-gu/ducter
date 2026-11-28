@@ -163,13 +163,18 @@ function MemRow({ m, open, onOpen, bare }: { m: MemItem; open: boolean; onOpen: 
   const [mode, setMode] = useState<"" | "fix" | "ask">("");
   const [words, setWords] = useState(m.title);
   const src = bySource(m);
+  const busy = A.memBusy?.id === m.id ? A.memBusy : undefined;
+  const failed = A.memFailed?.id === m.id ? A.memFailed : undefined;
+  // D652: a refusal's one line, in the failed ink: which change, why in D590's words, and the
+  // one way through that this state has (the head's own action, or trying again).
+  const failLine = failed && t(`mem.done.failed.${failed.op}`, t(`mem.done.why.${failed.why}`));
   // D459: a row speaks only when it differs (D399): what the person told it is said once in the
   // section's note; only another tool's row carries a mark (its coin), never a dot on every row.
   const tile = m.by === "tool" && m.from ? <ToolTile from={m.from} /> : bare ? null : <span class="g-tile" aria-hidden="true" />;
-  if (open && mode === "ask")
-    return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (setMode(""), onOpen(""), A.memForget(m.id), say("mem-about", t("said.mem.forget", m.title)))} />;
-  if (open && mode === "fix") {
-    const save = () => words.trim() && (A.memFix(m.id, words), say("mem-about", t("said.mem.fix", words.trim().replace(/\s+/g, " "))), setMode(""), onOpen(""));
+  if (open && mode === "ask" && !busy)
+    return <GConfirm ask={t("mem.item.forget.ask", m.title)} keep={t("mem.forget.keep")} go={t("partner.memory.forget")} about={m.title} onKeep={() => setMode("")} onGo={() => (A.memForget(m.id, m.title), setMode(""))} />;
+  if (open && mode === "fix" && !busy) {
+    const save = () => words.trim() && (A.memFix(m.id, words, m.kind), setMode(""));
     return (
       <GBlock>
         <input class="mem-fix" dir="auto" value={words} aria-label={t("learned.fix")} onInput={(e) => setWords((e.target as HTMLInputElement).value)} onKeyDown={(e) => (e.key === "Enter" ? save() : e.key === "Escape" && (setWords(m.title), setMode("")))} ref={(el) => el?.focus()} />
@@ -190,11 +195,23 @@ function MemRow({ m, open, onOpen, bare }: { m: MemItem; open: boolean; onOpen: 
         </span>
         {m.at && <span class="g-state">{ago(A.L, m.at)}</span>}
       </button>
-      {open && (
+      {open && failed && (
+        <div class="chat-foot mem-item-acts">
+          <small class="grow mem-failed" role="alert">{failLine}</small>
+        </div>
+      )}
+      {open && busy && (
+        <div class="chat-foot mem-item-acts" aria-busy="true">
+          <small class="grow mem-wait" role="status">
+            <span class="spin sm" aria-hidden="true" /> {t("mem.done.wait")}
+          </small>
+        </div>
+      )}
+      {open && !busy && (
         <div class="chat-foot mem-item-acts">
           <small class="grow">{t("mem.item.wrong")}</small>
           <span class="g-acts">
-            <Btn kind="text" size="sm" label={t("learned.fix")} about={m.title} onClick={() => setMode("fix")} />
+            <Btn kind="text" size="sm" label={t("learned.fix")} about={m.title} onClick={() => (setMode("fix"), setWords(m.title))} />
             <DangerButton quiet label={t("partner.memory.forget")} about={m.title} onClick={() => setMode("ask")} />
           </span>
         </div>

@@ -411,7 +411,7 @@ export interface Bodies {
   // via "imessage" (D277): through the Mac app's iMessage bridge.
   // app (D405): words about one of the person's apps (typed in its sheet), or the app's own ask (app.ask).
   // passed (D486): the person's words, said to another partner and passed on by it (that partner's id).
-  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; /** D580: the chat-app thread these words were written in, before them (outside data). */ thread?: ChatThread; app?: AppRef; passed?: { from: string; /** D649: the chat app this turn came from, and which of the person's messages it was. */ via?: ChannelKind; seq?: number }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
+  user_msg: { text: string; clientId?: string; media?: MediaRef[]; reply?: ReplyRef; via?: ChannelKind | "imessage" | "share"; /** D652: the memory id the person's own 这条不对 tap named, carried to the partner. */ corrects?: string; /** D537: through the phone's share sheet: where the shared thing begins in text, and from which app. */ shared?: import("./share.ts").SharedFrom; forwarded?: { from?: string }; /** D580: the chat-app thread these words were written in, before them (outside data). */ thread?: ChatThread; app?: AppRef; passed?: { from: string; /** D649: the chat app this turn came from, and which of the person's messages it was. */ via?: ChannelKind; seq?: number }; /** D511: typed on a Keep's page: about that Keep. */ keep?: { id: string; title: string }; /** D534: what the person referred to with @ or /, as the home resolved it. */ refs?: import("./mentions.ts").HeldRef[] };
   // decisionId: a task's question said in the partner's own words (D129); clients show it as
   // that decision's question, not as a message of its own.
   // media (D206): what a task showed, relayed with the partner's words about it.
@@ -819,6 +819,11 @@ export interface Bodies {
    */
   mem_file: { media: string; name: string; by: "tap" | "partner" | "auto"; op: "add" | "update" | "folder" | "space"; space?: string; target?: string; ok: boolean; uri?: string; rev?: number; why?: string; message?: string; code?: number; raw: string };
   memory_noted: { title: string; memoryId?: string; replyTo?: number; replaced?: { id?: string; title: string }; waiting?: string };
+  // D652: the person said a memory is wrong, and what Ducter did with that. Mem's feedback verb
+  // (memory_feedback, MCP only today) is where it goes; until nmem has one this is the record of the
+  // intent (sent false), replayed when the CLI grows the verb (design/todo.md's trigger). Never a
+  // visible line: the page's own said or failed line is the person's answer.
+  memory_feedback: { memoryId: string; op: MemDoneOp; note?: string; sent: boolean };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
   // at most one per reply, and only a memory memory_search returned that turn (the partner names
@@ -1586,7 +1591,7 @@ export type ClientFrame =
   // media (D206): ids from POST /api/media; the home turns them into refs. text may be empty then.
   // reply (D236): the one message this answers (core fills in its quote from the Log).
   // via (D277): the Mac app's iMessage bridge relays words the person wrote in iMessage.
-  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string; /** D534: what the words refer to with @ or / (mentions.ts). */ refs?: import("./mentions.ts").Ref[] } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
+  | { t: "send"; text: string; clientId: string; media?: string[]; reply?: ReplyWant; via?: "imessage"; app?: string; keep?: string; /** D652: the id a 这条不对 tap named (the person's own claim). */ corrects?: string; /** D534: what the words refer to with @ or / (mentions.ts). */ refs?: import("./mentions.ts").Ref[] } // app (D405): typed in that app's sheet; keep (D511): on that Keep's page
   // D277: the Mac app's iMessage bridge says how it stands (on: it reads and answers there).
   // While some socket says on and the person last wrote from iMessage, the home's push stays quiet
   // for what the bridge carries, so each thing reaches them once.
@@ -1783,9 +1788,11 @@ export type ClientFrame =
   | { t: "memory_correct"; seq: number; title: string }
   // D321: Settings › 记忆's own rows, by Mem's id: forget one, or fix its words (both through the
   // partner's Mem client, as its identity); find searches Mem (≤ 8 hits, titles only), answered by a
-  // mem_found frame to this socket.
+  // mem_found frame to this socket. D652: fix carries the row's kind, so the replacement Mem
+  // keeps the same kind (a corrected preference stays under 你喜欢的做法). Both are answered by
+  // mem_done, after Mem answered.
   | { t: "mem_forget"; id: string }
-  | { t: "mem_fix"; id: string; title: string }
+  | { t: "mem_fix"; id: string; title: string; kind?: MemItem["kind"] }
   | { t: "mem_find"; q: string }
   // D465: settle one of Mem's asks (or turn an on rule off: answer "not"); answered with mem_answered.
   | { t: "mem_answer"; id: string; answer: MemCheckAnswer }
@@ -2211,6 +2218,12 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; /** D536: with more than one partner. */ brainOptions?: BrainOption[]; forgot?: { seq: number; how: "mem" | "hidden" }; corrected?: { seq: number; how: "mem" | "here" }; undid?: { seq: number; ok: false }; bridge?: BridgeView; ownAgents?: ("claude-code" | "codex" | "pi")[]; helpers?: import("./helpers.ts").HelperView[] }
   // D321: what Mem found for Settings › 记忆's search (ok false: Mem didn't answer).
   | { t: "mem_found"; q: string; ok: boolean; items: MemItem[] }
+  // D652: the answer to mem_forget / mem_fix, after Nowledge Mem answered. ok true: the memory
+  // is forgotten or its replacement took its place (the fresh settings frame follows); ok false: the
+  // row is as it was, and why says which of D590's three: signed_out, unreachable, refused (off and
+  // missing are the two states only a page opened before the change can be in). The client shows the
+  // partner's said line only on ok, and one line in the failed ink otherwise.
+  | { t: "mem_done"; id: string; op: MemDoneOp; ok: boolean; why?: MemDoneWhy; title?: string; newId?: string }
   // D465: whether Nowledge Mem took the answer (ok false: it's back on the page, to settle in Mem).
   | { t: "mem_answered"; id: string; answer: MemCheckAnswer; ok: boolean }
   // D372: defaults: the built-in default per kind of work, when it differs between kinds.
@@ -3475,6 +3488,10 @@ export interface MemItem {
   from?: string;
   at?: string;
 }
+/** D652: the two changes Settings › 记忆 makes by a memory's own id. */
+export type MemDoneOp = "fix" | "forget";
+/** D652: why Mem didn't take one, in D590's words: the sign-in lapsed, it couldn't be reached, or it refused. */
+export type MemDoneWhy = "signed_out" | "unreachable" | "refused" | "off" | "missing";
 
 /**
  * D295, D321: a glance at Mem itself, when it answers. total: how many memories it holds. about: what

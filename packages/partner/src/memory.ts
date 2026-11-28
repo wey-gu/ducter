@@ -106,6 +106,12 @@ export interface MemoryAdd {
   labels?: string[];
   /** D538: Mem's unit type (`--unit-type`): a placement rule is the person's preference. */
   unitType?: SearchOpts["unitType"];
+  /**
+   * D652: the id the person named as wrong (this 这条不对, or the page's 改): this save
+   * supersedes that memory whoever wrote it, instead of the search for the partner's own earlier
+   * one. The tool's caller checks the id was named by the person; the client only checks its shape.
+   */
+  replaces?: string;
 }
 
 /** D329: the partner's own earlier memory a save took the place of (Mem's supersede). */
@@ -144,14 +150,28 @@ export interface MemoryClient {
   add(m: MemoryAdd): Promise<MemoryResult<{ id?: string; replaced?: Replaced; waiting?: string }>>;
   /**
    * Forgets one memory the user asked to forget (the Partner page, D71): `nmem m forget`, which
-   * hides it from recall and from reads by id. Not a hard delete. True when Mem did it.
+   * hides it from recall and explicit by-id reads. Not a hard delete. D652: the result carries
+   * Mem's own reason (signed out, unreachable, refused), so the page can say why it wasn't forgotten.
    */
-  forget?(id: string): Promise<boolean>;
+  forget?(id: string): Promise<MemoryResult<{ id?: string }>>;
   /**
    * D304: the person corrected a noted line's words (这周记下的 / What it learned this week):
    * `nmem m update` sets its title and text to them. True when Mem took it.
    */
   correct?(id: string, title: string): Promise<boolean>;
+  /**
+   * D652: the person corrected a memory by its id on Settings › 记忆. The corrected words are
+   * written as a new memory (keeping Mem's kind), then `m supersede <old> <new>` retires the one
+   * that was wrong, whoever wrote it; the new id is the one the page shows next. Archiving the new
+   * one is the rollback when the supersede itself fails, so a refusal never leaves two live copies.
+   */
+  replace?(id: string, title: string, provenance: Provenance, kind?: "preference" | "decision" | "fact" | "other"): Promise<MemoryResult<{ id?: string }>>;
+  /**
+   * D652: tell Nowledge Mem a recall was not helpful (`memory_feedback`, MCP only today). True
+   * when Mem took it. The CLI has no such verb at nmem 0.10.125, so this is present only once one
+   * advertises it; until then the caller records the intent in the Log (core settings).
+   */
+  feedback?(id: string, note?: string): Promise<boolean>;
   /**
    * D444: what Mem knows about the person, for "你都记得我些什么？": their preferences (from anyone Mem
    * names), and the decisions and facts they saved or told the partner (another tool's are its working
@@ -273,6 +293,9 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       return { ok: false as const, reason: "not_configured" as const, message: "Nowledge Mem isn't connected.", why: "signed_out" as const };
     return { ok: false as const, reason: "unavailable" as const, message: `Nowledge Mem didn't answer (${clip(r.err || r.out || `exit ${r.code}`, 120)}).` };
   };
+  // D652: whether this nmem advertises a memory-feedback verb; read once, the first time the
+  // person corrects something. Undefined: not asked yet.
+  let feedbackVerb: boolean | undefined;
   const client: MemoryClient = {
     async search(query, limit, so) {
       const who = opts.identity?.();
@@ -322,8 +345,11 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       const imp = Math.min(1, Math.max(0, m.importance ?? 0.6));
       // D329: search before writing: the partner's own earlier memory of the same thing is superseded
       // by this one, never duplicated. A search that fails is no reason not to save.
-      // Asked beside the write, so a save takes no longer than it did.
-      const before = m.plain ? undefined : client.search(m.title, 5);
+      // D652: the person named the wrong memory (这条不对): no search, that exact memory is
+      // superseded however it was written; only its shape is checked here, the caller guards that
+      // the person named it.
+      const explicit = typeof m.replaces === "string" && SAFE_ID.test(m.replaces) ? m.replaces : undefined;
+      const before = m.plain || explicit ? undefined : client.search(m.title, 5);
       // Content goes through stdin: a positional argument starting with "-" would parse as a flag.
       const args = ["m", "add", "--stdin", `--title=${m.title}`, "-i", imp.toFixed(2), "--source", "ducter", "--source-app", "ducter", "--source-msg", provenanceRef(m.provenance)];
       if (m.id && SAFE_ID.test(m.id)) args.push(`--id=${m.id}`);
@@ -341,11 +367,35 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       } catch {
         /* written; no id to show */
       }
-      const old = seen?.ok ? sameAs(m.title, seen.hits.filter((h) => h.id !== id)) : undefined;
+      // D652: the one the person named is retired, whoever wrote it; else D329's own earlier one.
+      let oldTitle = explicit;
+      if (explicit) {
+        const sh = await run(["m", "show", "--", explicit]);
+        if (!("missing" in sh) && sh.code === 0) {
+          try {
+            const j = JSON.parse(sh.out);
+            const t = j?.memory?.title ?? j?.title;
+            if (typeof t === "string" && t.trim()) oldTitle = t.trim();
+          } catch {
+            /* the id is still the id */
+          }
+        }
+      }
+      const old = explicit
+        ? { id: explicit, title: oldTitle ?? explicit }
+        : seen?.ok
+          ? sameAs(m.title, seen.hits.filter((h) => h.id !== id))
+          : undefined;
       let replaced: Replaced | undefined;
       if (old?.id && id && old.id !== String(id)) {
-        const s = await run(["m", "supersede", "--reason", "Said again in Ducter", ...(who?.space ? ["--space", who.space] : []), "--", old.id, String(id)]);
+        const s = await run(["m", "supersede", "--reason", explicit ? "Corrected by the person in Ducter" : "Said again in Ducter", ...(who?.space ? ["--space", who.space] : []), "--", old.id, String(id)]);
         if (!("missing" in s) && s.code === 0) replaced = { id: old.id, title: old.title };
+        else if (explicit) {
+          // A right one beside the wrong one is the fault this path exists to end: take the new one
+          // back out of recall (archive, never delete) and tell the caller it didn't happen.
+          await run(["m", "archive", "--reason", "Correction didn't supersede", ...(who?.space ? ["--space", who.space] : []), "--", String(id)]);
+          return { ok: false, reason: "rejected", message: "Nowledge Mem didn't take the supersede." };
+        }
       }
       return { ok: true, ...(id ? { id: String(id) } : {}), ...(replaced ? { replaced } : {}) };
     },
@@ -407,8 +457,52 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       return back.ok;
     },
     async forget(id) {
-      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return { ok: false as const, reason: "rejected" as const, message: "Not a memory id." };
       const r = await run(["m", "forget", "--force", "--reason", "Forgotten from Ducter's Partner page", "--", id]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      return { ok: true as const, id };
+    },
+    async replace(id, title, provenance, kind) {
+      const words = title.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !words) return { ok: false as const, reason: "rejected" as const, message: "Not a memory to correct." };
+      const who = opts.identity?.();
+      const space = who?.space ? ["--space", who.space] : [];
+      const args = ["m", "add", "--stdin", `--title=${words}`, "-i", "0.70", "--source", "ducter", "--source-app", "ducter", "--source-msg", provenanceRef(provenance)];
+      if (kind && kind !== "other") args.push("--unit-type", kind);
+      if (who) args.push("--agent-id", who.agentId, ...space);
+      const r = await run(args, words);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      let newId: string | undefined;
+      try {
+        const j = JSON.parse(r.out);
+        const v = j?.id ?? j?.memory?.id;
+        if (typeof v === "string" && SAFE_ID.test(v)) newId = v;
+      } catch {
+        /* no id: the supersede cannot be aimed */
+      }
+      if (!newId) {
+        return { ok: false as const, reason: "unavailable" as const, message: "Nowledge Mem wrote the correction but named no id." };
+      }
+      const s = await run(["m", "supersede", "--reason", "Corrected by the person in Ducter", ...space, "--", id, newId]);
+      if ("missing" in s || s.code !== 0) {
+        // Never leave the right one beside the wrong one: archive the new copy (never delete).
+        await run(["m", "archive", "--reason", "Correction didn't supersede", ...space, "--", newId]);
+        return failure(s);
+      }
+      return { ok: true as const, id: newId };
+    },
+    async feedback(id, note) {
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      if (feedbackVerb === undefined) {
+        // Mem's memory_feedback is an MCP tool only at nmem 0.10.125 (no CLI verb). Read the group's
+        // help once: a later nmem that grows it is used; today this stays false and nothing is sent.
+        const h = await run(["m", "--help"]);
+        feedbackVerb = !("missing" in h) && h.code === 0 && /\bfeedback\b/.test(`${h.out}\n${h.err}`);
+      }
+      if (!feedbackVerb) return false;
+      // Shape follows Mem's memory_feedback (memory id, verdict, the person's note); read that verb's
+      // own help when it lands and correct this before trusting it (design/todo.md's trigger).
+      const r = await run(["m", "feedback", "--id", id, "--verdict", "not_helpful", ...(note ? ["--note", note] : [])]);
       return !("missing" in r) && r.code === 0;
     },
     async correct(id, title) {

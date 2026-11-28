@@ -15461,6 +15461,9 @@ svg .wave.w2.on {
 .mem-item.open { background: var(--surface-sunken); }
 .mem-item b { overflow-wrap: anywhere; }
 .mem-item-acts { min-height: 52px; background: var(--surface-sunken); }
+/* D652: 改 / 忘掉 wait for Nowledge Mem, and say why when it didn't take the change. */
+.mem-item-acts .mem-wait { display: flex; align-items: center; gap: var(--s2); color: var(--ink-soft); }
+.mem-item-acts .mem-failed { color: var(--failed-ink); line-height: 1.5; }
 .g-block .mem-fix { width: 100%; box-sizing: border-box; height: max(40px, 2.5rem); padding: 0 12px; border: 0; border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: inherit; box-shadow: inset 0 0 0 1px var(--line); }
 .g-block .mem-fix:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
 .g-block .g-acts { display: flex; justify-content: flex-end; gap: var(--s2); }

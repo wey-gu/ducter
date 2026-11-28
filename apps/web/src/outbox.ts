@@ -19,7 +19,7 @@ export const ANSWER_TTL_MS = 30 * 60_000;
 const MAX_ITEMS = 200;
 
 export type OutItem =
-  | { kind: "send"; device: string; persona: string; clientId: string; text: string; media?: string[]; reply?: ReplyWant; quote?: { from: "you" | "partner"; quote: string; seq: number }; refs?: Ref[]; at: number }
+  | { kind: "send"; device: string; persona: string; clientId: string; text: string; media?: string[]; reply?: ReplyWant; quote?: { from: "you" | "partner"; quote: string; seq: number }; refs?: Ref[]; corrects?: string; at: number }
   | { kind: "task_send"; device: string; taskId: string; clientId: string; text: string; media?: string[]; mode?: "steer" | "queue"; refs?: Ref[]; at: number }
   | { kind: "decide"; device: string; decisionId: string; option: "go" | "hold" | "reply"; text?: string; at: number }
   // D638: the hand-over sheet's Go. Core answers it in a moment and answers one clientId once,
@@ -33,7 +33,7 @@ const idOf = (i: OutItem) => (i.kind === "decide" ? `d:${i.decisionId}` : i.kind
 
 /** The frame an item sends. */
 export function frameOf(i: OutItem): ClientFrame {
-  if (i.kind === "send") return { t: "send", text: i.text, clientId: i.clientId, ...(i.media?.length ? { media: i.media } : {}), ...(i.reply ? { reply: i.reply } : {}), ...(i.refs?.length ? { refs: i.refs } : {}) };
+  if (i.kind === "send") return { t: "send", text: i.text, clientId: i.clientId, ...(i.media?.length ? { media: i.media } : {}), ...(i.reply ? { reply: i.reply } : {}), ...(i.refs?.length ? { refs: i.refs } : {}), ...(i.corrects ? { corrects: i.corrects } : {}) };
   if (i.kind === "task_send") return { t: "task_send", taskId: i.taskId, text: i.text, clientId: i.clientId, ...(i.media?.length ? { media: i.media } : {}), ...(i.mode ? { mode: i.mode } : {}), ...(i.refs?.length ? { refs: i.refs } : {}) };
   if (i.kind === "hand") return i.frame;
   return { t: "decide", decisionId: i.decisionId, option: i.option, ...(i.text ? { text: i.text } : {}) };

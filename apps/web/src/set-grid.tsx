@@ -137,6 +137,8 @@ export function saidClear() {
   saidWords.clear();
   for (const f of saidListeners) f();
 }
+/** The partner's word kept at `key`, if any: what Said draws (tests read it; the page never does). */
+export const saidFor = (key: string): string | undefined => saidWords.get(key)?.text;
 
 /**
  * The partner's one word after a change (D296): a small clay pebble pops in on the done ink, then the

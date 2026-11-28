@@ -9,7 +9,7 @@ import { onAppsFrame, openApp } from "./apps.tsx";
 import { onDidFrame, openDid } from "./did.tsx";
 import { onUsageFrame } from "./usage-week.tsx";
 import { say } from "./set-grid.tsx";
-import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, BrainOption, Brain, BridgeView, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, GhInstallPlan, GitLoginState, MemCheckAnswer, MemDoneOp, MemDoneWhy, MemItem, MemView, OoDetect, Reach, KindDefault, RuleView, ServerFrame, StandingView, Settings, SettingsPatch, UpdateAllView, UpdateReason } from "@ducter/protocol";
 import { MEDIA_LIMITS, TUWA_MCP, WATCH_LIVE, liveRefs, type MediaRef, type FileOpenError } from "@ducter/protocol";
 import { PINS_MAX, type PinView } from "@ducter/protocol/src/pins.ts";
 import { keepLocal, noteFlights, prepare, tooBigWords, upload, type Pic, type ViewerState } from "./media-up.ts";
@@ -421,6 +421,10 @@ class AppState {
   memFocus = "";
   /** D465: the ask Nowledge Mem didn't take (it's back on the page, with a line to settle it in Mem). */
   memSettleFailed?: string;
+  /** D652: the memory row 改 / 忘掉 is waiting on Nowledge Mem for (its said line comes only after). */
+  memBusy?: { id: string; op: MemDoneOp; title: string };
+  /** D652: Mem didn't take 改 / 忘掉: the row is as it was, with one line in the failed ink. */
+  memFailed?: { id: string; op: MemDoneOp; why: MemDoneWhy };
   /** D205: the persona's own Bridge connection, when the home's nmem can make one (or needs updating). */
   bridge?: BridgeView;
   /** D205: 断开 asks once more before it runs (a disconnected connection may need Mem to make again). */
@@ -991,6 +995,27 @@ class AppState {
     if (f.t === "settings") return this.applySettings(f);
     // D321: only the answer to what is asked now (a later word replaced an earlier one).
     if (f.t === "mem_answered") return void ((this.memSettleFailed = f.ok ? undefined : f.id), this.changed());
+    // D652: 改 / 忘掉 answers only when Nowledge Mem did (or refused). The said line is the
+    // success's; a refusal leaves the row as it was and one line in the failed ink, with why.
+    if (f.t === "mem_done") {
+      const was = this.memBusy;
+      this.memBusy = undefined;
+      if (f.ok) {
+        this.memFailed = undefined;
+        // A fix is a new memory: a search result shows the corrected one, under its new id; a
+        // forgotten one leaves the search too, now that Mem did it.
+        if (f.op === "fix" && this.memFound) {
+          const title = f.title || was?.title || "";
+          this.memFound = { ...this.memFound, items: this.memFound.items.map((x) => (x.id === f.id ? { ...x, ...(f.newId ? { id: f.newId } : {}), title } : x)) };
+        }
+        if (f.op === "forget" && this.memFound) this.memFound = { ...this.memFound, items: this.memFound.items.filter((x) => x.id !== f.id) };
+        say("mem-about", this.L.t(f.op === "fix" ? "said.mem.fix" : "said.mem.forget", f.title || was?.title || ""));
+      } else {
+        this.memFailed = { id: f.id, op: f.op, why: f.why ?? "refused" };
+      }
+      this.changed();
+      return;
+    }
     if (f.t === "mem_found") return void (f.q === this.memQuery && ((this.memFound = { q: f.q, ok: f.ok, items: f.items }), this.changed()));
     if (f.t === "partners") return this.applyPartners(f);
     if (f.t === "rules") {
@@ -1151,6 +1176,7 @@ class AppState {
       for (const r of this.S.resends(this.pending.filter((p) => !p.pics || p.pics.every((x) => x.ref)).map((p) => ({ ...p, media: p.pics?.map((x) => x.ref!.id), ...(p.reply ? { reply: wantOf(p.reply) } : {}) })))) this.send(r);
     } else if (f.t === "welcome") {
       this.peeked.clear(); // D541: a new socket asks again
+      this.memBusy = undefined; // D652: the socket that was waiting for Mem is gone; a fresh page asks again
       // D532: the home answered this device: pin its key if pairing didn't, and end an old home's run of 401s.
       if (f.fp) pinFp(f.fp);
       heard(this.linkMemo);
@@ -1292,7 +1318,7 @@ class AppState {
   /** D617: 这条不对 / This is wrong: a message to the partner naming the memory's id (its own tools correct it). */
   correctMemory(id: string, title: string) {
     if (!id) return;
-    this.sendWords(this.L.t("task.recalled.wrong.words", title, id));
+    this.sendWords(this.L.t("task.recalled.wrong.words", title, id), id);
     this.sheet = null;
     this.route = { name: "conv" };
     this.changed();
@@ -3106,22 +3132,23 @@ class AppState {
     this.send({ t: "memory_correct", seq, title: words });
     this.changed();
   }
-  /** D321: Settings › 记忆's own rows, by Mem's id: gone or fixed at once; the home's frame settles it. */
-  memForget(id: string) {
-    const g = this.mem?.glance;
-    if (this.mem && g) this.mem = { ...this.mem, glance: { ...g, about: g.about.filter((x) => x.id !== id) } };
-    if (this.memFound) this.memFound = { ...this.memFound, items: this.memFound.items.filter((x) => x.id !== id) };
+  /**
+   * D321: Settings › 记忆's own rows, by Mem's id. D652: nothing changes on the page at the tap;
+   * the row waits, and mem_done settles it (the partner's word on success, the row as it was with why
+   * on a refusal). The page never says 好 for a change Mem didn't take.
+   */
+  memForget(id: string, title: string) {
+    this.memFailed = undefined;
+    this.memBusy = { id, op: "forget", title };
     this.send({ t: "mem_forget", id });
     this.changed();
   }
-  memFix(id: string, title: string) {
+  memFix(id: string, title: string, kind?: MemItem["kind"]) {
     const words = title.replace(/\s+/g, " ").trim();
     if (!words) return;
-    const fix = (xs: MemItem[]) => xs.map((x) => (x.id === id ? { ...x, title: words } : x));
-    const g = this.mem?.glance;
-    if (this.mem && g) this.mem = { ...this.mem, glance: { ...g, about: fix(g.about) } };
-    if (this.memFound) this.memFound = { ...this.memFound, items: fix(this.memFound.items) };
-    this.send({ t: "mem_fix", id, title: words });
+    this.memFailed = undefined;
+    this.memBusy = { id, op: "fix", title: words };
+    this.send({ t: "mem_fix", id, title: words, ...(kind ? { kind } : {}) });
     this.changed();
   }
   /**
@@ -3581,14 +3608,14 @@ class AppState {
 
   /** D303: words a tap says for the person (a choice, a checklist's progress): sent as their reply,
    *  without the composer's pictures or its reply-to. */
-  sendWords(text: string) {
+  sendWords(text: string, corrects?: string) {
     text = text.trim();
     if (!text) return;
     const clientId = this.cid("p");
     this.pending.push({ clientId, text });
     this.thinkingSince = Date.now();
     this.markRead();
-    this.sendKept({ t: "send", text, clientId });
+    this.sendKept({ t: "send", text, clientId, ...(corrects ? { corrects } : {}) });
     haptic("light");
     this.changed();
   }
@@ -3601,7 +3628,7 @@ class AppState {
   sendKept(f: Extract<ClientFrame, { t: "send" } | { t: "task_send" }>, quote?: Replying) {
     const device = this.glanceDevice || "local";
     if (f.t === "send")
-      this.outbox.put({ kind: "send", device, persona: this.S.persona || this.partnerShown, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.reply ? { reply: f.reply } : {}), ...(quote ? { quote: { from: quote.from, quote: quote.quote, seq: quote.seq } } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
+      this.outbox.put({ kind: "send", device, persona: this.S.persona || this.partnerShown, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.reply ? { reply: f.reply } : {}), ...(quote ? { quote: { from: quote.from, quote: quote.quote, seq: quote.seq } } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), ...(f.corrects ? { corrects: f.corrects } : {}), at: Date.now() });
     else if (f.clientId) this.outbox.put({ kind: "task_send", device, taskId: f.taskId, clientId: f.clientId, text: f.text, ...(f.media?.length ? { media: f.media } : {}), ...(f.mode ? { mode: f.mode } : {}), ...(f.refs?.length ? { refs: f.refs } : {}), at: Date.now() });
     this.send(f);
   }

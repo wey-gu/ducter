@@ -317,11 +317,13 @@ note and the search; the groups by Mem's own kind, each with its caption in smal
 tool's coin when it came from one, the title, the source as the line only when it isn't the person's own words
 (**{tool} 记的 / 你自己记的 / Nowledge Mem 从你的对话里整理的**; D459: 你跟我说的 is the usual source, said once in the
 section's note, never a dot and the same line on every row), the age at the right. Tapped, the row opens in place: **不对？改一下，或者让
-它忘掉。** with **改** and **忘掉**. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
+它忘掉。** with **改** and **忘掉**. A change waits for Nowledge Mem (D652): the row says it is waiting,
+and only the core's success answer says the partner's line; a refusal leaves the row as it was and one line in
+the failed ink says why (signed out, out of reach, refused) and the one way through. **你别的 AI 也在用这份记忆**: a row per tool, its mark, **这周记了 N 条工作笔记**
 (**N 条以上** when the whole read was this week), and the foot that says why they aren't listed. Then the
 Nowledge Mem group (where it's kept, its name, **Nowledge Mem 里一共有 N 条记忆** with **去 Nowledge Mem 看**,
 D459's **你的其他 agent 也通过它找到{name}** with **看看谁能找到 ›** when Agent messaging is shown, an update, 详情).
-A forget or a fix is answered in the partner's word under the section (**好，忘掉「…」。 / 好，改成「…」。**, D459). Searching replaces the groups with **找到的** until cleared.
+A forget or a fix is answered in the partner's word under the section (**好，忘掉「…」。 / 好，改成「…」。**, D459) only after Nowledge Mem did it (D652); a refusal says **没忘掉：… / 没改成功：…** in the failed ink with the reason and the way through, and the row comes back exactly as it was. Searching replaces the groups with **找到的** until cleared.
 
 **Which memories are "about you"** (`core/src/mem-glance.ts`, the source rules in `protocol/src/mem-source.ts`
 `aboutSource`): every `preference` whose source Mem names (Ducter, an AI tool, Mem's own distillers, the person's
@@ -329,7 +331,8 @@ command line or app); `decision` and `fact` only when the person saved them or t
 the app): another tool's decisions are its project's. A source Mem doesn't name (a team chat's message id, a pull
 request, a library document) is not shown as being about the person (search still shows it, as Mem's). At most 8
 per kind; four read-only `nmem --json m list` calls (recent 100, preference 16, decision 40, fact 40) every 2
-minutes while the page's frame is live; forget and fix change the glance at once.
+minutes while the page's frame is live; after Mem answers, forget removes the row and a fix replaces it
+(the corrected words are a new memory that supersedes the old id, D652, so its id changes).
 
 **People and projects are not groups yet.** Mem's list carries no labels (all 200 recent had none) and its people
 graph (`m identity`) is a Labs feature per Space; a "people" group would be invented. Trigger in `todo.md`.
@@ -337,6 +340,17 @@ graph (`m identity`) is a Labs feature per Space; a "people" group would be inve
 **Built (D321):** protocol `MemItem`, `MemGlance {total, about, tools}`, `mem_forget`/`mem_fix`/`mem_find` and
 `mem_found`; core glance, settings `forgetMem`/`fixMem`/`findMem` through the partner's Mem client; web and Mac
 panes; the demo's pretend Mem has kinds, search, forget and fix (`apps/web/demo-mem.ts`).
+
+**A correction that sticks (D652, 2026-11-27).** Two faults ended. (1) The page said 好 before Mem had
+answered: `mem_forget`/`mem_fix` now answer `mem_done {id, op, ok, why}` after the Mem client did, and the said
+line, the row and the failed line follow that answer, never the tap. (2) A wrong memory another tool wrote
+survived 这条不对, because `memory_add` only superseded the partner's own (`sameAs`'s `source === "ducter"`).
+The person's own tap now names the id: `memory_add` takes `replaces`, honoured only when that id is in their
+own words (the tap or the answer that follows it); the page's 改 writes a new memory of the same kind and calls `nmem m supersede <old> <new>`.
+忘掉 stays a hide, never a delete. Mem's own feedback verb is still MCP-only (nmem 0.10.125), so a correction
+records its intent in the Log (`memory_feedback`, `sent: false`) and `todo.md` carries the trigger. The page's
+own row says why a change didn't happen in D590's words, with the one way through (sign in again, look again,
+or retry).
 
 ## Nowledge Mem, deeper (D329, built 2026-11-17)
 

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Bodies } from "../../protocol/src/index.ts";
 import { buildSystemPrompt, createNmemClient, createPartner, provenanceRef, renderHistoryLine } from "../src/index.ts";
+import { namedInTurn } from "../src/partner.ts";
 import { FakeClock, fakeCore, fakeMemory, fakeRunner, type Script } from "./fakes.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ducter-memory-test-"));
@@ -154,6 +155,65 @@ describe("memory_add", () => {
     expect(mem.added.map((m) => m.title)).toEqual(["测试缩进", "Prefers pnpm", "Release order"]);
   });
 
+  // D652: the person says a memory is wrong and their own words name its id (the 这条不对 tap,
+  // or the answer that follows it): the replacement supersedes that id, whoever wrote it. An id the
+  // person never named is ignored.
+  test("replaces: honoured for an id the person named, this turn or the tap before; ignored otherwise", async () => {
+    const rs: any[] = [];
+    const { partner, user, fc, mem } = setup(async (_i, s, n) => {
+      if (n === 0)
+        rs.push(await fc.callTool("memory_add", { title: "Avoid Friday deploys", content: "Weyl does not deploy on Fridays; releases wait for Monday.", said: "「Deploy on Fridays is fine」这条记忆不对（mem-codex-friday），帮我改正。", kind: "preference", replaces: "mem-codex-friday" }));
+      if (n === 1) rs.push(await fc.callTool("memory_add", { title: "Avoid Friday deploys", content: "Weyl does not deploy on Fridays.", said: "以后都避开周五发布", kind: "preference", replaces: "mem-codex-friday" }));
+      s.end();
+    }, fakeMemory([{ id: "mem-codex-friday", title: "Deploy on Fridays is fine", content: "Releases can go out on Friday afternoons.", kind: "preference", source: "codex" }]));
+    user("「Deploy on Fridays is fine」这条记忆不对（mem-codex-friday），帮我改正。");
+    await partner.idle();
+    expect(rs[0].ok).toBe(true);
+    expect(mem.added[0]!.replaces).toBe("mem-codex-friday");
+    expect(mem.added[0]!.unitType).toBe("preference");
+
+    // The answer that follows the tap: the id is the person's own recent words, so it still counts.
+    user("以后都避开周五发布");
+    await partner.idle();
+    expect(rs[1].ok).toBe(true);
+    expect(mem.added[1]!.replaces).toBe("mem-codex-friday");
+
+    // A fresh conversation whose words never carried the id: the model's `replaces` is ignored.
+    let ignored: any;
+    const b = setup(async (_i, s, n) => {
+      if (n === 0) ignored = await b.fc.callTool("memory_add", { title: "Avoid Friday deploys", content: "Weyl does not deploy on Fridays.", said: "以后都避开周五发布", kind: "preference", replaces: "mem-codex-friday" });
+      s.end();
+    }, fakeMemory([{ id: "mem-codex-friday", title: "Deploy on Fridays is fine", content: "x", kind: "preference", source: "codex" }]));
+    b.user("以后都避开周五发布");
+    await b.partner.idle();
+    expect(ignored.ok).toBe(true);
+    expect(b.mem.added[0]!.replaces).toBeUndefined();
+    expect(ignored.note).toMatch(/wasn't in the user's own words/i);
+  });
+
+  // D652: the person's tap is the claim even when the model leaves `replaces` out: the id the
+  // client carried on the message is what code supersedes.
+  test("a tap's carried id supersedes without the model repeating it", async () => {
+    let r: any;
+    const { partner, fc, mem } = setup(async (_i, s) => {
+      r = await fc.callTool("memory_add", { title: "Avoid Friday deploys", content: "Weyl does not deploy on Fridays.", said: "以后都避开周五发布", kind: "preference" });
+      s.end();
+    }, fakeMemory([{ id: "mem-codex-friday", title: "Deploy on Fridays is fine", content: "x", kind: "preference", source: "codex" }]));
+    const e = fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "以后都避开周五发布", corrects: "mem-codex-friday" } });
+    partner.onTrigger(e);
+    await partner.idle();
+    expect(r.ok).toBe(true);
+    expect(mem.added[0]!.replaces).toBe("mem-codex-friday");
+    expect(r.note).toMatch(/replacing/i);
+  });
+
+  test("namedInTurn: only a safe id in the person's own words", () => {
+    expect(namedInTurn("mem-codex-friday", ["「x」这条不对（mem-codex-friday），帮我改正。"])).toBe(true);
+    expect(namedInTurn("mem-codex-friday", ["以后都避开周五发布"])).toBe(false);
+    expect(namedInTurn("../etc/passwd", ["../etc/passwd"])).toBe(false);
+    expect(namedInTurn("（codex-friday）", ["「x」这条不对（codex-friday），帮我改正。"])).toBe(true); // copied parentheses
+  });
+
   test("a word made of hex letters is not plumbing", async () => {
     let r: any;
     const { partner, user, fc } = setup(async (_i, s) => {
@@ -235,7 +295,7 @@ describe("rendering and persona", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "" });
     expect(p).toContain("memory_search once");
     expect(p).toContain("Never secrets");
-    expect(p).toContain("\"Noted\" line");
+    expect(p).toContain("\"Noted\"");
   });
 
   test("provenance ref is metadata-shaped", () => {
@@ -264,6 +324,42 @@ describe("nmem client (stub binary)", () => {
       expect(r.hits[0]).toMatchObject({ title: "T", date: "2026-11-02", kind: "preference", space: "personal-1" });
       expect(r.hits[0]!.content.length).toBeLessThanOrEqual(280);
     }
+  });
+
+  test("D652: a named replacement writes the new memory, then supersedes the codex id it was told", async () => {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${dir}/all"\ncase "$*" in\n  *" m show "*) echo '{"memory":{"title":"Deploy on Fridays is fine"}}' ;;\n  *" m add "*) cat >/dev/null; echo '{"id":"new1"}' ;;\n  *) echo '{}' ;;\nesac\n`);
+    chmodSync(bin, 0o755);
+    const r = await createNmemClient({ bin }).add({ title: "Avoid Friday deploys", content: "Weyl does not deploy on Fridays.", provenance: { persona: "p1" }, unitType: "preference", replaces: "codex-id" });
+    expect(r).toEqual({ ok: true, id: "new1", replaced: { id: "codex-id", title: "Deploy on Fridays is fine" } });
+    const calls = readFileSync(join(dir, "all"), "utf8").trim().split("\n");
+    expect(calls.some((c) => c.startsWith("--json m supersede --reason Corrected by the person in Ducter -- codex-id new1"))).toBe(true);
+    expect(calls.some((c) => c.includes(" m search "))).toBe(false);
+    expect(calls.some((c) => c.includes("--unit-type preference"))).toBe(true);
+  });
+
+  test("D652: the page's 改 writes a new memory of the same kind, then supersedes the old codex id", async () => {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${dir}/all"\ncase "$*" in\n  *" m add "*) cat >/dev/null; echo '{"id":"new2"}' ;;\n  *) echo '{}' ;;\nesac\n`);
+    chmodSync(bin, 0o755);
+    const r = await createNmemClient({ bin }).replace!("codex-id", "Avoid Friday deploys", { persona: "p1" }, "preference");
+    expect(r).toEqual({ ok: true, id: "new2" });
+    const calls = readFileSync(join(dir, "all"), "utf8").trim().split("\n");
+    expect(calls.some((c) => c.includes("--unit-type preference"))).toBe(true);
+    expect(calls.some((c) => c.startsWith("--json m supersede --reason Corrected by the person in Ducter -- codex-id new2"))).toBe(true);
+  });
+
+  test("D652: a supersede that fails archives the new copy, never the wrong one left live", async () => {
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${dir}/all"\ncase "$*" in\n  *" m add "*) cat >/dev/null; echo '{"id":"new3"}' ;;\n  *" m supersede "*) echo boom >&2; exit 1 ;;\n  *) echo '{}' ;;\nesac\n`);
+    chmodSync(bin, 0o755);
+    const r = await createNmemClient({ bin }).replace!("codex-id", "Avoid Friday deploys", { persona: "p1" });
+    expect(r.ok).toBe(false);
+    const calls = readFileSync(join(dir, "all"), "utf8").trim().split("\n");
+    expect(calls.some((c) => c.startsWith("--json m archive --reason Correction didn't supersede -- new3"))).toBe(true);
   });
 
   test("D461: the offers ask for one kind of memory, and scan threads deep (Mem ranks them by match, not date)", async () => {

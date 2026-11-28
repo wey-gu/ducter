@@ -141,7 +141,7 @@ test("D59: quiet hours default on; the user's off is kept, through a restart and
 test("forget: Mem forgets it when it has the id, otherwise it is only hidden here", async () => {
   const { core, dir } = boot();
   const forgotten: string[] = [];
-  core.settings.setForgetter(async (id) => (forgotten.push(id), true));
+  core.settings.setForgetter(async (id) => (forgotten.push(id), { ok: true }));
   const withId = core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: "测试统一用假时钟", memoryId: "m_123" } });
   const noId = core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: "Prefers short replies" } });
   const c = await client(core.url);

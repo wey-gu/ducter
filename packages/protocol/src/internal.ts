@@ -593,13 +593,25 @@ export interface ConnectionsApi {
   grant(taskId: string, connection: string): { ok: true } | { ok: false; error: string };
 }
 
+/** What a write to Nowledge Mem answered: taken, or why not (D652: the page says which). */
+export interface MemWriteOutcome {
+  ok: boolean;
+  reason?: string;
+  why?: "missing" | "signed_out" | "off";
+  message?: string;
+}
+
 /** What the partner reads of the settings, and how it lets the user forget a memory. */
 export interface SettingsApi {
   get(): Settings;
-  /** The partner registers how to forget a memory in Mem; true when Mem forgot it. */
-  setForgetter(fn: (memoryId: string) => Promise<boolean>): void;
+  /** The partner registers how to forget a memory in Mem; taken, or why not. */
+  setForgetter(fn: (memoryId: string) => Promise<MemWriteOutcome>): void;
   /** D304: how to correct a memory's words in Mem (这周记下的); true when Mem took it. */
   setCorrector?(fn: (memoryId: string, title: string) => Promise<boolean>): void;
+  /** D652: how to replace a memory the person corrected by id (new memory + `m supersede`). */
+  setReplacer?(fn: (memoryId: string, title: string, kind?: "preference" | "decision" | "fact" | "other") => Promise<MemWriteOutcome>): void;
+  /** D652: tell Mem a recall was wrong, once its nmem has `m feedback`; false when it can't. */
+  setFeedback?(fn: (memoryId: string, note?: string) => Promise<boolean>): void;
   /**
    * D329: how to take a Noted line's save back (撤销 / Undo): archived in Mem (or dropped from the
    * outbox while it waits), and a memory it replaced written back; true when it was. waiting: the

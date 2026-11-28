@@ -871,7 +871,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // D391: earlier tasks over six weeks, found by task_find and redone by task_fork; their keys as seeded tasks'.
   if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"))) idOf.set(k, id), keyOf.set(id, k);
   for (const s of sc.seed ?? []) {
-    if ("user" in s) lastUser = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: s.user } }).seq;
+    if ("user" in s) {
+      // D652: a 这条不对 tap's id, as the client carries it (the person's own claim).
+      const corrects = typeof (s as { corrects?: unknown }).corrects === "string" ? (s as { corrects: string }).corrects : undefined;
+      lastUser = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: s.user, ...(corrects && /^[A-Za-z0-9_-]{1,80}$/.test(corrects) ? { corrects } : {}) } }).seq;
+    }
     else if ("ai" in s) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: s.ai, replyTo: lastUser } });
     else if ("userAction" in s) {
       const taskId = idOf.get(s.userAction.task)!;
@@ -1317,7 +1321,7 @@ function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<s
       if ("skill" in r) return { kind: "skill", id: r.skill, label: r.skill, ...(r.about ? { about: r.about } : {}) };
       return { kind: "action", id: r.action, label: r.label };
     });
-    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}), ...(st.via ? { via: st.via } : {}), ...(st.thread ? { thread: st.thread } : {}) });
+    logUserMessage(core.log, core.decisions, { text: st.user, ...to, ...(media.length ? { media } : {}), ...(st.replyTo ? { reply: replyWant(core, st.replyTo) } : {}), ...app, ...(refs.length ? { refs } : {}), ...(st.corrects ? { corrects: st.corrects } : {}), ...(st.via ? { via: st.via } : {}), ...(st.thread ? { thread: st.thread } : {}) });
   } else if ("users" in st) {
     for (const u of st.users) logUserMessage(core.log, core.decisions, { text: u.text, ...to, ...(u.replyTo ? { reply: replyWant(core, u.replyTo) } : {}) });
   } else if ("callEnded" in st) {
@@ -1532,6 +1536,9 @@ function check(r: RunResult): string[] {
   if (e.noRemember && r.remembered.length) fails.push(`saved to memory ×${r.remembered.length} (want none)`);
   // D569: kept as Mem's own kind (the model's word, passed as --unit-type), read from what Mem took.
   if (e.rememberKind && !r.remembered.some((m) => m.unitType === e.rememberKind)) fails.push(`nothing saved as a ${e.rememberKind} (got ${r.remembered.map((m) => m.unitType ?? "none").join(", ") || "nothing"})`);
+  // D652: the wrong memory the person named is the one the save supersedes; and a save was tried at all.
+  if (e.replaces && !r.remembered.some((m) => m.replaces === e.replaces)) fails.push(`nothing saved replacing ${e.replaces} (got ${r.remembered.map((m) => m.replaces ?? "none").join(", ") || "nothing"})`);
+  if (e.memoryTried && !r.memAttempts.length) fails.push("memory_add was never called (want one)");
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");

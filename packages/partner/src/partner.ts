@@ -2289,6 +2289,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (redo) carried = undefined;
     await readHomeWeb();
     if (fresh) await known.ready(KNOWN_WAIT_MS);
+    // D669 (#4): 别记这个's undo is Mem's to answer. Hold this turn's input until it has, so the
+    // fact under the person's words is the truth and never a guess; every other message resolves at once.
+    for (const e of userEvents) await core.takenBackSettled?.(e.seq).catch(() => {});
     const input = buildInput(batch, fresh, redo?.note);
     contextTokens += estTokens(input);
     // A turn woken only by task questions: its words become each question's words (D129), and

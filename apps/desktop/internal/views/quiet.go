@@ -275,11 +275,7 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 // spoken since, Forget after.
 func (a *App) notedLine(c *ui.Context, n noted) {
 	t := a.T
-	ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.notedUndone(n.seq) {
-			uiText(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
-			return
-		}
+	title := func() {
 		// D590: one that waits for Mem says so with its title, one element, so a wrap
 		// never leaves "Noted" on one line and "once Mem is back" on the next.
 		if a.notedWaiting(n.seq) {
@@ -290,9 +286,8 @@ func (a *App) notedLine(c *ui.Context, n noted) {
 		if n.replaced != "" {
 			uiText(c.Key("replaced"), a.L.T("memory.replaced", n.replaced)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		}
-		if a.S.UndoFailed == n.seq {
-			uiText(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)
-		}
+	}
+	act := func() {
 		if a.S.LastUserSeq < n.seq {
 			if a.quietButton(c, "undo", a.L.T("memory.undo"), n.title, false, 0) {
 				a.undoNoted(n.seq)
@@ -300,6 +295,26 @@ func (a *App) notedLine(c *ui.Context, n noted) {
 		} else if a.quietButton(c, "forget", a.L.T("partner.memory.forget"), n.title, false, 0) {
 			a.forgetNoted(n.seq, n.title)
 		}
+	}
+	if a.notedUndone(n.seq) {
+		ui.Row(c.Key(n.seq)).Children(func() {
+			uiText(c, a.L.T("memory.undone", n.title)).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+		})
+		return
+	}
+	if a.S.UndoFailed == n.seq {
+		// D669 (#4): the refusal gets its own row under what was noted, with the one action,
+		// so a long failed line never pushes 别记这个 alone onto the next line.
+		ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(title)
+		ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+			uiText(c.Key("undo-failed"), a.L.T("memory.undo.failed")).FontSize(t.SM).TextColor(t.Failed.Ink).MinWidth(0)
+			act()
+		})
+		return
+	}
+	ui.Row(c.Key(n.seq)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+		title()
+		act()
 	})
 }
 

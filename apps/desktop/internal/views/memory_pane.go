@@ -566,6 +566,41 @@ func (a *App) memWhere(b *protocol.BridgeView) string {
 	return ""
 }
 
+// memOpenLabel is D669 (#4): 去 Nowledge Mem 看 goes where the memories
+// live. Cloud has a site; a local Mem and a server of the person's own live on
+// a computer, so the label names that computer for a server and the tap opens
+// the app there. Unknown (a status that didn't say): no link at all.
+func (a *App) memOpenLabel(b *protocol.BridgeView) (string, bool) {
+	if b == nil {
+		b = a.S.Bridge
+	}
+	if b == nil {
+		return "", false
+	}
+	switch {
+	case b.Where == "cloud":
+		return a.L.T("mem.all.open"), true
+	case b.Where == "local" || b.State == "local_mem":
+		return a.L.T("mem.all.open"), true
+	case b.Where == "server":
+		return a.L.T("mem.all.open.server", a.memHome()), true
+	}
+	return "", false
+}
+
+// openMemAt performs what memOpenLabel says: the site only for Cloud, the app
+// on the home for a local Mem or a server.
+func (a *App) openMemAt(b *protocol.BridgeView) {
+	if b == nil {
+		b = a.S.Bridge
+	}
+	if b != nil && b.Where == "cloud" {
+		a.openLink(memSite)
+		return
+	}
+	a.send(protocol.BridgeAction{T: "bridge_mem_open"})
+}
+
 // memLink is Nowledge Mem itself (D664: the one setup group): its steps until all are done, then
 // one calm line; where it's kept and its name there while the steps are folded (open, the steps say
 // them), how much it holds, the one update worth a tap, and the raw facts behind 详情.
@@ -585,8 +620,10 @@ func (a *App) memLink(c *ui.Context, b *protocol.BridgeView) {
 			all = a.L.T("mem.all.count", groupThousands(m.Glance.Total))
 		}
 		a.tileRow(c, "mem-all", nil, all, "", func() {
-			if a.quietLink(c, "mem-all", a.L.T("mem.all.open"), a.L.T("mem.all.open")) {
-				a.openLink(memSite)
+			if label, ok := a.memOpenLabel(b); ok {
+				if a.quietLink(c, "mem-all", label, label) {
+					a.openMemAt(b)
+				}
 			}
 		})
 		// D566, D582: after how much Mem holds, as on the web.
@@ -725,6 +762,8 @@ func (a *App) memFacts(c *ui.Context, b *protocol.BridgeView) {
 		line("mem.details.space", b.Space.Label)
 		line("mem.details.spaceid", b.Space.ID)
 	}
+	// D669 (#4): an unregistered refusal code, a fact behind 详情, never a line.
+	line("mem.details.code", b.Code)
 }
 
 // memUpdateRow is the one thing about Mem's own version worth saying, as a

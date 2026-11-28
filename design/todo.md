@@ -1113,10 +1113,9 @@ pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slic
 - [ ] Where a received message's `KnowledgeReference`s sit on `bridge open` (D461 couldn't: `open` records a read, and
       only the home that answers the partner can read its mailbox). Trigger: the next message with a reference reaches
       the partner; read its Log entry's refs, or ask Mem for the shape (research/191 §asks).
-- [ ] A spoken 别记这个 whose take-back Mem refuses says so (today only the tap's failure has a line; the spoken one
-      leaves the Noted line as kept). Trigger: it happens once.
 - [ ] 别记这个 for a second partner's conversation (D309): today the take-back reads the default partner's channel only.
-      Trigger: D486 took partners out of preview: next time memory take-back is touched.
+      The 0.1.102 Brief C change touched the take-back and left this deliberately (its persona filter is its own change).
+      Trigger: a home with a second partner in use, or the next memory take-back change.
 - [ ] The partner's reply to "你都记得我些什么？" offering the one row to fix (a tap opening that memory on the Memory
       page). Trigger: the author asks to fix something right after asking.
 - [ ] Send research/191 §asks to Mem. Trigger: the author approves the draft.

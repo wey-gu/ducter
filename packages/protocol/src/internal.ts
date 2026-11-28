@@ -175,8 +175,10 @@ export interface CoreApi {
   freshLook?: { take(taskId: string, body: import("./index.ts").Bodies["report"], also?: { words: string; found: string }): boolean; readonly heldWords: string; readonly heldWithDocWords?: string; waiting?(taskId: string): boolean };
   /** D439: a document a done report shows, checked page by page (core/src/doc-check.ts); absent in tests and stubs. */
   docCheck?(taskId: string, body: import("./index.ts").Bodies["report"]): Promise<{ again?: string; againFound?: string; doc?: import("./doc-bar.ts").DocCheck; media?: import("./media.ts").MediaRef[] } | undefined>;
-  /** D444: the memories Ducter took back at this user message's words (别记这个), for the partner's line under them. */
-  takenBackFrom?(seq: number): { seq: number; title: string }[];
+  /** D444: the memories Ducter took back at this user message's words (别记这个), for the partner's line under them. D669 (#4): failed marks one Mem refused, so it is still kept. */
+  takenBackFrom?(seq: number): { seq: number; title: string; failed?: true }[];
+  /** D669 (#4): resolves when the take-back's undo calls for these words have answered (at once for any other message), so the partner's fact is never a guess. */
+  takenBackSettled?(seq: number): Promise<void>;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
   /** D395: where a repository task works, resolved by code (core/src/repo-where.ts); absent in tests and stubs. */

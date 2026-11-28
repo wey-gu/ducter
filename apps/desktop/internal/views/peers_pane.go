@@ -277,14 +277,28 @@ func (a *App) peersNames(c *ui.Context, b *protocol.BridgeView, name string) {
 }
 
 // peersStuck is D369's one quiet line: Mem said the partner's mailbox
-// can't be read until Mem sorts it out on its side. Mem's code beside it,
-// nothing to tap; gone once a read works again.
+// can't be read until Mem sorts it out on its side. D669 (#4): Mem's
+// code is a fact behind 详情, never the line; gone once a read works again.
 func (a *App) peersStuck(c *ui.Context, b *protocol.BridgeView, name string) {
 	if b == nil || b.Stuck == nil {
 		return
 	}
+	t := a.T
 	a.group(c, "peers-stuck", "", "", func() {
-		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name, b.Stuck.Code), nil)
+		a.tileRow(c, "peers-stuck", nil, a.L.T("peers.stuck.title", name), a.L.T("peers.stuck.line", name), nil)
+		a.footRow(c, "peers-stuck", "", func() {
+			if a.quietButton(c, "peers-stuck-fact", a.L.T("mem.details"), "Nowledge Mem", a.peersStuckFact, 0) {
+				a.peersStuckFact = !a.peersStuckFact
+			}
+		})
+		if a.peersStuckFact {
+			a.textBlock(c, "peers-stuck-fact-body", func() {
+				ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+					uiText(c, a.L.T("mem.details.code")).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
+					uiText(c, b.Stuck.Code).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable().MinWidth(0).Shrink(1)
+				})
+			})
+		}
 	})
 }
 

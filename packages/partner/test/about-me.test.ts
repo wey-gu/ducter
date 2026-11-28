@@ -82,6 +82,20 @@ test("a session that missed it (Mem away at its first turn): its first search ca
   expect(rs[1].searchesLeftThisTurn).toBe(0);
 });
 
+test("a refused 别记这个: the partner gets the one fact that it was not taken back, never 不记了", () => {
+  const e = { seq: 9, ts: "2026-11-21T10:00:00.000Z", persona: "p", stream: "channel", origin: "user", kind: "user_msg", body: { text: "别记这个" } } as LogEvent;
+  const ctx = { takenBack: (seq: number) => (seq === 9 ? [{ title: "commit message 用英文", failed: true as const }] : []), taskTitle: () => undefined, decision: () => undefined } as unknown as RenderCtx;
+  const line = renderTrigger(e, ctx);
+  expect(line).toContain("[the memory was not taken back]");
+  expect(line).toContain("commit message 用英文");
+  expect(line).not.toContain("already took back");
+  expect(line).not.toContain("好，不记了");
+  expect(line).toMatch(/still kept/);
+  // Both facts, when Mem took one back and refused another.
+  expect(takenBackLine([{ title: "a" }, { title: "b", failed: true }])).toContain("already took back");
+  expect(takenBackLine([{ title: "a" }, { title: "b", failed: true }])).toContain("[the memory was not taken back]");
+});
+
 test("别记这个: the partner sees under their words what Ducter took back", () => {
   const e = { seq: 9, ts: "2026-11-21T10:00:00.000Z", persona: "p", stream: "channel", origin: "user", kind: "user_msg", body: { text: "算了，别记这个" } } as LogEvent;
   const ctx = { takenBack: (seq: number) => (seq === 9 ? [{ title: "commit message 用英文" }] : []), taskTitle: () => undefined, decision: () => undefined } as unknown as RenderCtx;

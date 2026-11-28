@@ -2480,8 +2480,11 @@ type BridgeView struct {
 	Home     string       `json:"home,omitempty"`
 	Reason   string       `json:"reason,omitempty"`
 	Detail   string       `json:"detail,omitempty"`
-	Pinned   bool         `json:"pinned,omitempty"`
-	CanRun   bool         `json:"canRun,omitempty"`
+	// D669 (#4): Code is an unregistered Mem refusal code, kept as a fact
+	// behind 详情, never a line.
+	Code   string `json:"code,omitempty"`
+	Pinned bool   `json:"pinned,omitempty"`
+	CanRun bool   `json:"canRun,omitempty"`
 	// D340: Asks: on ready, this home connects only when asked (not the
 	// person's own home), so the switch shows off until it is flipped.
 	Asks bool `json:"asks,omitempty"`

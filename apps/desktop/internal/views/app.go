@@ -152,6 +152,8 @@ type App struct {
 	memDetails bool
 	// D646: a refusal's identity and who to ask in Mem, behind 详情 on Agent messaging.
 	peersFact bool
+	// D669 (#4): the stuck mailbox's Mem code, behind 详情.
+	peersStuckFact bool
 	// peersAsked (D332): 和你的其他 agent 通信 was opened from the Partner page's
 	// one line, so the rail lists it for now.
 	peersAsked bool

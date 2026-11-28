@@ -159,7 +159,7 @@ func memStateOf(m *protocol.MemView, b *protocol.BridgeView, home, why string) *
 			reason = "control_denied"
 		}
 		d := memStateDef{Title: "bridge.refused." + reason + ".title", Line: "bridge.refused." + reason + ".line", Overview: "home.mem.refused", Need: "need.mem.refused", Page: "peers", Action: "retry", Act: "bridge.retry", Tone: "bad"}
-		if reason == "lifetime_inactive" || reason == "conflict" {
+		if reason == "lifetime_inactive" || reason == "conflict" || reason == "policy_invalid" {
 			d.Action, d.Act = "none", ""
 		}
 		v := make("failed")

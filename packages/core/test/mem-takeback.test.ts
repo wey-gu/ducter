@@ -18,7 +18,7 @@ test("a take-back and nothing else, in Chinese and English", () => {
     expect([s, readTakeBack(s)]).toEqual([s, false]);
 });
 
-function rig() {
+function rig(ok = true) {
   const t = tempDir();
   stops.push(t.cleanup);
   let at = Date.parse("2026-11-21T10:00:00.000Z");
@@ -26,7 +26,7 @@ function rig() {
   const log = openLog({ path: `${t.dir}/log.db`, persona: "p", clock });
   stops.push(() => log.close());
   const undone: number[] = [];
-  const tb = takeBackAtOnce({ log, undo: async (seq) => (undone.push(seq), true) });
+  const tb = takeBackAtOnce({ log, undo: async (seq) => (undone.push(seq), ok) });
   stops.push(tb.stop);
   const user = (text: string) => log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text } });
   const noted = (title: string) => log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title, memoryId: `m-${title}` } });
@@ -41,6 +41,19 @@ test("别记这个 takes back what the reply to the previous message noted, at o
   const said = r.user("算了，别记这个");
   expect(r.undone).toEqual([n.seq]);
   expect(r.tb.heardFrom(said.seq)).toEqual([{ seq: n.seq, title: "commit message 用英文" }]);
+});
+
+test("a refused undo: still noted, and the partner's fact says so once the undo answered", async () => {
+  const r = rig(false);
+  r.user("以后 commit message 都用英文");
+  const n = r.noted("commit message 用英文");
+  const said = r.user("别记这个");
+  // The intent is taken back at once; whether Mem took it is known when the undo answers.
+  expect(r.tb.heardFrom(said.seq)).toEqual([{ seq: n.seq, title: "commit message 用英文" }]);
+  await r.tb.settled(said.seq);
+  expect(r.tb.heardFrom(said.seq)).toEqual([{ seq: n.seq, title: "commit message 用英文", failed: true }]);
+  // No take-back: settled answers at once.
+  await r.tb.settled(9999);
 });
 
 test("nothing noted since the previous message, or longer words: nothing taken back", () => {

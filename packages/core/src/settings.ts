@@ -123,6 +123,8 @@ export interface SettingsStore extends SettingsApi {
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   /** D329: 撤销 / Undo on a Noted line: true when the save was taken back (archived, or out of the outbox). */
   undo(seq: number): Promise<boolean>;
+  /** D669 (#4): an undo Mem refused, by the Noted line's seq (the tap's and the spoken one). */
+  onUndoFailed(fn: (seq: number) => void): () => void;
   setMemHooks(h: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0]): void;
   memChanged(): void;
   /** D304: how many lines it noted in the 7 days before `at` that are still there (0 with memory off). */
@@ -179,6 +181,8 @@ export function openSettings(opts: {
   };
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((fn) => fn());
+  /** D669 (#4): an undo Mem refused, by seq, so every client can say it in the failed ink. */
+  const undoFailed = new Set<(seq: number) => void>();
   let forgetter: ((id: string) => Promise<MemWriteResult>) | undefined;
   let memHooks: Parameters<NonNullable<import("@ducter/protocol/src/internal.ts").SettingsApi["setMemHooks"]>>[0] | undefined;
   let glance: (() => MemView["glance"]) | undefined;
@@ -309,14 +313,25 @@ export function openSettings(opts: {
       memHooks = h;
     },
     memChanged: changed,
+    onUndoFailed(fn) {
+      undoFailed.add(fn);
+      return () => undoFailed.delete(fn);
+    },
     async undo(seq) {
       // D329: 撤销 / Undo on a Noted line, no question asked (it is the undo): archived in Mem, or
       // taken out of the outbox while it waits; a memory it replaced comes back.
       const e = opts.log.read({ stream: "channel", kinds: ["memory_noted"], limit: 1000 }).find((x) => x.seq === seq);
-      if (!e || !memHooks) return false;
+      if (!e) return false;
       if ((data.undone ?? []).includes(seq)) return true;
-      const ok = await memHooks.undo(e.body as Bodies["memory_noted"]).catch((err) => (console.warn("[settings] undoing in Mem failed:", (err as Error).message), false));
-      if (!ok) return false;
+      const noted = e.body as Bodies["memory_noted"];
+      const ok = memHooks ? await memHooks.undo(noted).catch((err) => (console.warn("[settings] undoing in Mem failed:", (err as Error).message), false)) : false;
+      if (!ok) {
+        // D669 (#4): the Log keeps the intent, and a failed one is not replayed; every client
+        // hears the seq so the Noted line says still noted in the failed ink.
+        if (noted.memoryId) opts.log.append({ stream: "channel", origin: "system", kind: "memory_feedback", body: { memoryId: noted.memoryId, op: "forget", sent: false, failed: true } });
+        for (const fn of undoFailed) fn(seq);
+        return false;
+      }
       data.undone = [...(data.undone ?? []), seq].slice(-HIDDEN_MAX);
       save();
       changed();

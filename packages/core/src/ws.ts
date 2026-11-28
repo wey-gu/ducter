@@ -430,6 +430,15 @@ export function createWsHandler(deps: WsDeps) {
     const subs = [...sockets].filter((ws) => ws.data.settings);
     if (subs.length) pushSettings(subs);
   });
+  // D669 (#4): an undo Mem refused, whoever asked (the tap or 别记这个 said): every window
+  // draws it in the failed ink on that Noted line, not only the socket that tapped.
+  const offUndoFailed = deps.settings?.onUndoFailed?.((seq) => {
+    const subs = [...sockets].filter((ws) => ws.data.settings);
+    if (!subs.length) return;
+    void settingsFrame()
+      .then((f) => subs.forEach((ws) => !stopped && sockets.has(ws) && send(ws, { ...f, undid: { seq, ok: false } } as ServerFrame)))
+      .catch(pushFailed("settings"));
+  });
   // D435: the partner's own agent held, back, or its time came: Settings › Partner and the header say so.
   const offBrainHold = deps.core.brainHold?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
@@ -1602,11 +1611,11 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "memory_undo": {
         // D329: 撤销 / Undo on a fresh Noted line. Taken back: every subscriber gets the frame (undone);
-        // not: this socket hears so (undid.ok false), and the line stays as it was.
+        // not: D669 (#4) settings' undoFailed listeners push `undid.ok false` to every subscriber,
+        // so the line stays as it was and every window says why.
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
-        const ok = await deps.settings.undo(Number(f.seq));
-        if (!ok) send(ws, { ...(await settingsFrame()), undid: { seq: Number(f.seq), ok: false } } as ServerFrame);
+        await deps.settings.undo(Number(f.seq));
         return;
       }
       case "memory_confirm": {
@@ -3190,6 +3199,7 @@ export function createWsHandler(deps: WsDeps) {
       offApps?.();
       offDevices?.();
       offSettings?.();
+      offUndoFailed?.();
       offBrainHold?.();
       offBudget?.();
       if (budgetPush) clearTimeout(budgetPush);

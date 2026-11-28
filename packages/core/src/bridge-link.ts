@@ -217,7 +217,27 @@ export const REFUSALS: Record<string, BridgeRefusal> = {
   cloud_bridge_setup_busy: "unavailable",
   cloud_bridge_setup_capacity: "unavailable",
   cloud_bridge_setup_outcome_unknown: "unknown",
+  // D669 (#4): Mem just opened a workspace to Bridge but hasn't let this computer exchange
+  // messages yet. One line, no Try again: the way through is in Mem, not another connect.
+  cloud_bridge_setup_policy_invalid: "policy_invalid",
 };
+
+/**
+ * D669 (#4): the refusal a Mem code is, exact or by the family it belongs to (a newer Mem may
+ * add a suffix to a registered family, e.g. `cloud_bridge_setup_policy_invalid_scope`).
+ */
+export function refusalOf(code: string | undefined): BridgeRefusal | undefined {
+  if (!code) return undefined;
+  if (REFUSALS[code]) return REFUSALS[code];
+  if (code.startsWith("cloud_bridge_setup_policy_invalid")) return "policy_invalid";
+  return undefined;
+}
+
+/** D669 (#4): Mem's words for a failed step, only when they are not one of its raw codes. */
+export function wordsIn(out: string, err: string): string | undefined {
+  const d = detailIn(out, err);
+  return d && !/cloud_bridge_setup_|policy_invalid/.test(d) ? d : undefined;
+}
 
 export type NmemCall = (args: string[]) => Promise<{ code: number; out: string; err: string } | undefined>;
 
@@ -816,7 +836,7 @@ export function createBridgeLink(opts: {
   type Busy = "connecting" | "disconnecting" | "installing" | "updating" | "signing_in";
   let busy: Busy | undefined;
   let busyMove = false; // the running update moves the copy (D229)
-  let outcome: { state: "refused"; reason: BridgeRefusal } | { state: "failed"; detail: string } | undefined;
+  let outcome: { state: "refused"; reason: BridgeRefusal } | { state: "failed"; detail?: string; code?: string } | undefined;
   let undoFailed: string | undefined;
   let memFailed: string | undefined; // the last install/update didn't work: what it said
   let memKept = false; // ...and the old copy is still there, working
@@ -1023,9 +1043,13 @@ export function createBridgeLink(opts: {
           (j.selection?.scope?.space_id ?? space.id) === space.id;
         if (!ok) {
           const code = errorCodeIn(c.out, c.err);
-          const reason = code ? REFUSALS[code] : undefined;
-          // An unregistered code, or no code: what Mem said, clipped. A registered one is a plain line.
-          outcome = reason ? { state: "refused", reason } : { state: "failed", detail: c.code === 0 ? "Mem answered with another identity or place" : code ? `Nowledge Mem: ${code.replace(/^cloud_bridge_setup_/, "")}` : detailIn(c.out, c.err) };
+          const reason = refusalOf(code);
+          // D669 (#4): a registered code is a plain line; an unregistered one is the generic
+          // failed line with the code as its own fact behind 详情, never `Nowledge Mem: <code>` on screen.
+          const words = wordsIn(c.out, c.err);
+          outcome = reason
+            ? { state: "refused", reason }
+            : { state: "failed", ...(c.code === 0 && !words ? { detail: "Mem answered with another identity or place" } : {}), ...(words ? { detail: words } : {}), ...(code ? { code } : {}) };
           return;
         }
         // Passive: does the saved context act as this identity? (never --enable)
@@ -1167,8 +1191,9 @@ export function createBridgeLink(opts: {
         const conn = j?.connection;
         if (!(j?.state === "connected" && conn?.agent_id === agentId && conn?.state === "active" && typeof conn?.connection_id === "string")) {
           const code = c ? errorCodeIn(c.out, c.err) : undefined;
-          const why = code && REFUSALS[code] && REFUSALS[code] !== "unavailable" && REFUSALS[code] !== "unknown" ? "refused" : "waiting";
-          return { ok: false, why, detail: !c ? "nmem didn't start" : code ? `Nowledge Mem: ${code.replace(/^cloud_bridge_setup_/, "")}` : detailIn(c.out, c.err) };
+          const reason = refusalOf(code);
+          const why = reason && reason !== "unavailable" && reason !== "unknown" ? "refused" : "waiting";
+          return { ok: false, why, detail: !c ? "nmem didn't start" : (wordsIn(c.out, c.err) ?? (reason ? "Mem refused this connection" : "Mem didn't answer as expected")) };
         }
         connectionId = conn.connection_id as string;
       }

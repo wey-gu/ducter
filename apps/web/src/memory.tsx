@@ -19,7 +19,8 @@ import { Coin } from "./coin.tsx";
 import { copy } from "./conv-copy.ts";
 import { Btn, DangerButton, LinkBtn, MenuRow, Switch } from "./controls.tsx";
 import { ago, harnessName, keepClauses, receiptWords, spoken } from "./format.ts";
-import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memPhase, memStateView, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type ReachRow, type MemUpdate, type Thread } from "./mem-view.ts";
+import { aboutGroups, bySource, exchangeThreads, groupNoted, MEM_MIN, memHealthLook, memOpenTarget, memPhase, memStateView, memTrouble, memUpdate, ownsAgents, peersNamesUpdate, peersPhase, peersShown, peersSwitchOn, awayFor, reachRows, reachSplit, recentHandoffs, SENDER_DAILY, standing, trustOf, TRUSTED_DAILY, type Exchange as PeerExchange, type MemStateView, type ReachRow, type MemPhase, type MemUpdate, type Thread } from "./mem-view.ts";
+import { CopyLine } from "./lend.tsx";
 import { GBlock, GConfirm, GFoot, GHead, GRow, Group, Said, say, Tile } from "./set-grid.tsx";
 import { MemPluginRows } from "./mem-plugin.tsx";
 import { failedWhy, MemSetup, memSetupNow } from "./mem-setup.tsx";
@@ -32,6 +33,19 @@ const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 export const MEM_SITE = "https://mem.nowledge.co";
 
 const homeOf = (b: BridgeView | undefined) => b?.home || A.homeName || "";
+
+/**
+ * D669 (#4): 去 Nowledge Mem 看 goes where Mem lives: the cloud's site, or the app on the
+ * computer for a local Mem or the person's own server (whose label names the computer). None when
+ * the frame doesn't say where, so the count never sends the person to the wrong place.
+ */
+function memOpen(b: BridgeView | undefined): { how: "app" | "site"; label: string } | undefined {
+  const how = memOpenTarget(b);
+  if (!how) return undefined;
+  const home = homeOf(b);
+  const label = how === "app" && b?.where === "server" && home ? t("mem.all.open.server", home) : t("mem.all.open");
+  return { how, label };
+}
 
 
 /**
@@ -418,7 +432,12 @@ function MemCheckSec() {
         {open && c.asks.map((it) => (it.kind === "rule" ? <CheckRule key={it.id} it={it} /> : <CheckContra key={it.id} it={it} />))}
         {(open || n === 0) && c.more && (
           <GFoot note={t("mem.check.more")}>
-            <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+            {(() => {
+              // D669 (#4): the way to Mem's own queue goes where Mem lives, like the count's.
+              const go = memOpen(A.bridge);
+              if (!go) return null;
+              return go.how === "site" ? <LinkBtn kind="text" size="sm" href={MEM_SITE} label={go.label} /> : <Btn kind="text" size="sm" label={go.label} about="Nowledge Mem" onClick={() => A.openBridgeMem()} />;
+            })()}
           </GFoot>
         )}
       </Group>
@@ -487,6 +506,7 @@ function MemFacts({ b }: { b: BridgeView }) {
     ["mem.details.identity", b.identity],
     ["mem.details.space", b.space?.label],
     ["mem.details.spaceid", b.space?.id],
+    ["mem.details.code", b.code],
   ];
   return (
     <dl class="mem-facts">
@@ -579,6 +599,7 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
   const mem = A.mem;
   const u = memUpdate(b);
   const where = memWhere(b);
+  const open = memOpen(b);
   return (
     <MemSetup
       after={(stepsShown) => (
@@ -588,7 +609,12 @@ function MemLink({ b }: { b: BridgeView | undefined }) {
           {!stepsShown && mem?.keptUnder && <GRow title={t("mem.app.name.title")} line={t("mem.app.name.line", mem.keptUnder)} />}
           {/* D582: the way to Mem goes under the count on a phone (it squeezed the count to four lines). */}
           <GRow cls="act-under" title={mem?.glance?.total ? t("mem.all.count", thousands(mem.glance.total)) : t("mem.all.note")}>
-            <LinkBtn kind="text" size="sm" href={MEM_SITE} label={t("mem.all.open")} />
+            {/* D669 (#4): the way to Mem goes where the memories live: the site for Cloud, the app on its computer otherwise. */}
+            {open?.how === "site" ? (
+              <LinkBtn kind="text" size="sm" href={MEM_SITE} label={open.label} />
+            ) : open ? (
+              <Btn kind="text" size="sm" label={open.label} about="Nowledge Mem" onClick={() => A.openBridgeMem()} />
+            ) : null}
           </GRow>
           <MemFilesRow />
           {/* D459: one story with Agent messaging: the same Mem is how the person's other agents reach it. */}
@@ -1335,7 +1361,11 @@ function PeersNames({ b, name }: { b: BridgeView; name: string }) {
 function PeersStuck({ code, name }: { code: string; name: string }) {
   return (
     <Group class="mem-g" label={t("peers.stuck.title", name)}>
-      <GRow title={t("peers.stuck.title", name)} line={t("peers.stuck.line", name, code)} />
+      <GRow title={t("peers.stuck.title", name)} line={t("peers.stuck.line", name)} />
+      {/* D669 (#4): Mem's code is a fact for support, behind 详情, never the line. */}
+      <GBlock>
+        <MemMore label={t("mem.details")} text={[t("mem.details.code"), code]} />
+      </GBlock>
     </Group>
   );
 }

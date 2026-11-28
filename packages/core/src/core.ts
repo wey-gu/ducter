@@ -1720,7 +1720,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     zone: () => settings.get().quiet?.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
     ...(opts.importsRun ? { run: opts.importsRun } : {}),
   });
-  const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, importSources: opts.importsOffer ? () => opts.importsOffer! : () => importSources, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, importSources: opts.importsOffer ? () => opts.importsOffer! : () => importSources, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), takenBackSettled: (seq: number) => takeBack.settled(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D654 (research/245 §3.2): a place's project identity, the one derivation every surface reads.
   api.projectKeyFor = async (place) => {
     const id = await projectIdentities.read(place);

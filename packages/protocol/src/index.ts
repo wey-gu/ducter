@@ -887,7 +887,8 @@ export interface Bodies {
   // (memory_feedback, MCP only today) is where it goes; until nmem has one this is the record of the
   // intent (sent false), replayed when the CLI grows the verb (design/todo.md's trigger). Never a
   // visible line: the page's own said or failed line is the person's answer.
-  memory_feedback: { memoryId: string; op: MemDoneOp; note?: string; sent: boolean };
+  // D669 (#4): failed: the undo Mem refused (sent is false, and nothing will replay it).
+  memory_feedback: { memoryId: string; op: MemDoneOp; note?: string; sent: boolean; failed?: true };
   // D304: a memory the partner's answer actually leaned on, said once under that answer: "想起了你
   // 11月10日 说的" / "Remembered from what you said on Nov 10". Only when recall changed the answer,
   // at most one per reply, and only a memory memory_search returned that turn (the partner names
@@ -3720,8 +3721,10 @@ export interface MemGlance {
  * D225: unavailable: Mem's side can't take it now
  * (`_unavailable`, `_busy`, `_capacity`), nothing to do on the user's side; unknown: no answer came
  * back, so whether it took is unknown (Try again is the same connect, never a second one).
+ * D669 (#4): policy_invalid: the workspace hasn't let this computer exchange messages yet; the
+ * way through is in Mem, so there is no Try again here.
  */
-export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lifetime_inactive" | "attachment_mismatch" | "control_denied" | "revoked" | "conflict" | "unavailable" | "unknown";
+export type BridgeRefusal = "authority_missing" | "custody_birth_missing" | "lifetime_inactive" | "attachment_mismatch" | "control_denied" | "revoked" | "conflict" | "unavailable" | "unknown" | "policy_invalid";
 
 /**
  * D205: Settings › 伙伴's row for the persona's own Bridge connection (the frame carries it only
@@ -3779,6 +3782,8 @@ export interface BridgeView {
   /** install_mem, update_mem, sign_in, local_mem: the computer it is about (the home). */
   home?: string;
   reason?: BridgeRefusal;
+  /** D669 (#4): an unregistered Mem refusal code, kept as the fact behind 详情, never a line. */
+  code?: string;
   /** failed, or a disconnect that didn't go through: what Mem said, clipped. */
   detail?: string;
   pinned?: boolean;

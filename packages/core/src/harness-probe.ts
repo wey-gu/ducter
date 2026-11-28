@@ -1,7 +1,7 @@
 // Which first-wave harnesses (D85) are installed and signed in on this machine, without starting
 // a session or reaching a provider. Used by Your devices (devices.ts) and a worker's hello.
-//   Claude Code:      `claude auth status` (JSON loggedIn), or a CLAUDE_CODE_OAUTH_TOKEN in
-//                     Ducter's key file (checked on first use: research/29)
+//   Claude Code:      `claude auth status` (JSON loggedIn), or a key it is granted
+//                     (HARNESS_KEYS, D102); the OAuth token is checked on first use (research/29)
 //   Codex:            `codex login status`
 //   pi:               ships inside Ducter (OAR's bundled pi); signed in = a provider credential in
 //                     ~/.pi/agent (auth.json, a models.json key) or a provider key pi is
@@ -384,7 +384,11 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const status = json?.loggedIn === true;
     // D503 (research/219): who is signed in, as a fingerprint only (the email never leaves here).
     const account = status ? accountPrint("claude-code", [json.email, json.orgId]) : undefined;
-    return { harness: "claude-code", installed: true, loggedIn: status || has(CLAUDE_TOKEN_ENV), ...(account ? { account } : {}) };
+    // A key Ducter grants it (HARNESS_KEYS, D102) signs it in too. Only the OAuth token is the
+    // person's plan; an API key or a gateway token is paid by use, so the device says so.
+    const key = HARNESS_KEYS["claude-code"].find(has);
+    const byUse = !status && !!key && key !== CLAUDE_TOKEN_ENV;
+    return { harness: "claude-code", installed: true, loggedIn: status || !!key, ...(byUse ? { billing: "usage" as const } : {}), ...(account ? { account } : {}) };
   };
   const codex = async (): Promise<RawHarness> => {
     if (!o.which("codex")) return { harness: "codex", installed: false, loggedIn: false };

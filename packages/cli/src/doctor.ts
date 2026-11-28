@@ -6,7 +6,7 @@ import { basename, join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { POPPLER_TOOLS, popplerCmd } from "@ducter/core/src/pkg-line.ts";
-import { CLAUDE_TOKEN_ENV, harnessName } from "@ducter/protocol";
+import { CLAUDE_TOKEN_ENV, HARNESS_KEYS, harnessName } from "@ducter/protocol";
 import { HARNESS_FACTS, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
 import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
@@ -180,9 +180,10 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       const j = parseJson(auth.stdout);
       // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29). Ducter
       // keeps it in keys.env and passes it to Claude Code only (D102), so this shell may not have it.
-      const kept = !!readKeys(opts.dataDir, host.read ?? (() => undefined))[CLAUDE_TOKEN_ENV];
-      const token = j?.authMethod === "oauth_token" || kept;
-      return { installed: true, loggedIn: (auth.code === 0 && j?.loggedIn === true) || kept, token, version: firstVersion(v.stdout) };
+      const kept = readKeys(opts.dataDir, host.read ?? (() => undefined));
+      const token = j?.authMethod === "oauth_token" || !!kept[CLAUDE_TOKEN_ENV];
+      const keyed = HARNESS_KEYS["claude-code"].some((k) => !!kept[k]);
+      return { installed: true, loggedIn: (auth.code === 0 && j?.loggedIn === true) || keyed, token, version: firstVersion(v.stdout) };
     })(),
     (async () => {
       if (!host.which("codex")) return { installed: false, loggedIn: false, version: "" };

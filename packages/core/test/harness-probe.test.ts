@@ -42,6 +42,29 @@ test("a machine with all four: logins read from their own commands and files", a
   ]);
 });
 
+test("Claude Code is signed in when one of the keys Ducter grants it is in keys.env or the env", async () => {
+  const base = {
+    which: (c: string) => (c === "claude" ? `/bin/${c}` : null),
+    exec: async () => ({ code: 1, out: '{"loggedIn": false}' }),
+    env: {},
+    home: "/h",
+    dataDir: "/d",
+    uid: () => 1000,
+    only: ["claude-code"] as const,
+  };
+  const authToken = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "ANTHROPIC_AUTH_TOKEN=sk-ant-fake\n" }) });
+  // A gateway token or an API key is paid by use; only the OAuth token (or a login) is the plan.
+  expect(authToken).toEqual([{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "usage" }]);
+  const apiKey = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "ANTHROPIC_API_KEY=sk-ant-fake\n" }) });
+  expect(apiKey[0]).toMatchObject({ loggedIn: true, billing: "usage" });
+  const envKey = await probeHarnesses({ ...base, env: { ANTHROPIC_AUTH_TOKEN: "sk-ant-fake" }, read: files({}) });
+  expect(envKey[0]!.loggedIn).toBe(true);
+  const oauth = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "CLAUDE_CODE_OAUTH_TOKEN=tok-fake\n" }) });
+  expect(oauth[0]).toMatchObject({ loggedIn: true, billing: "plan" });
+  const none = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "OPENAI_API_KEY=sk-oa-fake\n" }) });
+  expect(none[0]!.loggedIn).toBe(false);
+});
+
 test("pi with no provider and DeepSeek Harness too old or without a key are not signed in", async () => {
   const base = { which: (c: string) => (c === "node" || c === "dsh" ? `/bin/${c}` : null), env: {}, home: "/h", dataDir: "/d", piBundled: () => "" };
   const old = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "0.2.0" }), read: files({ "/d/env": "OO_TOKEN=x" }), only: ["pi", "deepseek-harness"] });

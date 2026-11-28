@@ -540,15 +540,21 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "day_after") return true;
   // D380: a quick web look came back (its answer, or why a browsing task should take it).
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking";
+  // D659 (#257): a staged write's own outcome wakes the partner, never the answer line (which
+  // arrives before the write runs). Done, failed and held all carry what actually happened.
+  if (e.kind === "connection_call") {
+    const c = e.body as Bodies["connection_call"];
+    if (!c.staged || !c.decisionId || !["done", "failed", "held"].includes(c.state)) return false;
+    return c.wake === "none" ? false : c.wake === "quietDone" ? c.state !== "done" : c.wake === "fail" ? c.state === "failed" : true;
+  }
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
   // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
-  // D222: a calendar change the person said Go to that didn't go through (core ran it; success is the card's).
-  if (e.kind === "connection_call") {
-    const c = e.body as Bodies["connection_call"];
-    return c.op === "write" && c.state === "failed" && !!c.decisionId && /calendar/.test(c.action);
+  if (e.kind === "decision_resolved") {
+    const r = e.body as Bodies["decision_resolved"];
+    if (r.write) return false; // the write's outcome (the connection_call) is the wake
+    return !r.msgSeq && !r.inTask && r.by !== "ended" && r.by !== "said";
   }
   // D341: new to-dos in a source the person wants told (or taken under the standing go); a write
   // they said Go to that didn't go through. A to-do closed by someone else while its task runs is a
@@ -750,6 +756,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     console.warn("[said] couldn't keep earlier sayings:", (err as Error).message);
   }
   const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch, oauthFetch: opts.oauthFetch, signInMsPerSec: opts.signInMsPerSec, clientName: "Ducter", knownName: (ts) => providerOf(ts)?.name });
+  // D659 (#257): a staged connection write is Ducter's to run, for every connection and every
+  // partner. The answer only starts it; the written connection_call (done/failed/held, in the
+  // conversation that staged it) is both the record and the partner's wake. A process restart never
+  // replays a past Go here: only a newly appended resolution starts a run.
+  log.subscribe((e) => {
+    if (e.kind !== "decision_resolved") return;
+    const r = e.body as Bodies["decision_resolved"];
+    if (!r.write || r.by === "ended") return;
+    void connections.runApproved(r.decisionId).catch((err) => console.warn(`[connections] Go on ${r.decisionId}: ${(err as Error).message}`));
+  });
   registerConnectionTools(mcp, connections);
   let workersRef: Workers | undefined;
   // D234, D235: an ability as a worker last said it (its hello, then its abilities frames).
@@ -2843,8 +2859,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     sender: createActivitySender({ config: loadApnsConfig(dataDir), transport: opts.ambientTransport ?? http2Transport(), relayUrl: relayAt, relayFetch: opts.relayFetch }),
     alive: (d) => d === "local" || devices.isLive(d),
   });
-  // D165: the person's zone: their quiet hours', else (D243) the one their app last said, else the server's.
-  const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? proactiveRef?.clientZone() ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  // D165/D243/D658: the person's zone. Where they are now is what their newest app said in
+  // its hello; the quiet-hours zone is where the night was set (often the home's install zone, and
+  // stale after travel), so it is only the fallback; then the home's default, then the server's.
+  const zone = () => opts.proactive?.zone ?? proactiveRef?.clientZone() ?? settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   // D222: every calendar account's calendars, merged (Accounts, the partner's calendar tool, the watcher).
   const calendar = createCalendar({ dataDir, connections, zone, log });
   calendarRef = calendar;

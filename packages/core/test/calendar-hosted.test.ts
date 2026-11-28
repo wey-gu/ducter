@@ -18,14 +18,15 @@ const noOo = ooSource({ env: {}, dir: "/nonexistent-oo", which: () => null });
 let t: ReturnType<typeof tempDir>;
 let h: ReturnType<typeof fakeHostedCalendar>;
 let cal: Calendar;
+let conns: ReturnType<typeof openConnections>;
 let log: ReturnType<typeof openLog>;
 beforeEach(async () => {
   t = tempDir();
   h = fakeHostedCalendar(twoAccounts(), TOKEN);
   log = openLog({ path: `${t.dir}/ducter.db`, persona: "default" });
-  const c = openConnections({ dataDir: t.dir, log, oo: noOo });
-  expect(await c.add({ url: h.server.url, token: TOKEN })).toMatchObject({ ok: true });
-  cal = createCalendar({ dataDir: t.dir, connections: c, zone: () => ZONE, now: () => NOW, log });
+  conns = openConnections({ dataDir: t.dir, log, oo: noOo });
+  expect(await conns.add({ url: h.server.url, token: TOKEN })).toMatchObject({ ok: true });
+  cal = createCalendar({ dataDir: t.dir, connections: conns, zone: () => ZONE, now: () => NOW, log });
 });
 afterEach(() => {
   cal.stop();
@@ -51,9 +52,11 @@ test("a staged change runs on Go against the calendar app of the account it name
   const r = await cal.propose({ change: "create", title: "Lunch with Ana", start: "2026-11-19T12:30", minutes: 60, account: WORK }, "d_lunch");
   expect(r.ok).toBe(true);
   if (!r.ok) return;
-  log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_lunch", question: r.question.en, goLabel: r.goLabel.en, defaultOption: "hold", reversible: false, cal: r.cal } });
+  log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_lunch", question: r.question.en, goLabel: r.goLabel.en, defaultOption: "hold", reversible: false, cal: r.cal, write: r.write } });
   expect(h.writes).toHaveLength(0);
-  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_lunch", option: "go", by: "user" } });
+  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_lunch", option: "go", by: "user", write: r.write } });
+  // Core's general staged-write runner does this in a real home; this unit drives it directly.
+  await conns.runApproved("d_lunch");
   for (let i = 0; i < 100 && !calls().some((b) => b.decisionId === "d_lunch" && b.state === "done"); i++) await Bun.sleep(10);
   expect(h.writes).toEqual([expect.objectContaining({ action: "create_event", appId: "app_gc_work" })]);
   expect(calls().find((b) => b.decisionId === "d_lunch" && b.state === "done")?.link).toContain("google.com/calendar");

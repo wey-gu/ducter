@@ -87,7 +87,7 @@ export function forwardFrom(r: Bodies["decision_resolved"]): "user" | "ducter" {
 export function plainAsk(d: Bodies["decision"]): boolean {
   if (!d.taskId) return false;
   if (d.pay || d.checkout || d.key || d.copyKey || d.signIn || d.deviceSignIn || d.signInWhere || d.fill || d.phone || d.computer || d.handset || d.where || d.relay || d.call || d.anywhere) return false;
-  if (d.routineId || d.forApp || d.loop || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
+  if (d.routineId || d.forApp || d.loop || d.memPlugin || d.src || d.saying || d.findId || d.cal || d.write || d.closing || d.offer || d.draft || d.asker || d.trust || d.sender) return false;
   if (d.look?.left.length) return false;
   return !destructiveChoice(d.question, d.goLabel);
 }
@@ -260,7 +260,7 @@ export function createDecisions(opts: {
       stream: "channel",
       origin: "system",
       kind: "decision_resolved",
-      body: { decisionId: d.decisionId, option: d.defaultOption, by: "default" },
+      body: { decisionId: d.decisionId, option: d.defaultOption, by: "default", ...(d.write ? { write: d.write } : {}) },
     });
     if (d.src?.kind === "picks" && d.findId)
       log.append({ stream: "channel", origin: "system", kind: "find_state", body: { findId: d.findId, kind: "todos", state: "passed" } });
@@ -612,7 +612,7 @@ export function createDecisions(opts: {
           stream: "channel",
           origin: by,
           kind: "decision_resolved",
-          body: { decisionId: id, option: "reply", text: hideMemSecrets(text.slice(0, 2000)).text, by: "user", ...(by === "user" ? { inTask: true as const } : {}) },
+          body: { decisionId: id, option: "reply", text: hideMemSecrets(text.slice(0, 2000)).text, by: "user", ...(by === "user" ? { inTask: true as const } : {}), ...(all.get(id)?.write ? { write: all.get(id)!.write } : {}) },
         });
       }
     },
@@ -631,7 +631,7 @@ export function createDecisions(opts: {
       if (dropped(all.get(decisionId)!.taskId)) throw new Error("That task was dropped. Undo the drop first, then answer.");
       // D539: a copy card's Go is the person's tap on that card, after the copy ran (key-copy.ts): never another path.
       if (option === "go" && all.get(decisionId)!.copyKey && !extra?.copied) throw new Error("a copy card is answered on the card itself");
-      const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
+      const body: Bodies["decision_resolved"] = { decisionId, option, by: "user", ...(all.get(decisionId)!.write ? { write: all.get(decisionId)!.write } : {}) };
       // D597: a Mem connect link or key typed into a reply never reaches the task or the Log.
       if (text) body.text = hideMemSecrets(text).text;
       if (extra?.delivered) body.delivered = true;

@@ -33,12 +33,21 @@ shows, said once, the morning it matters.
    invitation isn't on their day; one shown as free never blocks a slot or clashes.
 3. **Times are the person's.** Everything is in their zone; the other side's zone is said only
    when it really differs (an event made in Los Angeles, a guest's zone the person named). UTC,
-   which tools write by default, is never "the other side".
+   which tools write by default, is never "the other side". The zone is **where the person is
+   now**: the zone they named for this change, else the one their newest app said in its hello,
+   else their quiet-hours zone, else the home's; when none of those says anything (a server home
+   on UTC) the target calendar's own zone stands in. A day or a part of a day with no hour is an
+   **all-day event on that date** (a date-only start), never midnight, with the part of day and
+   whatever is still open in the note.
 4. **Every change is a card, run by code.** Add, move, cancel and answering an invitation are
    staged as one write and run once on Go by core (never by a model's second call), with no
-   default and no "don't ask next time" (D189's rails). Cancelling someone else's meeting is
-   declining it. Moving someone else's meeting is refused with the reason (only the organizer
-   can). The card is the confirmation: on success nobody speaks (silence means success); a
+   default and no "don't ask next time" (D189's rails). The write is found by its decision id in
+   whichever partner's conversation staged it and the run is recorded there, by core's general
+   staged-write runner (D657; never "nothing is waiting" in the default's conversation). A
+   successful calendar write wakes nobody (the card is the confirmation); a failure or a held
+   answer does.
+   Cancelling someone else's meeting is declining it. Moving someone else's meeting is refused
+   with the reason (only the organizer can). The card is the confirmation: on success nobody speaks (silence means success); a
    failure wakes the partner to say it in one line.
 5. **No new read for show.** The greeting's "today" line comes from the last read; a fresh read on
    opening the app happens only when today was not read in the last half hour, in the background,
@@ -107,6 +116,17 @@ per client).
   account (named; else the one whose domain the guests share; else the default), the calendar,
   the clash at that time, who gets an email, and the other side's zone; stages one write; logs the
   card. The partner ends its turn.
+
+**How the partner fills a create** (the model judges; the tool's words make the right thing the
+easy thing): `title` is the thing's name only (`Rust × AI Meetup`), `where` is the place
+(`Kong Office`), and `note` holds whatever is still open and becomes the event's description
+(`周六下午，新加坡时间，几点待定；议题待发给张晋涛`). A `start` with no hour is a date
+(`2026-12-12`), and the event is all-day on that date; the tool never invents a midnight.
+`zone` is the person's own zone only when they named it for this change (`新加坡时间` →
+`Asia/Singapore`); `theirZone` is a guest's and never theirs. The general rule, checked against unlike cases (a dentist on the 3rd
+is an all-day event on the 3rd; a flight at a known hour in another zone is timed, with that
+zone as `theirZone`): the day's shape comes from what the person said, and code keeps the
+all-day boundary and the zone.
 
 Actions (VERIFIED in oo's catalog, research/65): `list_calendars`, `list_events`
 (`singleEvents`, `orderBy=startTime`, `timeZone`), `create_event` (`sendUpdates` all when there

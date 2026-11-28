@@ -358,6 +358,8 @@ interface RunResult {
   /** D222: day cards under messages, and the kinds of calendar change cards made. */
   dayCards?: { step: number; seq: number; cal: NonNullable<Bodies["ai_msg"]["cal"]> }[];
   calKinds?: string[];
+  /** D658: each calendar change card's facts and the write it staged (where and note). */
+  calFacts?: { kind: string; allDay: boolean; title: string; start: string; where?: string; note?: string }[];
   /** D341: to-do write-back cards made, and the to-do each task is bound to. */
   todoCards?: number;
   boundRefs?: Map<string, string>;
@@ -1080,6 +1082,16 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: conv, fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
   const calKinds = decisions.map((e) => (e.body as Bodies["decision"]).cal?.kind).filter((k): k is NonNullable<typeof k> => !!k);
+  // D658: a calendar card's facts, and the event it staged (where and note are not on the
+  // card itself; the streamed tool input carries only the title early).
+  const calFacts = decisions.flatMap((e) => {
+    const d = e.body as Bodies["decision"];
+    const c = d.cal;
+    if (!c) return [];
+    const staged = core.log.read({ stream: conv, kinds: ["connection_call"], limit: 5000 }).map((x) => x.body as Bodies["connection_call"]).find((b) => b.decisionId === d.decisionId && b.state === "needs_go");
+    const event = (staged?.input as { input?: { event?: { location?: unknown; description?: unknown } } } | undefined)?.input?.event;
+    return [{ kind: c.kind, allDay: !!c.allDay, title: c.title, start: c.start, ...(typeof event?.location === "string" ? { where: event.location } : {}), ...(typeof event?.description === "string" ? { note: event.description } : {}) }];
+  });
   const todoCards = decisions.filter((e) => (e.body as Bodies["decision"]).src?.kind === "write").length;
   const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
   const looks = core.log
@@ -1148,6 +1160,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         // D222: a calendar change's card.
         if (d.src) lines.push(`    [this decision card IS the to-do write-back card (made by the todos tool), and shows] ${d.src.kind} · ${d.src.item.where ?? ""}${d.src.item.label} "${d.src.item.title}"${d.src.text ? ` · the comment, whole: ${d.src.text}` : ""}${d.src.close ? " · and closes it" : ""} · goes out only on the user's tap`);
         if (d.cal) lines.push(`    [this decision card IS the calendar change card (one card, made by the calendar tool), and shows] ${d.cal.kind}${d.cal.response ? ` (${d.cal.response})` : ""} · ${d.cal.title} · ${d.cal.allDay ? d.cal.start : `${d.cal.start.slice(0, 16)}–${d.cal.end.slice(11, 16)}`}${d.cal.was ? ` (was ${d.cal.was.start.slice(0, 16)})` : ""} · in ${[d.cal.calendar || "main calendar", d.cal.account].filter(Boolean).join(" · ")} · notifies: ${d.cal.notify.join(", ") || "nobody"}${d.cal.clash ? ` · overlaps "${d.cal.clash}"` : ""}${d.cal.theirZone ? ` · their zone ${d.cal.theirZone}` : ""} · runs only on the user's tap, then the card shows it done`);
+        if (d.cal) {
+          // D658: the event the card will write, as staged: where and the description (the note).
+          const staged = core.log.read({ stream: conv, kinds: ["connection_call"], limit: 5000 }).map((x) => x.body as Bodies["connection_call"]).find((b) => b.decisionId === d.decisionId && b.state === "needs_go");
+          const ev = (staged?.input as { input?: { event?: { summary?: unknown; start?: { date?: string; dateTime?: string }; end?: { date?: string; dateTime?: string }; location?: unknown; description?: unknown } } } | undefined)?.input?.event;
+          if (ev) {
+            const at = (w?: { date?: string; dateTime?: string }) => (w?.date ? `all day ${w.date}` : (w?.dateTime ?? "?"));
+            lines.push(`    [the write it staged: the event's own fields] ${String(ev.summary ?? "")} · ${at(ev.start)} → ${at(ev.end)}${typeof ev.location === "string" ? ` · where: ${ev.location}` : ""}${typeof ev.description === "string" ? ` · note: ${ev.description}` : ""}`);
+          }
+        }
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
@@ -1250,7 +1271,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const appsNow = core.apps.list(persona.id ?? core.persona.id).map((m) => ({ id: m.id, name: m.name, version: m.version, html: core.apps.html(m.id) ?? "", data: core.apps.data(m.id), ...(m.task ? { task: m.task.id } : {}) }));
   // D405: the apps the model wrote, kept whole for a look (the results file clips them); never committed.
   if (process.env.DUCTER_EVAL_APPS_DIR) for (const a of appsNow) writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.html`), a.html), writeFileSync(join(process.env.DUCTER_EVAL_APPS_DIR, `${sc.id}-${a.id}-v${a.version}.json`), JSON.stringify({ name: a.name, data: a.data }));
-  return { sc, visible, dayCards, calKinds, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, wentOnWord, rulesNow, linesNow: asksNow?.lines.length ?? 0, handed };
+  return { sc, visible, dayCards, calKinds, calFacts, todoCards, boundRefs, blocks, shown, appCards, appAnswers, appsNow, shelf, appsSeeded, dropped, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, toolsUnfit, transcript: lines.join("\n"), recalls, knownShown, threadSearches, remembered: mem.added, memAttempts, sources, retitles, bridgeSent, work: { ...work, asks }, bodies, saidAsks, wentOnWord, rulesNow, linesNow: asksNow?.lines.length ?? 0, handed };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -1509,6 +1530,21 @@ function check(r: RunResult): string[] {
   for (const re of e.uiRequire ?? []) if (!re.test(blockText)) fails.push(`the block lacks ${re}`);
   if (e.calCard && !r.calKinds?.includes(e.calCard)) fails.push(`no calendar ${e.calCard} card`);
   if (e.noCalCard && r.calKinds?.length) fails.push("a calendar change card nobody asked for");
+  // D658: the calendar card's facts (the streamed tool input carries only the title early):
+  // an all-day date, a clean title, the place and the open details in the note.
+  if (e.calCardFacts) {
+    const want = e.calCardFacts;
+    const hit = r.calFacts?.some(
+      (f) =>
+        (!want.change || f.kind === want.change) &&
+        (want.allDay === undefined || f.allDay === want.allDay) &&
+        (!want.title || want.title.test(f.title)) &&
+        (!want.start || want.start.test(f.start)) &&
+        (!want.where || (f.where !== undefined && want.where.test(f.where))) &&
+        (!want.note || (f.note !== undefined && want.note.test(f.note))),
+    );
+    if (!hit) fails.push(`no calendar card with ${JSON.stringify({ ...want, title: String(want.title), start: String(want.start), where: String(want.where), note: String(want.note) })} (cards: ${JSON.stringify(r.calFacts)})`);
+  }
   // D67 (2): a choice about how to do the work is reversible, defaults to Go and carries a time.
   if (e.askReversible && !r.work?.asks?.some((a) => a.reversible && a.go && a.timed)) fails.push("ask not reversible with a timed Go default");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");

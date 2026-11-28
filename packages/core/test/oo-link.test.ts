@@ -197,7 +197,7 @@ describe("the one tap, through the broker", () => {
     expect(fake.calls().filter((x) => x.argv[1] === "run").length).toBe(runsBefore);
     log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "dec_1", option: "go", by: "user" } });
     expect(await c.runApproved("dec_1")).toMatchObject({ ok: true, op: "write" });
-    expect(await c.runApproved("dec_1")).toMatchObject({ ok: false });
+    expect(await c.runApproved("dec_1")).toMatchObject({ ok: true, result: { recorded: true } });
     expect(fake.calls().filter((x) => x.argv[1] === "run").length).toBe(runsBefore + 1);
   });
 

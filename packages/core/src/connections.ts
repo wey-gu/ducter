@@ -19,8 +19,7 @@ import type { SignInView } from "@ducter/protocol";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { qrRows } from "./devices.ts";
 import { discover, importedToken, pollDevice, refresh as refreshToken, revoke as revokeToken, stale, startDevice, type DeviceStart, type OAuthServer, type OAuthToken } from "./mcp-oauth.ts";
-import { actingPersona } from "./acting.ts";
-import { channelOf } from "@ducter/protocol/src/partners.ts";
+import { partnerOfStream } from "@ducter/protocol/src/partners.ts";
 import { whichNow } from "@ducter/protocol/src/which.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
@@ -397,6 +396,36 @@ export function summarize(data: unknown): string {
   return typeof data === "string" ? `${data.length} chars` : "ok";
 }
 
+/** Fields that are the message, not the thing acted on: two drafts for the same thread are one target. */
+const WRITE_CONTENT_KEYS = new Set(["body", "text", "message", "content", "html", "description", "note", "draft", "comment", "snippet", "markdown"]);
+
+const stableJson = (v: unknown): string => {
+  if (Array.isArray(v)) return `[${v.map(stableJson).join(",")}]`;
+  if (v && typeof v === "object") return `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${stableJson((v as Record<string, unknown>)[k])}`).join(",")}}`;
+  return JSON.stringify(v ?? null);
+};
+
+/**
+ * D659 (#257): what a write acts on, for the no-duplicate-staging rule: the same connection,
+ * action and target may not be on two open cards. The destination/thing fields count, a message's
+ * body does not; with no such field the whole input does, so two different sends never collide.
+ */
+export function writeTarget(input: unknown, account?: string): string {
+  const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const target: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (WRITE_CONTENT_KEYS.has(k)) continue;
+    if (v === null || v === undefined) continue;
+    if (typeof v === "object") {
+      // One level in (oo's `event`, a payload): keep its identifying fields, drop its body.
+      if (Array.isArray(v)) target[k] = v;
+      else target[k] = Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([x]) => !WRITE_CONTENT_KEYS.has(x)));
+    } else target[k] = typeof v === "string" ? v.trim() : v;
+  }
+  const hasTarget = Object.keys(target).length > 0;
+  return `${account ?? ""}|${stableJson(hasTarget ? target : o)}`;
+}
+
 const forModel = (data: unknown): unknown => {
   const s = typeof data === "string" ? data : JSON.stringify(data);
   if (s.length <= RESULT_MAX) return data;
@@ -540,6 +569,7 @@ export function openConnections(opts: {
   const listPath = join(opts.dataDir, CONNECTIONS_FILE);
   const tokPath = join(opts.dataDir, CONNECTION_TOKENS_FILE);
   // A hosted connection saved before D158 points at connector.oomol.com/mcp, which OOMOL doesn't serve.
+  const running = new Set<string>(); // D659 (#257): a decision id being run right now
   let records: Record_[] = (readJson<{ connections?: Record_[] }>(listPath, {}).connections ?? []).map((r) =>
     r.source !== "oo" && r.url !== OOMOL_HOSTED_MCP && isOomolHosted(r.url) ? { ...r, url: OOMOL_HOSTED_MCP } : r,
   );
@@ -743,10 +773,13 @@ export function openConnections(opts: {
     return { op };
   }
 
-  const record = (body: Omit<Bodies["connection_call"], "callId"> & { callId?: string }, watch = false) => {
+  const record = (body: Omit<Bodies["connection_call"], "callId"> & { callId?: string }, watch = false, stream?: string) => {
     const b: Bodies["connection_call"] = { callId: body.callId ?? `cc_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`, ...body };
+    // D657: a write staged in another partner's conversation is recorded in that same
+    // conversation (its persona too), not in the default's because a background path recorded it.
+    const owner = stream ? partnerOfStream(stream) : undefined;
     // D165: Ducter's own looks go to the "watch" stream: 看了哪些 reads them, nothing else sees them.
-    opts.log.append({ stream: watch ? "watch" : b.taskId ? `task:${b.taskId}` : "channel", origin: watch ? "system" : b.taskId ? "task" : "partner", kind: "connection_call", body: b });
+    opts.log.append({ stream: stream ?? (watch ? "watch" : b.taskId ? `task:${b.taskId}` : "channel"), origin: watch ? "system" : b.taskId ? "task" : "partner", kind: "connection_call", body: b, ...(owner && owner !== "default" ? { persona: owner } : {}) });
     return b.callId;
   };
 
@@ -1015,52 +1048,80 @@ export function openConnections(opts: {
       }
     },
 
-    stage(key, action, input, decisionId, account) {
+    stage(key, action, input, decisionId, account, o) {
       const r = find(key);
       if (!r) return { ok: false, error: NOT_FOUND };
       if (!policyAllows(r.policy, action)) return { ok: false, error: `The user's rules for ${r.name} don't allow ${action}.` };
       const why = reserved(r.id, action);
       if (why) return { ok: false, error: why };
-      const callId = record({ connectionId: r.id, connection: r.name, action, op: "write", state: "needs_go", decisionId, input: account ? { input, account } : { input } });
-      return { ok: true, callId };
+      // D659 (#257): the same write may not sit on two open cards. An earlier one is open
+      // while it waits for Go or runs after Go (its call is still needs_go); once it is done,
+      // failed or held it no longer blocks a real retry.
+      const keyOf = writeTarget(input, account);
+      const earlier = opts.log
+        .read({ kinds: ["connection_call"], limit: 5000 })
+        .map((e) => e.body as Bodies["connection_call"])
+        .reverse()
+        .find((b) => b.staged && b.state === "needs_go" && b.connectionId === r.id && b.action === action && writeTarget((b.input as { input?: unknown; account?: string } | undefined)?.input, (b.input as { account?: string } | undefined)?.account) === keyOf);
+      if (earlier?.decisionId)
+        return { ok: false, error: `An identical write is already on a card: ${action} on ${r.name} (decision ${earlier.decisionId}). Nothing has run; the user sees that card. End your turn and don't stage it again.` };
+      const wake = o?.wake ?? "always";
+      const callId = record({ connectionId: r.id, connection: r.name, action, op: "write", state: "needs_go", decisionId, input: account ? { input, account } : { input }, staged: true, wake });
+      return { ok: true, callId, write: { connection: r.name, action } };
     },
 
     async runApproved(decisionId) {
-      // D312: a write another partner staged is in its own conversation (its call is handled as it).
-      const evs = opts.log.read({ stream: channelOf(actingPersona()), kinds: ["connection_call", "decision_resolved"], limit: 5000 });
-      const staged = evs.find((e) => e.kind === "connection_call" && (e.body as Bodies["connection_call"]).decisionId === decisionId && (e.body as Bodies["connection_call"]).state === "needs_go");
+      // D312 + D657: a staged write is found by its decisionId wherever it was staged, and it
+      // runs as that partner. Reading only the acting persona's channel found nothing when a Log
+      // subscriber ran it: the acting persona is the default there, so another partner's card said
+      // "Nothing is waiting on that decision." and the write never ran.
+      const evs = opts.log.read({ kinds: ["connection_call", "decision_resolved"], limit: 5000 });
+      const calls = evs.filter((e) => e.kind === "connection_call").map((e) => e.body as Bodies["connection_call"]);
+      // D659 (#257): a call after the fact is a read-back, never a second run.
+      const ran = [...calls].reverse().find((b) => b.decisionId === decisionId && ["done", "failed", "held"].includes(b.state));
+      if (ran) {
+        if (ran.state === "done") return { ok: true, op: "write", result: { recorded: true, ...(ran.summary ? { summary: ran.summary } : {}), ...(ran.link ? { link: ran.link } : {}) } };
+        if (ran.state === "held") return err(ran.answer === "reply" ? "The user replied instead of Go; nothing was sent." : "The user said Hold; nothing was sent.", "write");
+        return err(ran.error ?? "It failed; nothing was sent.", "write");
+      }
+      const staged = [...calls].reverse().find((b) => b.decisionId === decisionId && b.state === "needs_go");
       if (!staged) return err("Nothing is waiting on that decision.");
-      const s = staged.body as Bodies["connection_call"];
-      const ran = evs.some((e) => e.kind === "connection_call" && (e.body as Bodies["connection_call"]).decisionId === decisionId && ["done", "failed", "held"].includes((e.body as Bodies["connection_call"]).state));
-      if (ran) return err("That one already ran (or was held); it never runs twice.", "write");
+      // The done/failed/held line goes back to the conversation it was staged in, not the caller's.
+      const stagedEv = evs.find((e) => e.kind === "connection_call" && (e.body as Bodies["connection_call"]).callId === staged.callId)!;
+      const home = stagedEv.stream;
+      const s = staged;
       const answer = evs.find((e) => e.kind === "decision_resolved" && (e.body as Bodies["decision_resolved"]).decisionId === decisionId)?.body as Bodies["decision_resolved"] | undefined;
       if (!answer) return err("The user hasn't answered yet. End your turn; the answer wakes you.", "write");
-      const base = { callId: s.callId, connectionId: s.connectionId, connection: s.connection, action: s.action, op: "write" as const, decisionId };
+      if (running.has(decisionId)) return err("That one is already running; its outcome will wake you.", "write");
+      const base = { callId: s.callId, connectionId: s.connectionId, connection: s.connection, action: s.action, op: "write" as const, decisionId, ...(s.staged ? { staged: s.staged as true } : {}), ...(s.wake ? { wake: s.wake } : {}), ...(answer.option !== "go" ? { answer: answer.option } : {}) };
       if (answer.option !== "go") {
-        record({ ...base, state: "held" });
+        record({ ...base, state: "held" }, false, home);
         return err(answer.option === "hold" ? "The user said Hold: it did not run." : "The user replied instead of Go: it did not run. Read their reply.", "write");
       }
       const r = find(s.connectionId);
       if (!r) {
-        record({ ...base, state: "failed", error: "connection removed" });
+        record({ ...base, state: "failed", error: "connection removed" }, false, home);
         return err("That connection was removed; nothing ran.", "write");
       }
       const staged_ = (s.input ?? {}) as { input?: unknown; account?: string };
+      running.add(decisionId);
       try {
         const res = await execute(r, s.action, staged_.input, staged_.account);
         if (failed(res)) {
-          record({ ...base, state: "failed", error: errorText(res) });
+          record({ ...base, state: "failed", error: errorText(res) }, false, home);
           return err(errorText(res), "write");
         }
         // D222: the page of what it made (an event in Google Calendar), for the card's own link.
         const page = (payloadOf(res.data) as { htmlLink?: unknown } | undefined)?.htmlLink;
         const link = typeof page === "string" && /^https:\/\/(www\.)?(calendar\.)?google\.com\//.test(page) ? page : undefined;
-        record({ ...base, state: "done", summary: summarize(res.data), ...(link ? { link } : {}) });
+        record({ ...base, state: "done", summary: summarize(res.data), ...(link ? { link } : {}) }, false, home);
         return { ok: true, op: "write", result: forModel(payloadOf(res.data)) };
       } catch (e) {
         // Not retried: a write whose answer was lost may have happened (research/34, G-safety).
-        record({ ...base, state: "failed", error: (e as LinkError).reason });
+        record({ ...base, state: "failed", error: (e as LinkError).reason }, false, home);
         return err(`It may or may not have gone through: ${r.name} didn't answer (${(e as LinkError).reason}). Tell the user to check; don't run it again.`, "write");
+      } finally {
+        running.delete(decisionId);
       }
     },
 

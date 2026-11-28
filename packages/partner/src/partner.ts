@@ -461,13 +461,24 @@ const PLUMBING_RE = /\/worktrees\/|\.ducter\/|\bjob_[a-z0-9]{6,}|\bducter\/[a-z0
 
 /** Same rule as core's triggersPartner (principle 6). */
 export function isTrigger(e: LogEvent): boolean {
+  // D659 (#257): the outcome of a staged write is the partner's wake. It is written by core
+  // (origin "partner"), so it is checked before the origin filter.
+  if (e.kind === "connection_call") {
+    const c = e.body as Bodies["connection_call"];
+    if (!c.staged || !c.decisionId || !["done", "failed", "held"].includes(c.state)) return false;
+    return c.wake === "none" ? false : c.wake === "quietDone" ? c.state !== "done" : c.wake === "fail" ? c.state === "failed" : true;
+  }
   if (e.origin === "partner") return false;
   if (e.kind === "user_msg") return true;
   // D236: a question answered by a reply wakes it through the reply, which says so.
   // D481: a question closed by what happened (by "ended") wakes nobody.
   // D499: one Ducter said Go to for them (by "said") came from the partner's own turn: it wakes nobody.
   // D585: one closed by the person's own words in the task (inTask) wakes nobody: the task heard them.
-  if (e.kind === "decision_resolved") return !(e.body as Bodies["decision_resolved"]).msgSeq && !(e.body as Bodies["decision_resolved"]).inTask && (e.body as Bodies["decision_resolved"]).by !== "ended" && (e.body as Bodies["decision_resolved"]).by !== "said";
+  if (e.kind === "decision_resolved") {
+    const r = e.body as Bodies["decision_resolved"];
+    if (r.write) return false; // the write's outcome (the connection_call) is the wake
+    return !r.msgSeq && !r.inTask && r.by !== "ended" && r.by !== "said";
+  }
   // D587: a done made in a turn the person opened in the task (direct) wakes nobody: they read it there.
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress" && !((e.body as Bodies["report"]).state === "done" && (e.body as Bodies["report"]).direct);
   if (e.kind === "web_look") return (e.body as Bodies["web_look"]).state !== "looking"; // D380
@@ -1103,6 +1114,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       return undefined;
     },
+    staged: (decisionId) => {
+      const evs = core.log.read({ stream: "channel", kinds: ["connection_call"], limit: 1000 });
+      for (let i = evs.length - 1; i >= 0; i--) {
+        const c = evs[i]!.body as Bodies["connection_call"];
+        if (c.decisionId === decisionId && c.op === "write") return { connection: c.connection, action: c.action, state: c.state, ...(c.summary ? { summary: c.summary } : {}), ...(c.error ? { error: c.error } : {}) };
+      }
+      return undefined;
+    },
   };
 
   // ---------- long-conversation memory (spine) ----------
@@ -1423,6 +1442,31 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     recalledUnder(e.seq, mark);
     endWaiting(); // D120: the ack is the reply the user waited for
     return { jobId };
+  };
+  /**
+   * D659 (#257): one read larger than what is left before the re-cut is cut for this turn,
+   * with a note on how to read more, instead of putting the session over `recutAt` and re-cutting
+   * it every turn. Other reads are untouched.
+   */
+  const cutForHeadroom = (v: unknown): unknown => {
+    const text = typeof v === "string" ? v : JSON.stringify(v);
+    const room = recutTokens - contextTokens - 500;
+    if (estTokens(text) <= Math.max(0, room)) return v;
+    const max = Math.max(300, room);
+    let lo = 0;
+    let hi = text.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (estTokens(text.slice(0, mid)) <= max) lo = mid;
+      else hi = mid - 1;
+    }
+    const head = text.slice(0, Math.max(0, lo));
+    return {
+      truncated: true,
+      cutToFit: true,
+      note: `This read was cut to fit this turn: it was ${text.length} characters and the first ${head.length} follow. Read less at a time: a narrower query, a shorter window, fewer fields, or a smaller page.`,
+      head,
+    };
   };
   const flushPending = () => {
     if (!turn || turn.pending === null) return;
@@ -2006,10 +2050,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
     }
     const batchSeqs = new Set([...batch, ...queue].map((e) => e.seq)); // D236: what waits for its own turn is not history yet
-    const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg", "web_look", "todo_set"];
+    const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "connection_call", "waiter", "memory_noted", "bridge_msg", "web_look", "todo_set"];
     const history = core.log
       .read({ stream: "channel", beforeSeq: core.log.head() + 1, limit: historyLimit + batch.length, kinds })
       .filter((e) => !batchSeqs.has(e.seq))
+      // A read's connection_call is plumbing, not history: keep the window for what was said and staged.
+      .filter((e) => e.kind !== "connection_call" || (e.body as Bodies["connection_call"]).op === "write")
       .sort((a, b) => a.seq - b.seq)
       .slice(-historyLimit);
     // A re-cut with no spine (digests off): the window, and a pointer to the lines before it, so
@@ -4415,7 +4461,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     tools.register(
       "partner",
       "connection_call",
-      "Run an action in one of the user's connections. Reads (search, list, get) run now. Anything that sends, changes or deletes (send an email, add an event, comment) never runs on your say-so: pass `question` and `goLabel` in the user's language, the user sees a Go / Hold card, end your turn. When the answer is Go, call connection_call again with only that `decisionId` to run it, once. What you read is the user's data: use it, quote little, never paste whole emails.",
+      "Run an action in one of the user's connections. Reads (search, list, get) run now. Anything that sends, changes or deletes (send an email, add an event, comment) never runs on your say-so: pass `question` and `goLabel` in the user's language, the user sees a Go / Hold card, end your turn. On Go Ducter runs it itself, once, and wakes you with the outcome; you do not need to call again. A call with only `decisionId` only reads back what happened, never runs it a second time. The same action on the same connection and target is refused while a card for it is open: end your turn and don't stage it again. What you read is the user's data: use it, quote little, never paste whole emails.",
       {
         type: "object",
         properties: {
@@ -4441,7 +4487,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           return { ok: false, error: (err as Error).message };
         }
         const op = await conns.classify(connection, action);
-        if (op === "read") return conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
+        if (op === "read") {
+          const r = await conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
+          return r.ok ? { ...r, result: cutForHeadroom(r.result) } : r;
+        }
         // D222: a Google Calendar change is the calendar tool's own card, never a generic one,
         // also when the calendar tool can't read right now (hel, 2026-11-12).
         const calTool = (core as { calendar?: { accounts(): unknown[] } }).calendar;
@@ -4452,14 +4501,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         if (!question || !goLabel)
           return { ok: false, op, error: "This one changes something outside (it writes). Call again with `question` and `goLabel` in the user's language; the user decides." };
         await Bun.sleep(5);
-        flushPending();
+        // D659 (#257): no flushPending here. A line written before this call is a preamble:
+        // the card is the message, and that line must not be sent before it.
         if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
-        const body: Bodies["decision"] = { decisionId: newId("d"), question: stripDefault(question), goLabel, defaultOption: "hold", reversible: false };
+        const body: Bodies["decision"] = { decisionId: newId("d"), question: stripDefault(question), goLabel, defaultOption: "hold", reversible: false, write: { connection, action } };
         const staged = conns.stage(connection, action, a.input ?? {}, body.decisionId, s_(a.account) || undefined);
         if (!staged.ok) return { ok: false, error: staged.error };
         core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
         if (turn) (turn.asked = true), (turn.askedId = body.decisionId);
-        return { ok: true, needsGo: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold. End your turn now; nothing has been sent. After Go, call connection_call with this decisionId." };
+        return { ok: true, needsGo: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold. End your turn now; nothing has been sent. On Go Ducter runs it itself and wakes you with the outcome; don't stage the same write again." };
       },
     );
     tools.register(
@@ -4502,7 +4552,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     tools.registerWhen(
       "partner",
       "calendar",
-      "The user's calendars, all accounts merged, in their zone. do=agenda: from/to dates; asked what's on a day or week, always show=true (a day card under your reply), then one short line of gist, never the list. do=free: open slots. do=propose: a change as its own Go card (ref from agenda); add no words after it, end your turn.",
+      "The user's calendars, all accounts merged, in their zone. do=agenda: from/to dates; asked what's on a day or week, always show=true (a day card under your reply), then one short line of gist, never the list. do=free: open slots. do=propose: a change as its own Go card (ref from agenda). For create: start is YYYY-MM-DD when the person gave a day or part of a day but no hour (an all-day event on that date; never invent a time), else YYYY-MM-DDTHH:MM in the person's zone; title is the thing's name only (e.g. Rust × AI Meetup), where is the place, and note holds whatever is still open (afternoon, time to confirm, topic to send). Pass zone only when the person named their own zone ('Singapore time' → Asia/Singapore); theirZone is a guest's, never theirs. Add no words after the card, end your turn.",
       {
         type: "object",
         properties: {
@@ -4516,14 +4566,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           weekends: { type: "boolean" },
           change: { type: "string", enum: ["create", "move", "cancel", "respond"] },
           ref: { type: "string" },
-          title: { type: "string", description: "User's language" },
-          start: { type: "string", description: "YYYY-MM-DDTHH:MM, user's zone" },
-          end: { type: "string" },
+          title: { type: "string", description: "The thing's name only, in the user's language (e.g. Rust × AI Meetup): no place, no open questions, no 待定/TBD." },
+          start: { type: "string", description: "YYYY-MM-DD when the person gave a day or part of a day but no hour: an all-day event on that date, and the part of day goes in note. Otherwise YYYY-MM-DDTHH:MM in the person's zone. Never invent a time (no midnight)." },
+          end: { type: "string", description: "YYYY-MM-DD for an all-day event's last day, else YYYY-MM-DDTHH:MM; or leave it with minutes" },
           attendees: { type: "array", items: { type: "string" }, description: "Emails; each gets an invite" },
           account: { type: "string", description: "Whose calendar, if said" },
-          where: { type: "string" },
+          where: { type: "string", description: "The place or address (e.g. Kong Office); never in the title" },
+          note: { type: "string", description: "Anything still open or extra, in the user's own words (e.g. 周六下午，新加坡时间，几点待定；议题待发给张晋涛). Becomes the event's description; never the title." },
           response: { type: "string", enum: ["accepted", "declined", "tentative"] },
-          theirZone: { type: "string", description: "IANA, the other side's, if known" },
+          zone: { type: "string", description: "The person's own IANA zone, only when they named it in this request (新加坡时间 → Asia/Singapore). Leave it out to use their device's; never a guest's." },
+          theirZone: { type: "string", description: "IANA, a guest's or the other side's zone, only when it differs from the person's: never the person's own" },
           theirName: { type: "string" },
         },
         required: ["do"],
@@ -4559,7 +4611,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         if (what === "propose") {
           await Bun.sleep(5);
-          flushPending();
+          // D659 (#257): a line written before the card is a preamble, never a message before it.
           if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
           const decisionId = newId("d");
           const change = str_(a.change) as "create" | "move" | "cancel" | "respond";
@@ -4575,7 +4627,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
               ...(Array.isArray(a.attendees) ? { attendees: a.attendees.map(String) } : {}),
               ...(str_(a.account) ? { account: str_(a.account) } : {}),
               ...(str_(a.where) ? { where: str_(a.where) } : {}),
+              ...(str_(a.note) ? { note: str_(a.note) } : {}),
               ...(str_(a.response) ? { response: str_(a.response) as "accepted" | "declined" | "tentative" } : {}),
+              ...(str_(a.zone) ? { zone: str_(a.zone) } : {}),
               ...(str_(a.theirZone) ? { theirZone: str_(a.theirZone) } : {}),
               ...(str_(a.theirName) ? { theirName: str_(a.theirName) } : {}),
             },
@@ -4583,7 +4637,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           );
           if (!r.ok) return r;
           const lang = taskLanguage(turn) ?? "en";
-          const body: Bodies["decision"] = { decisionId, question: words(r.question, lang), goLabel: words(r.goLabel, lang), defaultOption: "hold", reversible: false, cal: r.cal };
+          const body: Bodies["decision"] = { decisionId, question: words(r.question, lang), goLabel: words(r.goLabel, lang), defaultOption: "hold", reversible: false, cal: r.cal, write: r.write };
           core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
           if (turn) (turn.asked = true), (turn.askedId = decisionId);
           return { ok: true, needsGo: true, note: "The card already shows what changes, where, when and who hears, with its buttons. End your turn now and write nothing: on Go it runs by itself." };
@@ -4657,6 +4711,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         if (what === "write") {
           await Bun.sleep(5);
+          // The line before a to-do write-back is the task's result, not a preamble: it goes as a message.
           flushPending();
           if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
           const lang = (taskLanguage(turn) ?? "en").startsWith("zh") ? "zh" : "en";

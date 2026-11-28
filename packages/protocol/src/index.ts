@@ -521,6 +521,8 @@ export interface Bodies {
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     anywhere?: { hostname: string }; // D228: create the tunnel in the person's Cloudflare account and point this hostname at the home (Go)
     memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
+    /** D659 (#257): this card stages a connection write; Go runs it by itself (not a plain ask). */
+    write?: { connection: string; action: string };
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
     findId?: string;
@@ -593,7 +595,7 @@ export interface Bodies {
   // D539: a key copied between the person's computers on their Go (names only, never a value), or
   // one removed from a computer in Settings (removed: that computer's name, by "user").
   key_copy: { decisionId?: string; env: string; name: string; from: string; to: string[]; failed?: { name: string; why: string }[]; removed?: string; by: "go" | "user" };
-  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D601: Go given with 以后这类直接做 / Always do this: `standing` is the permission the tap kept. */ always?: true; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" | "ended" | "said"; now?: boolean; delivered?: boolean; msgSeq?: number; settled?: true; /** D599: a one-time-code sign-in seen through (its CLI's own check, or the task's word): settled, by "ended", and its task goes on. */ signedIn?: true; posted?: true; said?: string; action?: StandingAction; standing?: string; /** D601: Go given with 以后这类直接做 / Always do this: `standing` is the permission the tap kept. */ always?: true; /** D585: answered by the person's own words typed in the task itself: closes the card, wakes nobody (the task heard them). */ inTask?: true; /** D659 (#257): a staged connection write; its outcome (not this line) wakes the partner. */ write?: { connection: string; action: string } };
   // D382: 晚点再问我 / Ask me later: the person put a waiting question off to `until`. It stays
   // open (answering it still works) but out of Needs you; its countdown stops.
   decision_later: { decisionId: string; until: string; by: "user" };
@@ -1063,6 +1065,11 @@ export interface Bodies {
     summary?: string; // ≤ 200 chars, never the provider's full output
     error?: string;
     link?: string; // D222: a write's result page (the event in Google Calendar), when it gave one
+    /** D659 (#257): this write was staged on a Go card, and whether its outcome wakes the partner. */
+    staged?: true;
+    wake?: "always" | "fail" | "none" | "quietDone";
+    /** D659 (#257): a held staged write's answer, so the wake says Hold or Reply. */
+    answer?: "go" | "hold" | "reply";
   };
   // D189/D193: one snapshot of a phone call per change (core/src/phone.ts); the latest per callId
   // wins. On the channel, origin "system". Ended states wake the partner, which says the outcome once.

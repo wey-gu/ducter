@@ -64,6 +64,19 @@ test("every Ducter tool's schema fits every model family an agent sends it to", 
   expect(problems).toEqual([]);
 });
 
+test("the calendar tool's words make a day with no hour all-day, the title the name, and the open details the note", async () => {
+  const cfg = core.mcp.configFor("partner");
+  const req = new Request("http://127.0.0.1/mcp", { method: "POST", headers: { ...cfg.headers, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/list", params: {} }) });
+  const tools = ((await (await core.mcp.handle(req)).json()) as { result: { tools: { name: string; description: string; inputSchema: { properties: Record<string, { description?: string }> } }[] } }).result.tools;
+  const cal = tools.find((t) => t.name === "calendar")!;
+  expect(cal.description).toContain("all-day");
+  expect(cal.description).toContain("note");
+  expect(cal.inputSchema.properties.note?.description).toContain("description");
+  expect(cal.inputSchema.properties.zone?.description).toContain("person's own IANA zone");
+  expect(cal.inputSchema.properties.start?.description).toContain("Never invent a time");
+  expect(cal.inputSchema.properties.where?.description).toContain("never in the title");
+});
+
 test("the check is structural: the schema hel's Gemini refused is caught", () => {
   const before = { type: "object", properties: { check: { type: "object", properties: { succeedWhen: { type: "object", properties: { equals: {}, oneOf: { type: "array" } } } } } } };
   expect(schemaProblems(before, "gemini")).toEqual([".properties.check.properties.succeedWhen.properties.equals: no type", ".properties.check.properties.succeedWhen.properties.oneOf: an array must say what its items are"]);

@@ -90,6 +90,10 @@ export function parseWhen(v: unknown, zone: string): { ms: number; dateOnly: boo
   return Number.isNaN(t) ? undefined : { ms: t, dateOnly: false };
 }
 
+/** D658: UTC is what a tool writes when nobody said; it is not "where the person is". */
+const TOOL_ZONE = /^(?:Etc\/)?(?:UTC|GMT|Universal|Zulu)$/i;
+const personZoneKnown = (z: string | undefined): z is string => !!z && isZone(z) && !TOOL_ZONE.test(z);
+
 // ---------- shapes ----------
 
 interface RawCal {
@@ -203,6 +207,8 @@ export interface ProposeInput {
   theirZone?: string;
   theirName?: string;
   note?: string;
+  /** The person's own zone, when they named it for this change ("Singapore time"). */
+  zone?: string;
 }
 
 export interface Calendar {
@@ -224,7 +230,7 @@ export interface Calendar {
   glance(fromDate: string, toDate: string): Promise<CalGlance & { errors?: string[]; blind?: true }>;
   free(o: { minutes: number; from?: string; to?: string; dayStart?: string; dayEnd?: string; weekends?: boolean }): Promise<{ zone: string; slots: { start: string; end: string }[]; errors?: string[] }>;
   /** Builds the Go card and stages its write; the caller logs the decision. */
-  propose(p: ProposeInput, decisionId: string): Promise<{ ok: true; cal: CalChange; goLabel: Record<"zh" | "en", string>; question: Record<"zh" | "en", string> } | { ok: false; error: string }>;
+  propose(p: ProposeInput, decisionId: string): Promise<{ ok: true; cal: CalChange; write: { connection: string; action: string }; goLabel: Record<"zh" | "en", string>; question: Record<"zh" | "en", string> } | { ok: false; error: string }>;
   /** D149: today's line for the empty conversation, from the last read only. */
   today(): CalToday | undefined;
   /** When today was last read (ms), if it was. */
@@ -269,7 +275,6 @@ export function createCalendar(deps: CalendarDeps): Calendar {
   let lastRead: { at: number; events: Held[] } | undefined;
   const staged = new Set<string>(); // decision ids of calendar cards
   let lastErrors: string[] = []; // what the last read couldn't read
-  const running = new Set<string>();
 
   const accounts = () => deps.connections.view().flatMap((c) => deps.connections.apps(c.id).filter((a) => isCalendarService(a.service) && !a.excluded));
   const label = (a: AppTarget) => a.label ?? a.account;
@@ -432,12 +437,9 @@ export function createCalendar(deps: CalendarDeps): Calendar {
     return out;
   };
 
-  function unstage(decisionId: string) {
-    staged.delete(decisionId);
-  }
-
-  // Go runs a staged change once, by core (the partner isn't woken: the card shows the outcome; a
-  // failure wakes it through the failed connection_call).
+  // Go runs a staged change once, by core's general staged-write runner (D659 #257): this
+  // module no longer runs anything itself. It only forgets its read cache when a calendar write
+  // lands, so the next look sees the change.
   const isCalDecision = (id: string) => {
     if (staged.has(id)) return true;
     // The newest decisions first: a card is answered soon after it is made.
@@ -446,18 +448,9 @@ export function createCalendar(deps: CalendarDeps): Calendar {
     return !!(d && (d.body as Bodies["decision"]).cal);
   };
   const off = deps.log.subscribe((e) => {
-    if (e.kind !== "decision_resolved") return;
-    const r = e.body as Bodies["decision_resolved"];
-    if (r.option !== "go" || running.has(r.decisionId) || !isCalDecision(r.decisionId)) return;
-    running.add(r.decisionId);
-    void deps.connections
-      .runApproved(r.decisionId)
-      .then(() => {
-        unstage(r.decisionId);
-        windows.clear(); // the next look sees the change
-      })
-      .catch((err) => console.warn(`[calendar] ${(err as Error).message}`))
-      .finally(() => running.delete(r.decisionId));
+    if (e.kind !== "connection_call") return;
+    const c = e.body as Bodies["connection_call"];
+    if (c.op === "write" && /^googlecalendar\./.test(c.action) && (c.state === "done" || c.state === "failed")) windows.clear();
   });
 
   async function findHeld(ref: string): Promise<Held | undefined> {
@@ -579,7 +572,11 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       return { zone, slots, ...(r.errors.length ? { errors: r.errors } : {}) };
     },
     async propose(p, decisionId) {
-      const zone = deps.zone();
+      // D658: the zone is where the person is. What they named in this request wins; else the
+      // person's zone core resolved (their newest app's hello, then the setting, then the home's);
+      // when that says nothing (a server on UTC) the target calendar's own zone stands in.
+      const saidZone = isZone(p.zone) ? p.zone : undefined;
+      let zone = saidZone ?? deps.zone();
       const theirZone = isZone(p.theirZone) ? p.theirZone : undefined;
       let a: AppTarget | undefined;
       let cal: CalendarRow | undefined;
@@ -590,7 +587,12 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       const span = (startIn: unknown, endIn: unknown, minutes: number | undefined, base?: { s: number; e: number }) => {
         const s = parseWhen(startIn, zone);
         if (!s) return;
-        if (s.dateOnly && !endIn && !minutes) return { s: s.ms, e: s.ms + DAY, allDay: true };
+        // D658: a day with no hour is an all-day event on that date; never a midnight guess.
+        if (s.dateOnly) {
+          const e = parseWhen(endIn, zone);
+          const end = e?.dateOnly ? e.ms : s.ms + DAY;
+          return { s: s.ms, e: end > s.ms ? end : s.ms + DAY, allDay: true };
+        }
         const e = parseWhen(endIn, zone);
         const len = minutes && minutes > 0 ? minutes * MIN : base ? base.e - base.s : 30 * MIN;
         const end = e && !e.dateOnly ? e.ms : s.ms + len;
@@ -611,6 +613,11 @@ export function createCalendar(deps: CalendarDeps): Calendar {
         const want = p.calendar?.trim().toLowerCase();
         cal = (want && rows.find((r) => r.name.toLowerCase() === want)) || rows.find((r) => r.kind === "main") || rows[0];
         if (!cal) return { ok: false, error: "That account has no calendar it can add to." };
+        // The person's zone says nothing (a home on UTC, no app hello yet): the calendar's own zone.
+        if (!saidZone && !personZoneKnown(zone)) {
+          const raw = list.find((c) => rowOf(a!, c).id === cal!.id);
+          if (isZone(raw?.timeZone)) zone = raw.timeZone;
+        }
         const t = span(p.start, p.end, p.minutes);
         if (!t) return { ok: false, error: "Give start (and end or minutes) as ISO date-times in the user's zone, e.g. 2026-11-18T14:00." };
         if (!(p.title ?? "").trim()) return { ok: false, error: "Give the event a title in the user's language." };
@@ -683,6 +690,8 @@ export function createCalendar(deps: CalendarDeps): Calendar {
         } else {
           if (organizer && others.length && !h.raw.guestsCanModify) return { ok: false, error: `Only ${nameOf(organizer)} (the organizer) can move it. Offer to reply to them instead.` };
           if (!cal.canEdit) return { ok: false, error: "That calendar is read-only for the user." };
+          // The person's zone says nothing: the calendar's own zone reads and writes the new time.
+          if (!saidZone && !personZoneKnown(zone) && isZone(h.cal.zone)) zone = h.cal.zone;
           const t = span(p.start, p.end, p.minutes, { s: h.startMs, e: h.endMs });
           if (!t || t.allDay) return { ok: false, error: "Give the new start (and end or minutes) as ISO date-times in the user's zone." };
           const z = isZone(h.raw.start?.timeZone) ? h.raw.start!.timeZone : zone;
@@ -697,10 +706,10 @@ export function createCalendar(deps: CalendarDeps): Calendar {
         change.theirZone = z;
         if (p.theirName?.trim()) change.theirName = p.theirName.trim().slice(0, 40);
       }
-      const staged_ = deps.connections.stage(a.connectionId, `${a.service}.${action}`, input, decisionId, a.account);
+      const staged_ = deps.connections.stage(a.connectionId, `${a.service}.${action}`, input, decisionId, a.account, { wake: "quietDone" });
       if (!staged_.ok) return { ok: false, error: staged_.error };
       staged.add(decisionId);
-      return { ok: true, cal: change, ...words(change) };
+      return { ok: true, cal: change, write: staged_.write, ...words(change) };
     },
     readAt: () => lastRead?.at,
     today() {
@@ -713,9 +722,10 @@ export function createCalendar(deps: CalendarDeps): Calendar {
       return { left: ahead.length, next: { title: ahead[0]!.ev.title, start: ahead[0]!.ev.start }, ...(clashesOf(todays).length ? { clash: true } : {}) };
     },
     wakes(e) {
+      // A calendar card's answer is the general staged-write run's: the connection_call outcome
+      // wakes the partner (a success doesn't; the card is the confirmation), never the answer line.
       if (e.kind !== "decision_resolved") return true;
-      const r = e.body as Bodies["decision_resolved"];
-      return r.option === "reply" || !isCalDecision(r.decisionId);
+      return !isCalDecision((e.body as Bodies["decision_resolved"]).decisionId);
     },
     onChange(fn) {
       listeners.add(fn);

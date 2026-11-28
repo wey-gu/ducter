@@ -68,7 +68,10 @@ describe("partner connection tools", () => {
     const ran = (await fc.callTool("connection_call", { decisionId: asked.decisionId })) as { ok: boolean };
     expect(ran.ok).toBe(true);
     expect(oc.executed.filter((e) => e.name === "execute_action").length).toBe(before + 1);
-    expect(((await fc.callTool("connection_call", { decisionId: asked.decisionId })) as { ok: boolean }).ok).toBe(false);
+    // D659 (#257): a call after the fact reads the recorded outcome back and never runs it again.
+    const again = (await fc.callTool("connection_call", { decisionId: asked.decisionId })) as { ok: boolean; result?: { recorded?: boolean } };
+    expect(again.ok).toBe(true);
+    expect(again.result?.recorded).toBe(true);
     expect(oc.executed.filter((e) => e.name === "execute_action").length).toBe(before + 1);
   });
 });

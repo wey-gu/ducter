@@ -315,7 +315,7 @@ describe("reads and writes", () => {
     expect(ran).toEqual({ ok: true, op: "write", result: { id: "m1" } });
     expect(oc.executed.filter((e) => e.name === "execute_action")).toHaveLength(1);
     expect(oc.executed.find((e) => e.name === "execute_action")!.args).toEqual({ actionId: "gmail.send_email", input: { to: "lina@example.com", body: "Hi" } });
-    expect(await c.runApproved("d_1")).toMatchObject({ ok: false, error: expect.stringContaining("never runs twice") });
+    expect(await c.runApproved("d_1")).toMatchObject({ ok: true, result: { recorded: true } });
     expect(oc.executed.filter((e) => e.name === "execute_action")).toHaveLength(1);
 
     c.stage("OpenConnector", "gmail.send_email", { to: "x@example.com" }, "d_2");

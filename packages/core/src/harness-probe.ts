@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { DSH_KEY_ENV, HARNESS_KEYS, deviceHarness, type AgentHow, type DeviceHarness } from "@ducter/protocol";
+import { CLAUDE_TOKEN_ENV, DSH_KEY_ENV, HARNESS_KEYS, deviceHarness, type AgentHow, type DeviceHarness } from "@ducter/protocol";
 import { ANTIGRAVITY, HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
@@ -384,7 +384,11 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     const status = json?.loggedIn === true;
     // D503 (research/219): who is signed in, as a fingerprint only (the email never leaves here).
     const account = status ? accountPrint("claude-code", [json.email, json.orgId]) : undefined;
-    return { harness: "claude-code", installed: true, loggedIn: status || HARNESS_KEYS["claude-code"].some(has), ...(account ? { account } : {}) };
+    // A key Ducter grants it (HARNESS_KEYS, D102) signs it in too. Only the OAuth token is the
+    // person's plan; an API key or a gateway token is paid by use, so the device says so.
+    const key = HARNESS_KEYS["claude-code"].find(has);
+    const byUse = !status && !!key && key !== CLAUDE_TOKEN_ENV;
+    return { harness: "claude-code", installed: true, loggedIn: status || !!key, ...(byUse ? { billing: "usage" as const } : {}), ...(account ? { account } : {}) };
   };
   const codex = async (): Promise<RawHarness> => {
     if (!o.which("codex")) return { harness: "codex", installed: false, loggedIn: false };

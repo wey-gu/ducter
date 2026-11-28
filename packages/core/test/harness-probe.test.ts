@@ -53,13 +53,14 @@ test("Claude Code is signed in when one of the keys Ducter grants it is in keys.
     only: ["claude-code"] as const,
   };
   const authToken = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "ANTHROPIC_AUTH_TOKEN=sk-ant-fake\n" }) });
-  expect(authToken).toEqual([{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" }]);
+  // A gateway token or an API key is paid by use; only the OAuth token (or a login) is the plan.
+  expect(authToken).toEqual([{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "usage" }]);
   const apiKey = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "ANTHROPIC_API_KEY=sk-ant-fake\n" }) });
-  expect(apiKey[0]!.loggedIn).toBe(true);
+  expect(apiKey[0]).toMatchObject({ loggedIn: true, billing: "usage" });
   const envKey = await probeHarnesses({ ...base, env: { ANTHROPIC_AUTH_TOKEN: "sk-ant-fake" }, read: files({}) });
   expect(envKey[0]!.loggedIn).toBe(true);
   const oauth = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "CLAUDE_CODE_OAUTH_TOKEN=tok-fake\n" }) });
-  expect(oauth[0]!.loggedIn).toBe(true);
+  expect(oauth[0]).toMatchObject({ loggedIn: true, billing: "plan" });
   const none = await probeHarnesses({ ...base, read: files({ "/d/keys.env": "OPENAI_API_KEY=sk-oa-fake\n" }) });
   expect(none[0]!.loggedIn).toBe(false);
 });

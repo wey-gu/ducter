@@ -37,6 +37,8 @@ type tableState struct {
 	filter protocol.TaskFilter
 	sort   string // urgency (""), changed, age
 	sel    map[string]bool
+	// prs: some row on screen has a PR, so the PR and CI columns are drawn (else their room is the title's).
+	prs    bool
 	anchor string
 	// ask is the bulk action whose one ask stands in the bar; to and toName
 	// its computer or agent (move, reassign).
@@ -382,7 +384,9 @@ func tableCols(w float32) (project, computer, agent, age, pr, ci float32, narrow
 	if narrow {
 		return 96, 0, 0, 72, 56, 64, true
 	}
-	return 120, 92, 100, 76, 60, 64, false
+	// The title is what the eye reads first: the fixed columns stay as narrow as their words
+	// ("这台 Mac", "Claude Code", "20 分钟前", "#11230", "CI 6/11") so it keeps the room.
+	return 104, 72, 92, 68, 56, 60, false
 }
 
 func (a *App) tableHead(c *ui.Context, w float32) {
@@ -397,7 +401,7 @@ func (a *App) tableHead(c *ui.Context, w float32) {
 				e.Width(w).Shrink(0)
 			}
 		}
-		uiText(c.Key("ht"), a.L.T("onhand.col.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Grow(1.6).Basis(0).MinWidth(0)
+		uiText(c.Key("ht"), a.L.T("onhand.col.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Grow(2.6).Basis(0).MinWidth(0)
 		head("hp", a.L.T("onhand.col.project"), pw)
 		if !narrow {
 			head("hc", a.L.T("onhand.col.computer"), cw)
@@ -405,8 +409,10 @@ func (a *App) tableHead(c *ui.Context, w float32) {
 		}
 		head("hg", a.L.T("onhand.col.age"), gw)
 		uiText(c.Key("hs"), a.L.T("onhand.col.step")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().Grow(1).Basis(0).MinWidth(0)
-		head("hr", "PR", rw)
-		head("hi", "CI", iw)
+		if a.oh.tbl.prs {
+			head("hr", "PR", rw)
+			head("hi", "CI", iw)
+		}
 	})
 }
 
@@ -424,7 +430,7 @@ func (a *App) tableLine(c *ui.Context, task *store.Task, w float32) {
 		if s == "needs_you" {
 			ink = t.NeedsYou.Ink
 		}
-		uiText(c.Key("t"), sayName(title, 80)).FontSize(t.SM).FontWeight(wt).TextColor(ink).SingleLine().Grow(1.6).Basis(0).MinWidth(0).Tooltip(title)
+		uiText(c.Key("t"), sayName(title, 80)).FontSize(t.SM).FontWeight(wt).TextColor(ink).SingleLine().Grow(2.6).Basis(0).MinWidth(0).Tooltip(title)
 		a.cell(c, "p", a.tableProject(task), pw, t.InkMuted)
 		if !narrow {
 			dev := taskDevice(task)
@@ -443,8 +449,10 @@ func (a *App) tableLine(c *ui.Context, task *store.Task, w float32) {
 		if st.words != "" {
 			step.Tooltip(st.words)
 		}
-		uiText(c.Key("r"), pr).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Width(rw).Shrink(0)
-		uiText(c.Key("i"), ci).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Width(iw).Shrink(0)
+		if a.oh.tbl.prs {
+			uiText(c.Key("r"), pr).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Width(rw).Shrink(0)
+			uiText(c.Key("i"), ci).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").SingleLine().Width(iw).Shrink(0)
+		}
 	})
 	if !clicked {
 		return
@@ -482,6 +490,13 @@ func (a *App) onHandTable(c *ui.Context, b store.Board, w float32) {
 	a.oh.order = a.oh.order[:0]
 	for _, x := range rows {
 		a.oh.order = append(a.oh.order, x.ID)
+	}
+	a.oh.tbl.prs = false
+	for _, x := range rows {
+		if pr, ci := a.prCells(x); pr != "" || ci != "" {
+			a.oh.tbl.prs = true
+			break
+		}
 	}
 	a.sayBulk(c)
 	a.filterBar(c, all)

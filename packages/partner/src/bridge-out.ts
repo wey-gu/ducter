@@ -36,6 +36,9 @@ const W = {
     days: "{n} 天前",
     followRead: "{who}看过你{when}问的{gists}，还没回。回了我马上告诉你。",
     followUnread: "{who}还没回你{when}问的{gists}，它可能停了。回了我马上告诉你。",
+    // D656: a task's own question, said with the task's name: the line stands alone.
+    followTaskRead: "「{task}」还在等{who}回话：{when}问的{gists}，它看过了，还没回。回了我马上告诉你。",
+    followTaskUnread: "「{task}」还在等{who}回话：{when}问的{gists}，还没回。回了我马上告诉你。",
     quoted: "「{gist}」",
     and: "和",
     more: "等 {all} 条",
@@ -71,6 +74,8 @@ const W = {
     days: "{n} days ago",
     followRead: '{who} read what you asked {when} ({gists}) but hasn\'t answered yet. I\'ll tell you as soon as it does.',
     followUnread: '{who} hasn\'t answered what you asked {when} ({gists}); it may have stopped. I\'ll tell you as soon as it does.',
+    followTaskRead: '"{task}" is still waiting for {who}: it read what the task asked {when} ({gists}) but hasn\'t answered. I\'ll tell you as soon as it does.',
+    followTaskUnread: '"{task}" is still waiting for {who} to answer what it asked {when}: {gists}. I\'ll tell you as soon as it does.',
     quoted: '"{gist}"',
     and: " and ",
     more: " and {rest} more",
@@ -288,8 +293,33 @@ export function inQuiet(at: number, q: Quiet | null | undefined): boolean {
   return s === e ? false : s < e ? now >= s && now < e : now >= s || now < e;
 }
 
-/** A user-confirmed message that is sent, unanswered, old enough, and not followed up yet. */
-export function followCandidates(events: LogEvent[], now: number): OutOp[] {
+/**
+ * D656: a task's question is a wait record made of its own outgoing op. It settles when the
+ * answer is logged, when the task ends, or when the send didn't go (failed/unconfirmed): read from
+ * the Log each time, never a timer that re-arms (D633's one path: one fact settles every holder).
+ * The record starts the moment it goes out; S3's 2 h and 7 day windows only decide when the person
+ * hears about it (`followCandidates`).
+ */
+export function taskWaits(events: LogEvent[], now: number, live: (taskId: string) => boolean, maxAge = FOLLOW_MAX_AGE_MS): OutOp[] {
+  const answered = new Set<string>();
+  for (const e of events) {
+    if (e.kind !== "bridge_msg") continue;
+    const b = e.body as Msg;
+    if (b.direction === "in" && b.inReplyTo) answered.add(b.inReplyTo);
+  }
+  return [...foldOut(events).values()]
+    .filter((o) => o.state === "sent" && o.last.by === "task" && !!o.last.taskId && !!o.last.messageId && !!o.sentTs && live(o.last.taskId))
+    .filter((o) => !answered.has(o.last.messageId)) // one follow-through line does not settle the wait
+    .filter((o) => now - Date.parse(o.sentTs!) <= maxAge)
+    .sort((a, b) => a.seq - b.seq);
+}
+
+/**
+ * A user-confirmed message that is sent, unanswered, old enough, and not followed up yet; and a
+ * task's own question, under the same windows (D656). `live` says whether a task still lives:
+ * an ended task holds no wait and is never followed through.
+ */
+export function followCandidates(events: LogEvent[], now: number, live: (taskId: string) => boolean = () => true): OutOp[] {
   const answered = new Set<string>();
   const followed = new Set<string>();
   let unlinked = ""; // the latest unlinked message from an own agent Mem doesn't name (D249)
@@ -306,14 +336,18 @@ export function followCandidates(events: LogEvent[], now: number): OutOp[] {
   // D364, D557: once Mem links replies (nmem 0.10.120+, VERIFIED live 2026-11-25) every message it reads
   // is `linked`, so this rule holds only for nmem 0.10.118 and 0.10.119.
   const maybeAnswered = (o: OutOp) => o.last.mine && !o.last.agent && !!unlinked && unlinked > o.sentTs!;
-  return [...foldOut(events).values()]
-    .filter((o) => o.state === "sent" && o.last.decisionId && o.last.by !== "task" && o.last.messageId && o.sentTs) // D448: a task waits for its own answer
+  const window = (o: OutOp) => {
+    const age = now - Date.parse(o.sentTs!);
+    return age >= FOLLOW_AFTER_MS && age <= FOLLOW_MAX_AGE_MS;
+  };
+  const mineDue = [...foldOut(events).values()]
+    .filter((o) => o.state === "sent" && o.last.decisionId && o.last.by !== "task" && o.last.messageId && o.sentTs) // a task's ops are taskWaits'
     .filter((o) => !answered.has(o.last.messageId) && !followed.has(o.last.messageId) && !maybeAnswered(o))
-    .filter((o) => {
-      const age = now - Date.parse(o.sentTs!);
-      return age >= FOLLOW_AFTER_MS && age <= FOLLOW_MAX_AGE_MS;
-    })
-    .sort((a, b) => a.seq - b.seq);
+    .filter(window);
+  // D656: D448's "never followed through with the person" is retired: a task's question joins S3,
+  // one line per task per agent, and it is never said after the answer or after the task ended.
+  const taskDue = taskWaits(events, now, live).filter((o) => !followed.has(o.last.messageId)).filter(window);
+  return [...mineDue, ...taskDue].sort((a, b) => a.seq - b.seq);
 }
 
 function ago(ms: number, lang: LangTag, round = false): string {
@@ -339,18 +373,28 @@ export function zhJoin(...parts: string[]): string {
   }, "");
 }
 
-/** Who an outgoing message went to, to say one line per agent (D412). */
-export const recipientKey = (o: OutOp): string => o.last.contact || o.last.to || o.last.agent || "";
+/**
+ * Who an outgoing message went to, to say one line per agent (D412). A task's messages are keyed by
+ * the agent itself, never the reply handle its later messages go by: one task waiting on one agent
+ * is one wait (D656).
+ */
+export const recipientKey = (o: OutOp): string =>
+  o.last.by === "task" ? o.last.agent || o.last.to || o.last.contact || "" : o.last.contact || o.last.to || o.last.agent || "";
 
 /**
  * D412: the candidates one follow-through line covers: every due message to the same agent as the
  * first. The 2026-11-20 live trial asked the terminal twice in an afternoon; one line named the
  * older question, and an hour later a second line named the newer one, to the same silent agent.
+ * D656: a task's question is its own wait, so its group is task + agent: two tasks asking the
+ * same agent each get their own line, and a task's line never covers the person's own question.
  */
+export const followGroupKey = (o: OutOp): string =>
+  o.last.by === "task" && o.last.taskId ? `task:${o.last.taskId}:${recipientKey(o)}` : `peer:${recipientKey(o)}`;
+
 export function followGroup(due: OutOp[]): OutOp[] {
   if (!due.length) return [];
-  const key = recipientKey(due[0]!);
-  return due.filter((o) => recipientKey(o) === key);
+  const key = followGroupKey(due[0]!);
+  return due.filter((o) => followGroupKey(o) === key);
 }
 
 // "问一下我终端里那个 Claude，<question>" / "ask my terminal Claude: <question>": the question (the
@@ -367,13 +411,28 @@ function gistOf(op: OutOp, asked?: string): string {
   return [...first].length > 36 ? [...first].slice(0, 35).join("") + "…" : first;
 }
 
+/** A task's title in the line: short enough to stand in the sentence, never cut mid-word at 40. */
+function titleOf(title: string | undefined): string {
+  const t = (title ?? "").trim();
+  return [...t].length > 40 ? [...t].slice(0, 39).join("") + "…" : t;
+}
+
+/** One due wait: the op, the person's words that asked for it (their own messages only) and, for a
+ *  task's question, the task's name so the line stands alone. */
+export interface FollowItem {
+  op: OutOp;
+  asked?: string;
+  task?: string;
+}
+
 /**
  * The one line (D110). It reports silence and never claims the other side was reminded: Bridge
  * wakes nobody. Read and unread are different facts, said only when the inbox told us. D412: one
  * line for every unanswered message to the same agent, newest first, aged by the oldest.
+ * D656: a task's question names the task and the agent it waits on, one line per task per agent.
  */
-export function followLine(op: OutOp | { op: OutOp; asked?: string }[], now: number, lang: LangTag, read?: boolean, asked?: string): string {
-  const items = Array.isArray(op) ? [...op].sort((a, b) => b.op.seq - a.op.seq) : [{ op, asked }];
+export function followLine(op: OutOp | FollowItem[], now: number, lang: LangTag, read?: boolean, asked?: string): string {
+  const items: FollowItem[] = Array.isArray(op) ? [...op].sort((a, b) => b.op.seq - a.op.seq) : [{ op, asked }];
   const first = items[0]!.op;
   const who = whoForUser({ ...first.last, label: first.last.to }, lang);
   const w = words(W, lang);
@@ -383,6 +442,7 @@ export function followLine(op: OutOp | { op: OutOp; asked?: string }[], now: num
   const when = ago(now - oldest, lang);
   // D273: an agent's own name stays as it is; the unnamed one starts the sentence capitalised.
   const Who = capWho(who);
+  if (first.last.by === "task") return say(lang, read ? "followTaskRead" : "followTaskUnread", { task: titleOf(items[0]!.task), who: Who, when, gists });
   return say(lang, read ? "followRead" : "followUnread", { who: Who, when, gists });
 }
 

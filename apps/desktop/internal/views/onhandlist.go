@@ -214,6 +214,15 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		if r := a.waitReason(task); r != "" {
 			return rowStory{words: r}
 		}
+		// D656: a wait set while the task was still at work has no reason on its state yet;
+		// the message it sent is the fact that says who it waits on.
+		if bw := a.S.BridgeWaitFor(task.ID); bw != nil {
+			who := bw.To
+			if who == "" {
+				who = bw.Agent
+			}
+			return rowStory{words: a.L.T("onhand.wait.agent", who)}
+		}
 		if rep != nil && strings.TrimSpace(rep.Summary) != "" {
 			return rowStory{words: strings.SplitN(strings.TrimSpace(rep.Summary), "\n", 2)[0]}
 		}

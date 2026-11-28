@@ -39,6 +39,10 @@
 // D335: NMEM_FAKE_INBOX_WAIT=1 lists `--wait <SECONDS>` in `bridge inbox --help` and holds `inbox --wait`
 // until an unread message is there for that context (its Space; every Space with --all-spaces);
 // =error answers every wait with a 503-like failure, =error:<ctx>[,<ctx>] only those contexts'.
+// D656: NMEM_FAKE_FOLLOW=1 lists `bridge follow` in `bridge follow --help` and answers it with the
+// shape this branch reads (INFERRED; no real answer has been read): {operation, state, replies:
+// [{message, in_reply_to, body, sender, created_at}]}. NMEM_FAKE_FOLLOW_SHAPE=other answers some other
+// shape with no reply bodies, so the client must fall back to the inbox and still deliver the answer.
 // D338 (nmem 0.10.120 on the author's home, VERIFIED 2026-11-17): NMEM_FAKE_SELECT_404=<space>[,<space>]
 // answers `agents context select` in those Spaces with HTTP 404 and an unverifiable body (no JSON,
 // no error_code), exit 1, nothing saved: the identity is a contact there but can't be selected.
@@ -264,12 +268,19 @@ if (argv[0] === "agents" && (argv[1] === "show" || argv[1] === "set")) {
 if (argv[0] !== "bridge") fail("bad_arguments", "fake nmem: only `bridge` is implemented", 2);
 const verb = argv[1];
 if (!verb || verb === "--help" || verb === "help") {
-  console.log("fake nmem bridge: setup | contacts [--query Q] | send --to CONTACT (--body TEXT | --body-file -) | inbox | open MESSAGE | reply (--body TEXT | --body-file -) MESSAGE | outbox | inspect OP | resume OP");
+  console.log("fake nmem bridge: setup | contacts [--query Q] | send --to CONTACT (--body TEXT | --body-file -) | inbox | open MESSAGE | reply (--body TEXT | --body-file -) MESSAGE | outbox | inspect OP | resume OP | follow OPERATION");
   process.exit(0);
 }
 // D335: an nmem whose `inbox` takes `--wait` (NMEM_FAKE_INBOX_WAIT=1; =error: every wait fails;
 // =error:<context>[,<context>]: only those contexts' waits fail, the others hold as with =1).
 const WAITS = process.env.NMEM_FAKE_INBOX_WAIT;
+// D656: an nmem whose `bridge follow --help` lists follow (the branch's capability check).
+const FOLLOW = process.env.NMEM_FAKE_FOLLOW === "1";
+if (verb === "follow" && (argv.includes("--help") || argv.includes("-h"))) {
+  if (!FOLLOW) fail("bad_arguments", "fake nmem: bridge follow is not implemented", 2);
+  console.log(`Follow one original in its exact Space without opening or acknowledging mail\n\nUsage: nmem bridge follow [OPTIONS] <OPERATION>\n\nArguments:\n  <OPERATION>  \n\nOptions:\n      --wait <WAIT>                Bound the entire observation in seconds (default: one scan, at most 30s)\n  -j, --json                       Emit raw JSON instead of human-readable output\n      --max-pages <MAX_PAGES>      Total inbox page budget, including repeat scans while waiting [default: 5]\n      --agent-context <NAME>       Reuse a named local agent context for mailbox or collaboration hints\n  -h, --help                       Print help`);
+  process.exit(0);
+}
 if (verb === "inbox" && (argv.includes("--help") || argv.includes("-h")) && IDENT) {
   // nmem 0.10.121's own words (VERIFIED, research/161).
   console.log(`List incoming identity mail across currently authorized Spaces\n\nUsage: nmem bridge inbox [OPTIONS]\n\nOptions:\n      --cursor <CURSOR>       \n  -j, --json                  Emit raw JSON instead of human-readable output\n      --wait <WAIT>           Wait up to five seconds for an incoming change, without consuming mail\n      --agent-context <NAME>  Reuse a named local agent context\n      --watch                 Observe incoming changes continuously as JSON lines; never acknowledges mail\n  -h, --help                  Print help`);
@@ -592,6 +603,26 @@ switch (verb) {
     }
     if (NAMED) out({ state: "sent", message: m.id, operation: m.op, ...(inReplyTo ? { in_reply_to: inReplyTo } : {}) });
     else out({ message: m.id, status: "delivered", operation: m.op });
+    break;
+  }
+  case "follow": {
+    // D656: follow one original, never opening or acknowledging mail. The shape is this branch's
+    // INFERRED one (see the header); `NMEM_FAKE_FOLLOW_SHAPE=other` is the unseen shape a real CLI
+    // may answer, which the client must not adopt: the inbox still delivers the reply.
+    if (!FOLLOW) fail("bad_arguments", "fake nmem: bridge follow is not implemented", 2);
+    const wanted = unref(argv[2]);
+    const orig = s.messages.find((m) => (m.op === wanted || m.id === wanted) && m.from === me);
+    if (!orig) fail("not_found", "No such operation.");
+    const replies = s.messages.filter((m) => m.in_reply_to === orig!.id && m.from !== me && !m.pending);
+    if (process.env.NMEM_FAKE_FOLLOW_SHAPE === "other") {
+      out({ operation: orig!.op, state: "sent", items: replies.map((m) => ({ message: m.id })) });
+      break;
+    }
+    out({
+      operation: orig!.op,
+      state: "sent",
+      replies: replies.map((m) => ({ message: m.id, in_reply_to: m.in_reply_to, body: m.body, sender: sender(m.from), created_at: m.created_at })),
+    });
     break;
   }
   case "inbox": {

@@ -126,6 +126,10 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     if (w?.reason?.trim()) return { words: waitLine(w.reason) };
     const why = reasonOf(task);
     if (why && !why.startsWith("report:") && !why.endsWith("by user")) return { words: deviceWait(why) ?? why };
+    // D656: a wait set while the task was still at work has no reason on its state yet; the
+    // message it sent is the fact that says who it waits on.
+    const sent = A.S.bridgeWaitFor(task.id);
+    if (sent) return { words: t("onhand.wait.agent", sent.to || sent.agent || "") };
     const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.readerLang(task)) : "";
     return { words: said || t("onhand.wait.unsaid") };
   }
@@ -204,6 +208,9 @@ export function stoppedWait(task: Task, now = Date.now()): boolean {
   // D467 round 4: a computer that said it was going to sleep comes back by itself; one that went
   // away without a word needs someone to turn it on, once it has been away a while.
   if (reasonOf(task).startsWith("device:asleep:")) return false;
+  // D656: a task that asked another agent and waits for its answer has something that will
+  // bring it back (the answer arrives into the task): not a stop, even after half an hour.
+  if (A.S.bridgeWaitFor(task.id)) return false;
   const at = lastChange(task);
   return Number.isFinite(at) && now - at >= STOPPED_AFTER;
 }

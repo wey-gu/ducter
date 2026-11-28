@@ -1915,6 +1915,37 @@ func (s *Store) MissedToday(now time.Time) []*protocol.Waiter {
 }
 
 // WaiterFor is the armed waiter of a task, or nil.
+// BridgeWaitFor is the latest message a task sent through Bridge that hasn't been answered
+// (D656): a task resting on it waits for an answer that will come to it, so it has not
+// stopped. nil when it asked nothing, or every question was answered.
+func (s *Store) BridgeWaitFor(taskID string) *protocol.BridgeMsg {
+	answered := map[string]bool{}
+	scan := func(es []*Entry) {
+		for _, e := range es {
+			if e.Peer == nil || e.Peer.Direction != "in" || e.Peer.State != "task" || e.Peer.InReplyTo == "" {
+				continue
+			}
+			answered[e.Peer.InReplyTo] = true
+		}
+	}
+	scan(s.Channel)
+	scan(s.TaskPeers)
+	var best *Entry
+	for _, e := range s.OutOps {
+		b := e.Peer
+		if b == nil || b.By != "task" || b.TaskID != taskID || b.State != "sent" || b.MessageID == "" || answered[b.MessageID] {
+			continue
+		}
+		if best == nil || e.Event.Seq > best.Event.Seq {
+			best = e
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	return best.Peer
+}
+
 func (s *Store) WaiterFor(taskID string) *protocol.Waiter {
 	for _, w := range s.ArmedWaiters() {
 		if w.TaskID == taskID {

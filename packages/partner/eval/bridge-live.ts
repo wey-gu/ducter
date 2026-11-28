@@ -121,7 +121,7 @@ if (LIVE) {
 }
 chmodSync(nmem, 0o755);
 // The fake answers as nmem 0.10.120 does (a sender on every inbox entry, D364), unless told otherwise.
-const env: Record<string, string> = { ...(process.env as Record<string, string>), PATH: `${binDir}:${process.env.PATH}`, ...(LIVE ? {} : { NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_VERSION: process.env.NMEM_FAKE_VERSION ?? "0.10.120" }) };
+const env: Record<string, string> = { ...(process.env as Record<string, string>), PATH: `${binDir}:${process.env.PATH}`, ...(LIVE ? {} : { NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_VERSION: process.env.NMEM_FAKE_VERSION ?? "0.10.120", NMEM_FAKE_FOLLOW: "1" }) };
 // D367: the peer's `nmem` is the guard in front of the same (recording) CLI.
 const peerBin = join(root, "peer-bin");
 mkdirSync(peerBin);
@@ -596,6 +596,15 @@ async function main() {
       const went = core.log.read({ stream: `task:${task.taskId}`, kinds: ["task_event"], limit: 200 }).some((e) => /through Nowledge Mem/.test((e.body as Bodies["task_event"]).text ?? ""));
       check("t1", "the task's own transcript says it went", went);
       if (sent) {
+        // D656 (research/243 Brief D): a task's question joins S3's window. The trial's clock moves
+        // 2 h and the person comes back: one line, once, naming the task and who it waits on.
+        const followFrom = core.log.head();
+        offset += 2 * 3_600_000;
+        say(`[${stamp()}] 2 h pass (the trial's clock); the person is back`);
+        user("还在吗");
+        await settle(partner);
+        const waited = saidSince(followFrom).filter((t) => /还在等/.test(t));
+        check("t1", "a task's question unanswered for 2 h is said once, naming the task and who it waits on", waited.length === 1 && waited[0]!.includes(task.title) && waited[0]!.includes("回话"));
         say(`[${stamp()}] the terminal session, at its next turn boundary, sees mail`);
         say(`  (${await peerMailbox()})`);
         say(`  [terminal] ${await peer("You have Bridge mail from Ducter: one of its tasks asks you something. Check your inbox (every page), open Ducter's newest message, and reply to that message once with `reply`. What you know about your own work: your bridge branch changes only packages/partner/src/bridge.ts and packages/partner/test/bridge.test.ts; it never touched packages/runner/test/live.test.ts, so the task can change that file now without a conflict.")}`);
@@ -614,6 +623,12 @@ async function main() {
         // Not a second report: the answer was the task's, so the partner says nothing and asks nothing of it.
         const quiet = saidSince(from).length === 0 && !answers.some((b) => !b.state) && core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 }).length === cards0;
         check("t1", "the partner didn't report it again (no line, no card, not handed to the partner)", quiet);
+        // D656: the answer settles the wait; nothing says it is still waiting.
+        const afterAnswer = core.log.head();
+        user("没别的事了");
+        await settle(partner);
+        check("t1", "after the answer, the wait is never said again", !saidSince(afterAnswer).some((t) => /还在等/.test(t)));
+        offset = 0;
       }
       check("t1", "nothing in the conversation names Weyl in the third person", !core.log.read({ stream: "channel", fromSeq: t1From + 1, kinds: ["ai_msg", "decision"], limit: 2000 }).some((e) => /Weyl/.test(e.kind === "decision" ? (e.body as Bodies["decision"]).question : (e.body as Bodies["ai_msg"]).text)));
     }

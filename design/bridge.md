@@ -1,10 +1,10 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · 2026-11-09, updated 2026-11-25 (D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task; D576: pi a Bridge tool from its plugin 0.8.20; D619: 已送达 / 已读 beside a sent message) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
+> Design note · 2026-11-09, updated 2026-11-28 (D656: a task's unanswered question is held as its own op and said once, and `bridge follow` reads its answer behind the CLI's own help, its JSON shape INFERRED; research/243 Brief D, nmem 0.10.125; D448: tasks Ducter carries messages for; D459: one story with Memory; D494: helpers, and the home as the one receiver; D555: nmem 0.10.123, Antigravity a Bridge tool, tasks without an automatic session, read receipts parsed; D557: the live trial passed, Bridge on by default; D559: the trial runs a task Ducter carries messages for; D560: replies to your agents said from Mem's facts, no Space picker, no mailbox task; D576: pi a Bridge tool from its plugin 0.8.20; D619: 已送达 / 已读 beside a sent message) · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
 > real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space), D205 (the persona connects itself with one tap), D225 (the released Bridge; the home's own Mem put in, updated and signed in from the same row), D324 (one home answers a partner's mailbox; the trial as its own identity), D333 (the partner's own tools only, 查看来信, the card says where it reads), D334 (the address is the identity, not the Space: every Space read, replies in the message's, a teammate's first message is a card), D338 (the card names only the Spaces read; a Space Mem answers 404 for is said and backed off; no connection per Space), D364 (nmem 0.10.120's linked shape: an original is not an answer; the update offered on the pane), D367 (every inbox page read; the trial's peer touches only its own run's mail), D369 (a mailbox Mem must sort out on its side: said once, checked every 30 min; the trial's guard reads Mem's own send prefix), D400 (nmem 0.10.121: the identity inbox read once, Mem's own open/reply argv, `--watch` or a 5 s wait, a device label, Mem's own notices said), D470 (Agent messaging in Settings' voice: who reaches whom drawn per agent with its fix, the exchanges as threads, who may ask what, the conversation says it once), D557 (the live trial passed; on by default; the real shapes read); still open: J-Q1–3, J-Q8 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), `research/66` (the release, the live
-> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), `research/226` (nmem 0.10.123 and the plugins of 2026-11-24, D555), private `31` and `10`.
+> run, Mem on a home without it), `research/134` (nmem 0.10.120), `research/137` (the 0.10.120 live run: the inbox's pages), `research/139` (the second 0.10.120 run: the guard, a mailbox Mem must sort out), `research/161` (nmem 0.10.121 and the read-only live read), `research/226` (nmem 0.10.123 and the plugins of 2026-11-24, D555), `research/237` (nmem 0.10.124 and Mem's answers), `research/243` (round 5: Brief D; nmem 0.10.125's `bridge follow`), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`:
 > receive, ask and reply, the linked result reply (J2, D107), outbound messages through a card (J4, D105), the
@@ -371,6 +371,13 @@ stays parked as X5.
   - Read and unread are separate facts: when the inbox reports ours as read, the line says "看过你…，还没回".
   - Bridge never wakes the other side, so the line never says it "reminded" anyone; it reports the silence, and
     the answer is reported when it comes (S2's path). No question: nothing for the user to decide.
+  - **A task's own question joins the same windows (D656, research/243 Brief D).** A task's sent
+    `bridge_msg` is followed through like the person's own message, one line per task per agent, naming the task
+    and the agent it waits on: **「{task}」还在等{who}回话：{when}问的「…」，还没回。回了我马上告诉你。 / "{task}" is
+    still waiting for {who} to answer what it asked {when}: "…". I'll tell you as soon as it does.** (read:
+    **…它看过了，还没回。 / …it read it but hasn't answered.**). Never after the answer, never after the task
+    ended. One line per task covers its unanswered messages to the same agent; two tasks asking the same agent
+    get a line each.
 - **Not built:** a time the user named ("今晚前告诉我"); `wait_until` already covers that.
 
 ## Beyond itself: what Bridge makes possible (D163–D164 decided 2026-11-10; built as D170)
@@ -767,6 +774,9 @@ J4  [user] "问问我终端里那个 Claude …"
          → rendered as "the answer to what the user asked" → partner tells the user
 S3  confirmed, sent, no answer, ≥ 2 h, user active in the last 15 min, not quiet hours
          → one line before the partner's reply · Log: bridge_msg{out, state followed}
+    (D656: a task's own question is the same S3 wait, run on taskWaits over its sent op, one
+     line per task per agent, never after the answer or after the task ended; see "Tasks Ducter
+     carries messages for")
 
 Every outgoing op (D106), logged before the CLI call:
     pending ─tap hold→ held
@@ -803,6 +813,9 @@ long-poll, when the CLI has it `nmem bridge inbox --help` lists --wait (read onc
                                    more at the bound a refusal names;
                                    a handle new to the Log runs the usual check;
                                    a wait back at once with nothing new pauses 15 s (never spins);
+                               a task's unanswered question, while its task rests: one `bridge follow <op>`
+                                 scan (no --wait) before the inbox read, when `follow --help` lists it;
+                                 the inbox is still read and delivers whatever follow doesn't
                                    the timer drops to every 5 min (recovery, follow-through), no reads after a send
                                a wait errors → the timer above again (until every place waits again);
                                  only that place's long-poll is tried again after 10 min
@@ -1271,6 +1284,9 @@ task (pi / agy, Bridge on, not a browser)
       Log: bridge_msg{out, by: task, taskId, head, state pending, decisionId}  (before the card)
   Go → deliver (D106): "Ducter 的任务「{title}」：\n{words}" under the partner's identity
       sent → the task's transcript says so; resting → its card 在等{who}回话
+             its question is a wait record made of this op: it settles when the answer is logged or the
+             task ends, never a timer (D633's one path); after 2 h and the same windows as S3, one line
+             names the task and who it waits on (D656)
       Hold / the person's own words / refused → told to the task once, by code
   later message, same task, same own agent (mine) → no card (the Go opened the exchange); a teammate's → a card
 answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId} → runner.send(task, frame)
@@ -1285,8 +1301,28 @@ answer (in_reply_to = the task's message) → bridge_msg{in, state task, taskId}
   signed in on a computer of Ducter's, until D576 (pi's row is now said from its own plugin; tasks on pi still relay).
 - **The live trial** (D559): T1 in `bun run bridge:live` runs this end to end, a task on pi asking the terminal
   that handed it over ("Try it live"); passed over the fake Bridge, the real run is the author's.
-- **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; follow-through when
-  an answer never comes; a new message from another agent addressed to a task by name.
+- **Its silence is held, not re-armed (D656).** A task's unanswered question is read from its own outgoing
+  op: `taskWaits` (`packages/partner/src/bridge-out.ts`) is the wait record, and it is empty the moment the answer
+  is logged (an in-answer with `inReplyTo`), the task ends (done, failed, dropped, superseded), or the send
+  didn't go (failed, unconfirmed). No waiter is armed and no timer re-arms; the card's **在等{who}回话** is set
+  from the same record while the task rests, and cleared when it settles. Should one task ever hold two questions
+  to two agents, the oldest names who it waits on. **On hand's stop rule (D467) reads the same fact** in both
+  clients (`Store.bridgeWaitFor` / `Store.BridgeWaitFor`): a task with an unanswered question has something that
+  will bring it back, so it stays under **在等** and is never the person's stop after 30 minutes; the row says
+  **在等{who}回话** from the op when the state's reason hasn't landed yet.
+- **The answer, read where nmem can follow it (D656; its JSON shape INFERRED).** Replies to a task's message
+  are read on the task's wait by `bridge follow <operation>` where the CLI lists it: `canFollow` reads
+  `nmem bridge follow --help` once per nmem version (nmem 0.10.125's help, VERIFIED 2026-11-27: "Follow one
+  original in its exact Space without opening or acknowledging mail", `--wait`, `--max-pages`, `--cursor`,
+  `--repair-return-route`, `--return-host`). One original a check, one scan (`--max-pages 3`, no `--wait`), only
+  while a live task's question is unanswered and the task rests; the inbox check still runs and is the path
+  and the fallback. `--return-host` is never used (D494: the home is the one receiver). The answer read is
+  `{replies: [{message, in_reply_to, body, sender: {agent, host}, created_at_us}]}`, with `messages` /
+  `incoming` as the same list under another name; a reply with no body, or with no original it names, is
+  not adopted, and then the inbox delivers it as before. **The shape is INFERRED: the lead reads one real answer read-only and writes its
+  fields into research before this is called verified** (`todo.md`).
+- **Not yet** (`todo.md`): a Claude Code or Codex task without Mem's plugin in the session; a new message from
+  another agent addressed to a task by name; one real `bridge follow --json` answer read.
 
 ## One story with Memory (D459, 2026-11-21)
 

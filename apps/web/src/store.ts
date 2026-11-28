@@ -941,6 +941,24 @@ export class Store {
   }
 
   /** D619: what Mem last said about who opened one message Ducter sent, if anything. */
+  /**
+   * D656: the latest message a task sent through Bridge that hasn't been answered. A task
+   * resting on it waits for an answer that will come to it, so it has not stopped.
+   */
+  bridgeWaitFor(taskId: string): Bodies["bridge_msg"] | undefined {
+    const answered = new Set<string>();
+    for (const e of [...this.channel, ...this.taskPeers]) {
+      const b = e.peer;
+      if (b && b.direction === "in" && b.state === "task" && b.inReplyTo) answered.add(b.inReplyTo);
+    }
+    let best: { seq: number; b: Bodies["bridge_msg"] } | undefined;
+    for (const o of this.outOps.values()) {
+      const b = o.b;
+      if (b.by === "task" && b.taskId === taskId && b.state === "sent" && b.messageId && !answered.has(b.messageId) && (!best || o.seq > best.seq)) best = { seq: o.seq, b };
+    }
+    return best?.b;
+  }
+
   receiptOf(b?: { opId?: string; messageId?: string }): BridgeReceipt | undefined {
     if (!b) return undefined;
     return (b.opId ? this.receipts.get(b.opId) : undefined) ?? (b.messageId ? this.messageReceipts.get(b.messageId) : undefined);

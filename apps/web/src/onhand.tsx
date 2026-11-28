@@ -781,7 +781,10 @@ function LensEntry({ k, name, tasks, on, tab, brand, where, hidden, pinned, rena
         {/* The mark sits on the name's line, never above it (.nm stacks the name over its stat). */}
         <span class="nm-line">
           {brand && <BrandMark name={brand} size={14} />}
-          <MidName text={name} class="proj-name" />
+          {/* D654: middle ellipsis is for project names only. The fixed words (All,
+              不在项目里 / Not in a project, 电脑上的事 / On your computers) never truncate
+              mid-word: they wrap. */}
+          {project ? <MidName text={name} class="proj-name" /> : <b class="proj-name fixed">{name}</b>}
         </span>
         {/* D455: where it lives, each computer its own word (D291), in up to two lines. */}
         {!tab && where && where.length > 0 && <WhereLine where={where} />}

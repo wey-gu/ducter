@@ -514,3 +514,50 @@ test("the partner's task facts read the one state and the task's own line (D661)
   expect(both).not.toContain("The same PR");
   expect(both).toContain("also holds it: author task t1");
 });
+
+test("a task that owns an open PR carries the PR's own standing, overriding its stale report", async () => {
+  const { renderTasks } = await import("../src/index.ts");
+  const card = {
+    taskId: "t1",
+    persona: "default",
+    title: "graph_error_response_tests 偶发丢失日志里的 cause",
+    project: "",
+    place: { kind: "repo" as const, device: "local", repoPath: "/root/dev/mem", branch: "ducter/fix" },
+    harness: "claude-code",
+    attention: "working" as const,
+    residency: "warm" as const,
+    openedAt: "",
+    updatedAt: "",
+    truth: { state: "stopped" as const },
+    lastReport: { taskId: "t1", state: "progress" as const, summary: "修复的 PR #10847 现在 CI 全部通过了，只差一位评审批准，之后合并机器人会合并它。", questions: [], evidence: [] },
+    prs: [
+      {
+        pr: "nowledge-co/mem#10847",
+        url: "https://github.com/nowledge-co/mem/pull/10847",
+        state: "open" as const,
+        at: "2026-11-23T00:00:00Z",
+        standing: {
+          at: "2026-11-23T00:00:00Z",
+          head: "4b52ac6",
+          changes: [{ id: "1", by: "hawkingrei", at: "2026-11-22T03:17:00Z", on: "4b52ac6", text: "still reaches the shared graph error response" }],
+          checks: { total: 10, passed: 9, failed: [], pending: ["tide"] },
+          merge: "blocked",
+        },
+      },
+    ],
+  };
+  const line = renderTasks([card]);
+  // The PR's standing is on the line as facts, in place of the stale report.
+  expect(line).toContain("PR nowledge-co/mem#10847");
+  expect(line).toContain("changes requested by hawkingrei 2026-11-22 03:17");
+  expect(line).toContain("checks 9/10 passed");
+  expect(line).toContain("pending: tide");
+  expect(line).toContain("not mergeable (blocked)");
+  // The stale report is overridden, never shown beside it.
+  expect(line).not.toContain("只差一位评审批准");
+  expect(line).not.toContain("CI 全部通过");
+  // A merged PR carries no standing: the report stays.
+  const merged = { ...card, prs: [{ ...card.prs[0]!, state: "merged" as const }] };
+  expect(renderTasks([merged])).toContain("只差一位评审批准");
+});
+

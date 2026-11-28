@@ -53,8 +53,10 @@ function helHome(o: { homeHasGh: boolean } = { homeHasGh: true }) {
     work.stop();
     log.close();
   });
-  const aiMsgs = () => log.read({ stream: "channel", kinds: ["ai_msg"], limit: 100 }).map((e) => e.body as Bodies["ai_msg"]).filter((b) => b.settled);
-  return { t, log, tasks, work, holdings, homeCalls, workerCalls, aiMsgs, clock };
+  // D667 (research/247 Brief A): a closed outside thing is a fact on each holder's card
+  // (`subject_info`), never one settled summary message.
+  const settledInfos = () => log.read({ kinds: ["subject_info"], limit: 200 }).map((e) => e.body as Bodies["subject_info"]);
+  return { t, log, tasks, work, holdings, homeCalls, workerCalls, settledInfos, clock };
 }
 
 describe("D645 B1: a GitHub fact is read where gh is", () => {
@@ -69,9 +71,9 @@ describe("D645 B1: a GitHub fact is read where gh is", () => {
     expect(h.tasks.get(PR_LOOP_TASK)?.attention).toBe("done");
     expect(h.work.loops.get(PR_LOOP_TASK)?.state).toBe("ended");
     expect(h.work.loops.get(PR_LOOP_TASK)?.endedBy).toBe("condition");
-    const sums = h.aiMsgs();
-    expect(sums).toHaveLength(1);
-    expect(sums[0]!.settled).toMatchObject({ prs: 1 });
+    const infos = h.settledInfos();
+    expect(infos.map((b) => b.text)).toContain("PR #11408 合并了");
+    expect(infos.map((b) => b.taskId)).toContain(PR_LOOP_TASK);
   });
 
   test("a look about the machine still runs there: only GitHub facts move", async () => {

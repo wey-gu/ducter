@@ -15,16 +15,16 @@ export function refsNamed(text: string): string[] {
   return [...new Set((String(text ?? "").match(REF) ?? []).map((r) => r.toLowerCase()))];
 }
 
-/** Whitespace-collapsed, case-folded: how an object's name is compared. */
-const norm = (s: string) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
-
 /**
  * Whether the partner's words keep the task's question: all its points (when it makes more than
- * one), every #ref it names, and every object the card's question is about in words (D667,
- * research/247 Brief A: the task's title, the to-do's title). A one-point question is covered by
- * the same check. A question with none of them is the partner's to say.
+ * one) and every #ref it names. A one-point question is covered by the same #ref check, not only
+ * the numbered ones. The task's or to-do's own title is never required here: the card already
+ * names it (the ask's heading is the task's title; a to-do card's body shows its chip and title),
+ * so asking the partner to say it again would be redundant and would hide code-built cards such as
+ * a key ask, whose question is not the partner's to paraphrase. A question with neither points nor
+ * a #ref is the partner's to say.
  */
-export function keepsPoints(question: string, said: string, objects: (string | undefined)[] = []): boolean {
+export function keepsPoints(question: string, said: string): boolean {
   const q = String(question ?? "");
   const s = String(said ?? "");
   if (!s.trim()) return false;
@@ -34,12 +34,6 @@ export function keepsPoints(question: string, said: string, objects: (string | u
     // A bare "#11230" counts when the said words name that number at all (the repo may be dropped).
     const short = ref.includes("#") ? ref.slice(ref.indexOf("#")) : ref;
     if (!s.toLowerCase().includes(ref) && !s.toLowerCase().includes(short)) return false;
-  }
-  // The question's object must survive in words, not only in the number or the card around it.
-  const sn = norm(s);
-  for (const obj of objects) {
-    const o = norm(obj ?? "");
-    if (o && !sn.includes(o)) return false;
   }
   return true;
 }

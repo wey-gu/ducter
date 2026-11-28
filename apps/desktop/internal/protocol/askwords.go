@@ -32,10 +32,14 @@ func AskRefs(text string) []string {
 }
 
 // KeepsPoints reports whether the partner's words keep the task's question:
-// all its points (when it makes more than one), every #ref it names, and every
-// object the card's question is about in words (research/247 Brief A: the task's
-// title, the to-do's title). A one-point question is covered by the same check.
-func KeepsPoints(question, said string, objects ...string) bool {
+// all its points (when it makes more than one) and every #ref it names. A
+// one-point question is covered by the same #ref check, not only the numbered
+// ones. The task's or to-do's own title is never required here: the card
+// already names it (the ask's heading is the task's title; a to-do card's body
+// shows its chip and title), so asking the partner to say it again is
+// redundant and would hide code-built cards such as a key ask, whose question
+// is not the partner's to paraphrase.
+func KeepsPoints(question, said string) bool {
 	if strings.TrimSpace(said) == "" {
 		return false
 	}
@@ -49,14 +53,6 @@ func KeepsPoints(question, said string, objects ...string) bool {
 			short = ref[i:]
 		}
 		if !strings.Contains(low, ref) && !strings.Contains(low, short) {
-			return false
-		}
-	}
-	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
-	sn := norm(said)
-	for _, obj := range objects {
-		o := norm(obj)
-		if o != "" && !strings.Contains(sn, o) {
 			return false
 		}
 	}

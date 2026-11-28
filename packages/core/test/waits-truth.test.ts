@@ -143,7 +143,9 @@ describe("D628: a wait that keeps coming back backs off", () => {
     expect(backed.ok).toBe(true);
     expect(backed.repeats).toBe(WAIT_REPEAT_N + 1);
     expect((Date.parse(backed.at!) - clock.now()) / 60_000).toBeGreaterThanOrEqual(60);
-    const notes = core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).filter((e) => !!(e.body as Bodies["ai_msg"]).waitSlow);
+    // D667 (research/247 Brief A): the backed-off wait is one fact on the task's card, never an
+    // ai_msg of its own; the streak is structural, so it is said once per run of the same wait.
+    const notes = core.log.read({ stream: "task:t-slow", kinds: ["subject_info"], limit: 200 }).map((e) => (e.body as Bodies["subject_info"]).text).filter((t) => t.includes("等 Ducter"));
     expect(notes).toHaveLength(1);
   });
 });

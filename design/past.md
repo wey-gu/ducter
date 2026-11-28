@@ -260,10 +260,21 @@ to write a reader are in `docs/import.md`; the evidence and the mapping are in `
   From {app}**, said once; **带进来的 / Brought in** is the end filter's word, and on a card only
   when the app isn't known. The partner may find it with `task_find` and names the app when citing
   it ("你 10 月在 Lody 里……"), but never sends to it.
-- **The words.** **导入 / Import** (the Settings pane, phase 2), **带进来 / Bring them in**,
-  **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in** (the end filter), **没有人替你检查过 / Nobody has
-  checked it for you** (a source outside Ducter's curated list, phase 3). "Plugin" lives only in
-  the CLI and developer docs.
+- **The words.** **导入 / Import** (the Settings pane), **带进来 / Bring them in**, **再带一次 / Bring
+  in again**, **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in** (the end filter),
+  **可以带进来的 / Available**, **官方仓库 / Official repository**, **插件仓库 / Plugin repositories**,
+  **加一个插件仓库 / Add a plugin repository**, **没有人替你检查过 / Nobody has checked it for you** (a
+  version the official index does not list at its exact version, commit and hash), **Ducter 查过这个
+  版本 / Ducter checked this version** (the official index lists it), **你加的 / Added by you** (from
+  the person's own repository), **更新 / Update** (a newer pin; it asks again if it reads more), and
+  **它会联网，没有人替你检查过 / It will go online, and nobody has checked it for you** (the second
+  tick; an online command's own sentence says it goes online). A reader comes from a plugin
+  repository, is installed at the index's
+  pinned commit and content hash, and runs only inside the OS sandbox with the paths its
+  `ducter-plugin.json` declares and the commands its `uses` names; what it brings in is the same
+  read-only past task as Lody's, stamped by the host (`settings.md` "导入 / Import"). Lody is the
+  official plugin now, with the same app name and account, so already-imported tasks keep their
+  ids and grow only with new messages.
 
 ## Edge cases
 

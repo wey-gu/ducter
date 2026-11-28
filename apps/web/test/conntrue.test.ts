@@ -95,7 +95,7 @@ describe("Import says it where it happened", () => {
 
   test("the Mac's reading and retry are the same table", () => {
     const mac = src("../../desktop/internal/views/imports.go");
-    expect(mac).toContain("} else if s.State != \"looking\" {");
+    expect(mac).toContain("} else if s.State != \"ready\" && s.State != \"looking\" {");
     expect(mac).not.toContain('} else if s.State == "failed" {');
     expect(src("../../desktop/internal/views/settings_home.go")).toMatch(/case TabImport:[\s\S]{0,160}return a\.importsSay\(\)/);
   });

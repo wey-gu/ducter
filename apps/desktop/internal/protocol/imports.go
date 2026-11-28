@@ -2,10 +2,10 @@ package protocol
 
 import "encoding/json"
 
-// D655 (research/246 §3.10, §3.11): Settings › 导入 / Import and Past tasks' one line.
-// The same frames as packages/protocol/src/imports.ts. One source (Lody) read through the
-// person's own signed-in `lody` command; the consent card once; the offer once per computer; a
-// removal that hides what the source brought in, never deleting it.
+// D655/D668/D670 (research/246 §3.10, §3.11): Settings › 导入 / Import.
+// The same frames as packages/protocol/src/imports.ts. Readers come from plugin repositories: the
+// official one and the ones the person adds. The consent card once per read list; a removal that
+// hides what the source brought in, never deleting it.
 
 // ImportLast is the source's last run, for the one quiet line where it started.
 type ImportLast struct {
@@ -18,10 +18,12 @@ type ImportLast struct {
 
 // ImportSourceRow is one source's row in Settings › Import. State: looking | ready | signed_out |
 // needs_authorization | missing | failed. Problem: no_lody | signed_out | needs_authorization |
-// failed (the row's words, never the CLI's).
+// failed, or a plugin's needs_newer | sandbox_unavailable | hash_mismatch | broken | plugin_failed
+// (the row's words, never the CLI's).
 type ImportSourceRow struct {
 	ID          string      `json:"id"`
 	App         string      `json:"app"`
+	Kind        string      `json:"kind,omitempty"` // builtin | plugin
 	State       string      `json:"state"`
 	Problem     string      `json:"problem,omitempty"`
 	Waiting     []string    `json:"waiting,omitempty"`
@@ -33,6 +35,68 @@ type ImportSourceRow struct {
 	Consented   bool        `json:"consented"`
 	Last        *ImportLast `json:"last,omitempty"`
 	Running     bool        `json:"running,omitempty"`
+	// D668: an added source's own facts, each shown on its own line.
+	Added      bool          `json:"added,omitempty"`
+	Repo       string        `json:"repo,omitempty"`
+	Author     string        `json:"author,omitempty"`
+	Reads      []string      `json:"reads,omitempty"`
+	Reviewed   bool          `json:"reviewed,omitempty"`
+	Unreviewed bool          `json:"unreviewed,omitempty"`
+	Update     *ImportUpdate `json:"update,omitempty"`
+	// D670: the app's own icon (a data URL), its declared commands, and going online.
+	Icon               string      `json:"icon,omitempty"`
+	Uses               []ImportUse `json:"uses,omitempty"`
+	Online             bool        `json:"online,omitempty"`
+	NeedsOnlineConsent bool        `json:"needsOnlineConsent,omitempty"`
+}
+
+// ImportUse is one command a reader starts, with the literal words its consent card shows.
+type ImportUse struct {
+	Command string    `json:"command"`
+	Online  bool      `json:"online,omitempty"`
+	Why     ImportWhy `json:"why"`
+}
+
+// ImportWhy is the manifest's own sentence, in both languages.
+type ImportWhy struct {
+	En string `json:"en"`
+	Zh string `json:"zh,omitempty"`
+}
+
+// ImportRepository is a plugin repository Ducter knows (the official one, or one the person added).
+type ImportRepository struct {
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	Official bool   `json:"official,omitempty"`
+	State    string `json:"state"`
+	Problem  string `json:"problem,omitempty"`
+	Plugins  *int   `json:"plugins,omitempty"`
+}
+
+// ImportAvailable is one plugin a repository lists and the person can bring in.
+type ImportAvailable struct {
+	ID         string      `json:"id"`
+	App        string      `json:"app"`
+	Name       string      `json:"name"`
+	Version    string      `json:"version"`
+	Commit     string      `json:"commit"`
+	Hash       string      `json:"hash"`
+	Source     string      `json:"source"`
+	SourceURL  string      `json:"sourceUrl"`
+	SourceName string      `json:"sourceName,omitempty"`
+	Official   bool        `json:"official,omitempty"`
+	Reads      []string    `json:"reads,omitempty"`
+	Uses       []ImportUse `json:"uses,omitempty"`
+	Online     bool        `json:"online,omitempty"`
+	Detected   bool        `json:"detected,omitempty"`
+	Reviewed   bool        `json:"reviewed,omitempty"`
+	Icon       string      `json:"icon,omitempty"`
+}
+
+// ImportUpdate is a newer pinned commit or content for an added source.
+type ImportUpdate struct {
+	Version string `json:"version,omitempty"`
+	Commit  string `json:"commit,omitempty"`
 }
 
 // ImportOffer is Past tasks' one quiet line: a source is here and nothing came in yet.
@@ -46,7 +110,10 @@ type ImportOffer struct {
 type ImportsFrame struct {
 	// imports
 	Sources []ImportSourceRow `json:"sources"`
-	Offer   *ImportOffer      `json:"offer,omitempty"`
+	// D670: the repositories and the quiet Available list under the installed rows.
+	Repositories []ImportRepository `json:"repositories,omitempty"`
+	Available    []ImportAvailable  `json:"available,omitempty"`
+	Offer        *ImportOffer       `json:"offer,omitempty"`
 	// import_answer
 	Op       string `json:"op"`
 	OK       bool   `json:"ok"`
@@ -57,6 +124,14 @@ type ImportsFrame struct {
 	Removed  int    `json:"removed,omitempty"`
 	Stopped  bool   `json:"stopped,omitempty"`
 	Error    string `json:"error,omitempty"`
+	// D668: the update widened the read list, so the consent card is owed again.
+	NeedsConsent bool   `json:"needsConsent,omitempty"`
+	Widened      bool   `json:"widened,omitempty"`
+	UpToDate     bool   `json:"upToDate,omitempty"`
+	Detail       string `json:"detail,omitempty"`
+	// D670: source_add names the repository it added.
+	SourceID string `json:"sourceId,omitempty"`
+	URL      string `json:"url,omitempty"`
 }
 
 // ImportsReq subscribes to Settings › 导入 / Import and Past tasks' offer.
@@ -65,9 +140,30 @@ type ImportsReq struct {
 }
 
 // ImportConsentReq is the consent card's 带进来 / Bring them in: keep the consent, then run.
+// Online is the second, explicit line an unreviewed online reader's card makes them tick.
 type ImportConsentReq struct {
-	T  string `json:"t"` // "import_consent"
+	T      string `json:"t"` // "import_consent"
+	ID     string `json:"id"`
+	Online bool   `json:"online,omitempty"`
+}
+
+// ImportSourceAddReq is 加一个插件仓库 / Add a plugin repository.
+type ImportSourceAddReq struct {
+	T   string `json:"t"` // "import_source_add"
+	URL string `json:"url"`
+}
+
+// ImportSourceRemoveReq removes a repository the person added.
+type ImportSourceRemoveReq struct {
+	T  string `json:"t"` // "import_source_remove"
 	ID string `json:"id"`
+}
+
+// ImportInstallReq is Bring them in on an Available row: install at the index's pin, then the card.
+type ImportInstallReq struct {
+	T      string `json:"t"` // "import_install"
+	Source string `json:"source"`
+	ID     string `json:"id"`
 }
 
 // ImportRunReq is 再带一次 / Bring in again.
@@ -79,6 +175,12 @@ type ImportRunReq struct {
 // ImportRemoveReq is 删掉这个来源 / Remove this source: hide what it brought in.
 type ImportRemoveReq struct {
 	T  string `json:"t"` // "import_remove"
+	ID string `json:"id"`
+}
+
+// ImportUpdateReq is 更新 / Update an added source to its newer pinned commit.
+type ImportUpdateReq struct {
+	T  string `json:"t"` // "import_update"
 	ID string `json:"id"`
 }
 

@@ -25,6 +25,11 @@ export interface ImportDeps {
   folder?: (path: string) => Promise<FolderInfo>;
   /** A new run id; injected in tests. */
   runId?: () => string;
+  /**
+   * D668 (research/246 §3.2): the host's own source, for an added plugin. A reader never names
+   * itself as Lody, the person or another source; the app, account and reader are the manifest's.
+   */
+  stamp?: { app: string; account?: string; reader?: string; readerVersion?: string };
 }
 
 /** The task id a thread gets: deterministic, so a re-import finds it (`imp_` + 16 hex). */
@@ -84,7 +89,15 @@ export async function importInto(d: ImportDeps, input: string): Promise<ImportAn
       error: parsed.stopped?.reason ?? "no source record",
     };
   }
-  const source = parsed.source;
+  const source = d.stamp
+    ? {
+        format: parsed.source.format,
+        app: d.stamp.app,
+        ...(d.stamp.account ? { account: d.stamp.account } : {}),
+        ...(d.stamp.reader ? { reader: d.stamp.reader } : {}),
+        ...(d.stamp.readerVersion ? { readerVersion: d.stamp.readerVersion } : {}),
+      }
+    : parsed.source;
   const persona = d.persona;
   const runId = d.runId?.() ?? `run_${randomBytes(6).toString("hex")}`;
   const folder = d.folder ?? ((path: string) => folderInfo(path));

@@ -2349,6 +2349,11 @@ export interface ImportAnswer {
   stopped?: { line: number; reason: string };
   error?: string;
   taskIds?: string[];
+  /** D668: an update widened an added source's read list, so its consent is owed again. */
+  needsConsent?: boolean;
+  widened?: boolean;
+  /** The update had nothing to apply (already the pinned commit). */
+  upToDate?: boolean;
 }
 
 export type ServerFrame =

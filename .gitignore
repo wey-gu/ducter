@@ -24,3 +24,6 @@ apps/desktop/bin/
 # their owners' files, never committed.
 /design/art/assets/marks/
 /design/art/assets/norm/
+
+# D670: the plugin repository is its own repo, created by the lead; never part of Ducter.
+/.plugins-repo/

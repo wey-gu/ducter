@@ -201,6 +201,7 @@ func (a *App) openTab(tab string) {
 	if tab == TabImport && tab != a.settings.tab {
 		// A removal's line belongs to the visit it happened in.
 		a.imports.notice = ""
+		a.imports.repoNotice = ""
 	}
 	if tab != a.settings.tab {
 		// "Tried again just now" belongs to the page it was tried on (the
@@ -239,6 +240,7 @@ func (a *App) openTab(tab string) {
 	// D655: 导入 / Import (subscribed after; the home looks at the source's index).
 	if tab == TabImport {
 		a.imports.notice = ""
+		a.imports.repoNotice = ""
 		a.send(protocol.ImportsReq{T: "imports"})
 	}
 }

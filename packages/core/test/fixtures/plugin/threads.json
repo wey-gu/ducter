@@ -1,0 +1,26 @@
+{
+  "threads": [
+    {
+      "id": "F-1",
+      "title": "Fix the flaky WAL test",
+      "folder": "/Users/me/src/hawdb",
+      "repo": "acme/hawdb",
+      "createdAt": "2026-10-02T03:11:00Z",
+      "updatedAt": "2026-10-02T03:14:31Z",
+      "messages": [
+        { "id": "m1", "role": "user", "text": "The WAL test fails one run in five. 看看 checkpoint 的时序。", "at": "2026-10-02T03:11:00Z" },
+        { "id": "m2", "role": "assistant", "text": "It races the checkpoint. 先加一个能重复出来的测试。", "at": "2026-10-02T03:14:31Z" }
+      ]
+    },
+    {
+      "id": "F-2",
+      "title": "Kyoto hotel and flights together",
+      "createdAt": "2026-10-05T09:00:00Z",
+      "updatedAt": "2026-10-05T09:02:00Z",
+      "messages": [
+        { "id": "m1", "role": "user", "text": "京都的酒店和机票一起看。", "at": "2026-10-05T09:00:00Z" },
+        { "id": "m2", "role": "assistant", "text": "看了三家，都在车站附近。", "at": "2026-10-05T09:02:00Z" }
+      ]
+    }
+  ]
+}

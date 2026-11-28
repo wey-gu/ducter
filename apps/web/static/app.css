@@ -26202,6 +26202,7 @@ button.fd-link,
 .import-where { margin: 0 0 var(--s4); }
 .import-src .chat-head small { white-space: pre-line; }
 .import-src .chat-head > .grow { flex: 1; min-width: 0; }
+.import-acts { display: inline-flex; align-items: center; gap: var(--s2); flex: 0 0 auto; }
 .import-more { position: relative; display: inline-flex; align-items: center; }
 .import-read {
   margin: 0 var(--s5) var(--s4);
@@ -26229,6 +26230,20 @@ button.fd-link,
 .import-last p { margin: 0; }
 .import-waiting { margin: 0 var(--s5) var(--s3); }
 .import-notice { margin: 0 var(--s5) var(--s4); color: var(--ink-muted); font-size: var(--sm); line-height: var(--lh-read); }
+.import-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: 0 var(--s5) var(--s2);
+}
+.import-meta p { margin: 0; font-size: var(--sm); line-height: var(--lh-read); }
+.import-meta .import-repo { font-family: var(--mono); font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; }
+.import-meta .import-unreviewed { color: var(--ink); }
+.import-read-path {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  overflow-wrap: anywhere;
+}
 .import-remove-ask { align-items: center; padding: 0 var(--s5) var(--s4); }
 .import-src > .small.tone-bad { margin: 0 var(--s5) var(--s3); }
 .past-import-offer {
@@ -26244,6 +26259,7 @@ button.fd-link,
 @media (max-width: 520px) {
   .import-read, .import-consent, .import-last { margin-left: var(--s4); margin-right: var(--s4); }
   .import-waiting, .import-notice { margin-left: var(--s4); margin-right: var(--s4); }
+  .import-meta { margin-left: var(--s4); margin-right: var(--s4); }
   .import-remove-ask { padding-left: var(--s4); padding-right: var(--s4); }
 }
 
@@ -26653,3 +26669,65 @@ button.fd-link,
 .setup-step .grow .btn.text { margin-inline-start: -10px; }
 .chat-head .setup-checking { display: inline-flex; align-items: center; gap: var(--s2); }
 @media (prefers-reduced-motion: reduce) { .setup-step .setup-mark { transition: none; } }
+/* D670: the Available list, the app's own icon, and the plugin repositories. */
+.import-tile img.import-icon { border-radius: var(--r-sm); }
+.import-available { margin: var(--s5) 0 0; }
+.import-avail-title { margin: 0 0 var(--s1); }
+.import-avail-lede { margin: 0 0 var(--s3); max-width: 560px; }
+.import-avail-card {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: 0 2px 0 var(--line-soft);
+  overflow: hidden;
+}
+.import-avail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--line-soft);
+}
+.import-avail:first-child { border-top: 0; }
+.import-avail-main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 220px; min-width: 0; }
+.import-avail-name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.import-avail-name b { font-size: var(--md); font-weight: 700; line-height: 1.3; }
+.import-avail-version { font-size: var(--xs); line-height: var(--lh-read); color: var(--ink-muted); }
+.import-avail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); font-size: var(--xs); line-height: var(--lh-read); overflow-wrap: anywhere; }
+.import-avail-source { color: var(--ink-muted); }
+.import-avail-unreviewed { color: var(--ink); }
+.import-avail-acts { display: inline-flex; align-items: center; gap: var(--s2); flex: 0 0 auto; }
+.import-avail-url { font-family: var(--mono); font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; user-select: text; }
+.import-avail-err { flex: 1 1 100%; margin: 0; }
+.import-uses { display: flex; flex-direction: column; gap: var(--s2); margin: 0 0 var(--s2); }
+.import-use { padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-soft); }
+.import-use p { margin: 0 0 var(--s1); }
+.import-use p:last-child { margin-bottom: 0; }
+.import-use-command { font-family: var(--mono); font-size: var(--xs); color: var(--ink); }
+.import-use-offline { color: var(--ink-muted); }
+.import-online-ask { margin: var(--s3) 0 var(--s2); }
+.import-online-ask .switch { min-height: 0; margin: 0; padding: 0; background: none; box-shadow: none; }
+.import-consent-go .btn[disabled] { opacity: 0.45; }
+.import-repos { margin: var(--s5) 0 0; padding-top: var(--s4); border-top: 1px solid var(--line-soft); }
+.import-repos-head { display: flex; align-items: baseline; gap: var(--s3); }
+.import-repos-head .grow { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.import-repos-head small { display: block; font-size: var(--sm); line-height: var(--lh-read); }
+.import-repo-add { margin: var(--s3) 0 var(--s2); max-width: 560px; }
+.import-repo-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--line-soft); }
+.import-repo-name { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: var(--xs); color: var(--ink); }
+.import-repo-official .import-repo-name { font-family: var(--body); font-size: var(--sm); color: var(--ink-muted); }
+.import-repo-url { flex: 1 1 100%; overflow-wrap: anywhere; font-family: var(--mono); font-size: var(--xs); color: var(--ink-muted); }
+.import-repo-count { font-size: var(--xs); color: var(--ink-muted); }
+.import-repo-ask { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.import-repo-ask small { flex: 1 1 100%; font-size: var(--xs); color: var(--ink-muted); }
+/* A row's ⋯ is portaled to the page's top layer: over the Settings sheet (z 21), like the shared select's list. */
+.pmenu.import-menu { z-index: 80; }
+/* D666 on D670: a repository added or removed says so under the repositories, never a toast. */
+.import-repos > .import-notice { margin: var(--s2) 0 0; }
+@media (max-width: 520px) {
+  .import-avail { padding: var(--s3); }
+  .import-avail-acts { flex: 1 1 100%; }
+  .import-avail-acts .btn { flex: 1; }
+  .import-repos-head { align-items: flex-start; flex-direction: column; }
+}

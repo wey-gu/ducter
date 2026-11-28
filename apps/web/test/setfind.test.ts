@@ -32,6 +32,7 @@ const PANE_FILES: Record<string, string[]> = {
  * same setting under another key. A new switch or row in a pane must be indexed or named here.
  */
 const NOT_SETTINGS: Record<string, string> = {
+  "imports.consent.online.unreviewed": "the second yes on one plugin's consent card (D668), asked when it is brought in, not kept as a setting",
   "loadout.default.errand": "a line that says who errands go to, under Who does the tasks",
   "loadout.default.rest": "the same, for everything else",
   "loadout.rule.add": "the rule field, under Who does the tasks",

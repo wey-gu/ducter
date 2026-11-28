@@ -326,7 +326,7 @@ func (a *App) importRead(c *ui.Context, key string, s protocol.ImportSourceRow, 
 		uiText(c.Key("past"), a.L.T("imports.consent.past")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 		if s.NeedsOnlineConsent {
 			ticked := a.imports.online[s.ID]
-			ui.Checkbox(c.Key("online"), &ticked, a.L.T("imports.consent.online.unreviewed")).Changed()
+			a.switchControl(c, "online", a.L.T("imports.consent.online.unreviewed"), &ticked) // the shared switch, as the web's Toggle
 			a.imports.online[s.ID] = ticked
 		}
 		made := a.L.T("imports.consent.made.official")

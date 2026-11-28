@@ -3058,6 +3058,24 @@ export const scenarios: Scenario[] = [
     expect: { msgs: [1, 2], maxChars: 400, notCalled: ["task_send", "task_fork"] },
     rubric: "A thread about a Kyoto hotel and flights, brought in from Lody last month, is in Past tasks read only (imported: {app: Lody, day}). The user asks whether it can be carried on. The partner answers in one or two short Chinese messages: no, it was brought in from Lody and is read only (or a copy that can't be worked on); it may offer a new task if they want work now. It never sends to it, never redoes it, and never claims it can carry the thread itself on.",
   },
+  {
+    id: "past-import-offer-zh",
+    category: "past",
+    lang: "zh",
+    history: true,
+    steps: [{ user: "我电脑上 Lody 里那些旧对话，能带进 Ducter 吗？" }],
+    expect: { msgs: [1, 2], maxChars: 300, notCalled: ["task_open", "task_send", "task_fork"], noAsk: true },
+    rubric: "Lody is installed on this computer and nothing has been brought in yet. The user asks whether their old Lody conversations can come into Ducter. The partner offers once, in one or two short Chinese lines: yes, they can be brought into 做过的事 / Past tasks, read only (nothing in Lody changes), and they can say so to start it. It does not start it, opens no task, asks no question card, and doesn't repeat the offer.",
+  },
+  {
+    id: "past-import-offer-en",
+    category: "past",
+    lang: "en",
+    history: true,
+    steps: [{ user: "can you bring my old conversations from Lody into Ducter?" }],
+    expect: { msgs: [1, 2], maxChars: 300, notCalled: ["task_open", "task_send", "task_fork"], noAsk: true },
+    rubric: "Lody is installed on this computer and nothing has been brought in yet. The user asks to bring their old Lody conversations into Ducter. The partner offers once, in one or two short English lines: yes, they can be brought into Past tasks, read only (nothing in Lody changes), and they can say so to start it. It does not start it, opens no task, asks no question card, and doesn't repeat the offer.",
+  },
   // ---------- D383: 给你做的 / Made for you: found again from the conversation, shown as it is ----------
   {
     id: "made-itinerary-zh",

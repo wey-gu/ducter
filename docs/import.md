@@ -12,9 +12,32 @@ time words as everything else. The other app isn't changed, and Ducter never pus
 you about them.
 
 There are two sides: a **reader** that knows how to get the conversations out of the other app,
-and `ducter import`, which checks what the reader prints and keeps it. A reader is any program
-that prints the format below. Ducter's own readers come later; until then, you (or anyone) can
-write one in an afternoon.
+and `ducter import`, which checks what the reader prints and keeps it. Ducter has a reader for
+**Lody** built in: Settings › **Import** runs your own signed-in `lody` command, so nothing needs
+installing and nothing is read until you say yes. A reader for any other app is any program that
+prints the format below; you (or anyone) can write one in an afternoon.
+
+## Lody, in Settings
+
+Open **Settings › Import**. Lody's row says how many conversations it can see. Choose **Bring them
+in**; the consent card says, in plain words, what will be read (your Lody conversations, through
+the `lody` command already signed in on this computer), that the command is used, that what comes
+in shows in **Past tasks** read only, and who made the reader. Nothing is read before you choose
+**Bring them in** there.
+
+- **Read only.** Nothing in Lody changes, and Ducter never sends, answers or continues a Lody
+  conversation.
+- **The offer.** The first time a Lody conversation could come in, **Past tasks** shows one quiet
+  line under **Also on this computer**, once. It fades if you leave it; **Not now** keeps it away
+  until you mention Lody again.
+- **When it is done** one line says what came in and the oldest conversation's day. Pictures and
+  attachments are counted, not brought.
+- **If it can't read**: no `lody` on this computer, not signed in, or an encrypted workspace this
+  computer isn't authorized for. The row says which, in plain words, and nothing else is tried.
+- **Remove this source** hides the conversations it brought in from Past tasks and search. It says
+  how many before you choose, and it never deletes them: bringing Lody in again brings them back.
+- Running **Bring in again** adds only conversations and messages that are new. A message edited
+  in Lody isn't updated, because Ducter only has a copy.
 
 ## Run it
 
@@ -28,7 +51,7 @@ Or from a file:
 ducter import threads.jsonl
 ```
 
-Check first, writing nothing:
+For a reader of your own (not Lody), check first, writing nothing:
 
 ```sh
 my-reader | ducter import --check

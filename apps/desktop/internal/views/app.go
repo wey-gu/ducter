@@ -405,6 +405,8 @@ type App struct {
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards
 	own      ownState   // D218: the own-number card
 	settings settingsState
+	// imports is 设置 › 导入 / Import (D655): its open cards and the last answer.
+	imports importsState
 	// title is the title moment's own state (D87); PlayTitle starts its
 	// sound (nil: silent, as in tests).
 	title     titleState

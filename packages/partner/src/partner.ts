@@ -1852,6 +1852,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // (issue #5): any language, by name. A message with none of its own ("OK", a number, an
     // emoji, a command) keeps the conversation's, read from the Log, so a restart keeps it too.
     const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
+    // D655 (research/246 §3.10): the person brought up Lody, and a source is here with
+    // nothing brought in yet. One line may offer it, never a push and never a card (D453).
+    if (lastUser && !(lastUser.body as Bodies["user_msg"]).forwarded && /\blody\b/i.test((lastUser.body as Bodies["user_msg"]).text)) {
+      core.importSources?.()?.mention();
+      const offer = core.importSources?.()?.offerLine();
+      if (offer) {
+        deltas.push(
+          `[Lody] The person mentioned Lody. Lody is installed on this computer and Ducter can bring their past conversations into 做过的事 / Past tasks, read only; nothing has been brought in yet (${offer.total ?? "some"} conversations). If this turn is about Lody or about old conversations, you may offer it once, in one short line: what can come in, that it is read only, and that they can say so. Never start it yourself, never a question card, and do not bring it up again if they don't take it up.`,
+        );
+      }
+    }
     const talk = core.settings?.get().language ?? "auto";
     const peerOnly = !lastUser && batch.some((e) => e.kind === "bridge_msg") && !batch.some((e) => e.kind === "decision_resolved");
     const lang = userLang();

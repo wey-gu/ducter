@@ -112,6 +112,9 @@ func (a *App) OpenPast(q string) {
 	ps.focusField = true
 	ps.tab = ""
 	ps.made.kind, ps.made.open = "", ""
+	// D655: the one line under 也在这台电脑上 when a source is detected and nothing came in yet.
+	a.imports.offerSent = false
+	a.send(protocol.ImportsReq{T: "imports"})
 	a.askPast()
 }
 
@@ -597,7 +600,7 @@ func (a *App) pastList(c *ui.Context, res *protocol.PastFrame) {
 		return
 	}
 	terms := pastTerms(ps.q)
-	if len(res.Items) == 0 && len(res.Outside) > 0 {
+	if len(res.Items) == 0 && (len(res.Outside) > 0 || a.pastHasOffer()) {
 		a.pastOutside(c, res, terms)
 		return
 	}

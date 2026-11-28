@@ -15,6 +15,7 @@ import { ROOMY, useRoomy } from "./wide.ts";
 import { openApp } from "./apps.tsx";
 import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 import { FirstMeetLine } from "./first-meet.tsx";
+import { importOffer, ImportOfferLine } from "./imports.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -75,6 +76,8 @@ export function openPast(q = "", tab: "past" | "made" | "ongoing" = "past") {
   ask(true);
   askMade(q, true);
   A.send({ t: "ongoing", id: "og" });
+  // D655: the one line under 也在这台电脑上 when a source is detected and nothing came in yet.
+  A.send({ t: "imports" });
   A.changed();
 }
 
@@ -855,9 +858,14 @@ function OutsideCard({ it }: { it: OutsideItem }) {
 
 /** The quiet section under Ducter's own: sessions the person ran in their own agents here. */
 function OutsideSection() {
+  // The offer's source: asked once this sheet is up, so a frame that arrives changes the section.
+  useEffect(() => {
+    if (A.S.welcomed) A.send({ t: "imports" });
+  }, [A.S.welcomed]);
   const items = P.res?.outside ?? [];
   const hidden = (P.res?.sources ?? []).filter((s) => s.hidden);
-  if (!items.length && !hidden.length) return null;
+  const offer = importOffer();
+  if (!items.length && !hidden.length && !offer) return null;
   return (
     <section class="past-sec outside" aria-label={t("past.out.title")}>
       <h3>
@@ -865,6 +873,7 @@ function OutsideSection() {
         {items.length > 0 && <span class="psec-n">{items.length}</span>}
       </h3>
       {items.length > 0 && <p class="past-out-sub">{t("past.out.sub", A.S.first?.computer ?? t("first.here"))}</p>}
+      <ImportOfferLine />
       {items.map((it) => (
         <OutsideCard key={outKey(it)} it={it} />
       ))}

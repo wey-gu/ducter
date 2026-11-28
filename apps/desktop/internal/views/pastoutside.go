@@ -18,6 +18,10 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
+// pastHasOffer says Past tasks has the one line a detected source may offer (D655), so the
+// section stands even when nothing ran outside Ducter here.
+func (a *App) pastHasOffer() bool { return a.S.Imports != nil && a.S.Imports.Offer != nil }
+
 // outsideKey is an outside card's key (its focus and its pending Continue).
 func outsideKey(it *protocol.OutsideItem) string { return "out:" + it.Agent + ":" + it.ID }
 
@@ -31,7 +35,8 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 			hidden = append(hidden, s.Agent)
 		}
 	}
-	if len(res.Outside) == 0 && len(hidden) == 0 && a.past.outMsg == "" {
+	offer := a.pastHasOffer()
+	if len(res.Outside) == 0 && len(hidden) == 0 && a.past.outMsg == "" && !offer {
 		return
 	}
 	ui.Column(c.Key("outside")).Gap(t.S2).Padding(t.S5, 0, 0, 0).Children(func() {
@@ -47,6 +52,10 @@ func (a *App) pastOutside(c *ui.Context, res *protocol.PastFrame, terms []string
 		}
 		if a.past.outMsg != "" {
 			uiText(c.Key("msg"), a.past.outMsg).FontSize(t.SM).TextColor(t.Failed.Ink).Padding(0, t.S2, t.S2, t.S2)
+		}
+		// D655: the one line a detected source may offer here, once per computer (D453).
+		if offer {
+			a.pastImportOffer(c)
 		}
 		ui.Column(c.Key("cards")).Gap(t.S2 + 2).Children(func() {
 			for i := range res.Outside {

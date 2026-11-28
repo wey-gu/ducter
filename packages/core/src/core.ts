@@ -31,6 +31,7 @@ import { DEFAULT_IDENTITY, otherIdentity, type Persona } from "./persona.ts";
 import { createRegistry, isActive, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { importInto } from "./imports/service.ts";
+import { createImportSources } from "./imports/sources.ts";
 import { createTidied, holdOf } from "./tidied.ts";
 import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
 import { roomFor } from "./candidates.ts";
@@ -334,6 +335,10 @@ export interface CoreOptions {
   gitLoginHome?: GitLogin;
   /** D345 test seam: puts gh on the home (default: Homebrew or GitHub's own build; tests: none). */
   ghInstaller?: GhInstaller;
+  /** D655: Settings › 导入 / Import's `lody` runner (tests and demo cores: a fake on a temp PATH). */
+  importsRun?: import("./imports/lody.ts").LodyExec;
+  /** D655 test seam: what the partner may say about a detected source, without a `lody` process. */
+  importsOffer?: import("@ducter/protocol/src/internal.ts").ImportSourcesPort;
   /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
   taskSources?: Partial<Pick<TaskSourcesDeps, "ghRun" | "ghEnv" | "home" | "pollMs" | "boundMs" | "quietMs" | "today" | "now">> & { /** D359: the model the pile sorts and pre-reads with (tests, demos: a fake). */ ask?: import("./task-sources/pile.ts").Ask; /** A review's PR state read (tests: a fake; the home: D633's holdings reader). */ prState?: import("./task-sources/handover.ts").HandoverDeps["prState"] };
   /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
@@ -1589,7 +1594,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D449: a task on the free key: the pages are checked, never sent back for another round.
     codeOnly: (id) => freeBudget.frugal(tasks.get(id)?.harness ?? ""),
   });
-  const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  // D655 (research/246): Settings › 导入 / Import. The reader runs only when the pane, Past's
+  // offer or a run asks; a look at startup costs one `lody workspace list` (the index only).
+  const importSources = createImportSources({
+    log,
+    tasks,
+    dataDir,
+    persona: persona.id,
+    now: () => clock.now(),
+    zone: () => settings.get().quiet?.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+    ...(opts.importsRun ? { run: opts.importsRun } : {}),
+  });
+  const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, importSources: opts.importsOffer ? () => opts.importsOffer! : () => importSources, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D654 (research/245 §3.2): a place's project identity, the one derivation every surface reads.
   api.projectKeyFor = async (place) => {
     const id = await projectIdentities.read(place);
@@ -2242,7 +2258,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, imports: (data) => importInto({ log, tasks, persona: persona.id, now: () => clock.now() }, data), past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
+    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, imports: (data) => importInto({ log, tasks, persona: persona.id, now: () => clock.now() }, data), importSources: () => importSources, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;

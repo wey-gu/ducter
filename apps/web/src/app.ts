@@ -162,7 +162,7 @@ export function morph(apply: () => void) {
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
-export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "chats" | "autofill" | "devices" | "phone";
+export type SettingsPage = "" | "partner" | "memory" | "peers" | "notify" | "accounts" | "todos" | "import" | "chats" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | { kind: "past" } | { kind: "did" } | { kind: "pins" } | { kind: "app"; id: string } | { kind: "apps" } | { kind: "recall"; seq: number } | { kind: "learned" } | { kind: "pile" } | { kind: "hand" } | { kind: "review"; groupId: string } | { kind: "addfolder" } | { kind: "keys" } | null;
 
 /**
@@ -639,6 +639,8 @@ class AppState {
   onChannelFrame?: (f: import("@ducter/protocol").ChannelServerFrame) => void;
   /** D341: 待办来源 / To-do sources (todos.tsx keeps its own state). */
   onSourcesFrame?: (f: import("@ducter/protocol").SourcesServerFrame) => void;
+  /** D655: Settings › 导入 / Import and Past tasks' offer (imports.tsx keeps its own state). */
+  onImportsFrame?: (f: import("@ducter/protocol").ImportsServerFrame) => void;
   /** D357: a to-do handed over from Tasks (todos.tsx): true when the answer was its. */
   onHanded?: (f: Extract<ServerFrame, { t: "task_new_result" }>) => boolean;
   /** D345: Settings › 待办来源's 连上 GitHub in flight, and the account it just connected as (said once on GitHub's card). */
@@ -978,6 +980,7 @@ class AppState {
     if (f.t.startsWith("phone_")) return void this.onPhoneFrame?.(f as import("@ducter/protocol").PhoneServerFrame);
     // D276: 聊天软件 / Chat apps (channels.tsx keeps its own state).
     if (f.t === "channels" || f.t === "channel_result") return void this.onChannelFrame?.(f);
+    if (f.t === "imports" || f.t === "import_answer") return void this.onImportsFrame?.(f as import("@ducter/protocol").ImportsServerFrame);
     if (f.t === "sources" || f.t === "source_items_result" || f.t === "source_result" || f.t === "pile_items_result" || f.t === "pile_result" || f.t === "pile_find_result" || f.t === "pile_how_result" || f.t === "group_review_result") return void this.onSourcesFrame?.(f);
     // D238: the person's own phone (handset.tsx relays the home's calls to this phone's app).
     if (f.t.startsWith("handset_")) return void this.onHandsetFrame?.(f as import("@ducter/protocol").HandsetServerFrame);
@@ -3445,7 +3448,7 @@ class AppState {
     // D562: ?app=<id> is an app put on the Home Screen (its own start, straight into it).
     const own = /^\?app=([a-z0-9]{1,16})$/.exec(location.search);
     if (own && !(this.sheet?.kind === "app" && this.sheet.id === own[1])) return openApp(own[1]!);
-    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|chats|autofill|devices|phone))?$/.exec(hash);
+    const set = /^#settings(?:=(partner|memory|peers|notify|accounts|todos|import|chats|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);
       return this.openSettings((set[1] ?? "") as SettingsPage);

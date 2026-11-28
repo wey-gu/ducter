@@ -44,8 +44,9 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   a file or a day, get back a file or table Ducter made for you, name and star the ones you come
   back to, carry on with one, start a new task that knows what it found, and pause or resume what
   runs on its own.
-- **[Bring past conversations in](import.md):** copy the conversations you had in another app
-  into Past tasks, read only, with the small format any reader can print.
+- **[Bring past conversations in](import.md):** bring your Lody conversations into Past tasks from
+  Settings, read only, or copy the conversations you had in another app with the small format any
+  reader can print.
 - **[Pictures and files](pictures.md):** send a screenshot, a photo or any file, share from
   another app on your phone, see what a task made, ask for a drawing, and look through every
   picture in the conversation.

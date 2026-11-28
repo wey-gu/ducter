@@ -9,7 +9,7 @@ import { realClock, type Clock } from "./clock.ts";
 /** D120: the partner's call changed before its brief arrived, so this early open was dropped unstarted (runner.ts). */
 export const neverStarted = (c: Pick<TaskCard, "attention" | "reason">) => c.attention === "dropped" && c.reason === "not started";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news", "folder_moved", "handoff"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "decision_later", "decision_back", "decision_seen", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run", "job_status", "task_held", "task_bound", "source_seen", "source_write", "owned_news", "folder_moved", "handoff", "import_run", "import_removed"] as const;
 
 /** D216: a step or the agent's words, the kind On hand's latest line is made from. */
 export const isStepEvent = (b: Bodies["task_event"]) =>
@@ -65,6 +65,11 @@ export interface CoreRegistry extends TaskRegistry {
 /** `zone` is the person's time zone for what "today" means (D310); the core's own when none. */
 export function createRegistry(log: LogStore, clock: Clock = realClock, zone: () => string | undefined = () => undefined): CoreRegistry {
   const cards = new Map<string, TaskCard>();
+  // D655 (research/246): a removed source's tasks stay in the Log but leave every list that
+  // reads this registry (Past tasks, its search, the partner's task_find) until it is brought in
+  // again. `hidden` is by task id; `removedAt` is each app's latest removal, so a later run unhides.
+  const hidden = new Set<string>();
+  const removedAt = new Map<string, string>();
   // D609: the latest hand-off each task gave, for its one line under the last report.
   const handoffOf = new Map<string, HandoffLine>();
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
@@ -285,6 +290,23 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         if (c) c.fromRoutine = from;
         break;
       }
+      case "import_run": {
+        // A run that finished after a removal brings the app's tasks back (the person asked for it).
+        const b = e.body as Bodies["import_run"];
+        if (!b?.app || b.phase === "started") break;
+        const at = removedAt.get(b.app);
+        if (!at || e.ts < at) break;
+        removedAt.delete(b.app);
+        for (const [id, c] of cards) if (c.imported?.app === b.app) hidden.delete(id);
+        break;
+      }
+      case "import_removed": {
+        const b = e.body as Bodies["import_removed"];
+        if (!b?.app) break;
+        removedAt.set(b.app, e.ts);
+        for (const [id, c] of cards) if (c.imported?.app === b.app) hidden.add(id);
+        break;
+      }
       case "task_state": {
         const b = e.body as Bodies["task_state"];
         const c = cards.get(b.taskId);
@@ -419,7 +441,10 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
       const c = cards.get(id);
       return c && copy(c);
     },
-    list: () => [...cards.values()].map(copy),
+    // A removed source's tasks are not listed anywhere that reads the registry (Past tasks, its
+    // search, the partner's task_find). `get` still answers: the import service must find an
+    // existing stream to append to when the source is brought in again.
+    list: () => [...cards.values()].filter((c) => !hidden.has(c.taskId)).map(copy),
     pendingDecisions: (id) => [...(pending.get(id) ?? [])],
     waiters: () => [...waiters.values()].map((w) => ({ ...w })),
     onHand(): OnHand {

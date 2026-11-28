@@ -601,6 +601,10 @@ type Store struct {
 	Sources       *protocol.SourcesView
 	SourceItems   map[string]*protocol.SourcesFrame
 	SourceResults []protocol.SourcesFrame
+	// Imports is 设置 › 导入 / Import (D655): the one source's row and Past tasks' offer;
+	// ImportAnswers are the answers to a consent, a run or a removal (the views read and drop them).
+	Imports       *protocol.ImportsFrame
+	ImportAnswers []protocol.ImportsFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Lend is 加一台做事的电脑 / Add a computer for tasks's code as last said (D347):
@@ -836,6 +840,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "sources":
 		if f.Sources != nil && f.Sources.View != nil {
 			s.Sources = f.Sources.View
+		}
+	case "imports":
+		if f.Imports != nil {
+			s.Imports = f.Imports
+		}
+	case "import_answer":
+		if f.Imports != nil {
+			s.ImportAnswers = append(s.ImportAnswers, *f.Imports)
 		}
 	case "source_items_result", "pile_items_result", "pile_result", "pile_find_result", "pile_how_result", "group_review_result": // D359, D385: the pile's answers by clientId too
 		if f.Sources != nil {

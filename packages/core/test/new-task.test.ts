@@ -107,6 +107,18 @@ test("a title is the first sentence of the words, short", () => {
   expect(titleFromWords("v1.2 release notes")).toBe("v1.2 release notes"); // a dot inside a word isn't a full stop
 });
 
+test("D654: a place that names the home stamps a local project key", async () => {
+  const { core, dir } = boot({ update: { homeName: "home-server" } });
+  const { opened } = fakeRunner(core);
+  const r = repo(dir);
+  const c = await client(core);
+  c.send({ t: "task_new", words: "修一下 tinycart 里失败的测试", place: { kind: "repo", device: "home-server", repoPath: r }, harness: "codex", clientId: "c1" });
+  await c.until((f) => f.t === "task_new_result");
+  const key = (opened[0] as { projectKey?: string }).projectKey;
+  expect(key).toBe(`folder:local:${r}`);
+  expect((opened[0] as { projectName?: string }).projectName).toBe("tinycart");
+});
+
 test("task_new opens a task with the user's words as they are, says nothing in the conversation, and tells the partner quietly", async () => {
   const { core, dir, woke } = boot();
   const { opened } = fakeRunner(core);

@@ -892,9 +892,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
     ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
   });
+  // D654: one computer, one project key: a place that says the home's name is the home, and a
+  // worker's name is its id.
+  const canonicalDevice = (dev: string): string => {
+    if (!dev || dev === "local") return "local";
+    if (sameComputer(dev, computers.homeName())) return "local";
+    const w = (computers.workers?.() ?? []).find((x) => x.id === dev || sameComputer(x.name, dev));
+    return w?.id ?? dev;
+  };
   // D654 (research/245 §3.2): the project identity, read once per folder per computer.
   const projectIdentities = createProjectIdentities({
     projects,
+    deviceKey: canonicalDevice,
     ...(opts.git ? { git: opts.git } : {}),
     remoteFolder: (dev, path) =>
       computers.folderInfo(dev, path, 8_000).then((r) => (r === "offline" ? ("offline" as const) : r.remote ? { remote: r.remote } : {})),

@@ -30,3 +30,22 @@ test("an added folder is in On hand's projectList before its first task", async 
     await core.stop();
   }
 });
+
+test("a place named after the home and one that says local are one project (demo-onhand's two hawdb)", async () => {
+  dir = mkdtempSync(join(tmpdir(), "ducter-project-home-"));
+  const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin", update: { homeName: "home-server" } });
+  try {
+    for (const [id, device] of [
+      ["t_tokio", "home-server"],
+      ["t_bench", "local"],
+    ] as const) {
+      core.log.append({ stream: `task:${id}`, origin: "partner", kind: "task_open", body: { taskId: id, title: id, project: "", place: { kind: "repo", device, repoPath: "/Users/weyl/dev/hawdb", branch: "main", baseBranch: "main" }, harness: "claude-code", brief: id } });
+    }
+    await Bun.sleep(30);
+    const list = core.tasks.onHand().projectList ?? [];
+    expect(list.filter((p) => p.name === "hawdb")).toHaveLength(1);
+    expect(list.find((p) => p.name === "hawdb")?.key).toBe("folder:local:/Users/weyl/dev/hawdb");
+  } finally {
+    await core.stop();
+  }
+});

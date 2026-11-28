@@ -200,3 +200,20 @@ test("default order: a project needing the person first, then the most recent ac
   projects.change({ act: "order", keys: ["github.com/acme/b", "github.com/acme/a"] });
   expect(ident.decorate(onHand(tasks)).projectList?.map((x) => x.name)).toEqual(["c", "b", "a"]);
 });
+
+test("a place that names the home and one that says local are one computer, so one project", async () => {
+  const projects = createProjects({ dataDir: dir });
+  const ident = createProjectIdentities({
+    projects,
+    deviceKey: (d) => (d === "home-server" ? "local" : d),
+    nameOf: (d) => (d === "local" ? "home-server" : d),
+    changed: () => {},
+  });
+  const viaName: Place = { kind: "repo", device: "home-server", repoPath: "/Users/weyl/dev/hawdb" };
+  const viaLocal: Place = { kind: "repo", device: "local", repoPath: "/Users/weyl/dev/hawdb" };
+  expect(ident.of(viaName).key).toBe("folder:local:/Users/weyl/dev/hawdb");
+  expect(ident.of(viaLocal).key).toBe(ident.of(viaName).key);
+  const on = ident.decorate(onHand([card("a", viaName), card("b", viaLocal), card("c", { kind: "repo", device: "local", repoPath: "/Users/weyl/dev/ducter" })]));
+  expect(on.projectList?.filter((p) => p.name === "hawdb").length).toBe(1);
+  expect(on.tasks.filter((t) => t.projectKey === "folder:local:/Users/weyl/dev/hawdb").map((t) => t.taskId)).toEqual(["a", "b"]);
+});

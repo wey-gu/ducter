@@ -39,7 +39,7 @@ const runnerOf = (core: ReturnType<typeof startCore>) => ({
 // are logged when they really went quiet.
 let shift = 0;
 const clock = { now: () => Date.now() + shift, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const seed = startCore({ dataDir, port: 0, push: false, persona, ooSource, clock });
+const seed = startCore({ dataDir, port: 0, push: false, persona, ooSource, clock, update: { homeName: "home-server" } });
 seed.setRunner(runnerOf(seed));
 seed.setPartner({ onTrigger() {} });
 const log = seed.log;
@@ -285,7 +285,7 @@ await Bun.sleep(200);
 await seed.stop();
 
 // Serve from a second core over the same Log, as after a restart: its cards come from the Log.
-const core = startCore({ dataDir, persona, push: false, ooSource, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+const core = startCore({ dataDir, persona, push: false, ooSource, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "home-server" } });
 core.setRunner(runnerOf(core));
 core.setPartner({ onTrigger() {} });
 // A phone or an emulator pairs with this link (the Android debug build: --es pairLink '…', with

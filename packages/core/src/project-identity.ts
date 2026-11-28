@@ -27,7 +27,7 @@ export interface ProjectIdentities {
   decorate(on: OnHand): OnHand;
 }
 
-const devOf = (p: Place) => ("device" in p && p.device ? p.device : "local");
+const rawDevOf = (p: Place) => ("device" in p && p.device ? p.device : "local");
 const pathOf = (p: Place) => (p.kind === "repo" ? p.repoPath : p.kind === "folder" ? p.path : "");
 
 /** D654: a keyless task's lens: a computer set-up or an errand is 电脑上的事, anything else
@@ -59,10 +59,14 @@ export function createProjectIdentities(opts: {
   remoteFolder?: (device: string, path: string) => Promise<{ remote?: string } | "offline">;
   /** The computer's name, home first. */
   nameOf: (device: string) => string;
+  /** One id per computer: the home's own names become "local", a worker's name its id. A place
+   *  written by a name and another by the id are one computer, so one project. */
+  deviceKey?: (device: string) => string;
   /** Something changed: a newly read remote, so the next snapshot has the true key. */
   changed: () => void;
 }): ProjectIdentities {
   const git = opts.git;
+  const devOf = (p: Place) => (opts.deviceKey ? opts.deviceKey(rawDevOf(p)) : rawDevOf(p));
   /** place id -> the remote the folder has ("" = none); absent: not read yet. */
   const known = new Map<string, string>();
   const asking = new Set<string>();

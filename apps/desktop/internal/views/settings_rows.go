@@ -29,7 +29,8 @@ func (a *App) sectionHead(c *ui.Context, title, note string) {
 	}
 	ui.Column(c).Gap(2).Padding(0, t.S5).Children(func() {
 		if title != "" {
-			uiText(c, keepClauses(title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
+			h := uiText(c, keepClauses(title)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(a.leading(1.4)).Role(ui.RoleHeading)
+			a.sfMark(c, h, title) // D663: a group's heading, when its row isn't drawn
 		}
 		if note != "" {
 			uiText(c, keepClauses(note)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
@@ -59,7 +60,9 @@ func (a *App) tileCol(c *ui.Context, tile func()) {
 func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string, tone sideTone, control func()) {
 	t := a.T
 	a.sep(c)
-	ui.Row(c.Key("head:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center).Children(func() {
+	el := ui.Row(c.Key("head:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(72).AlignItems(ui.Center)
+	control = a.sfControl(a.sfMark(c, el, name), control) // D663
+	el.Children(func() {
 		// D501: with nothing to draw (Partner's 还没有能想事情的 AI agent) the words sit on the
 		// text edge, as on the web, never beside an empty tile column.
 		if tile != nil {
@@ -83,7 +86,9 @@ func (a *App) headRow(c *ui.Context, key string, tile func(), name, line string,
 func (a *App) tileRow(c *ui.Context, key string, tile func(), title, line string, control func()) {
 	t := a.T
 	a.sep(c)
-	ui.Row(c.Key("trow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+	el := ui.Row(c.Key("trow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center)
+	control = a.sfControl(a.sfMark(c, el, title), control) // D663
+	el.Children(func() {
 		a.tileCol(c, tile)
 		a.wordsThenControl(c, func() {
 			if title != "" {
@@ -136,7 +141,9 @@ func (a *App) pickMove(c *ui.Context) ui.ElementTransition {
 func (a *App) choiceRow(c *ui.Context, key string, col bool, tile func(), title, line string, control func()) {
 	t := a.T
 	a.sep(c)
-	ui.Row(c.Key("prow:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+	el := ui.Row(c.Key("prow:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center)
+	control = a.sfControl(a.sfMark(c, el, title), control) // D663
+	el.Children(func() {
 		a.pickCol(c, key, col, tile)
 		ui.Row(c.Key("pwords:" + key)).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Transition(a.pickMove(c)).Children(func() {
 			a.wordsThenControl(c, func() {
@@ -382,6 +389,9 @@ func (a *App) addRow(c *ui.Context, key, title, line string) bool {
 	b := ui.Row(c.Key("add:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
 	a.rowHover(c, b, groundNeutral(), false) // D529
+	if a.sfMark(c, b, title) {               // D663
+		b.Focus()
+	}
 	b.Children(func() {
 		a.tileCol(c, func() { a.glyph(c, 18, drawPlus(t.InkSoft)) })
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
@@ -409,10 +419,15 @@ func (a *App) openRowOn(c *ui.Context, key string, tile func(), bare bool, title
 	t := a.T
 	a.sep(c)
 	clicked := false
-	ui.Row(c.Key("orow:"+key)).Gap(t.S3).Padding(t.S2, t.S5, t.S2, t.S4).MinHeight(64).AlignItems(ui.Center).Children(func() {
+	outer := ui.Row(c.Key("orow:"+key)).Gap(t.S3).Padding(t.S2, t.S5, t.S2, t.S4).MinHeight(64).AlignItems(ui.Center)
+	landed := a.sfMark(c, outer, title) // D663
+	outer.Children(func() {
 		b := ui.Row(c.Key("orow-b:"+key)).Grow(1).Basis(0).MinWidth(0).Gap(t.S3).Padding(t.S2, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title + ", " + line).Expanded(open).Focusable()
 		a.rowHover(c, b, groundNeutral(), false) // D529
+		if landed {
+			b.Focus()
+		}
 		b.Children(func() {
 			if !bare || tile != nil {
 				a.tileCol(c, tile)
@@ -479,6 +494,9 @@ func (a *App) tileLinkRow(c *ui.Context, key string, tile func(), title, line st
 	b := ui.Row(c.Key("tlink:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(title).Focusable()
 	a.rowHover(c, b, groundNeutral(), false) // D529
+	if a.sfMark(c, b, title) {               // D663
+		b.Focus()
+	}
 	b.Children(func() {
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
@@ -664,4 +682,34 @@ func drawPersonMark(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		m.QuadTo(cx+6, cy+1.6, cx+6, cy+6.5)
 		p.StrokePath(&m, glyphStroke, col)
 	}
+}
+
+// findHitRow is a setting 找设置 found (D663; the web's sf-row): the pane's clay in the tile
+// column, the setting's words over the pane it lives in (its own line, never joined), its value at
+// the right edge, a chevron; the whole row is the button. at: the row the keys are on.
+func (a *App) findHitRow(c *ui.Context, key string, tile func(), title, pane, value string, at bool) bool {
+	t := a.T
+	a.sep(c)
+	b := ui.Row(c.Key("hit:"+key)).Gap(t.S3).Padding(t.S3, t.S5).MinHeight(64).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).AccessSelected(at).Focusable()
+	if at || b.Hovered() {
+		b.Background(t.Sunken)
+	}
+	b.Children(func() {
+		a.tileCol(c, tile)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
+			uiText(c, keepClauses(title)).FontSize(t.MD).FontWeight(700).LineHeight(a.leading(1.4))
+			if pane != "" {
+				uiText(c, pane).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).SingleLine()
+			}
+		})
+		if value != "" {
+			uiText(c.Key("value"), value).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).MaxWidthPercent(42).MaxLines(2).Shrink(1).AccessHidden(true)
+		}
+		a.glyph(c, 16, drawChevron(t.InkMuted, false))
+	})
+	if at {
+		b.ScrollIntoView()
+	}
+	return b.Clicked()
 }

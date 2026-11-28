@@ -26426,3 +26426,182 @@ button.fd-link,
   .filter-bar { gap: var(--s1); }
   .view-save-wrap { margin-left: 0; }
 }
+
+/* ---------- D663: 找设置 / Find a setting ---------- */
+/* The shared find field (FindField): the sunken track with a drawn lens, the words, a drawn clear ×.
+   40 tall, 44 under a finger; the one accent ring while typing. */
+.find-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: max(40px, 2.5rem);
+  padding: 0 6px 0 14px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  color: var(--ink-muted);
+}
+.find-field:focus-within {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.find-field > svg {
+  flex: none;
+}
+.find-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--md);
+  color: var(--ink);
+}
+.find-field input::placeholder {
+  color: var(--ink-muted);
+}
+.find-field input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.find-field .find-clear {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-muted);
+}
+.find-field .find-clear:hover {
+  background: var(--line);
+  color: var(--ink);
+}
+@media (pointer: coarse) {
+  .find-field {
+    height: max(44px, 2.75rem);
+  }
+  .find-field .find-clear {
+    width: 44px;
+    height: 44px;
+    margin-right: -6px;
+  }
+}
+
+/* The field under Settings' title, on the list's edge. */
+.set-find {
+  margin: 4px 0 var(--s4);
+}
+.sf-count {
+  margin: 0 4px var(--s2);
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+/* A found setting: the list's own row. The pane's clay, the setting's words over the pane it lives
+   in (its own element), the value at the right edge, the chevron. */
+.sf-list .sf-row {
+  width: 100%;
+  min-height: 64px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.sf-list .sf-row + .sf-row {
+  border-top: 1px solid var(--line-soft);
+}
+/* The row the keys are on, and the pointer's: only where there are keys and a pointer (a finger
+   presses; a lone result never looks already pressed on a phone). */
+@media (hover: hover) and (pointer: fine) {
+  .sf-list .sf-row.at,
+  .sf-list .sf-row:hover {
+    background: var(--row-hover, var(--surface-sunken));
+  }
+}
+.sf-list .sf-row:active {
+  background: var(--surface-sunken);
+}
+.sf-row .sf-art {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+}
+.sf-row .sf-art img {
+  width: 32px;
+  height: 32px;
+}
+.sf-row .sf-pane {
+  margin-top: 1px;
+}
+.sf-row .sf-value {
+  flex: 0 1 auto;
+  max-width: 42%;
+  font-size: var(--sm);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+/* Nothing found: the partner says so, calmly, and where it can be said instead. */
+.sf-none {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: var(--s2) 4px var(--s4);
+}
+.sf-none .avatar {
+  flex: none;
+}
+.sf-none-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-top: 6px;
+}
+.sf-none-say {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.sf-none-ask {
+  margin: 0 0 var(--s2);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+/* The row a jump landed on: the conversation's find tint, rising and settling (D290); reduced
+   motion: the tint held, then gone, without the fade. */
+.sf-found {
+  animation: sf-found 2.2s var(--ease);
+}
+.sf-found:not(.set-card) {
+  border-radius: var(--r-sm);
+}
+@keyframes sf-found {
+  0% {
+    background-color: transparent;
+  }
+  16%,
+  55% {
+    background-color: var(--found-partner);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-found {
+    animation: none;
+    background-color: var(--found-partner);
+  }
+}

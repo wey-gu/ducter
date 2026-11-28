@@ -1,7 +1,7 @@
 // The shared controls (design/ui.md "Shared controls"): every button, switch, chip, coin and
 // row a card or a settings page shows is one of these. test/controls.test.ts fails when the
 // device card draws a control any other way. A new control is added here, never inline.
-import type { ComponentChildren } from "preact";
+import type { ComponentChildren, Ref } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A, routeHash } from "./app.ts";
 import { inApp } from "./native.ts";
@@ -748,6 +748,43 @@ export function Field(p: { value: string; label: string; placeholder?: string; m
       onInput={(e) => p.onInput((e.target as HTMLInputElement).value)}
       onKeyDown={p.onKeyDown}
     />
+  );
+}
+
+/** D663: a find field: the sunken 40 (44 under a finger) track with a drawn lens, the words, and a
+ *  drawn clear × once there are words. On hand's Find and 找设置 / Find a setting wear it; the
+ *  Mac's `findBox`. Esc with words clears them and stops there (the sheet stays open). */
+export function FindField(p: { value: string; label: string; id?: string; class?: string; inputRef?: Ref<HTMLInputElement>; onInput: (v: string) => void; onKeyDown?: (e: KeyboardEvent) => void }) {
+  return (
+    <label class={`find-field${p.class ? ` ${p.class}` : ""}`}>
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <circle cx="7" cy="7" r="4.4" />
+        <path d="M10.3 10.3 13.5 13.5" />
+      </svg>
+      <input
+        id={p.id}
+        ref={p.inputRef}
+        type="search"
+        enterKeyHint="go"
+        value={p.value}
+        placeholder={p.label}
+        aria-label={p.label}
+        autocomplete="off"
+        spellcheck={false}
+        onInput={(e) => p.onInput(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && p.value) return void (e.stopPropagation(), e.preventDefault(), p.onInput(""));
+          p.onKeyDown?.(e);
+        }}
+      />
+      {p.value && (
+        <button type="button" class="find-clear" aria-label={t("setfind.clear")} onClick={(e) => (e.preventDefault(), p.onInput(""), (e.currentTarget.parentElement?.querySelector("input") as HTMLInputElement | null)?.focus())}>
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+          </svg>
+        </button>
+      )}
+    </label>
   );
 }
 

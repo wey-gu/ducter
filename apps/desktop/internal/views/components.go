@@ -1400,6 +1400,45 @@ func (a *App) stepNumber(c *ui.Context, n int) {
 	})
 }
 
+// findBox is the shared find field (D663; the web's FindField): the sunken track with a drawn lens,
+// the words, and a drawn clear × once there are words; 40 tall, the one accent ring while typing.
+// 找设置 / Find a setting wears it at the top of Settings' rail. submit runs on Return.
+func (a *App) findBox(c *ui.Context, key, label string, v *string, submit func()) ui.Element {
+	t := a.T
+	var in ui.Element
+	track := ui.Row(c.Key("findbox:"+key)).Height(40).Gap(t.S2).Padding(0, t.S1, 0, t.S3+2).AlignItems(ui.Center).
+		Radius(t.RadiusSM).Background(t.Sunken)
+	track.Children(func() {
+		a.glyph(c, 16, drawLens(t.InkMuted))
+		in = ui.TextInput(c.Key("findbox-in:"+key), v).Placeholder(label).Label(label).
+			FontSize(t.MD).Grow(1).MinWidth(0).Background(ui.Color{}).Border(0, ui.Color{})
+		if submit != nil {
+			in.OnSubmit(submit)
+		}
+		if *v != "" {
+			x := ui.Box(c.Key("findbox-clear:"+key)).Size(28, 28).Radius(14).Shrink(0).Cursor(ui.CursorPointer).
+				Role(ui.RoleButton).Label(a.L.T("setfind.clear")).Focusable()
+			col := t.InkMuted
+			if x.Hovered() {
+				x.Background(t.Line)
+				col = t.Ink
+			}
+			x.Draw(drawCross(col))
+			if x.Clicked() {
+				*v = ""
+				in.Focus()
+			}
+		}
+	})
+	// A hairline at rest, so the track reads on a dark rail too; the accent ring while typing.
+	if in.Focused() {
+		track.Border(2, t.Accent)
+	} else {
+		track.Border(1, t.Line)
+	}
+	return in
+}
+
 // lineField is the shared one-line field (D536; the web's Field): the
 // control height, as wide as its column allows up to 420, a hairline that
 // becomes the one accent ring while typing in it. strong: a name, bolder.

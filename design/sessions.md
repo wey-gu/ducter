@@ -100,7 +100,8 @@ card over the screen; phone: from On hand's Find, full width at the top, no key 
   match, instant), **做过的 / Earlier** (core's Past index: every task, words in names, titles,
   tags, branches and PRs, files touched, the person's words, reports, agents and computers, time
   words; the row says where it matched), **给你做的 / Made for you** (D383), **你自己做过的 / Your
-  own sessions** (D299), **去 / Go to**; then always **跟 {name} 说：「…」 / Tell {name}: "…"** and
+  own sessions** (D299), **设置 / Settings** (D663: up to three settings the words name, by a
+  title or a true synonym, never a pane's name alone; each opens its pane landed on the row), **去 / Go to**; then always **跟 {name} 说：「…」 / Tell {name}: "…"** and
   **新建：「…」 / New task: "…"**. So "find a file" and "find a PR" are finding the task that
   touched it; the row says **文件 / File** or **分支 / Branch** with the words marked.
 - **Keys:** ↑↓, ⌃N/⌃P; Enter the row's first action (open; a place: go; Tell: send); ⌘Enter

@@ -268,6 +268,14 @@ func (a *App) FindAsked() {
 		a.ho.focusFind, a.ho.step = true, 0
 		return
 	}
+	// D663: in Settings, ⌘F is 找设置 / Find a setting.
+	if (a.Route == RouteSettings || a.Route == RoutePartner) && a.conv.topNow == 0 {
+		if a.Route == RoutePartner {
+			a.openTab(TabPartner)
+		}
+		a.sf.focus = true
+		return
+	}
 	if a.conv.topNow > 0 && !a.oh.sw {
 		return // another sheet is up: nothing there to find in
 	}

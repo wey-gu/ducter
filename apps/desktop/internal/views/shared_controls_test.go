@@ -51,6 +51,8 @@ var sharedControls = map[string]bool{
 	"kindMark": true, "dateLeaf": true,
 	// D662: the dense table's row, the selection's bar, a list's keys at its foot
 	"tableRow": true, "selectionBar": true, "keyCaps": true,
+	// D663: the find field, and a setting it found
+	"findBox": true, "findHitRow": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.
@@ -58,7 +60,7 @@ var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go", "chats.go", "imessage.go",
-	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go", "bgtray.go", "onhandtable.go",
+	"settings_rows.go", "ownphone.go", "devguard.go", "handset.go", "reach.go", "agentsetup.go", "components.go", "bgtray.go", "onhandtable.go", "setfind.go",
 }
 
 // adHoc reports a call that makes a control by hand.

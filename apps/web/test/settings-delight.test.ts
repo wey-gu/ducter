@@ -50,7 +50,7 @@ test("Notifications waits in its shape and shows its preview; This phone shows L
   expect(notify).toContain("<Waiting");
   expect(notify).not.toContain('class="small">{t("conn.connecting")}');
   expect(notify).toContain("<NotifyPreview />");
-  const phone = v.slice(v.indexOf("function PhoneSettings"), v.indexOf("const SECTIONS"));
+  const phone = v.slice(v.indexOf("function PhoneSettings"), v.indexOf("function SectionArt"));
   expect(phone).toContain("<LookPreview />");
 });
 

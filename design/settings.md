@@ -1120,8 +1120,8 @@ filled with `demo-settings-real.ts` (`DEMO_PARTNERS=1`), plus `demo-first.ts DEM
   picture names Ducter among an agent's words, D501's exception). The 640 form sheet stays at 1180;
   a phone or a split pane under 700 is now full height (D644 amendment, below).
 - **Proposed, not built**: one shared Mem setup group for Memory and Agent messaging; per-computer
-  version rows on the web; a Settings find/jump; a live-step Mem setup checklist; a live D296 flow
-  walk of every said line and ask.
+  version rows on the web; a live-step Mem setup checklist; a live D296 flow walk of every said line
+  and ask. (The Settings find/jump proposed here is built: D663, "Find a setting" below.)
 - **Checked**: `bun run build:web`, both `tsc` gates, `bun test apps/web/test` 1286 / 0, the new
   `settings-polish-geometry.test.ts` (3 / 0: no control under 44 on touch or 36 on a desktop, no
   overflow at 320–1180), the settings suites 178 / 0, and the Mac's Mem-step test.
@@ -1191,3 +1191,38 @@ confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
   删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段.
 - **Not done here:** added sources and their rows (phase 3), update on a widened read list, the
   per-computer detection when the home is a server (the reader runs on the home in phase 2).
+
+## 找设置 / Find a setting (D663)
+
+A person who wants one switch (免打扰, 通知, Telegram, the hand-off when a limit runs out) types
+it, instead of opening pane after pane.
+
+- **Who.** C first ("will it bother me at night?"), F who doesn't know the panes' names, H who
+  wants Codex's model in three keys. Before: 找不着, three wrong panes before 通知. After: the switch
+  itself with its value and its pane, one press, there with it lit.
+- **Where it starts.** The web's list: a field under 设置, in the flow (never sticky, so it never
+  covers the list), 44 under a finger. The Mac: the rail's first thing, over the tabs; the knob
+  under the tabs moves down by the field (`railFindH`). ⌘F anywhere in Settings focuses it with the
+  words kept (the Mac's Edit › Find while Settings is in front).
+- **What typing shows.** Settings, never panes, in place of the brief and the list (web) or of
+  the pane under the title **找设置 / Find a setting** (Mac): the pane's clay at 32, the setting's
+  words, the pane apart (not repeated when it is the setting's own name), the value at the right
+  edge, a chevron; **找到 {n} 个设置** over them. ↑↓, Return, Esc (clears first). On the web the
+  words stay while a found pane is open, so ‹ 设置 comes back to them; on the Mac a tab chosen puts
+  the results away and a click in the field shows them again.
+- **Matching.** Every term somewhere; a title (either language) over a synonym
+  (`setfind.syn.<id>`) over the pane's name; a Latin word of five letters or more forgives one
+  slip (D456). Never a model: meaning beyond the words is the partner's, in the conversation.
+- **The jump.** The pane opens, the row its own words draw is scrolled to the centre, tinted with
+  the conversation's find colour over 2.2 s (reduced motion: no scroll animation, the tint without
+  the fade), and its control takes the focus (never a text field under a finger). A row that isn't
+  drawn (quiet hours with notifications off) lands on its group's heading.
+- **Nothing found.** The partner's face, **设置里没有「{q}」。**, **跟我说想改什么，我来改。** and
+  **去对话里跟{name}说**: the conversation with the words in the composer, unsent.
+- **The index** (`apps/web/src/setfind.ts`, `apps/desktop/internal/views/setfind.go`) names each
+  setting by its pane and the key that pane draws; tests fail when a pane has none, a key is no
+  longer drawn, or a new switch is neither indexed nor named as not a setting.
+- **⌘K** offers up to three settings the words name, as **设置 / Settings** before **去 / Go to**.
+- Shared pieces: `findBox` / `FindField`, `findHitRow` / `OptionRow` (`set-row sf-row`).
+- Shots: `.shots/setfind/web/` (390 and 1180), `.shots/setfind/mac/` (1150), zh and en, light and
+  dark: empty, typing, a pane's name, nothing found, landed, settled.

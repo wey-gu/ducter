@@ -43,6 +43,22 @@ the language of its screens, Details in the conversation, and reading replies al
 A small preview at the top shows your partner, a message of yours and its reply as they look here, and
 changes the moment you pick something.
 
+## Find a setting
+
+Looking for one switch? Type it in **Find a setting** at the top of Settings (at the top of the
+tabs on a Mac), or press **⌘F** anywhere in Settings. You see the settings themselves, not the
+tabs: each with the tab it lives in and what it is set to now, like **Quiet hours** under
+**Notifications**, **23:00 to 08:00**. Words in Chinese or English both work, whatever language
+your screens are in, and so do everyday words for the same thing: **do not disturb**, **dnd** or
+**安静** all find quiet hours. Typing a tab's name, like **Notifications**, lists what is in it.
+
+Pick one (or use the up and down arrow keys and Return) and its tab opens right at that row, lit for a moment, ready to
+change. **Esc** clears the words.
+
+If nothing matches, your partner says so and offers **Tell Ducter in the conversation**: you can
+ask it to change something just by saying it. **⌘K** finds the settings you name too, under
+**Settings**.
+
 ## Overview
 
 Settings opens with your partner telling you, in a few lines, how things stand: where it runs, what it

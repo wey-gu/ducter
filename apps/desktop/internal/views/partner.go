@@ -318,6 +318,9 @@ func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int)
 				b.Children(func() {
 					uiText(c, l).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine().AccessHidden(true)
 				})
+				if on {
+					a.sfTakeFocus(b) // D663: a found setting's choice takes the keyboard
+				}
 				if b.Clicked() && !on {
 					hit = i
 				}

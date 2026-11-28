@@ -27,6 +27,7 @@ export * from "./phone-use.ts";
 export * from "./calendar.ts";
 export * from "./later.ts";
 export * from "./open-asks.ts";
+export * from "./subject.ts";
 export * from "./task-groups.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
@@ -455,6 +456,9 @@ export interface Bodies {
   // D426: what one message asked for, line by line, under it (asks.ts). Logged by core whenever a
   // line is added or its state changes; clients keep the latest per msgSeq, under that message.
   asks: import("./asks.ts").AsksBody;
+  // D653 (research/244 rules 1 and 8): one living card per subject (subject.ts). The latest
+  // event per key wins; clients draw it under the message that started the work, revised in place.
+  subject_card: import("./subject.ts").SubjectCardBody;
   decision: {
     decisionId: string;
     taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)

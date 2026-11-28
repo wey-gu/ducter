@@ -673,6 +673,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	// bubble took is let go at the end.
 	a.rp.next = a.replyOf(e)
 	defer func() { a.rp.next, a.rp.tab = nil, nil }()
+	// D653: the work this message started stands under it as one living card per subject.
+	defer a.subjectCards(c, e)
 	switch {
 	case e.User != nil:
 		// D426: the several things it asked for stand under its words, line by line.

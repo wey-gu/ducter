@@ -132,6 +132,10 @@ func (s *Store) joinOlder(sc *Store) {
 				e.Asks = w // the latest lines came first
 				delete(s.asksWaiting, e.Event.Seq)
 			}
+			if cs := s.cardsWaiting[e.Event.Seq]; len(cs) > 0 {
+				e.Cards = cs
+				delete(s.cardsWaiting, e.Event.Seq)
+			}
 		}
 		added[e] = true
 		front = append(front, e)
@@ -265,6 +269,14 @@ func (s *Store) joinOlder(sc *Store) {
 		}
 		if s.asksWaiting[k] == nil {
 			s.asksWaiting[k] = v
+		}
+	}
+	for k, v := range sc.cardsWaiting {
+		if s.cardsWaiting == nil {
+			s.cardsWaiting = map[int64][]protocol.SubjectCard{}
+		}
+		if s.cardsWaiting[k] == nil {
+			s.cardsWaiting[k] = v
 		}
 	}
 	if len(sc.TaskPeers) > 0 {

@@ -102,6 +102,7 @@ const (
 	KindAck              = "ack"
 	KindJobStatus        = "job_status"
 	KindLivingMsg        = "living_msg"
+	KindSubjectCard      = "subject_card" // D653: one living card per subject
 	KindDecision         = "decision"
 	KindDecisionResolved = "decision_resolved"
 	KindDecisionLater    = "decision_later"
@@ -947,6 +948,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &JobStatus{}
 	case KindLivingMsg:
 		v = &LivingMsg{}
+	case KindSubjectCard:
+		v = &SubjectCardBody{}
 	case KindDecision:
 		v = &Decision{}
 	case KindDecisionResolved:

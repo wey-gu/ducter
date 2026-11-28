@@ -44,6 +44,7 @@ import { DeviceSignInBody } from "./device-signin.tsx";
 import { Select } from "./menu.tsx";
 import { cheer, LookPreview, NotifyPreview, TalkSample } from "./settings-delight.tsx";
 import { AskLines, TaskAsks } from "./asks.tsx";
+import { SubjectCards } from "./subjects.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded, cutAtWord } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -1550,11 +1551,15 @@ function DayAfterBlock({ d }: { d: NonNullable<Bodies["ai_msg"]["dayAfter"]> }) 
 function EntryView(p: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean; prevUser?: number }) {
   // D426: the several things a message asked for stand under its words, line by line.
   const a = p.e.user ? p.e.asks : undefined;
-  if (a && a.lines.length >= 2)
+  // D653: the work that message started stands under it as one living card per subject.
+  const cards = p.e.cards;
+  const asks = a && a.lines.length >= 2;
+  if (asks || cards?.length)
     return (
       <>
         <EntryBody {...p} />
-        <AskLines a={a} />
+        {asks && <AskLines a={a!} />}
+        {!!cards?.length && <SubjectCards cards={cards} />}
       </>
     );
   return <EntryBody {...p} />;

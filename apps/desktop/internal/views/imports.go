@@ -154,10 +154,8 @@ func (a *App) importRead(c *ui.Context, key string, yes func(), no func()) {
 	t := a.T
 	ui.Column(c.Key("read:" + key)).Gap(t.S2).Children(func() {
 		uiText(c.Key("title"), a.L.T("imports.consent.title")).FontSize(t.SM).FontWeight(700)
-		ui.Row(c.Key("path")).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-			uiText(c, "•").FontSize(t.SM).TextColor(t.InkMuted)
-			uiText(c, a.L.T("imports.consent.path")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
-		})
+		// One thing it reads, said as a line under 它会读：, no bullet (a single item is not a list).
+		uiText(c.Key("path"), a.L.T("imports.consent.path")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 		uiText(c.Key("command"), a.L.T("imports.consent.command")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 		uiText(c.Key("past"), a.L.T("imports.consent.past")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
 		uiText(c.Key("made"), a.L.T("imports.consent.made")).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)

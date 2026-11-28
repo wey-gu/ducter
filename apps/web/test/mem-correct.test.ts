@@ -80,13 +80,16 @@ describe("a correction that sticks", () => {
     const sent: any[] = [];
     const send = A.send;
     (A as any).send = (f: unknown) => sent.push(f);
-    (A as any).outbox = { put: () => {} };
+    // The real outbox is put back after: A is one object for every test file in a full run.
+    const outbox = (A as any).outbox;
+    (A as any).outbox = { put: () => {}, items: [] };
     try {
       A.correctMemory("codex-1", "Deploy on Fridays is fine");
       expect(sent.at(-1)).toMatchObject({ t: "send", corrects: "codex-1" });
       expect(sent.at(-1).text).toContain("codex-1");
     } finally {
       (A as any).send = send;
+      (A as any).outbox = outbox;
     }
   });
 

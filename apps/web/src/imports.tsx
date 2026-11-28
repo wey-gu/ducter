@@ -88,9 +88,7 @@ function ReadList({ go, no }: { go?: () => void; no?: () => void }) {
   return (
     <div class="import-read">
       <b>{t("imports.consent.title")}</b>
-      <ul>
-        <li>{t("imports.consent.path")}</li>
-      </ul>
+      <p>{t("imports.consent.path")}</p>
       <p>{t("imports.consent.command")}</p>
       <p>{t("imports.consent.past")}</p>
       <small>{t("imports.consent.made")}</small>

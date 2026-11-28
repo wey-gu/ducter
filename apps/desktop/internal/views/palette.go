@@ -40,6 +40,7 @@ const (
 	palMadeRow                // something Ducter made
 	palOwnRow                 // a session the person ran outside Ducter
 	palGo                     // a place of the app
+	palSetting                // D663: a setting the words name
 	palTell                   // 跟 {name} 说
 	palNew                    // 新建
 )
@@ -54,6 +55,7 @@ type palRow struct {
 	made  *protocol.MadeItem
 	own   *protocol.OutsideItem
 	place palPlace
+	set   *setEntry
 }
 
 // palPlace is a place the palette goes to.
@@ -208,6 +210,17 @@ func (a *App) palRows(q string) []palRow {
 			rows = append(rows, palRow{kind: palOwnRow, group: "own", key: "o:" + o.Agent + ":" + o.ID, own: o})
 		}
 	}
+	// D663: a setting the words name (its title or a true synonym, never only its pane's name), up
+	// to three, before the places: it opens its pane landed on the row, as 找设置 does.
+	n := 0
+	for _, h := range a.setFind(q) {
+		if !h.named || n == 3 {
+			continue
+		}
+		n++
+		e := h.e
+		rows = append(rows, palRow{kind: palSetting, group: "set", key: "s:" + e.id, set: &e})
+	}
 	low := strings.ToLower(q)
 	for _, pl := range a.palPlaces() {
 		if strings.Contains(strings.ToLower(pl.label), low) || strings.Contains(pl.id, low) {
@@ -263,6 +276,9 @@ func (a *App) palActs(r palRow, q string) []palAct {
 		return []palAct{{"open", a.L.T("pal.act.open"), "\r", func() { a.palClose(); a.madeOpen(&it, ui.Rect{}) }}}
 	case palOwnRow:
 		return []palAct{{"open", a.L.T("pal.act.open"), "\r", func() { a.palClose(); a.OpenPast(q) }}}
+	case palSetting:
+		e := *r.set
+		return []palAct{{"go", a.L.T("pal.act.go"), "\r", func() { a.palClose(); a.setJump(e) }}}
 	case palGo:
 		pl := r.place.id
 		return []palAct{{"go", a.L.T("pal.act.go"), "\r", func() { a.palGoTo(pl) }}}
@@ -510,7 +526,7 @@ func (a *App) palPeekBody(c *ui.Context, id string, h float32) {
 // palHead is a group's name.
 func (a *App) palHead(c *ui.Context, group string) {
 	t := a.T
-	key := map[string]string{"recent": "pal.g.recent", "onhand": "pal.g.onhand", "earlier": "pal.g.earlier", "made": "pal.g.made", "own": "pal.g.own", "go": "pal.g.go"}[group]
+	key := map[string]string{"recent": "pal.g.recent", "onhand": "pal.g.onhand", "earlier": "pal.g.earlier", "made": "pal.g.made", "own": "pal.g.own", "go": "pal.g.go", "set": "setfind.g"}[group]
 	uiText(c.Key("head:"+group), a.L.T(key)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Padding(t.S3, t.S3, t.S1, t.S3).SingleLine()
 }
 
@@ -560,6 +576,13 @@ func (a *App) palRowView(c *ui.Context, r palRow, q string, on bool, pick func()
 		parts = nonEmpty(r.own.Project, r.own.Branch, harnessName(r.own.Agent), a.pastDate(store.ParseTime(r.own.UpdatedAt)))
 	case palGo:
 		title = r.place.label
+	case palSetting:
+		title = a.setTitle(*r.set)
+		value := ""
+		if r.set.value != nil {
+			value = r.set.value(a)
+		}
+		parts = nonEmpty(a.setPane(*r.set), value) // D291: the pane and the value, each apart
 	case palTell:
 		title = a.L.T("pal.tell", a.personaName(), q)
 	case palNew:
@@ -581,7 +604,7 @@ func (a *App) palRowView(c *ui.Context, r palRow, q string, on bool, pick func()
 			kind := r.made.Kind
 			a.pastPebbleDraw(c, "art", "", 24, func(col ui.Color) func(*ui.Painter, ui.Rect) { return drawMadeKind(kind, col) })
 		default:
-			glyph := map[palKind]string{palGo: "look", palTell: "talk", palNew: "build"}[r.kind]
+			glyph := map[palKind]string{palGo: "look", palSetting: "look", palTell: "talk", palNew: "build"}[r.kind]
 			a.pastPebble(c, "art", glyph, "", 24)
 		}
 		ui.Column(c.Key("main")).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {

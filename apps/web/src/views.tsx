@@ -113,6 +113,8 @@ import { ComposerTune } from "./composer-tune.tsx";
 import { LoopLine } from "./loop-line.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, backWords, WatchCard } from "./work.tsx";
 import { CantStartView, cantClause, cantFixes } from "./cant.tsx";
+import { SECTIONS } from "./set-sections.ts";
+import { SetFindBox, SetFindResults, SetLanding, setFindKey, SF } from "./setfind-view.tsx";
 import { EndAsk, HandoffNote, Locator, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskFoot, TaskMeta, TimerPie, wakesOf, WhatItDid } from "./transcript.tsx";
 import {
   attention,
@@ -3747,24 +3749,6 @@ function PhoneSettings() {
   );
 }
 
-const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[] = [
-  { page: "partner", art: "idle", title: "settings.tab.partner" },
-  // D257: the partner's own notebook (the one it always carries), and two of the person's agents' coins.
-  { page: "memory", art: "notebook", title: "settings.tab.memory" },
-  { page: "peers", art: "coins", title: "settings.tab.peers" },
-  { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
-  { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
-  // D341: 待办来源 / To-do sources (todos.tsx); D348: its own clay, a note page with a ticked box.
-  { page: "todos", art: "set_todos", title: "settings.tab.todos" },
-  // D655: 导入 / Import (imports.tsx): a page of lines, things carried in.
-  { page: "import", art: "wait_file", title: "settings.tab.import" },
-  // D276: 聊天软件 / Chat apps (channels.tsx); D283: two clay speech bubbles.
-  { page: "chats", art: "set_chats", title: "settings.tab.chats" },
-  { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
-  { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
-  // D330: in a browser on a computer it is 这台电脑 / This computer, with the clay laptop.
-  { page: "phone", art: HANDHELD === "computer" ? "dev_laptop_awake" : "phone", title: "settings.phone" },
-];
 
 /** A section's art: its clay picture, or for 和你的其他 agent 通信 two of the person's agents' coins (D257). */
 function SectionArt({ art, size }: { art: string; size: number }) {
@@ -3820,6 +3804,12 @@ export function SettingsSheet() {
     A.folderFocus = undefined;
   }, [page, A.folderFocus]);
   const devPushed = page === "devices" && deviceCardShown(dev);
+  // D663: ⌘F in Settings is 找设置 / Find a setting, from the list or any pane.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => void setFindKey(e, go);
+    addEventListener("keydown", k);
+    return () => removeEventListener("keydown", k);
+  }, []);
   return (
     <Sheet label={t("settings.title")} frameClass="settings-sheet" resetKey={page || "overview"}>
       {!sec ? (
@@ -3834,6 +3824,13 @@ export function SettingsSheet() {
             {t("nav.conversation")}
           </button>
           <h2>{t("settings.title")}</h2>
+          {/* D663: 找设置 / Find a setting, under the title; with words, what they find stands in
+              place of the brief and the list, each a setting (never a pane). */}
+          <SetFindBox />
+          {SF.q.trim() ? (
+            <SetFindResults art={(p) => <SectionArt art={SECTIONS.find((x) => x.page === p)!.art} size={32} />} />
+          ) : (
+          <>
           {/* D469: the partner's brief on its own world, then where things live; the pages after. */}
           <SetBrief go={go} />
           <PlacesMap go={go} />
@@ -3850,9 +3847,12 @@ export function SettingsSheet() {
               </button>
             ))}
           </div>
+          </>
+          )}
         </div>
       ) : (
         <div class="set-page pushed" key={page} data-page={page}>
+          <SetLanding page={page} />
           {!devPushed && (
             <>
               <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>

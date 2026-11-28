@@ -17,7 +17,9 @@ import (
 
 // switchControl is the one switch.
 func (a *App) switchControl(c *ui.Context, key, label string, v *bool) bool {
-	return ui.Switch(c.Key("sw:"+key), v).Label(label).Changed()
+	sw := ui.Switch(c.Key("sw:"+key), v).Label(label)
+	a.sfTakeFocus(sw) // D663: a found setting's switch takes the keyboard
+	return sw.Changed()
 }
 
 // dangerText is the destructive text button: failed ink, flat, a soft tint

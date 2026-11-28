@@ -18,6 +18,7 @@ import { attention, placeOf, projectGroupOf, projectNameOf, projectOf, reportOf,
 import { shortTitle } from "./transcript.tsx";
 import { stateLabel } from "./views.tsx";
 import { computerName, manyComputers } from "./where.ts";
+import { entryPane, entryTitle, jumpTo, setFind, type SetEntry } from "./setfind.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
@@ -101,6 +102,7 @@ type Row =
   | { k: "made"; id: string; it: MadeItem }
   | { k: "own"; id: string; it: OutsideItem }
   | { k: "go"; id: string; label: string; keys?: string; run: () => void }
+  | { k: "set"; id: string; e: SetEntry }
   | { k: "tell"; id: string }
   | { k: "new"; id: string };
 
@@ -191,6 +193,13 @@ export function paletteGroups(q: string): { key: string; label?: string; rows: R
   if (made.length) out.push({ key: "made", label: t("palette.g.made"), rows: made });
   const own = (K.past?.outside ?? []).slice(0, 3).map((it): Row => ({ k: "own", id: `own:${it.agent}:${it.id}`, it }));
   if (own.length) out.push({ key: "own", label: t("palette.g.own"), rows: own });
+  // D663: a setting the words name (its title or a true synonym, never only its pane's name), up to
+  // three, before the places: it opens its pane landed on the row, as 找设置 does.
+  const sets = setFind(words)
+    .filter((h) => h.named)
+    .slice(0, 3)
+    .map((h): Row => ({ k: "set", id: `set:${h.e.id}`, e: h.e }));
+  if (sets.length) out.push({ key: "set", label: t("setfind.g"), rows: sets });
   const rest = places.filter((p) => !named.includes(p));
   if (rest.length) out.push({ key: "go", label: t("palette.g.go"), rows: rest });
   out.push({ key: "on", rows: [{ k: "tell", id: "tell" }, { k: "new", id: "new" }] });
@@ -241,6 +250,8 @@ function first(r: Row, q: string) {
       return openPast(q);
     case "go":
       return (A.sheet = null), r.run(), A.changed();
+    case "set":
+      return jumpTo(r.e);
     case "tell":
       A.sheet = null;
       if (A.route.name !== "conv") A.go({ name: "conv" });
@@ -475,6 +486,28 @@ function RowView({ r, on, q, hover, touch, peek }: { r: Row; on: boolean; q: str
             <span class="t">{r.it.title}</span>
           </span>
           <Facts class="k-facts" items={[r.it.project, r.it.branch ? <span class="k-mono">{r.it.branch}</span> : undefined, harnessName(r.it.agent), dateOf(r.it.updatedAt)]} />
+        </span>
+      </button>
+    );
+  }
+  if (r.k === "set") {
+    const value = r.e.value?.() ?? "";
+    return (
+      <button role="option" aria-selected={on} class={cls} onMouseMove={hover} onClick={click}>
+        <span class="k-coin go" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <path d="M4 6.5h12M4 13.5h12" />
+            <circle cx="12.5" cy="6.5" r="2.1" fill="var(--surface)" />
+            <circle cx="7.5" cy="13.5" r="2.1" fill="var(--surface)" />
+          </svg>
+        </span>
+        <span class="k-main">
+          <span class="k-l1">
+            <span class="t">
+              <Marked text={entryTitle(r.e)} q={q} />
+            </span>
+          </span>
+          <Facts class="k-facts" items={[entryPane(r.e), value]} />
         </span>
       </button>
     );

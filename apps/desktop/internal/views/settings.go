@@ -273,6 +273,8 @@ func (a *App) SetInterfaceLanguage(choice string) {
 const (
 	railW    = 264
 	railTabH = 56
+	// railFindH is the find field's height over the tabs (D663).
+	railFindH = 40
 )
 
 // railKnob is the rail's chosen-tab knob's identity: it slides from the
@@ -283,6 +285,17 @@ func (a *App) settingsView(c *ui.Context) {
 	t := a.T
 	tab := a.settingsTab()
 	a.drainForgot()
+	// D663: a landing waits for its pane's rows (up to 5 s), then lets go.
+	if l := a.sf.land; l != nil {
+		if l.asked.IsZero() {
+			l.asked = c.Now()
+		}
+		if l.hit == "" && c.Now().Sub(l.asked) > 5*time.Second {
+			a.sf.land = nil
+		} else if l.hit == "" {
+			c.After(100 * time.Millisecond)
+		}
+	}
 	a.placeBar(c, "settings", RouteSettings, func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("nav.settings"))
@@ -293,6 +306,14 @@ func (a *App) settingsView(c *ui.Context) {
 		a.toastsOver(ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0)).Children(func() {
 			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
 				// D289: 24 between sections, 8 within one (D273's rhythm).
+				// D663: with words in the rail's field, what they find stands in place of the pane.
+				if a.sf.showing && strings.TrimSpace(a.sf.q) != "" {
+					ui.Column(c.Key("panel:find")).Grow(1).MaxWidth(820).Gap(t.S3).Children(func() {
+						a.heading(c, a.L.T("setfind.field"), t.XXL)
+						a.setFindPanel(c)
+					})
+					return
+				}
 				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S5)
 				a.paneEnter(c, panel, tab)
 				panel.Children(func() {
@@ -347,6 +368,8 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 		Background(t.Chrome).BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine).
 		Role(ui.RoleTabList).Label(a.L.T("nav.settings")).Children(func() {
 		tabs := a.visibleTabs()
+		// D663: 找设置 / Find a setting, the rail's first thing.
+		a.setFindField(c)
 		// D296: the chosen tab's knob is its own piece under the tabs, so it
 		// slides from the tab left to the tab shown, as the places' knob
 		// does (D290), rather than blink from one row to the next.
@@ -355,7 +378,7 @@ func (a *App) settingsRail(c *ui.Context, shown string) {
 				continue
 			}
 			an := t.Nav.Across
-			k := ui.Box(c.Key("rail-knob")).Absolute().Left(t.S5).Top(t.S6 + float32(i)*(railTabH+t.S2)).
+			k := ui.Box(c.Key("rail-knob")).Absolute().Left(t.S5).Top(t.S6 + railFindH + t.S2 + float32(i)*(railTabH+t.S2)).
 				Width(railW - t.S5 - t.S4 - 1).Height(railTabH).Radius(t.RadiusMD).AccessHidden(true).IgnoreInput(true).
 				Transition(ui.ElementTransition{Animation: &an, Match: railKnob{}})
 			a.knob(k)
@@ -409,7 +432,8 @@ func (a *App) railTab(c *ui.Context, tab string, on bool) {
 			uiText(c, badge).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
 		})
 	})
-	if b.Clicked() && !on {
+	if b.Clicked() && (!on || a.sf.showing) {
+		a.sf.showing = false // D663: a tab chosen puts the found rows away (the words stay)
 		a.openTab(tab)
 	}
 }
@@ -586,7 +610,9 @@ func (a *App) explainedRow(c *ui.Context, key, label, help, detail string, contr
 	// D445: the same least height as tileRow (64), so a pane's rows read as one rhythm.
 	// D459: the same words-then-control as row and tileRow, so a narrow window drops its
 	// control under the words here too (D445).
-	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+	el := ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center)
+	control = a.sfControl(a.sfMark(c, el, label), control) // D663
+	el.Children(func() {
 		a.wordsThenControl(c, func() {
 			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
 			if help != "" {
@@ -645,7 +671,9 @@ func (a *App) row(c *ui.Context, key, label, help string, control func()) {
 	t := a.T
 	a.sep(c)
 	// D445: the same least height as tileRow (64), so a pane's rows read as one rhythm.
-	ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Children(func() {
+	el := ui.Row(c.Key("row:"+key)).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center)
+	control = a.sfControl(a.sfMark(c, el, label), control) // D663: a found setting lands here
+	el.Children(func() {
 		// D445: the words keep their width; a narrow window drops the control under them.
 		a.wordsThenControl(c, func() {
 			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
@@ -725,7 +753,9 @@ func (a *App) valueRow(c *ui.Context, key, title, sub string, mark func(), value
 func (a *App) stateRow(c *ui.Context, key, title, sub string, state func(), value string, action func(), below func()) {
 	t := a.T
 	a.sep(c)
-	ui.Column(c.Key("srow:"+key)).Gap(t.S3).Padding(t.S4, t.S5).Children(func() {
+	el := ui.Column(c.Key("srow:"+key)).Gap(t.S3).Padding(t.S4, t.S5)
+	a.sfMark(c, el, title) // D663
+	el.Children(func() {
 		ui.Row(c).Gap(t.S5).MinHeight(36).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 				uiText(c, title).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
@@ -813,6 +843,9 @@ func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
 	b := ui.Row(c.Key("link:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable()
 	a.rowHover(c, b, groundNeutral(), false) // D529
+	if a.sfMark(c, b, label) {               // D663
+		b.Focus()
+	}
 	b.Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, keepClauses(label)).FontSize(t.MD).FontWeight(700).LineHeight(1.4)

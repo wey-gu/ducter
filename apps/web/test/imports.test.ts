@@ -79,7 +79,7 @@ test("the pane and the offer are styled from tokens in both themes, and narrow r
   for (const cls of [".import-read", ".import-consent", ".import-last", ".past-import-offer", ".import-remove-ask"]) expect(css).toContain(cls);
   expect(css).toMatch(/@media \(max-width: 520px\) \{\s*\.import-read, \.import-consent, \.import-last/);
   expect(css).toContain("margin: 0 var(--s5) var(--s4)");
-  expect(src("../src/views.tsx")).toContain('{ page: "import", art: "wait_file", title: "settings.tab.import" }');
+  expect(src("../src/set-sections.ts")).toContain('{ page: "import", art: "wait_file", title: "settings.tab.import" }');
   expect(src("../src/views.tsx")).toContain('<ImportSettings />');
   expect(src("../src/past.tsx")).toContain("<ImportOfferLine />");
   expect(src("../src/settings-home.tsx")).toContain('case "import":');

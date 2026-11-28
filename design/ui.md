@@ -610,6 +610,8 @@ A new control is added to the set (and to this table) before it is used.
 | A dense table's row (列表 / List, D662): 32 tall, its cells side by side (the columns belong to the list), the one row hover (D529), a picked row in the accent's 12% tint, the keys' row outlined inside in the accent (nothing moves); the whole row one press, ⌘-click and ⇧-click pick | `tableRow` (`components.go`) | `TableRow` |
 | The bar a selection raises at a list's foot (D662): **已选 n 个 / n selected** in 13/700, the actions that fit (or the one ask that names the count and what is skipped, with its Go and 先不), **取消选择 / Deselect** at the far end; a floating clay sheet the rows scroll under | `selectionBar` (`components.go`) | `SelectionBar` |
 | A list's keys said once at its foot (D457's drawn caps): each pair a cap and what it does, wrapping | `keyCaps` (`components.go`, from `keyHint`) | `KeyCaps` |
+| A find field (找设置 / Find a setting, D663): the sunken 40 track (44 under a finger) with a drawn lens, the words, a drawn clear × once there are words; a hairline at rest, the one accent ring while typing; Esc with words clears them and stops there | `findBox` (`components.go`) | `FindField` |
+| A setting a find found (D663): the pane's clay in the tile column, the setting's words over the pane it lives in (its own line, never joined), its value at the right edge, a chevron; the whole row one press, at least 64 tall; the keys' row tinted only where there are keys | `findHitRow` (`settings_rows.go`) | `OptionRow` with `set-row sf-row` |
 | A turn's work folded under one quiet line: the stack (the shared spinner while it works folded), 「12 步，3 条消息」 / "12 steps, 3 messages" in 13 medium muted ink, a small × in the failed ink with how many failed, the chevron, a hairline on to the edge (D530) | `workHead` (`shared.go`) | `WorkHead` (`.work-head`) |
 | One step of an opened task: 28 tall, a 16 drawn mark, a plain verb in 13 medium, its object, its facts at the right edge, a chevron when it opens; hover a soft tint that pads into its own negative margin, so nothing moves (D530) | `stepLine` (`shared.go`) | `.sline > .step` in `transcript.tsx` |
 | A step's object in mono 12 on the inline code tint (`Sunken`; one step up, `Surface`, in the dark: `chipGround`, web `--chip-ground`), 20 tall, radius 8, one line cut with an ellipsis, its whole on hover; never pressable (D530) | `stepChip` (`shared.go`) | `CodeChip` (`.chip-code`) |
@@ -838,7 +840,7 @@ and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW
 - The standard menu bar, in order: the app menu (About, Check for Updates, Settings… ⌘,, Services,
   Hide ⌘H, Hide Others ⌥⌘H, Show All, Quit ⌘Q); File (New Task… ⌘N, Open Task… ⌘O, Find Anything…
   ⌘K, Edit This App… ⌘L in a small app's window (D603), Close Window ⌘W); Edit (Undo, Redo, Cut, Copy, Paste, Paste and Match Style, Delete, Select
-  All, Find › ⌘F ⌘G ⇧⌘G, Speech); View (Back ⌘[, Forward ⌘], the places ⌘1–⌘5, Actual Size ⌘0,
+  All, Find › ⌘F ⌘G ⇧⌘G (in Settings, ⌘F is 找设置 / Find a setting, D663), Speech); View (Back ⌘[, Forward ⌘], the places ⌘1–⌘5, Actual Size ⌘0,
   Zoom In ⌘=, Zoom Out ⌘−, Enter Full Screen ⌃⌘F); Window (macOS's, with the window list); Help
   (macOS's search, Ducter Docs, Keyboard Shortcuts ⌘/). Menu words are macOS's own in each language
   (文件, 编辑, 显示, 窗口, 帮助; Title Case in English). A key lives on one item only.
@@ -868,7 +870,8 @@ and `TestEveryWindowRemembersItsPlace` (apps/desktop), `TestDialogsCloseWithCmdW
   opened it (D578, `focus-trap.ts`, one watcher; never a text field on a touch screen).
 - A task's row is a link (`TaskLink`, D578): middle-click and ⌘-click open it in a tab; On hand's
   board keeps ⌘-click and Shift-click to pick.
-- External links open in a new tab with noopener; ⌘F is the browser's except in the file viewer.
+- External links open in a new tab with noopener; ⌘F is the browser's except in the file viewer and
+  in Settings, where it is 找设置 / Find a setting (D663).
 - The tab title says what waits: 「(3) Ducter」.
 
 **Phone**

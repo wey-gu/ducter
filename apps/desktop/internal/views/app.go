@@ -405,6 +405,8 @@ type App struct {
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards
 	own      ownState   // D218: the own-number card
 	settings settingsState
+	// sf is 找设置 / Find a setting (D663): the rail's words, the found rows, a landing.
+	sf sfState
 	// imports is 设置 › 导入 / Import (D655): its open cards and the last answer.
 	imports importsState
 	// title is the title moment's own state (D87); PlayTitle starts its

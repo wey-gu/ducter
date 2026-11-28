@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.104 - 2026-11-28
+
+<!-- whats-new
+zh: 可以换一套外观；每周看看我注意到但没说的；设置更顺手
+en: Install a new look; a weekly look at what I noticed; smoother Settings
+-->
+
+**Looks you can install**
+- Settings, Plugins lists looks beside Ducter's own Pebble. A look is only colours, corners and
+  feel, for light and dark; it reads nothing. Midnight is the first, and Back to Pebble is one tap.
+- Plugin makers get ducter plugin new theme and ducter plugin check.
+
+**What I noticed and didn't say**
+- Once a week the morning note offers one quiet line: what Ducter noticed and kept to itself. Mark
+  each Should have said it or Shouldn't have said it; Ducter says more of a kind only after your
+  marks show it helps. ducter proactive review shows the same list.
+
+**Settings**
+- Plugins and Import open with what you have, read like the other panes and fit a phone.
+- Your details shows name, email and phone apart; a phone that never connected says so.
+
 ## 0.1.103 - 2026-11-28
 
 <!-- whats-new

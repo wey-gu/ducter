@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.1.101 - 2026-11-28
+
+<!-- whats-new
+zh: 一件事一张卡；看守会自己结束；能把别的 app 的对话带进来
+en: One card per task; Keeps end themselves; bring in your other apps' conversations
+-->
+
+**Quieter conversation**
+- A task's updates now revise one card under the message that started it, instead of a new
+  message each time. Your partner speaks for it only when it needs you, when it first fails, and
+  once with the final result.
+- A task that asked another agent something over Bridge says who it is waiting on; if no answer
+  comes in two hours, you hear it once.
+
+**Keeps**
+- A Keep says when it ends, how many rounds it has run and for how long, and ends by itself when
+  that holds. After six rounds with nothing new it asks you once. 别看了 / stop ends it.
+
+**Tasks**
+- Projects are your repositories: one row each across computers, names on one line, the busiest
+  and the ones waiting on you first.
+
+**Bringing your past in**
+- Settings › Import brings conversations from Lody into Past tasks, read only, after you say yes
+  once. `ducter import` reads the ducter-import/1 format for any other app (#261).
+
+**Fixes**
+- Go on a write your second partner staged now runs it, in its own conversation; every staged
+  connection write runs once on Go and can't be staged twice (#257).
+- Calendar events use your current time zone; a day with no hour is an all-day event.
+- Fixing or forgetting a memory waits for Nowledge Mem to say yes, and a correction replaces the
+  wrong memory.
+
 ## 0.1.100 - 2026-11-28
 
 <!-- whats-new

@@ -27,6 +27,6 @@ test("the Keep row draws the phase and every PR fact as its own element", async 
 
 test("the Keep item renders the facts through the shared Facts control, not the old check squares", () => {
   expect(keepSrc).toContain("<Facts class=\"kp-item-facts\" items={facts} />");
-  expect(keepSrc).toContain("const facts = x.said ? prFacts(x.said) : [];");
+  expect(keepSrc).toContain("const facts = [...(x.said ? prFacts(x.said) : []), ...holderFactsOf(task)];"); // D661: and its holder facts
   expect(keepSrc).not.toContain("kp-checks");
 });

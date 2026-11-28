@@ -1599,7 +1599,6 @@ export function startCore(opts: CoreOptions = {}): Core {
     look: (spec, taskId) => work.look(spec, taskId),
     keeps: () => keepsRef,
     clock: workClock,
-    lang: () => langNow(),
     ...(opts.work?.holdingsEveryMs !== undefined ? { everyMs: opts.work.holdingsEveryMs } : process.env.NODE_ENV === "test" ? {} : { everyMs: HOLDINGS_EVERY_MS }),
   });
   // D633: the first start of this version repairs hel's stale 在做 / 等结果 cards once (a
@@ -3286,7 +3285,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       const handed = hand.taken;
       if (standing.firstUse(s.id)) {
         const n = r.ref.match(/\/pull\/(\d+)/)?.[1];
-        log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: prFirstLine(langNow(), { title: card.title, link: `[${n ? `#${n}` : r.ref}](${r.ref})`, ...(handTo ? { who: handTo } : {}) }) } });
+        // D667 (research/247 Brief A): the first-use fact joins the task's own card, never a
+        // line of the partner's; the markdown link is the card's own plain words.
+        const text = prFirstLine(langNow(), { title: card.title, link: `[${n ? `#${n}` : r.ref}](${r.ref})`, ...(handTo ? { who: handTo } : {}) }).replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+        log.append({ stream: `task:${taskId}`, origin: "system", kind: "subject_info", body: { taskId, text } });
       }
       return {
         ok: true,

@@ -18,6 +18,9 @@ test("the structure, never the meaning: numbered points and #refs", () => {
   expect(keepsPoints("1. 去掉开关\n2. 改文案", "我建议去掉开关。")).toBe(false);
   expect(keepsPoints("PR #11230 里的开关去掉吗？", "这个开关去掉吗？")).toBe(false);
   expect(keepsPoints("PR #11230 里的开关去掉吗？", "PR #11230 里的开关去掉吗？")).toBe(true);
+  // research/247 Brief A: the card's object in words (the task's or to-do's title) must survive too.
+  expect(keepsPoints("「Fix the login redirect」这个任务停下吗？", "这个任务停下吗？", ["Fix the login redirect"])).toBe(false);
+  expect(keepsPoints("「Fix the login redirect」这个任务停下吗？", "「Fix the login redirect」还在跑，等你决定。", ["Fix the login redirect"])).toBe(true);
 });
 
 test("E9's shape: a four-point task question said with one point keeps its own question; the restating words are not drawn", () => {
@@ -50,6 +53,22 @@ test("words that keep every point are the question (D129 kept); a decision answe
   });
   expect(s.decisions.get("d1")!.said).toContain("去掉开关");
   expect(s.decisions.get("d2")!.record).toContain("「设置卡的标签」（#11108）");
+});
+
+test("a one-point question whose object is dropped keeps its own question (research/247 Brief A)", () => {
+  const s = new Store();
+  s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+  s.apply({
+    t: "events",
+    events: [
+      ev("task_open", { taskId: "t1", title: "Fix the login redirect", project: "", place: { kind: "none" }, harness: "codex", brief: "x" }),
+      ev("decision", { decisionId: "d1", taskId: "t1", question: "这个任务停下吗？", goLabel: "停下", defaultOption: "hold", reversible: true }),
+      ev("ai_msg", { text: "它还在跑，等你决定。", decisionId: "d1" }),
+    ],
+  });
+  expect(s.decisions.get("d1")!.said).toBeUndefined();
+  s.apply({ t: "events", events: [ev("ai_msg", { text: "「Fix the login redirect」还在跑，等你决定。", decisionId: "d1" })] });
+  expect(s.decisions.get("d1")!.said).toContain("Fix the login redirect");
 });
 
 test("the view draws a record as words, never as a question with buttons", () => {

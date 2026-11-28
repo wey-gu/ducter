@@ -36,7 +36,7 @@ func subjectCardApp(t *testing.T, lang i18n.Lang) *App {
 		}}),
 		protocol.NewEvent(5, at(3), "default", "channel", protocol.OriginSystem, protocol.KindSubjectCard, protocol.SubjectCardBody{Card: protocol.SubjectCard{
 			Key: "pr:acme/site#578", MsgSeq: 1, Title: "官网下载页的下载按钮", State: protocol.SubjectDone,
-			Line: "PR #578 合并了", Took: 17 * 60 * 1000, TaskID: "fix", At: at(3),
+			Line: "PR #578 合并了", Info: "第一次运行用了 102K token。", Took: 17 * 60 * 1000, TaskID: "fix", At: at(3),
 		}}),
 	}
 	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
@@ -50,7 +50,7 @@ func TestSubjectCardUnderTheMessage(t *testing.T) {
 			tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 			tt.Frame()
 			tt.Frame()
-			for _, want := range []string{"官网下载页的下载按钮", app.L.T("subject.done"), "PR #578 合并了", app.L.T("task.footer.took", app.duration(17*time.Minute))} {
+			for _, want := range []string{"官网下载页的下载按钮", app.L.T("subject.done"), "PR #578 合并了", "第一次运行用了 102K token。", app.L.T("task.footer.took", app.duration(17*time.Minute))} {
 				if !hasText(tt, want) {
 					t.Errorf("%s %d: no %q in %q", lang, w, want, tt.Texts())
 				}

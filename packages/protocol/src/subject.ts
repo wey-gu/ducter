@@ -28,6 +28,13 @@ export interface SubjectCard {
   /** The newest real progress while it works; absent when the line already says it. */
   progress?: string;
   /**
+   * D667 (research/247 Brief A): one information-only fact about this subject, its own quiet
+   * line on the card — a PR's merge that closed it, a routine's first run's cost, a revived loop,
+   * a wait that backed off. It is never the partner's speech and never a new message, and the
+   * newest one replaces the older: a fact belongs in the card, once.
+   */
+  info?: string;
+  /**
    * How long the work took, in ms, from its task's open to the final result the partner said.
    * Its own element (never joined to the line); absent before the result, or under a minute.
    */

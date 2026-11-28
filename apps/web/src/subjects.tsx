@@ -51,6 +51,11 @@ export function SubjectCards({ cards }: { cards: SubjectCard[] }) {
                     {c.line}
                   </span>
                 )}
+                {c.info && (
+                  <span class="subject-info" dir="auto">
+                    {c.info}
+                  </span>
+                )}
                 {!!c.took && <span class="subject-took">{t("task.footer.took", duration(A.L, c.took))}</span>}
                 {c.progress && c.progress !== c.line && (
                   <span class="subject-progress" dir="auto">

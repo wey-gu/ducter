@@ -329,12 +329,18 @@ export interface SourceAsk {
    *                     moment, offered as one card (Go 接下 / Take them, Hold 现在不 / Not now,
    *                     the default: it fades like D453's offers). Items are the to-dos.
    */
-  kind: "write" | "closed" | "trust" | "batch" | "picks" | "offer" | "review" | "plan" | "where_rule" | "group_review" | "reviews" | "hand_comment";
+  kind: "write" | "closed" | "trust" | "batch" | "picks" | "offer" | "review" | "plan" | "where_rule" | "group_review" | "group_review_failed" | "reviews" | "hand_comment";
   item: SourceItemRef;
   /** write: the comment, exactly as it goes out (the card shows it whole). */
   text?: string;
   /** write: and close it (Go = 留言并关掉 / Comment and close). */
   close?: boolean;
+  /**
+   * D667 (research/247 Brief A): group_review_failed: the items whose write did not go out.
+   * `op` says what is left: a comment and its close, or only the close (the comment already went).
+   * `text` is exactly what will be posted on a retry, never a freshly derived line.
+   */
+  failed?: { item: SourceItemRef; text: string; op: "comment" | "close"; why?: string }[];
   /** closed, write: the task it is about. */
   taskId?: string;
   /** trust: which standing go. */

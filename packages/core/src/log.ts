@@ -35,7 +35,7 @@ interface Row {
 const MAX_INDEXED_CHARS = 16_000;
 
 /** Views derived from other events, never searched: a hit lands on the source (D653's subject card restates a report). */
-const DERIVED_KINDS = new Set(["subject_card"]);
+const DERIVED_KINDS = new Set(["subject_card", "subject_info"]);
 
 /** Collects searchable text from an event body (skips raw harness payloads). */
 export function textOf(body: unknown): string {

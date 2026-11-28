@@ -22,6 +22,9 @@ type SubjectCard struct {
 	State    string `json:"state"`
 	Line     string `json:"line"`
 	Progress string `json:"progress,omitempty"`
+	// Info (research/247 Brief A) is one information-only fact on the card; the newest
+	// one is kept, its own quiet line, never the partner's speech.
+	Info string `json:"info,omitempty"`
 	// The work's span in ms, from its task's open to the final result; its own element.
 	Took   int64  `json:"took,omitempty"`
 	TaskID string `json:"taskId,omitempty"`

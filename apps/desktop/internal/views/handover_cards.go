@@ -521,10 +521,12 @@ func (a *App) takeReview() {
 	if f := a.S.SourceItems[r.sendCid]; f != nil && r.sendCid != "" {
 		delete(a.S.SourceItems, r.sendCid)
 		r.sending = false
-		if f.OK {
-			r.open = false
+		if f.Error != "" {
+			r.said = f.Error
 		} else {
-			r.said = firstNonEmpty(f.Error, a.L.T("newtask.err.failed.bare"))
+			// D667 (research/247 Brief A): what didn't go out is a card in the scroll with
+			// 再试一次, never a line in this sheet; done or failed, the sheet steps aside.
+			r.open = false
 		}
 	}
 }

@@ -151,6 +151,23 @@ test("after the result the card says the merged PR and how long it took, never t
   expect(subjects.cardOf("fix")).toMatchObject({ state: "done", line: "PR #578 合并了", took: 17 * 60_000 });
 });
 
+test("an information-only fact joins the card, the newest wins, and a merge the card already says is never repeated", () => {
+  // research/247 Brief A, rule 2: information stays in the card, never in a new line.
+  const { log, subjects } = setup();
+  openTask(log, "info", "Check the pricing page");
+  log.append({ stream: "task:info", origin: "system", kind: "subject_info", body: { taskId: "info", text: "第一次运行用了 102K token。" } });
+  expect(subjects.cardOf("info")?.info).toBe("第一次运行用了 102K token。");
+  log.append({ stream: "task:info", origin: "system", kind: "subject_info", body: { taskId: "info", text: "又从昨天 18:20 开始了。" } });
+  expect(subjects.cardOf("info")?.info).toBe("又从昨天 18:20 开始了。");
+  // D665: a card whose result already says the merge adds nothing when the same fact arrives.
+  openTask(log, "merged", "修官网下载页的下载按钮");
+  log.append({ stream: "task:merged", origin: "system", kind: "owned_news", body: { taskId: "merged", pr: PR, news: ["merged"], seen: { since: AT, state: "merged" } } });
+  report(log, "merged", { state: "done", summary: "合并了。" });
+  expect(subjects.cardOf("merged")?.line).toBe("PR #578 合并了");
+  log.append({ stream: "task:merged", origin: "system", kind: "subject_info", body: { taskId: "merged", text: "PR #578 合并了" } });
+  expect(subjects.cardOf("merged")?.info).toBeUndefined();
+});
+
 test("with no PR the card's result line is the report's evidence, not its summary", () => {
   const { log, subjects } = setup();
   openTask(log, "q", "Check the pricing page");

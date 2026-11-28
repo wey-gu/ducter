@@ -31,7 +31,10 @@ blocked task asks nothing).
 **Ducter's own traffic is not a line (research/244 rule 2).** A hand-over or a reply between
 Ducter's own partner, tasks and helpers is never drawn in the conversation: no **已回复 / Replied to**
 marker, no **从…来的 / From…** origin line, and no ack turn. The giver is the task or the partner by
-name, never 你 / you. Agents Ducter didn't start keep their markers, with the peer's real name.
+name, never 你 / you. Agents Ducter didn't start keep their markers, with the peer's real name. An
+origin line belongs only to the message whose `replyTo` is that request; a later message for the
+person carries none, and the request keeps its own line rather than hiding under words that never
+answered it (research/247 Brief A).
 
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
@@ -561,7 +564,11 @@ the newest progress gist; once the result is said, it is the concrete artifact a
 merged PR (`PR #578 合并了 / PR #578 merged`) or the report's evidence line — with how long it
 took (**用时 17 分钟 / took 17 min**) as its own element, never the report summary the partner just
 said. Core decides the line from structured facts (`packages/core/src/subjects.ts`), never by
-comparing sentences.
+comparing sentences. One information-only fact has its own quiet line on the card (`SubjectCard.info`;
+research/247 Brief A): a merged PR's closing fact, a routine's first run's real cost, a loop revived
+after a restart, a wait that backed off, the comment a hand-over's note asked for, or a first-use PR.
+The newest fact replaces the older, the fact is never a message of the partner's, and a card whose
+result already names the merge adds nothing.
 Every report revises that one card in place; a report never becomes a message of its own. The
 partner hears a subject only at a needs-you, a first failure and the final verified result — once:
 a progress report never wakes it, a done report from a task still watching (an open PR, an armed

@@ -487,6 +487,10 @@ export interface Bodies {
   // D653 (research/244 rules 1 and 8): one living card per subject (subject.ts). The latest
   // event per key wins; clients draw it under the message that started the work, revised in place.
   subject_card: import("./subject.ts").SubjectCardBody;
+  // D667 (research/247 Brief A): one information-only fact for a subject (a merge, a routine's
+  // first run's cost, a revived loop, a backed-off wait). Core only: the subject folds it into its
+  // living card (`SubjectCard.info`), so it never becomes a message and never wakes the partner.
+  subject_info: { taskId: string; text: string };
   decision: {
     decisionId: string;
     taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)

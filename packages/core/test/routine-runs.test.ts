@@ -96,9 +96,10 @@ test("D650: the month counts uncached input + output, the cap stays within it, a
   expect(r.monthTokens).toBe(102_000);
   expect(r.budget.monthTokens).toBe(20_000_000);
   expect(r.budget.perRunTokens).toBe(204_000);
-  // Said once, with the real number and the default month, in the partner's line.
-  const said = s.log.read({ kinds: ["ai_msg"], limit: 50 }).map((e) => String((e.body as Bodies["ai_msg"]).text));
+  // research/247 Brief A: said once, with the real number and the default month, on the run's card.
+  const said = s.log.read({ kinds: ["subject_info"], limit: 50 }).map((e) => String((e.body as Bodies["subject_info"]).text));
   expect(said.some((x) => x.includes("102K") && x.includes("20M"))).toBe(true);
+  expect(s.log.read({ kinds: ["ai_msg"], limit: 50 }).some((e) => String((e.body as Bodies["ai_msg"]).text).includes("102K"))).toBe(false);
   expect(r.budgetSaid).toBeTruthy();
   // A cap the month can't hold is never set above the month.
   const tight = setup();

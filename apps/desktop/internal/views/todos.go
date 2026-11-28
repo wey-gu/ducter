@@ -967,6 +967,27 @@ func (a *App) todoAskBody(c *ui.Context, d *store.DecisionState) {
 		})
 		return
 	}
+	if src.Kind == "group_review_failed" {
+		// D667 (research/247 Brief A): the writes that did not go out, on one card.
+		ui.Column(c.Key("todo-group-review-failed")).Gap(t.S1).Children(func() {
+			for _, x := range src.Failed {
+				item := x.Item
+				ui.Column(c.Key("grf:"+item.Ref)).Gap(t.S1).Padding(t.S1, t.S2).Radius(t.RadiusSM).Background(t.Surface.Alpha(0.75)).Children(func() {
+					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+						a.todoChip(c, "grf:"+d.DecisionID+":"+item.Ref, item)
+						uiText(c, keepWords(autospace(item.Title))).FontSize(t.SM).TextColor(t.Ink).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(item.Title)
+					})
+					if x.Text != "" {
+						ui.Row(c.Key("quote")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
+							ui.Box(c).Width(3).Radius(2).AlignSelf(ui.Stretch).Background(t.Failed.Ink.Alpha(0.35)).AccessHidden(true)
+							uiText(c, x.Text).FontSize(t.MD).LineHeight(a.leading(1.55)).TextColor(t.Ink).Grow(1).MinWidth(0).Selectable()
+						})
+					}
+				})
+			}
+		})
+		return
+	}
 	if src.Kind == "offer" || src.Kind == "picks" {
 		// research/244 rule 4: a to-do offer lists each one by its title, never only its number.
 		ui.Column(c.Key("todo-offer")).Gap(t.S1).Children(func() {

@@ -627,7 +627,7 @@ export function createLoops(o: {
     for (const { s, stoppedAt } of revived) {
       const next = armNext(s, "restart", stoppedAt);
       const w = words(W, lang());
-      log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(w.back, { title: titleOf(s.b.taskId), at: hm(Date.parse(stoppedAt)), next: next ? hm(Date.parse(next)) : "" }) } });
+      log.append({ stream: `task:${s.b.taskId}`, origin: "system", kind: "subject_info", body: { taskId: s.b.taskId, text: fill(w.back, { title: titleOf(s.b.taskId), at: hm(Date.parse(stoppedAt)), next: next ? hm(Date.parse(next)) : "" }) } });
     }
     for (const s of loops.values()) if (s.b.state === "on" && !revived.some((r) => r.s === s)) ensure(s, "restart");
     tick();

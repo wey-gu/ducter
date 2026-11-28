@@ -32,6 +32,9 @@ test("the card hangs from the message and is revised in place, one per subject",
   s.applyEvent(ev(4, "subject_card", { card: { key: "pr:acme/site#578", msgSeq: 1, title: "官网下载页的下载按钮", state: "done", line: "PR #578 合并了", took: 17 * 60_000, taskId: "fix", at: "2026-11-27T06:33:00.000Z" } }) as never);
   expect(row().cards!.length).toBe(1);
   expect(row().cards![0]).toMatchObject({ key: "pr:acme/site#578", state: "done", line: "PR #578 合并了", took: 17 * 60_000 });
+  // research/247 Brief A: one information-only fact is its own quiet line on the card.
+  s.applyEvent(ev(5, "subject_card", { card: { key: "pr:acme/site#578", msgSeq: 1, title: "官网下载页的下载按钮", state: "done", line: "PR #578 合并了", info: "第一次运行用了 102K token。", took: 17 * 60_000, taskId: "fix", at: "2026-11-27T06:34:00.000Z" } }) as never);
+  expect(row().cards![0]).toMatchObject({ info: "第一次运行用了 102K token。" });
   // The card is not a row of its own.
   expect(s.channel.filter((e) => !e.user && !e.ai && !e.job).length).toBe(0);
 });
@@ -67,10 +70,12 @@ test("the view draws the card under the message and the styles cover the phone",
   expect(src("views.tsx")).toContain("<SubjectCards cards={cards} />");
   expect(src("subjects.tsx")).toContain('data-subject={c.key}');
   // D653 polish: the time it took is its own element, never joined to the line.
+  expect(src("subjects.tsx")).toContain('class="subject-info"');
   expect(src("subjects.tsx")).toContain('class="subject-took"');
   expect(src("subjects.tsx")).toContain('t("task.footer.took", duration(A.L, c.took))');
   const css = readFileSync(join(import.meta.dir, "../static/app.css"), "utf8");
   expect(css).toContain(".subject-card {");
+  expect(css).toContain(".subject-info {");
   expect(css).toContain(".subject-took {");
   expect(css).toContain("@media (max-width: 460px)");
   expect(css).toContain(".subjects .amark.s-working");

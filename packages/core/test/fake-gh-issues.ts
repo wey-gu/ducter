@@ -58,6 +58,8 @@ export interface FakeGh {
   deny(): void;
   /** Tokens pasted that it takes (any other is refused for its scopes). */
   goodTokens: string[];
+  /** research/247 Brief A: writes that fail, as "owner/repo#n" (a comment that never went out). */
+  failComment: Set<string>;
 }
 
 export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): FakeGh {
@@ -77,6 +79,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
     deviceFlow: "approve",
     code: "AB12-CD34",
     goodTokens: [],
+    failComment: new Set<string>(),
     approve: () => held?.("ok"),
     deny: () => held?.("denied"),
     touch(i) {
@@ -193,6 +196,7 @@ export function fakeGh(seed: FakeIssue[] = [], o: { login?: string } = {}): Fake
       if (!issue) return { code: 1, out: "", err: "gh: Not Found (HTTP 404)" };
       const method = args[args.indexOf("-X") + 1];
       if (m[3] && method === "POST") {
+        if (f.failComment.has(`${issue.repo}#${issue.number}`)) return { code: 1, out: "", err: "gh: Server Error (HTTP 500)" };
         const body = JSON.parse(opts.stdin ?? "{}").body as string;
         f.comments.push({ repo: issue.repo, number: issue.number, body });
         f.touch(issue);

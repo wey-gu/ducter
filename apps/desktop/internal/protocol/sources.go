@@ -158,6 +158,18 @@ type SourceAsk struct {
 	Harness    string    `json:"harness,omitempty"`
 	// D415: hand_comment (先在这 n 个下面留一句，再开始？): Text goes on each of
 	// Items; Quote is the person's note that asked for it.
+	// D667 (research/247 Brief A): group_review_failed: what did not go out, and
+	// the exact words a retry posts; Op "close" means the comment went and only its
+	// close is left (a retry must never comment twice).
+	Failed []SourceAskFailed `json:"failed,omitempty"`
+}
+
+// SourceAskFailed is one write a group review could not make.
+type SourceAskFailed struct {
+	Item SourceItemRef `json:"item"`
+	Text string        `json:"text"`
+	Op   string        `json:"op"` // comment | close
+	Why  string        `json:"why,omitempty"`
 }
 
 // SourcesFrame is what a sources, source_items_result or source_result

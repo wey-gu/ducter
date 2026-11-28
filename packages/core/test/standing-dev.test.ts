@@ -46,7 +46,8 @@ function boot() {
   core.tasks.setState(TASK, "working", "hot");
   const call = (args: unknown) => core.mcp.call({ role: "task", taskId: TASK } as never, "open_pr", args) as Promise<{ ok: boolean; pr?: string; note?: string; error?: string }>;
   const listed = () => core.mcp.listed({ role: "task", taskId: TASK } as never);
-  const said = () => core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 50 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  // research/247 Brief A: the first-use fact joins the task's card, never the partner's voice.
+  const said = () => core.log.read({ stream: `task:${TASK}`, kinds: ["subject_info"], limit: 50 }).map((e) => (e.body as Bodies["subject_info"]).text);
   return { core, opened, merged, call, listed, said };
 }
 
@@ -78,7 +79,7 @@ test("verified: Ducter pushes and opens the PR with no card, in Done for you wit
   expect(core.log.read({ stream: "channel", kinds: ["decision"], limit: 50 })).toHaveLength(0);
   const job = core.log.read({ stream: "channel", kinds: ["job_status"], limit: 50 }).map((e) => e.body as Bodies["job_status"]).at(-1)!;
   expect(job).toMatchObject({ taskId: TASK, act: "open_pr", ref: PR, by: "rule", standing: kept.id, said: WORDS });
-  expect(said()).toEqual([prFirstLine("zh", { title: "修 Mem #11390", link: `[#11391](${PR})`, who: "PR Babysitter" })]);
+  expect(said()).toEqual([prFirstLine("zh", { title: "修 Mem #11390", link: `[#11391](${PR})`, who: "PR Babysitter" }).replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")]);
   expect(said()[0]).toContain("交给了 PR Babysitter，等它接手"); // D598: handed, never 跟进 before it is taken
   const did = createDid({ log: core.log, tasks: core.tasks }).query({});
   expect(did.items.find((x) => x.taskId === TASK)).toMatchObject({ kind: "changed", sub: "pr", link: PR, go: { by: "said", words: WORDS } });

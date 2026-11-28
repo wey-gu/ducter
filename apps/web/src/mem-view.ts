@@ -691,7 +691,11 @@ export function spokenPeers<B extends { direction: "in" | "out"; state?: string;
       const n = channel[j]!;
       if (n.user) break;
       if (n.peer?.direction === "in") break; // another request came first: each keeps its line
-      if (n.ai) {
+      // D667 (research/247 Brief A, rule 3): the origin belongs to the message whose
+      // `replyTo` is this request. A later message for the person carries no origin, and the
+      // request keeps its own line rather than being hidden under words that never answered it.
+      const ai = n.ai as { replyTo?: number } | undefined;
+      if (ai && ai.replyTo === channel[i]!.ev.seq) {
         hidden.add(channel[i]!.ev.seq);
         if (!origin.has(n.ev.seq)) origin.set(n.ev.seq, p);
         break;

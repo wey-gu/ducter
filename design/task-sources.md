@@ -206,4 +206,6 @@ A hand-over's note can ask Ducter to tell the issues first ("在 issue 里留言
 (`source_write`, in 替你做过的), by Go on one card (**先在这 {n} 个下面留一句，再开始？**) or under a
 standing permission the person said for issue comments (D413's `issue_comment`, bounded by the owners
 they named). Only issues (never a PR, never a vault line), only a comment (never a close). The tasks
-start after it, and their briefs say it went (handover.md §11).
+start after it, and their briefs say it went (handover.md §11). What went is one information-only
+fact on the task's card (**按你说的，先在 {labels} 下留了言：「{text}」，然后开始做。**), never an
+`ai_msg` of its own; research/247 Brief A.

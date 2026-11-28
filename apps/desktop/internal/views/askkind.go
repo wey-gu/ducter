@@ -175,7 +175,7 @@ func hasAny(s string, words ...string) bool {
 func srcKind(src *protocol.SourceAsk) string {
 	github := src.Item.Kind == "github"
 	switch src.Kind {
-	case "review", "reviews", "group_review":
+	case "review", "reviews", "group_review", "group_review_failed":
 		if github {
 			return "pr"
 		}

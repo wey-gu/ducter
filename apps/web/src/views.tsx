@@ -99,7 +99,7 @@ import { PV, RedoSheet } from "./past-preview.tsx";
 import { DidSheet } from "./did.tsx";
 import { PinsSheet, PinStrip } from "./pins.tsx";
 import { AppCardView, AppRefGlyph, appNameNow, AppSheet, openApp, openShelf, ShelfCard } from "./apps.tsx";
-import { closeKeep, K, KeepReceipt } from "./keep.tsx";
+import { closeKeep, K, KeepReceipt, openKeep } from "./keep.tsx";
 import { AppsShelf, PinnedApps } from "./apps-shelf.tsx";
 import { PileSheet } from "./pile.tsx";
 import { HandSheet, PlanCard, ReviewSheet, SetCard } from "./handover.tsx";
@@ -402,10 +402,16 @@ export function DecideRow({ d, about, sm, foot, dflt = true, lead }: { d: Decisi
             ) : (
               <Btn kind="text" size={size} label={holdWords(d)} about={about} onClick={() => A.decide(id, "hold")} />
             )}
-            <button class={`btn text${sm ? " sm" : ""}`} data-dk-reply={id} aria-expanded={false} aria-label={spoken(A.L, t("decision.reply"), about)} onClick={toggleReply}>
-              <span class="lbl">{t("decision.reply")}</span>
-            </button>
-            <LaterButton d={d} about={about} size={size} />
+            {/* D650: the stall ask's third choice: change when it ends, on the Keep's own page. */}
+            {d.keep?.ask === "stall" && <Btn kind="text" size={size} label={t("keep.ask.changeEnd")} about={about} onClick={() => openKeep(d.keep!.id, "until")} />}
+            {/* A Keep's own ask has its three choices (End, Six more, Change the end) and a budget
+                ask two; no Reply or Ask me later on them (the page is where to say more). */}
+            {!d.keep && !d.budget && (
+              <button class={`btn text${sm ? " sm" : ""}`} data-dk-reply={id} aria-expanded={false} aria-label={spoken(A.L, t("decision.reply"), about)} onClick={toggleReply}>
+                <span class="lbl">{t("decision.reply")}</span>
+              </button>
+            )}
+            {!d.keep && !d.budget && <LaterButton d={d} about={about} size={size} />}
           </span>
         </div>
       )}
@@ -551,6 +557,13 @@ export function DecisionBody({ d, taskId, inTask }: { d: DecisionState; taskId?:
     );
   return (
     <>
+      {/* D650: a Keep's own ask names the Keep and links to its page (a question stands alone). */}
+      {d.keep && (
+        <button class="asker keep-ask" title={d.keep.title} onClick={() => openKeep(d.keep!.id)}>
+          <span>{d.keep.title}</span>
+          <Chev />
+        </button>
+      )}
       {open && <LaterBack d={d} />}
       {/* D599: a task's own words keep their links and codes real (AskText); the card's own words are plain. */}
       <div class="q">

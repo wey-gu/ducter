@@ -13,10 +13,10 @@ import { A } from "./app.ts";
 import { Btn, Chev, DangerButton, EditRow, Facts, Field, MoreButton, NumberField, SectionHead, Seg, Tag, TextBox, TimeCol, WorkHead } from "./controls.tsx";
 import { ComposerBox, echoed } from "./composer.tsx";
 import { CopyLine } from "./lend.tsx";
-import { clock, colTime, harnessName, receiptWords, spoken, when } from "./format.ts";
+import { clock, colTime, harnessName, receiptWords, spoken, splitFacts, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
 import { soon } from "./onhand.tsx";
-import { healthLine, rhythm } from "./past.tsx";
+import { healthLine, interval, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
 import { GConfirm } from "./set-grid.tsx";
 import { handoffGroups } from "./handoff.ts";
@@ -63,11 +63,11 @@ const fullNow = () => A.route.name !== "conv" && !!A.route.full;
 
 /** Opens a Keep's page in the board's place, and asks the home for it. D542: from a task at the
  *  whole screen (its rail) it stays at the whole screen. */
-export function openKeep(id: string) {
+export function openKeep(id: string, field?: KeepField) {
   K.open = id;
   K.pause = K.stop = false;
   K.talk = { text: "", sending: "", at: 0, sent: "" };
-  K.edit = freshEdit();
+  K.edit = { ...freshEdit(), ...(field ? { field } : {}) };
   K.words = freshWords();
   K.done = undefined;
   K.bell = undefined;
@@ -223,7 +223,7 @@ export function KeepMark({ life, size = 40, beat }: { life: KeepSheet["life"]; s
 /** A round counts as a beat for an hour after it did something (told or asked). */
 const beatNow = (k: KeepSheet, now = Date.now()) => !!k.line && now - Date.parse(k.line.at) < 60 * 60_000;
 
-/** Its facts, each its own element: what it holds, what waits, its rhythm, a short goal. */
+/** Its facts, each its own element: what it holds, what waits, its rhythm, its review standing. */
 export function keepFacts(k: KeepSheet): { text: string; tone?: "needs" }[] {
   const out: { text: string; tone?: "needs" }[] = [];
   const work = k.items.filter((x) => x.at !== "you" && x.at !== "ready");
@@ -231,15 +231,29 @@ export function keepFacts(k: KeepSheet): { text: string; tone?: "needs" }[] {
   else if (k.run === "fresh" && work.length > 1) out.push({ text: t("keep.holds", work.length) });
   if (k.asks) out.push({ text: t("keep.asks", k.asks), tone: "needs" });
   if (k.everyMs) out.push({ text: t("keep.every", rhythm(k.everyMs)) });
-  else if (k.cadence) out.push({ text: k.cadence });
+  else if (k.cadence) for (const part of splitFacts(k.cadence)) out.push({ text: part });
   if (k.reviews?.waiting) out.push({ text: t("keep.reviews", k.reviews.waiting) });
-  if (k.until && [...k.until].length <= 24) out.push({ text: k.until });
   return out;
 }
 
-/** Its line: how it keeps time when it doesn't; else its last change. */
+/** D650: its end as the head says it: a testable sentence, or that their words gave none. */
+export function keepEndWords(k: KeepSheet): string {
+  return k.end?.sentence ?? (k.noEnd ? t("keep.end.none") : "");
+}
+
+/** D650: how long it has run, in the person's words ("跑了 40 分钟"). */
+export function keepAgeWords(k: KeepSheet, now = Date.now()): string {
+  if (!k.since) return "";
+  const ms = Math.max(0, now - Date.parse(k.since));
+  // From a day and a half on, days ("10 天", never "240 小时"); the Mac's rule too.
+  const span = ms >= 36 * 3_600_000 ? t("keep.age.day", Math.round(ms / 86_400_000)) : interval(ms);
+  return t("keep.age", span);
+}
+
+/** Its line: how it keeps time when it doesn't, why Ducter paused it, else its last change. */
 export function keepLine(k: KeepSheet): string {
   if (k.health) return healthLine(k.health).join("");
+  if (k.pausedWhy) return k.pausedWhy;
   if (k.line) return t("keep.line", clock(k.line.at), k.line.text);
   return "";
 }
@@ -314,6 +328,12 @@ export function KeepSheetCard({ k, stacked }: { k: KeepSheet; stacked: boolean }
               ))}
             </span>
           )}
+          {/* D650: the head's three facts: when it ends, how many rounds, how long it has run. */}
+          <span class="kp-tally">
+            {keepEndWords(k) && <span class="e">{noOrphan(keepEndWords(k))}</span>}
+            {k.roundsRun > 0 && <span>{t("keep.rounds.n", k.roundsRun)}</span>}
+            {keepAgeWords(k) && <span>{keepAgeWords(k)}</span>}
+          </span>
           {line && <span class={`kp-line${k.health ? " late" : ""}`}>{line}</span>}
           {stacked && beat && <span class="kp-beat">{beat}</span>}
         </span>
@@ -610,8 +630,14 @@ function Items({ k }: { k: KeepPage }) {
 }
 
 function wakeLines(k: KeepPage): string[] {
-  return k.wakes.map((w) =>
-    w.kind === "arrives" ? t("keep.wake.arrives") : w.kind === "every" ? t("keep.every", rhythm(w.everyMs)) : w.kind === "at" ? w.words : w.words ? t("keep.wake.changes", w.words) : t("keep.wake.changes.prs"),
+  return k.wakes.flatMap((w) =>
+    w.kind === "arrives"
+      ? [t("keep.wake.arrives")]
+      : w.kind === "every"
+        ? [t("keep.every", rhythm(w.everyMs))]
+        : w.kind === "at"
+          ? splitFacts(w.words) // D291: the clock and its zone are two facts
+          : [w.words ? t("keep.wake.changes", w.words) : t("keep.wake.changes.prs")],
   );
 }
 
@@ -717,7 +743,7 @@ function HowItRuns({ k }: { k: KeepPage }) {
         ),
     }),
     ...(k.until || k.noEnd
-      ? [row({ field: "until", label: "keep.rule.until", values: [k.until ?? t("keep.until.none")], draft: () => ({ until: k.until ?? "" }), editor: () => <Field value={d.until ?? ""} label={t("keep.rule.until")} placeholder={t("keep.edit.until.ph")} autoFocus onInput={set("until")} /> })]
+      ? [row({ field: "until", label: "keep.rule.until", values: [k.end?.sentence ?? t(k.noEnd ? "keep.end.none" : "keep.until.none")], draft: () => ({ until: k.until ?? "" }), editor: () => <Field value={d.until ?? ""} label={t("keep.rule.until")} placeholder={t("keep.edit.until.ph")} autoFocus onInput={set("until")} /> })]
       : []),
     row({
       field: "speaks",
@@ -1050,9 +1076,13 @@ export function KeepPageView({ room }: { room: string }) {
     const d = taskId ? A.S.pendingDecision(taskId) : undefined;
     return d && taskId ? [{ d, taskId }] : [];
   });
+  const endWords = keepEndWords(k);
   const chips: { text: string; tone: "on" | "needs" | "" }[] = [
     { text: t(`keep.life.${k.life}`), tone: k.life === "on" ? "on" : "" },
     ...(k.asks ? [{ text: t("keep.asks", k.asks), tone: "needs" as const }] : []),
+    // D650: the head says its end and its rounds beside since.
+    ...(endWords ? [{ text: endWords, tone: "" as const }] : []),
+    ...(k.roundsRun > 0 ? [{ text: t("keep.rounds.n", k.roundsRun), tone: "" as const }] : []),
     { text: t("keep.since", when(A.L, k.since)), tone: "" },
     ...(k.run === "perItem" && k.week ? [{ text: t("keep.week", k.week), tone: "" as const }] : []),
   ];

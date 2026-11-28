@@ -1,7 +1,8 @@
 # Looking after (看守中): one object for work Ducter keeps on for the person
 
 > **D511: accepted; phases 1–3 of §11 built 2026-11-24. D620 adds its doorbell (a secret URL
-> that wakes a round now), built 2026-11-27.** The Keep store and the migration
+> that wakes a round now), built 2026-11-27. D650 (research/245 §3.8) makes every Keep say a
+> testable end, its rounds and age, end by itself, ask once when it stalls, and end on stop.** The Keep store and the migration
 > (`core/src/keeps.ts`, `protocol/src/keeps.ts`), On hand's 看守中 and each Keep's page on the web and the
 > Mac (`apps/web/src/keep.tsx`, `apps/desktop/internal/views/keeps.go`), and the partner's `keep_make` /
 > `keep_list` / `keep_change`. Phases 4–6 (goals and news as recorded judgments, the clay mark, live on
@@ -94,11 +95,22 @@
   for a doorbell to start. The URL uses the address the home already has (its primary way, else the
   address the client reached it at); it opens no new tunnel. It is not a hand-off (D609): it carries
   no work and no owner, and a ring never asks for an outward act, so D61's floor is untouched.
-- **Its end is the model's, read once.** A Keep with no goal the person stated (carried over, or made
-  with none) has its end read once from their own words (about and brief) by the cheap model of the
-  agent the partner thinks with: a short sentence in their language (每个 PR 跟到能合并为止), or none. The
-  answer is recorded on the Keep (`end`: until, none, failed) and never asked again; until it answers,
-  or if it failed, 做到什么时候 says nothing rather than guess. No phrase matching.
+- **D650 (research/245 §3.8), its end is testable, read once.** A Keep's end is `{sentence, look}`
+  or noEnd, read once from the person's words by the cheap model: an end Ducter can test with one read it
+  can run itself (a PR merged or closed, an issue closed, a date passed). A standing rule (仅 Tide
+  批量合并), a one-round ask (本轮先审 #551) and "until I stop" are not ends; a rule stays in the person's
+  words (`said`), where every round reads it, and a failed or untestable reading says 没有说什么时候结束
+  rather than guess. Every standing Keep without an end is re-read once at the first start, the old
+  `until` texts included; the old snapshot stays in the Log. A date is checked by the clock; a PR or an
+  issue by the home's own read, on the minute and whenever a holder already read it, so it ends the
+  minute the sentence holds: the Keep is 已完成, its mechanism ends, and its task hears it once and
+  finishes. The head says the end, `第 N 轮` and `跑了 …`; a no-end Keep says 没有说什么时候结束.
+  After six rounds with nothing new (or a round that reports done on a Keep with no testable end) it
+  asks once in 待你处理: **结束** (the default after 24 h), **再看 6 轮**, **改结束条件**. The round
+  protocol lets a round report done with evidence that the whole thing is over. Stop (别看了 /
+  别跑了 / 结束看守) ends it, never pauses it; pause is only 暂停到…. A system pause (the month's
+  budget) is an ask in words with its number, never a reason code. A review standing belongs only to
+  a review Keep and only to its current round; a reviewed PR is never the reviewer's `owned` PR.
 - **Code reads facts only**: what woke a round, what it reported, whether it asked. A round is
   `told` only where a rule says so (a routine that reports every run). Goals and news are phase 4.
 - **D519, the page polished to the bar.** The talk box is the conversation's composer (`ComposerBox` / `composerBox`,

@@ -314,7 +314,7 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 					wakes = append(wakes, a.L.T("keep.every", a.rhythm(time.Duration(x.EveryMs)*time.Millisecond)))
 				case "at":
 					onlyArrives = false
-					wakes = append(wakes, x.Words)
+					wakes = append(wakes, keepFactParts(x.Words)...)
 				default:
 					if x.Words != "" {
 						onlyArrives = false
@@ -394,10 +394,12 @@ func (a *App) keepRules(c *ui.Context, k *protocol.KeepPage) {
 			if k.Until != "" || k.NoEnd || k.CanEdit("until") {
 				r := rule{key: "until", label: a.L.T("keep.rule.until"), can: k.CanEdit("until")}
 				switch {
+				case k.End != nil && k.End.Sentence != "":
+					r.values = []string{k.End.Sentence}
 				case k.Until != "":
 					r.values = []string{k.Until}
 				case k.NoEnd:
-					r.values = []string{a.L.T("keep.until.none")}
+					r.values = []string{a.L.T("keep.end.none")}
 				default:
 					r.muted = a.L.T("keep.edit.until.ph")
 				}

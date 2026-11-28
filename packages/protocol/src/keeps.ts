@@ -36,6 +36,28 @@ export type KeepWake =
 /** The mechanism a Keep runs on (principle 16: kept as code). */
 export type KeepFrom = { kind: "loop"; taskId: string } | { kind: "routine"; routineId: string } | { kind: "helper"; helperId: string };
 
+/**
+ * D650 (research/245 §3.8): one read Ducter can run itself to test a Keep's end. A pull request
+ * merged or closed, an issue closed, or a date passed: facts, never a sentence's meaning.
+ */
+export type KeepEndLook = { kind: "pr"; ref: string; what: "merged" | "closed" } | { kind: "issue"; ref: string; what: "closed" } | { kind: "date"; at: string };
+
+/**
+ * D650: a Keep's end as the cheap model read it once from the person's words (principle 21): one
+ * short sentence in their language AND a look Ducter can run, or `none`. A standing rule or a
+ * this-round ask is never an end (it stays in `said`); a failed reading is shown as no end, never
+ * guessed. A `date` look needs no sentence's meaning and is tested by the clock.
+ */
+export interface KeepEnd {
+  at: string;
+  /** until: a testable end (sentence + look); none: their words give none; failed: nothing was read. */
+  said: "until" | "none" | "failed";
+  /** The end in the person's language ("#11230 合并时结束"), when there is one. */
+  sentence?: string;
+  /** The read Ducter runs; absent on none/failed, and on an end the person gave that only a round can judge. */
+  look?: KeepEndLook;
+}
+
 /** How a Keep came to be: made as one (keep_make), or carried over on start from an older record. */
 export type KeepMade = "keep_make" | "task_loop" | "routine" | "helpers.json";
 
@@ -58,8 +80,11 @@ export interface KeepBody {
   from: KeepFrom;
   run: KeepRun;
   wakes: KeepWake[];
-  /** The goal that ends it, in the person's words (judged by the model on facts, never by code). */
+  /** The goal that ends it, in the person's words (judged by the model on facts, never by code).
+   *  D650: kept as the sentence the head shows; `end` is the reading with what a read can test. */
   until?: string;
+  /** D650: its end, read once from the person's words; `until` holds the sentence while it stands. */
+  end?: KeepEnd;
   /** When it speaks, in the person's words (什么时候出声). */
   speaks?: string;
   /** Its limits in words (每天最多接 10 个). */
@@ -73,9 +98,9 @@ export interface KeepBody {
   /** When it ended (done or stopped). */
   endedAt?: string;
   made: KeepMade;
-  /** The model's one reading of its end from the person's words, recorded (principle 21): `until`
-   *  then holds its sentence; none: their words give no end; failed: nothing is said. Never asked again. */
-  end?: { at: string; said: "until" | "none" | "failed" };
+  /** D650: it has stalled and asked the person once (the ask is in 待你处理). `round`: the newest
+   *  round at the ask; after Six more rounds the same question is asked again. */
+  stall?: { at: string; round: string; n: number };
   /** Carried over on start from `made`'s older record (D511's migration), never changing that record. */
   migratedAt?: string;
   /** D533: the last time the person (or the partner) changed it: from then on each round is told its rules as they are now. */
@@ -184,8 +209,14 @@ export interface KeepSheet {
   run: KeepRun;
   wakes: KeepWake[];
   until?: string;
+  /** D650: its end as the head says it: a testable sentence (with the look code runs), never a rule. */
+  end?: { sentence: string; look?: KeepEndLook };
   /** The model read the person's words as giving no end (没有终点). Neither this nor `until`: say nothing. */
   noEnd?: true;
+  /** D650: how many rounds it has run (the head's 第 5 轮), edits not counted. */
+  roundsRun: number;
+  /** D650: why it is paused when Ducter paused it, in words (a budget, a sign-in), never a reason code. */
+  pausedWhy?: string;
   /** What it holds now (each item's task, what waits for the person first). */
   items: KeepItem[];
   /** Every task this Keep owns now: a client stands them under the sheet, never in 在做 or 在等;

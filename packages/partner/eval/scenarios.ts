@@ -3109,6 +3109,21 @@ export const scenarios: Scenario[] = [
     rubric: "The user tells the partner to stop the review loop. The partner stops it (keep_change stop) and says so in one short Chinese line (pausing instead, or asking 'are you sure', is wrong: they said stop). No new task.",
   },
   {
+    // D650 (research/245 §3.8 rule 8): 「别看了」 is stop, which ends the Keep; pause is only 先停一下.
+    id: "keep-dont-look-zh",
+    category: "routines",
+    lang: "zh",
+    seed: [
+      { user: "每 45 分钟帮我看一下 nowledge-co 里请我 review 的 PR，按 mem 的 review skill 来审。" },
+      { task: REVIEW_TASK },
+      { loop: { task: "rev", everyMin: 45, reason: "约 45 分钟后继续检查 nowledge-co 的审查请求与提及" } },
+      { ai: "好，每 45 分钟去看一轮。" },
+    ],
+    steps: [{ user: "别看了" }],
+    expect: { lines: 1, opens: 0, msgs: [1, 1], maxChars: 100, called: [{ tool: "keep_change", args: { action: "stop" } }], notCalled: ["task_open", "routine_propose"], noAsk: true },
+    rubric: "The user says 别看了 (stop looking). That is an end: the partner stops the Keep (keep_change stop, never pause) and says in one short Chinese line that it has ended. Pausing it, asking 'are you sure', opening a new task or treating it as a one-round change is wrong.",
+  },
+  {
     // D533: who does a Keep's rounds is one of its rules, changed through keep_change like its rhythm (the page's 谁来做 too).
     id: "loop-agent-zh",
     category: "routines",

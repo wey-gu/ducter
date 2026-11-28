@@ -124,8 +124,8 @@ test("hel's sequence: from now on, then a round's ask with run now, then the nex
   expect(now.indexOf(NOTE)).toBeGreaterThan(now.indexOf(LGTM));
   expect(now).toContain(`上一轮你给自己记下要查的：「${NOTE}」。那是你的笔记`);
   expect(now).toContain("上面没要求的事不再做");
-  // A round in a Keep with no end never reports done.
-  expect(now).toContain("不要报 done");
+  // A round in a Keep with no end reports progress; it may report done only with evidence the whole thing is over.
+  expect(now).toContain("整件事确实已经做完时，报 done，并在第一句写明凭什么");
   // The permission and the review requests the sources see come with it (hel's #11196 was waiting).
   expect(now).toContain("对方说过 PR 评审不用问");
   expect(now).toContain("https://github.com/nowledge-co/mem/pull/11196");

@@ -158,12 +158,14 @@ const W = {
     cantTell: "没等到：「{reason}」，这次查看判断不了：{why}。现在什么都没在等。{facts}\n接下来由你判断：自己看一眼现在的情况，需要的话用 wait_for 换一个读得出来的查看（只读你需要的那部分，比如 gh api … --jq），或者接着做。",
     facts: "查看：{check}。最近几次看到：{looks}。",
     // D429: a task in rounds: a round's end is progress, never done (Ducter brings the next one).
-    round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress，不要报 done；下一轮到时 Ducter 会叫你。",
-    roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done。下一轮到时 Ducter 会叫你。",
+    // D650: a round may report done with evidence the whole thing is over; the Keep then asks once.
+    round: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress。整件事确实已经做完时，报 done，并在第一句写明凭什么（看到了什么）；只是这一轮做完、整件事还没完，就报 progress。下一轮到时 Ducter 会叫你。",
+    roundUntil: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有「{until}」已经成立时才报 done，并写明凭什么。下一轮到时 Ducter 会叫你。",
     // D528: the person's clock, not the server's: a round's times are said in it.
     roundNow: "对方那里现在是 {now}。写给对方的时间都按对方的时区，或者说「45 分钟后」，不写 UTC。",
     // D593: a Keep's round: its end is in the standing words above; the task's own reason is its note.
-    roundKeep: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；只有上面「整件事做到」那一条成立时才报 done。下一轮到时 Ducter 会叫你。",
+    // D650: a round may report done with evidence the whole thing is over; the Keep then asks the person once.
+    roundKeep: "这是循环里的一轮：这一轮做完，用 report_to_main 报 progress；整件事确实已经做完时，报 done，并在第一句写明凭什么（看到了什么）。只是这一轮做完、整件事还没完，就报 progress。下一轮到时 Ducter 会叫你。",
     memo: "上一轮你给自己记下要查的：「{reason}」。那是你的笔记，只做其中上面要求的部分。",
     slow: "「{reason}」这件已经这样等了 {n} 次，我把叫醒它的间隔放长了；要是不用再等，跟我说一声，我先停下它。",
     slowNote: "这个等已经这样回来 {n} 次了，什么都没变，所以下一次叫醒放到 {every} 以后。要是没什么可等的了，就跟我说，把它停下。",
@@ -177,10 +179,10 @@ const W = {
     ranOut: 'The wait ran out: "{reason}" still didn\'t hold at {until}, and nothing is waiting now. {facts}\nDecide what is next: if it is still worth waiting for, call wait_for again (with untilISO, and a look that reads only what you need, e.g. gh api … --jq); if not, carry on; report needs_input only when the user alone can decide.',
     cantTell: 'The wait ended: "{reason}": its look can\'t tell: {why}. Nothing is waiting now. {facts}\nDecide what is next: look at it yourself now, and if you still need to wait, call wait_for with a look that can be read (only what you need, e.g. gh api … --jq), or carry on.',
     facts: "Its look: {check}. Its latest looks saw: {looks}.",
-    round: "This is one round of your rounds: when it is done, report_to_main with state progress, never done; Ducter wakes you for the next one.",
-    roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds. Ducter wakes you for the next one.',
+    round: "This is one round of your rounds: when it is done, report_to_main with state progress. If the whole thing is really over, report done and say in your first line what shows it. Ducter wakes you for the next one.",
+    roundUntil: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once "{until}" holds, and say what shows it. Ducter wakes you for the next one.',
     roundNow: 'It is {now} where the person is. Write every time they read in their time zone, or as "in 45 minutes"; never UTC.',
-    roundKeep: 'This is one round of your rounds: when it is done, report_to_main with state progress; report done only once the "ends when" line above holds. Ducter wakes you for the next one.',
+    roundKeep: 'This is one round of your rounds: when it is done, report_to_main with state progress. If the whole thing is really over, report done and say in your first line what shows it; report done only once the "ends when" line above holds. Ducter wakes you for the next one.',
     memo: 'Last round you noted to check: "{reason}". That is your note: do only the part of it the above asks for.',
     slow: "“{reason}” has come back {n} times with nothing new, so I've spaced out how often it wakes; say the word if you'd rather stop waiting.",
     slowNote: "This same wait has come back {n} times with nothing new, so its next wake is {every} away instead of the usual. If there is nothing left to wait for, say so and stop it.",

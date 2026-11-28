@@ -924,6 +924,12 @@ func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string)
 	id := firstNonEmpty(taskID, d.TaskID)
 	ui.Column(c).Padding(t.S5).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+		// D650: a Keep's own ask names the Keep and links to its page (a question stands alone).
+		if d.Keep != nil {
+			if a.quietButton(c, "keepask:"+d.Keep.ID, d.Keep.Title, d.Keep.Title, true, 1) {
+				a.openKeep(d.Keep.ID)
+			}
+		}
 		if d.Asker != nil {
 			a.peerAskerRow(c, d.Asker)
 		} else if task := a.S.Task(id); task != nil && task.Title() != "" && !(a.Route == RouteTask && a.TaskID == id) {

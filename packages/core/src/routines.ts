@@ -47,7 +47,10 @@ const MIN = 60_000;
 export const REVIEW_DAYS = 30;
 const FAILS_TO_PAUSE = 3;
 const UNREAD_TO_PAUSE = 3;
-const DEFAULT_MONTH_TOKENS = 2_000_000;
+// D650 (B12): the default month in uncached input + output; INFERRED from hel's first runs and to
+// be checked against `ducter usage` before release. The old 2M counted cached input and stopped a
+// real review routine after one run (research/245 §1.4 H).
+const DEFAULT_MONTH_TOKENS = 20_000_000;
 const MAX_DELAY = 2 ** 31 - 1;
 /** D245: a run this late is told it is late. */
 export const LATE_MS = 15 * MIN;
@@ -192,6 +195,14 @@ const newId = (p: string) => `${p}_${crypto.randomUUID().replaceAll("-", "").sli
 const monthOf = (ms: number) => new Date(ms).toISOString().slice(0, 7);
 const iso = (ms: number) => new Date(ms).toISOString();
 const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
+/** D650: a token count in the person's words ("5.27M", "76k"), never digits with no unit. */
+const tokensWords = (n: number) => (n >= 1_000_000 ? `${Math.round(n / 10_000) / 100}M` : n >= 1_000 ? `${Math.round(n / 100) / 10}K` : String(Math.round(n)));
+/** D650: an offered budget is a clean number, two significant figures up (10.54M → 11M; 1.2M; 950K). */
+export function cleanTokensUp(n: number): number {
+  const v = Math.max(1, Math.ceil(n));
+  const step = 10 ** (Math.floor(Math.log10(v)) - 1);
+  return Math.ceil(v / step) * step;
+}
 
 // The routine's own cards (D292: in its language, through the fallback chain; ko → en).
 const W = {
@@ -203,6 +214,11 @@ const W = {
     keep: "保留",
     unsure: "例行「{name}」这次看到的跟平时很不一样（{observed}），可能是没看对。要照样做一次吗？",
     runAnyway: "照样做",
+    // D650 (B11/B12): a system pause is an ask in words, with its number; never the raw reason.
+    budgetAsk: "「{name}」这个月的用量到了上限（{n}）。要放宽到 {to} 吗？",
+    budgetGo: "放宽到 {to}",
+    budgetHold: "先这样",
+    budgetFirst: "「{name}」第一次跑了 {n} 个 token。这个月默认 {month}，一轮最多 {cap}；可以在它的页面上改。",
   },
   en: {
     propose: "Start the routine “{name}”?",
@@ -212,6 +228,10 @@ const W = {
     keep: "Keep it",
     unsure: 'The routine "{name}" saw something unusual this time ({observed}); it may not have looked right. Run it anyway?',
     runAnyway: "Run it anyway",
+    budgetAsk: "“{name}” has used this month's limit ({n}). Raise it to {to}?",
+    budgetGo: "Raise it to {to}",
+    budgetHold: "Leave it",
+    budgetFirst: "“{name}” cost {n} tokens its first run. This month starts at {month}, and a run stops at {cap}; both can be changed on its page.",
   },
 };
 
@@ -498,7 +518,16 @@ export function createRoutines(opts: {
     // It works again: the spacing is over; said only if the person was told it was stuck.
     if (s.r.backoff) Object.assign(patch, { backoff: undefined }, s.r.backoff.failures >= 2 ? { news: "works_again" as const } : {});
     // Per-run budget: 2x what the first run actually cost (D29), shown and editable.
-    if (s.r.budget.perRunTokens === undefined && cur.tokens > 0) patch.budget = { ...s.r.budget, perRunTokens: cur.tokens * 2 };
+    // D650 (B12): the per-run cap is at most the month, never above it.
+    if (s.r.budget.perRunTokens === undefined && cur.tokens > 0) patch.budget = { ...s.r.budget, perRunTokens: Math.min(cur.tokens * 2, s.r.budget.monthTokens) };
+    // D650 (B12): its first run's real cost is said once, with the default month and the run's cap.
+    if (!s.r.budgetSaid && cur.tokens > 0) {
+      patch.budgetSaid = iso(clock.now());
+      const w = words(W, langOfText(s.r.name));
+      const month = (patch.budget ?? s.r.budget).monthTokens;
+      const cap = (patch.budget ?? s.r.budget).perRunTokens ?? Math.min(cur.tokens * 2, month);
+      log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(w.budgetFirst, { name: s.r.name, n: tokensWords(cur.tokens), month: tokensWords(month), cap: tokensWords(cap) }) }, ...(s.r.persona ? { persona: s.r.persona } : {}) } as never);
+    }
     if (Object.keys(patch).length) setState(s, patch);
   }
 
@@ -640,7 +669,45 @@ export function createRoutines(opts: {
     disarm(s);
     s.pending = undefined;
     setState(s, { state: "paused", pausedBy: by, pauseReason: reason });
+    // D650 (B11): Ducter's own pause (the month's budget) asks in words, with its number, once.
+    if (by === "system" && reason === "budget") askBudget(s);
     return true;
+  }
+
+  // ---------- D650 (B11/B12): a budget pause is an ask, in words, with the number ----------
+
+  /** The open budget asks: decision -> routine. A pause by the month's budget asks once. */
+  const budgetAsks = new Map<string, string>();
+  const budgetAskOf = (routineId: string) => [...budgetAsks.values()].includes(routineId);
+  /** The cap the person's Go would set: twice what stands, never below what the month already used. */
+  const raisedMonth = (s: State) => Math.max(s.r.budget.monthTokens * 2, s.monthTokens * 2);
+  const offeredMonth = (s: State) => cleanTokensUp(raisedMonth(s));
+  function askBudget(s: State) {
+    if (s.r.state !== "paused" || s.r.pausedBy !== "system" || s.r.pauseReason !== "budget" || s.r.budgetAsked || budgetAskOf(s.r.routineId)) return;
+    const w = words(W, langOfText(s.r.name));
+    const cap = s.r.budget.monthTokens;
+    const id = newId("d");
+    const body: Bodies["decision"] = {
+      decisionId: id,
+      question: fill(w.budgetAsk, { name: s.r.name, n: tokensWords(cap), to: tokensWords(offeredMonth(s)) }),
+      goLabel: fill(w.budgetGo, { to: tokensWords(offeredMonth(s)) }),
+      holdLabel: w.budgetHold,
+      defaultOption: "hold",
+      reversible: false,
+      routineId: s.r.routineId,
+      budget: { monthTokens: cap },
+    };
+    log.append({ stream: "channel", origin: "schedule", kind: "decision", body, ...(s.r.persona ? { persona: s.r.persona } : {}) } as never);
+    setState(s, { budgetAsked: iso(clock.now()) });
+    budgetAsks.set(id, s.r.routineId);
+  }
+  /** The ask is over (a resume, an end, or the question answered): nothing stays in 待你处理. */
+  function closeBudgetAsks(routineId: string) {
+    for (const [id, rid] of [...budgetAsks]) {
+      if (rid !== routineId) continue;
+      budgetAsks.delete(id);
+      log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: id, option: "hold", by: "ended", settled: true } } as never);
+    }
   }
 
   // ---------- the Log ----------
@@ -663,6 +730,20 @@ export function createRoutines(opts: {
       if (s?.running && s.running.taskId === d.taskId) s.running.acted = true;
     } else if (e.kind === "decision_resolved") {
       const b = e.body as Bodies["decision_resolved"];
+      // D650 (B11): the budget ask. Go raises the month (and the per-run cap within it) and it runs
+      // on its usual times again; Hold leaves it paused until the person says.
+      const brid = budgetAsks.get(b.decisionId);
+      if (brid) {
+        budgetAsks.delete(b.decisionId);
+        const s = states.get(brid);
+        if (s && b.option === "go" && s.r.state === "paused") {
+          const month = offeredMonth(s);
+          setState(s, { state: "active", pausedBy: undefined, pauseReason: undefined, budgetAsked: undefined, budget: { ...s.r.budget, monthTokens: month, ...(s.r.budget.perRunTokens ? { perRunTokens: Math.min(s.r.budget.perRunTokens, month) } : {}) } });
+          s.lastScheduled = Math.max(s.lastScheduled ?? 0, clock.now());
+          arm(s);
+        }
+        return;
+      }
       const ask = unsureAsks.get(b.decisionId);
       if (ask) {
         unsureAsks.delete(b.decisionId);
@@ -747,13 +828,14 @@ export function createRoutines(opts: {
       if (b.tool?.name && actedBy(b.tool.name)) s.running.acted = true;
       const turnEnd = Boolean((b.raw as { turnEnd?: boolean } | undefined)?.turnEnd);
       if (!b.usage) return void (turnEnd && closeReported(s));
-      const n = (b.usage.inputTokens ?? 0) + (b.usage.outputTokens ?? 0);
+      // D650 (B12): uncached input plus output; a cache read is not usage that stops a run.
+      const n = Math.max(0, (b.usage.inputTokens ?? 0) - (b.usage.cacheRead ?? 0)) + (b.usage.outputTokens ?? 0);
       s.running.tokens += n;
       s.monthTokens += n;
       // D308: the turn's usage after its report: the run closes now, its result as reported.
       if (s.running.reported) return closeReported(s);
       const cap = s.r.budget.perRunTokens;
-      if (cap && s.running.tokens > cap) {
+      if (cap && s.running.tokens > Math.min(cap, s.r.budget.monthTokens)) {
         const { taskId } = s.running;
         void opts.runner()?.interrupt(taskId).catch(() => {});
         finishRun(s, "failed", e.seq, "budget", { noRetry: true });
@@ -789,7 +871,11 @@ export function createRoutines(opts: {
         if (b.tokens && monthOf(Date.parse(e.ts)) === s.month) s.monthTokens += b.tokens;
       }
     } else if (e.kind === "read_receipt") lastRead = Math.max(lastRead, (e.body as Bodies["read_receipt"]).upToSeq);
-    else if (e.kind === "decision") noteDecision(e.body as Bodies["decision"], e.origin);
+    else if (e.kind === "decision") {
+      noteDecision(e.body as Bodies["decision"], e.origin);
+      const d = e.body as Bodies["decision"];
+      if (d.budget?.monthTokens !== undefined && d.routineId) budgetAsks.set(d.decisionId, d.routineId);
+    }
     else if (e.kind === "waiter") {
       const w = e.body as Bodies["waiter"];
       if (!w.routineId) continue;
@@ -798,6 +884,7 @@ export function createRoutines(opts: {
       if (w.baseline && states.get(w.routineId)) states.get(w.routineId)!.baseline = w.baseline;
     } else {
       const id = (e.body as Bodies["decision_resolved"]).decisionId;
+      budgetAsks.delete(id);
       reviewDecisions.delete(id);
       const ask = unsureAsks.get(id);
       if (ask) {
@@ -819,7 +906,7 @@ export function createRoutines(opts: {
     const b = r.body as Bodies["report"];
     for (const e of log.read({ stream: `task:${cur.taskId}`, fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_event"] })) {
       const u = (e.body as Bodies["task_event"]).usage;
-      const n = u ? (u.inputTokens ?? 0) + (u.outputTokens ?? 0) : 0;
+      const n = u ? Math.max(0, (u.inputTokens ?? 0) - (u.cacheRead ?? 0)) + (u.outputTokens ?? 0) : 0;
       cur.tokens += n;
       if (monthOf(Date.parse(e.ts)) === s.month) s.monthTokens += n;
     }
@@ -827,6 +914,8 @@ export function createRoutines(opts: {
     queueMicrotask(() => s.running === cur && closeReported(s));
   }
   const unsubscribe = log.subscribe(onEvent);
+  // D650 (B11): a routine Ducter paused for the month's budget before this version asks now, in words.
+  for (const s of states.values()) if (s.r.state === "paused" && s.r.pausedBy === "system" && s.r.pauseReason === "budget") askBudget(s);
   for (const s of states.values()) {
     if (s.r.state !== "active") continue;
     // A watch still armed from before the restart keeps watching (never a second one beside it).
@@ -987,7 +1076,8 @@ export function createRoutines(opts: {
       s.pending = undefined;
       const reviewAt = s.r.pauseReason === "review" || Date.parse(s.r.reviewAt) <= clock.now() ? iso(clock.now() + REVIEW_DAYS * DAY) : s.r.reviewAt;
       // The person resumed it: whatever kept it from running, they have seen to it.
-      setState(s, { state: "active", reviewAt, backoff: undefined });
+      setState(s, { state: "active", reviewAt, backoff: undefined, budgetAsked: undefined });
+      closeBudgetAsks(id);
       s.lastScheduled = Math.max(s.lastScheduled ?? 0, clock.now());
       arm(s);
       return true;
@@ -1035,6 +1125,7 @@ export function createRoutines(opts: {
       disarm(s);
       s.pending = undefined;
       setState(s, { state: s.r.state === "proposed" ? "dismissed" : "ended" });
+      closeBudgetAsks(id);
       return true;
     },
     get: (id) => {

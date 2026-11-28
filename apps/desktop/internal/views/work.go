@@ -966,7 +966,8 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 		}
 		text := func(s string) { uiText(c, s).FontSize(t.MD).LineHeight(1.45).TextColor(t.InkSoft) }
 		row(a.L.T("routine.when"), func() {
-			text(r.TriggerWords)
+			// D291: the clock and its zone are two facts, never one dot-joined line.
+			a.facts(c, t.MD, t.InkSoft, keepFactParts(r.TriggerWords)...)
 			if r.Trigger.Kind == "time" {
 				ui.Row(c.Key("cal")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 					a.calendarBadge(c, r, 58)

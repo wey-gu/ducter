@@ -372,7 +372,7 @@ export interface CoreOptions {
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
-  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk; rulesAsk?: import("./keeps.ts").KeepRulesAsk };
+  keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk; rulesAsk?: import("./keeps.ts").KeepRulesAsk; /** D650: the read a testable end runs (a fake in tests). */ endLook?: (ref: string, kind: "pr" | "issue") => Promise<"open" | "merged" | "closed" | undefined> };
   /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
   branchAsk?: (prompt: string) => Promise<string>;
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; /** D633: how often outside things are read from GitHub (0/absent in tests: none). */ holdingsEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
@@ -1443,6 +1443,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     waiters: work.waiters,
     loops: work.loops,
     look: (spec, taskId) => work.look(spec, taskId),
+    keeps: () => keepsRef,
     clock: workClock,
     lang: () => langNow(),
     ...(opts.work?.holdingsEveryMs !== undefined ? { everyMs: opts.work.holdingsEveryMs } : process.env.NODE_ENV === "test" ? {} : { everyMs: HOLDINGS_EVERY_MS }),
@@ -1942,6 +1943,30 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D620: a doorbell URL uses the address the person already reaches the home by, when one is
     // set (the primary way); with none, the clients build it from where they reached the home.
     homeBase: () => reachRef?.ways().find((w) => w.primary)?.url,
+    // D650: only a review task's Keep keeps a review standing (B10).
+    isReviewTask: (taskId) => isReviewTask(taskId),
+    // D650: a testable end's read: the home's own gh (an end about github.com is a fact about the
+    // site, read where it can be read), never a task's computer.
+    endLook:
+      opts.keeps?.endLook ??
+      (async (ref, kind) => {
+        const [repo, n] = ref.split("#");
+        if (!repo || !n) return undefined;
+        const r = await work.look(
+          {
+            argv: kind === "pr" ? ["gh", "api", `repos/${repo}/pulls/${n}`, "--jq", "{state: .state, merged: .merged}"] : ["gh", "api", `repos/${repo}/issues/${n}`, "--jq", "{state: .state}"],
+            succeedWhen: { exitCode: 0 },
+          },
+          "",
+        );
+        if (!r.ok) return undefined;
+        try {
+          const j = JSON.parse(r.output ?? "") as { state?: string; merged?: boolean };
+          return j.merged ? "merged" : j.state === "closed" ? "closed" : "open";
+        } catch {
+          return undefined;
+        }
+      }),
     // D533: a task in rounds moved on its page (another computer, another agent), as task_switch moves it.
     move: async (taskId, to) => {
       const c = tasks.get(taskId);
@@ -2018,6 +2043,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
     });
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
+  if (opts.keeps?.endLook) keeps.setEndLook(opts.keeps.endLook);
   if (opts.keeps?.roundAsk) keeps.setRoundAsk(opts.keeps.roundAsk);
   if (opts.keeps?.rulesAsk) keeps.setRulesAsk(opts.keeps.rulesAsk);
   // D533: a round of a Keep the person changed hears its rules as they are now.
@@ -2903,6 +2929,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!ctx.taskId) throw new Error("review_report requires a task token");
       const r = await taskSources.pile.round(ctx.taskId, args, { ...((k) => (k ? { round: k } : {}))(roundOf(ctx.taskId)) });
       if (!r.ok) return r.error ?? "Not kept.";
+      // D650 (B10): the PRs it reviewed are never its own (hel: #419 was counted as the 403 task's PR).
+      work.owned.reviewed(ctx.taskId, (Array.isArray(args?.prs) ? args.prs : []).map((x: { ref?: unknown }) => String(x?.ref ?? "")).filter(Boolean));
       // D413: what the person said may go without asking went now; only the rest is on the card.
       const went = r.posted?.length ? `${r.posted.length} review${r.posted.length === 1 ? "" : "s"} went to GitHub without asking, as the person said (${r.posted.map((p) => p.ref).join(", ")}). ` : "";
       const asks = r.asking && (went || r.drafted) ? `${r.asking} unsent draft${r.asking === 1 ? "" : "s"} wait on one card; Ducter posts them on Go. ` : "";

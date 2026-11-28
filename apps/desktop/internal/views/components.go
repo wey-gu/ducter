@@ -993,11 +993,21 @@ func (a *App) decideRowIn(c *ui.Context, d *store.DecisionState, about string, h
 			} else if a.buttonFor(c, a.holdLabel(d), about, btnText, height, bg) {
 				a.Decide(id, "hold", "")
 			}
-			if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, height, bg) {
-				a.replyOpen[id] = true
-				delete(a.laterOpen, id)
+			// D650: the stall ask's third choice: change when it ends, on its page.
+			if d.Keep != nil && d.Keep.Ask == "stall" {
+				if a.buttonFor(c, a.L.T("keep.ask.changeEnd"), about, btnText, height, bg) {
+					a.openKeepEdit(d.Keep.ID, "until")
+				}
 			}
-			a.laterToggle(c, d, about, height, bg)
+			// D650: a Keep's own ask (stall, budget) has its own choices; no Reply or Ask me later
+			// on it (the page is where the person says more).
+			if d.Keep == nil && d.Budget == nil {
+				if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, height, bg) {
+					a.replyOpen[id] = true
+					delete(a.laterOpen, id)
+				}
+				a.laterToggle(c, d, about, height, bg)
+			}
 			if after != nil {
 				after()
 			}

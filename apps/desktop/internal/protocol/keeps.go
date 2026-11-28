@@ -101,14 +101,19 @@ type KeepBell struct {
 
 // KeepSheet is a Keep on On hand: the home's one model of its state.
 type KeepSheet struct {
-	ID          string          `json:"id"`
-	Title       string          `json:"title"`
-	Persona     string          `json:"persona,omitempty"`
-	Life        string          `json:"life"` // on, paused, done, stopped
-	Run         string          `json:"run"`  // same, fresh, perItem
-	Wakes       []KeepWake      `json:"wakes"`
-	Until       string          `json:"until,omitempty"`
+	ID      string     `json:"id"`
+	Title   string     `json:"title"`
+	Persona string     `json:"persona,omitempty"`
+	Life    string     `json:"life"` // on, paused, done, stopped
+	Run     string     `json:"run"`  // same, fresh, perItem
+	Wakes   []KeepWake `json:"wakes"`
+	Until   string     `json:"until,omitempty"`
+	// D650: the end as the head says it (a testable sentence and the look code
+	// runs), or noEnd; how many rounds it has run; why Ducter paused it, in words.
+	End         *KeepEnd        `json:"end,omitempty"`
 	NoEnd       bool            `json:"noEnd,omitempty"`
+	RoundsRun   int             `json:"roundsRun"`
+	PausedWhy   string          `json:"pausedWhy,omitempty"`
 	Items       []KeepItem      `json:"items"`
 	TaskIDs     []string        `json:"taskIds"`
 	Asks        int             `json:"asks"`
@@ -282,4 +287,20 @@ type KeepSay struct {
 	Text     string `json:"text"`
 	ClientID string `json:"clientId"`
 	Keep     string `json:"keep"`
+}
+
+// KeepEnd is a Keep's end as the head says it (D650): the sentence in the
+// person's language and, when code can test it, the look it runs.
+type KeepEnd struct {
+	Sentence string       `json:"sentence,omitempty"`
+	Look     *KeepEndLook `json:"look,omitempty"`
+}
+
+// KeepEndLook is the read Ducter runs to test an end (D650): a PR merged or
+// closed, an issue closed, or a date passed.
+type KeepEndLook struct {
+	Kind string `json:"kind"` // pr | issue | date
+	Ref  string `json:"ref,omitempty"`
+	What string `json:"what,omitempty"`
+	At   string `json:"at,omitempty"`
 }

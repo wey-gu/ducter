@@ -9,7 +9,7 @@ import { DEFAULT_EVERY_MS, describeCheck, describePredicate } from "@ducter/prot
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { figArt, PartnerMark } from "./partners.tsx";
-import { cjkPad, clock, day, harnessName, md, when } from "./format.ts";
+import { cjkPad, clock, day, harnessName, md, splitFacts, when } from "./format.ts";
 import { Btn, Toggle } from "./controls.tsx";
 
 const pad = (s: string) => cjkPad(A.L, s);
@@ -569,7 +569,8 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
           <span class="when-cal">
             <CalendarBadge r={r} big />
             <span>
-              {r.triggerWords}
+              {/* D291: the clock and its zone are two facts, never one dot-joined line. */}
+              <Facts items={splitFacts(r.triggerWords)} />
               {nextFew(r).length > 0 && (
                 <span class="sub">
                   <Facts items={nextFew(r)} />
@@ -578,7 +579,7 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
             </span>
           </span>
         ) : (
-          r.triggerWords
+          <Facts items={splitFacts(r.triggerWords)} />
         )}
       </span>
       <span class="k">{t("routine.does")}</span>

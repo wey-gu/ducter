@@ -400,3 +400,6 @@ export function spoken(L: Pick<Strings, "t">, ...parts: (string | false | null |
  *  A computer paired before D310 by its host name shows it without the network's domain ("Mac.lan"
  *  → "Mac", D310). */
 export const shownDeviceName = (name: string) => undomainedName(name.replace(/ · Ducter$/, ""));
+
+/** D291: two facts kept apart, whether the source joined them with " · " or ", ". */
+export const splitFacts = (s: string): string[] => s.split(/ \u00b7 |, /).map((x) => x.trim()).filter(Boolean);

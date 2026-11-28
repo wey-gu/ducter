@@ -67,7 +67,7 @@ function setup(o: { exec?: Exec; start?: number; dir?: string; log?: ReturnType<
 
 const daily9: RoutineTrigger = { kind: "time", every: "day", time: "09:00", zone: "world", tz: "Asia/Shanghai" };
 /** D308: the turn's end, after its report (the order on Claude Code); a run closes on it. */
-const turnEnd = (log: ReturnType<typeof openLog>, taskId: string, usage?: { inputTokens: number; outputTokens: number }) =>
+const turnEnd = (log: ReturnType<typeof openLog>, taskId: string, usage?: { inputTokens: number; outputTokens: number; cacheRead?: number }) =>
   log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "system", ...(usage ? { usage } : {}), raw: { turnEnd: true } } });
 const tool = (log: ReturnType<typeof openLog>, taskId: string, name: string) =>
   log.append({ stream: `task:${taskId}`, origin: "task", kind: "task_event", body: { taskId, role: "tool", tool: { name, input: {} } } });
@@ -78,6 +78,41 @@ async function active(s: ReturnType<typeof setup>, input: Parameters<ReturnType<
   await flush();
   return v;
 }
+
+
+// ---------- D650: the budget unit, the cap, and the first run's real number ----------
+
+test("D650: the month counts uncached input + output, the cap stays within it, and the first run's cost is said once", async () => {
+  const s = setup();
+  const v = await active(s, { name: "日报", trigger: daily9, brief: "Daily notes.", monthTokens: 20_000_000 });
+  s.clock.advance(23 * 60 * MIN);
+  await flush();
+  report(s.log, s.task(1), { state: "done", summary: "日报写好了。" });
+  await flush();
+  // A cache-heavy turn: 5M input of which 4.9M is a cache read, plus 2k output.
+  turnEnd(s.log, s.task(1), { inputTokens: 5_000_000, cacheRead: 4_900_000, outputTokens: 2_000 });
+  await flush();
+  const r = s.work.routines.get(v.routineId)!;
+  expect(r.monthTokens).toBe(102_000);
+  expect(r.budget.monthTokens).toBe(20_000_000);
+  expect(r.budget.perRunTokens).toBe(204_000);
+  // Said once, with the real number and the default month, in the partner's line.
+  const said = s.log.read({ kinds: ["ai_msg"], limit: 50 }).map((e) => String((e.body as Bodies["ai_msg"]).text));
+  expect(said.some((x) => x.includes("102K") && x.includes("20M"))).toBe(true);
+  expect(r.budgetSaid).toBeTruthy();
+  // A cap the month can't hold is never set above the month.
+  const tight = setup();
+  const t = await active(tight, { name: "日报", trigger: daily9, brief: "Daily notes.", monthTokens: 100_000 });
+  tight.clock.advance(23 * 60 * MIN);
+  await flush();
+  report(tight.log, tight.task(1), { state: "done", summary: "ok" });
+  await flush();
+  turnEnd(tight.log, tight.task(1), { inputTokens: 80_000, outputTokens: 1_000 });
+  await flush();
+  const rr = tight.work.routines.get(t.routineId)!;
+  expect(rr.budget.perRunTokens).toBe(100_000);
+  expect(rr.budget.perRunTokens!).toBeLessThanOrEqual(rr.budget.monthTokens);
+});
 
 // ---------- the words ----------
 

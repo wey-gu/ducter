@@ -232,6 +232,11 @@ type Decision struct {
 	// RoutineID marks a routine's proposal or review card (D114): Go
 	// activates or keeps it.
 	RoutineID string `json:"routineId,omitempty"`
+	// D650: a Keep's own ask (no task): it stalled (End / Six more rounds /
+	// Change the end) or Ducter paused it (a budget). Go is the first choice.
+	Keep *KeepAsk `json:"keep,omitempty"`
+	// D650: a routine paused by Ducter for the month's budget: Go raises it.
+	Budget *BudgetAsk `json:"budget,omitempty"`
 	// SignIn marks a sign-in card (D151): Go is 好了 / Done in the live view of
 	// Ducter's browser.
 	SignIn *SignInAsk `json:"signIn,omitempty"`
@@ -3916,4 +3921,18 @@ type TaskNew struct {
 type OpenTask struct {
 	T      string `json:"t"` // "open_task"
 	TaskID string `json:"taskId"`
+}
+
+// KeepAsk is a Keep's own question on a card (D650): its id, title and which
+// ask it is (stall or paused). Go is the first choice; Hold the second.
+type KeepAsk struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Ask   string `json:"ask"` // stall | paused
+}
+
+// BudgetAsk marks a routine paused for the month's budget (D650): the cap the
+// question asks about, and Go raises it.
+type BudgetAsk struct {
+	MonthTokens int64 `json:"monthTokens"`
 }

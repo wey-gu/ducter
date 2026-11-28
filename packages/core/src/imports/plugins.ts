@@ -19,6 +19,7 @@ import { DUCTER_VERSION, compareVersions, isVersion } from "@ducter/protocol/src
 import { whichNow } from "@ducter/protocol/src/which.ts";
 import { iconPathOk } from "./icon.ts";
 import { pluginArgv, pluginTempDir, removePluginTempDir, resolveUse, runSandboxed, sandboxAvailable, type PluginUseRun, type SandboxResult } from "./sandbox.ts";
+import { readInstalledLedger, writeInstalledKind, type InstalledRecord } from "../plugins/ledger.ts";
 
 export const PLUGIN_FORMAT = "ducter-plugin/1";
 export const PLUGIN_KIND = "importer";
@@ -413,34 +414,23 @@ function copyTree(src: string, dst: string): void {
 }
 
 function loadLedger(dataDir: string): Record<string, PluginRecord> {
-  try {
-    const file = join(dataDir, PLUGINS_LEDGER);
-    const raw = existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as unknown) : undefined;
-    if (!isObj(raw) || !isObj(raw.plugins)) return {};
-    const out: Record<string, PluginRecord> = {};
-    for (const [id, v] of Object.entries(raw.plugins)) {
-      if (!isObj(v)) continue;
-      if (typeof v.dir !== "string" || typeof v.hash !== "string" || typeof v.version !== "string") continue;
-      const r = v as unknown as PluginRecord;
-      // `ducter move` carries <dataDir>/plugins: an install's recorded path follows the folder.
-      if ((r.kind === "git" || r.kind === "repo") && !existsSync(r.dir)) {
-        const moved = join(dataDir, "plugins", id);
-        if (existsSync(moved)) r.dir = moved;
-      }
-      out[id] = r;
+  // One installed ledger (D673): importers and themes share `plugins.json`; the old
+  // importer file is migrated in once by readInstalledLedger and left in place.
+  const out: Record<string, PluginRecord> = {};
+  for (const [id, r] of Object.entries(readInstalledLedger(dataDir))) {
+    if (r.pluginKind === "theme") continue;
+    // `ducter move` carries <dataDir>/plugins: an install's recorded path follows the folder.
+    if ((r.kind === "git" || r.kind === "repo") && !existsSync(r.dir)) {
+      const moved = join(dataDir, "plugins", id);
+      if (existsSync(moved)) r.dir = moved;
     }
-    return out;
-  } catch {
-    return {};
+    out[id] = r as unknown as PluginRecord;
   }
+  return out;
 }
 
 function saveLedger(dataDir: string, plugins: Record<string, PluginRecord>): void {
-  mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-  const file = join(dataDir, PLUGINS_LEDGER);
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify({ format: "ducter-plugins-installed/1", plugins }, null, 2)}\n`, { mode: 0o600 });
-  renameSync(tmp, file);
+  writeInstalledKind(dataDir, "importer", plugins as unknown as Record<string, InstalledRecord>);
 }
 
 /**

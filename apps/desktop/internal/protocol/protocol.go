@@ -3589,6 +3589,8 @@ type ServerFrame struct {
 	Sources *SourcesFrame `json:"-"`
 	// Imports (D655): imports and import_answer, decoded on their own.
 	Imports *ImportsFrame `json:"-"`
+	// Themes (D673): themes and theme_answer, decoded on their own.
+	Themes *ThemesFrame `json:"-"`
 	// D480: mailbox_look's answer (with Device and Harness).
 	Look *MailboxLook `json:"look,omitempty"`
 }
@@ -3872,6 +3874,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeSources(data, f)
 	case "imports", "import_answer":
 		return decodeImports(data, f)
+	case "themes", "theme_answer":
+		return decodeThemes(data, f)
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

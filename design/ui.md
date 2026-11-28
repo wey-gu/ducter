@@ -5,11 +5,19 @@
 ## Decision
 
 **Pebble is the default theme.** Volt, Paper, Signal, and Midnight are designed as
-alternative themes; only Pebble ships. Pebble has a light and a dark paper: web, iPhone and
+alternative themes; only Pebble ships. A theme is a **token set**; components never hard-code a
+color, font, radius, or shadow, so adding or switching a theme is pure data. The same tokens drive
+the MyGo desktop UI, the phone web client and the iPhone app's own screens. From research/248
+phase 1 (D673) a look can be **installed as a plugin**: one `ducter-theme/1` token file, both
+papers, the shipped faces, contrast-checked, applied by every client and reverted to Pebble in one
+tap (`applyTheme`; Settings › 外观和声音 / Look and sound lists them, 换回 Pebble / Back to Pebble
+always one tap away). An installed look covers every surface in both papers — the paper, cards,
+chrome (sidebar, titlebar), sheets, menus, tooltips and the clay's ledges, bases and drops, all
+derived from its own colours (a dark ledge goes toward black, a dark shadow stays black); the scenes
+and the clay figures stay Pebble's. Pebble has a light and a dark paper: web, iPhone and
 the Mac app follow the system's light or dark (the Mac: Settings › Look and sound can pin
 浅色 / Light or 深色 / Dark, D302). Every theme is a **token set**; components never hard-code a color, font,
-radius, or shadow, so adding or switching a theme is pure data. The same tokens drive the MyGo
-desktop UI, the phone web client and the iPhone app's own screens.
+radius, or shadow, so adding or switching a theme is pure data.
 
 ## Token schema (every theme fills all of it)
 

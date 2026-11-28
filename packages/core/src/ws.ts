@@ -59,6 +59,8 @@ export interface WsData {
   sources?: boolean;
   /** D655: subscribed to Settings › 导入 / Import and Past tasks' offer. */
   imports?: boolean;
+  /** D673: subscribed to Settings › 外观和声音 / Look and sound's themes. */
+  themes?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
   /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
@@ -118,6 +120,8 @@ export interface WsDeps {
   imports?: (data: string) => Promise<import("@ducter/protocol").ImportAnswer>;
   /** D655 (research/246): Settings › 导入 / Import's one source, the offer and removal. */
   importSources?: () => import("./imports/sources.ts").ImportSources | undefined;
+  /** D673 (research/248 phase 1): Settings › 外观和声音 / Look and sound's installed themes. */
+  themes?: () => import("./plugins/theme.ts").ThemeRuntime | undefined;
   /** D347: 加一台做事的电脑 / Add a computer for tasks (lend.ts); absent in tests that don't need it. */
   lend?: () => import("./lend.ts").Lend | undefined;
   /** D205: the persona's Bridge connection (bridge-link.ts); absent in tests that don't need it. */
@@ -568,6 +572,18 @@ export function createWsHandler(deps: WsDeps) {
     if (offImports) return;
     offImports = deps.importSources?.()?.onChange(importsChanged);
     if (offImports) for (const ws of sockets) if (ws.data.imports) send(ws, { t: "imports", ...deps.importSources!()!.view() });
+  };
+  // D673 (research/248 phase 1): Settings › 外观和声音 / Look and sound's themes.
+  let offThemes: (() => void) | undefined;
+  const themesChanged = () => {
+    const th = deps.themes?.();
+    if (!th) return;
+    for (const ws of sockets) if (ws.data.themes) send(ws, { t: "themes", ...th.view() });
+  };
+  const watchThemes = () => {
+    if (offThemes) return;
+    offThemes = deps.themes?.()?.onChange(themesChanged);
+    if (offThemes) for (const ws of sockets) if (ws.data.themes) send(ws, { t: "themes", ...deps.themes!()!.view() });
   };
   // D341: 待办来源 / To-do sources: made after this handler; subscribed on the first sources frame.
   let offSources: (() => void) | undefined;
@@ -2525,6 +2541,31 @@ export function createWsHandler(deps: WsDeps) {
         const r = f.t === "import_consent" ? await imp.accept(id, f.online === true) : await imp.run(id);
         send(ws, { t: "import_answer", id, op: f.t === "import_consent" ? "consent" : "run", ok: r.ok, ...(r.threads ? { threads: r.threads } : {}), ...(r.messages ? { messages: r.messages } : {}), ...(r.skipped ? { skipped: r.skipped } : {}), ...(r.error ? { error: r.error } : {}), ...(r.stopped ? { stopped: true } : {}) });
         return send(ws, { t: "imports", ...imp.view() });
+      }
+      // D673 (research/248 phase 1): Settings › 外观和声音 / Look and sound's themes.
+      case "themes":
+      case "theme_set":
+      case "theme_consent":
+      case "theme_remove": {
+        const th = deps.themes?.();
+        if (!th) throw new Error("themes aren't available here");
+        if (f.t === "themes") {
+          ws.data.themes = true;
+          watchThemes();
+          return send(ws, { t: "themes", ...th.view() });
+        }
+        const id = typeof f.id === "string" ? f.id : "";
+        if (f.t === "theme_set") {
+          th.activate(id);
+          return send(ws, { t: "theme_answer", id, op: "set", ok: true, active: th.activeId() });
+        }
+        if (f.t === "theme_consent") {
+          th.consent(id);
+          th.activate(id);
+          return send(ws, { t: "theme_answer", id, op: "consent", ok: true, active: th.activeId() });
+        }
+        const r = th.remove(id);
+        return send(ws, { t: "theme_answer", id, op: "remove", ok: r.ok, active: th.activeId(), ...(r.error ? { error: r.error } : {}) });
       }
       case "import": {
         // D651 (research/246): the reader's stream arrives in chunks and the home's own

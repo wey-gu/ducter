@@ -26745,3 +26745,13 @@ button.fd-link,
   .import-avail-acts .btn { flex: 1; }
   .import-repos-head { align-items: flex-start; flex-direction: column; }
 }
+
+/* D673 (research/248 phase 1): an installed theme's mark (five of its colours) and its
+   consent card. The tile mirrors the Mac's clay tile (D622); each fact is its own line. */
+.theme-tile { display: inline-flex; gap: var(--s1); padding: var(--s1); border-radius: var(--r-sm); border: 2px solid var(--ink); flex: none; box-sizing: border-box; }
+.theme-tile i { width: 18px; height: 36px; border-radius: 6px; border: 1px solid var(--line); box-sizing: border-box; }
+@media (max-width: 480px) { .theme-tile { gap: 3px; } .theme-tile i { width: 13px; height: 30px; border-radius: 5px; } }
+.theme-row + .theme-row { border-top: 1px solid var(--line-soft); }
+.theme-consent { padding: var(--s3) var(--s4) var(--s3) 0; }
+.theme-consent p { margin: 0 0 var(--s2); }
+.theme-consent .row { display: flex; gap: var(--s2); align-items: center; margin-top: var(--s2); }

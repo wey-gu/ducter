@@ -74,11 +74,12 @@ const (
 	TabAccounts = "accounts"
 	TabAutofill = "autofill"
 	TabLook     = "look"
+	TabPlugins  = "plugins"
 	TabRun      = "run"
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabHome, TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabImport, TabChats, TabAutofill, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabHome, TabPartner, TabMemory, TabPeers, TabNotify, TabAccounts, TabTodos, TabImport, TabChats, TabAutofill, TabLook, TabPlugins, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -243,6 +244,10 @@ func (a *App) openTab(tab string) {
 		a.imports.repoNotice = ""
 		a.send(protocol.ImportsReq{T: "imports"})
 	}
+	// D673: 外观和声音 / Look and sound and 插件 / Plugins read the installed themes.
+	if tab == TabLook || tab == TabPlugins {
+		a.send(protocol.ThemesReq{T: "themes"})
+	}
 }
 
 // settingsTab is the tab shown.
@@ -350,6 +355,8 @@ func (a *App) settingsView(c *ui.Context) {
 						a.accountsPanel(c)
 					case TabLook:
 						a.lookPanel(c)
+					case TabPlugins:
+						a.pluginsPanel(c)
 					case TabRun:
 						a.runPanel(c)
 					case TabAbout:
@@ -498,6 +505,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 	case TabLook:
 		box.Draw(a.drawSwatches())
 		return
+	case TabPlugins:
+		bmp = theme.Clay("set_todos") // D673: a thing added to Ducter, as a note with a tick
 	case TabChats:
 		// D283: two clay speech bubbles, the cream one and the sky one.
 		bmp = theme.Clay("set_chats")

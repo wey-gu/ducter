@@ -33,6 +33,7 @@ import { createMarks, createPast } from "./past.ts";
 import { importInto } from "./imports/service.ts";
 import { createImportSources } from "./imports/sources.ts";
 import { createPluginRuntime } from "./imports/plugins.ts";
+import { createThemeRuntime } from "./plugins/theme.ts";
 import { createTidied, holdOf } from "./tidied.ts";
 import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
 import { roomFor } from "./candidates.ts";
@@ -344,6 +345,8 @@ export interface CoreOptions {
   ghInstaller?: GhInstaller;
   /** D668/D670 (research/246 §3.6): test seams for a plugin's git, sandbox and curated list. */
   importsPlugins?: Partial<Omit<import("./imports/plugins.ts").PluginOptions, "dataDir" | "now">>;
+  /** D673 (research/248 phase 1): test seams for the theme runtime's git and host range. */
+  themePlugins?: Partial<Omit<import("./plugins/theme.ts").ThemeOptions, "dataDir" | "now">>;
   /** D670: the official plugin repository (tests and demos point it at a local fixture). */
   importsOfficialUrl?: string;
   /** D670: the repositories' own git seam (the same fake as the plugins' when not given). */
@@ -1716,6 +1719,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   // D655 (research/246): Settings › 导入 / Import. The reader runs only when the pane, Past's
   // offer or a run asks; a look at startup costs one `lody workspace list` (the index only).
+  const themeRuntime = createThemeRuntime({ dataDir, now: () => clock.now(), ...opts.themePlugins });
   const importSources = createImportSources({
     log,
     tasks,
@@ -1723,6 +1727,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     persona: persona.id,
     now: () => clock.now(),
     zone: () => settings.get().quiet?.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+    theme: themeRuntime,
     ...(opts.importsPlugins ? { plugins: createPluginRuntime({ dataDir, now: () => clock.now(), ...opts.importsPlugins }) } : {}),
     ...(opts.importsOfficialUrl ? { officialUrl: opts.importsOfficialUrl } : {}),
     ...(opts.importsGit ? { git: opts.importsGit } : {}),
@@ -2453,7 +2458,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     partners,
     removePartner: (id: string) => removeOther(id),
-    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, sayUpdate: (o) => sayUpdateNow(o), agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, imports: (data) => importInto({ log, tasks, persona: persona.id, now: () => clock.now() }, data), importSources: () => importSources, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
+    core: api, move, workbench, bridgeLink, helpers: { views: () => helpers.views(helperCount), stop: (id: string) => helpers.stop(id), resume: (id: string) => helpers.resume(id) }, decisions, runner: () => runner, devices: () => devicesView, lend: () => lendRef, settings, connections, phone, rules, standing, pins, apps, loadout, models: modelCatalog, accountUsage, closing, work: workFrames, newTask, updates: () => updatesRef, sayUpdate: (o) => sayUpdateNow(o), agents: () => agentsRef, agentSetup: (device, f) => agentSetupOp(device, f), memSetup: (device, action, link) => memSetupOp(device, action, link), recordsAllow: (device, on) => recordsAllowOp(device, on), updateAll: () => updateAllRef, memPlugins: () => memPluginsRef, memHealth, anywhere: () => anywhereRef, channels, proactive: () => proactiveRef, replay: (o) => replayRef?.(o) ?? Promise.reject(new Error("not ready yet")), week: (n) => weekRef(n), repairs: (n) => { const weeks = Math.min(REPAIR_WEEKS_MAX, Math.max(1, Math.floor(n ?? REPAIR_WEEKS_DEFAULT))); const now = clock.now(); return repairReport(readRepairEvents(log, repairSince(now, weeks)), { now, weeks }); }, usage: (o) => usageDays(log, { ...o, now: clock.now() }), calendar: () => calendarRef, taskSources: () => taskSourcesRef, taskGroups: () => taskGroups, onHandAway, batchMs: opts.batchMs, autofill, keyCopy, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(computer ? { computer } : {}), ownNumber, handsets, imports: (data) => importInto({ log, tasks, persona: persona.id, now: () => clock.now() }, data), importSources: () => importSources, themes: () => themeRuntime, past: { ...past, marks, persona: () => persona.id, ongoing, keeps, outside, made, redo }, keys: { dataDir, ...(opts.keyFetch ? { fetch: opts.keyFetch } : {}), ...(opts.keyCanRun ? { canRun: opts.keyCanRun } : {}), prepare: (h) => keyPrepare(h), ...(opts.keyTz ? { tz: opts.keyTz } : {}) }, ...(firstWordsDeps ? { firstWords: firstWordsDeps } : {}), did, ownAgents, mentions });
   handsets.onChange(() => (devicesView?.changed(), ws.onHandChanged()));
   onHandChanged = ws.onHandChanged;
   wsUp = true;

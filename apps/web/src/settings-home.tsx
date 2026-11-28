@@ -17,6 +17,7 @@ import { MemAsk, memCant, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memNeeds, memPhase, memStateView, peersSwitchOn } from "./mem-view.ts";
 import { failedWhy, Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
+import { activeThemeName } from "./plugins.tsx";
 import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
 import { UsageWeek } from "./usage-week.tsx";
@@ -180,10 +181,12 @@ export function paneSay(page: SettingsPage): string {
     case "peers":
       return peersSay();
     case "phone": {
-      // D501: the theme, the light and these screens' language, read back.
+      // D501: the theme, the light and these screens' language, read back. The theme is the one in
+      // use, by its own name (D673).
       const paper = savedPaper(), lang = A.uiLang;
-      if (paper === "system" && lang === "auto") return t("say.phone.auto", "Pebble");
-      return t("say.phone", "Pebble", t(`say.look.paper.${paper}`), t(`say.look.lang.${lang}`));
+      const theme = activeThemeName();
+      if (paper === "system" && lang === "auto") return t("say.phone.auto", theme);
+      return t("say.phone", theme, t(`say.look.paper.${paper}`), t(`say.look.lang.${lang}`));
     }
   }
   return "";

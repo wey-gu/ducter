@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -215,7 +216,7 @@ func (a *App) paneSay(tab, lede string) string {
 // interfaceLangs are Look and sound's window languages, in the order its choice shows them.
 var interfaceLangs = []string{"auto", "zh", "en"}
 
-// lookSay (D501): the theme, the light and the window's language, read back.
+// lookSay (D501): the theme in use, the light and the window's language, read back.
 func (a *App) lookSay() string {
 	paper, lang := "system", "auto"
 	if a.Local != nil {
@@ -228,11 +229,28 @@ func (a *App) lookSay() string {
 	if !slices.Contains(interfaceLangs, lang) {
 		lang = "auto"
 	}
-	theme := a.L.T("settings.look.pebble")
+	theme := a.activeThemeName()
 	if paper == "system" && lang == "auto" {
 		return a.L.T("say.look.auto", theme)
 	}
 	return a.L.T("say.look", theme, a.L.T("say.look.paper."+paper), a.L.T("say.look.lang."+lang))
+}
+
+// activeThemeName is the theme in use, by its own name (Pebble, or an installed look's).
+func (a *App) activeThemeName() string {
+	if a.S == nil || a.S.Themes == nil || a.S.Themes.Active == "" || a.S.Themes.Active == "pebble" {
+		return a.L.T("settings.look.pebble")
+	}
+	for _, r := range a.S.Themes.Themes {
+		if r.ID == a.S.Themes.Active && r.Name.En != "" {
+			byLang := map[string]string{"en": r.Name.En}
+			if r.Name.Zh != "" {
+				byLang["zh"] = r.Name.Zh
+			}
+			return i18n.Pick(a.L, byLang)
+		}
+	}
+	return a.L.T("settings.look.pebble")
 }
 
 // notifySay: whether it sends notifications, and when it stays quiet.

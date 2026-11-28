@@ -58,6 +58,8 @@ export interface ImportSourcesDeps {
   plugins?: PluginRuntime;
   /** D670: the repositories; default the official source plus the person's ledger. */
   repositories?: RepositoryRuntime;
+  /** D673: the theme runtime, so its reviewed list follows the official index too. */
+  theme?: import("../plugins/theme.ts").ThemeRuntime;
   /** The official repository URL; tests and demos point it at a local fixture. */
   officialUrl?: string;
   git?: GitExec;
@@ -148,6 +150,7 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
       ...(d.officialUrl ? { officialUrl: d.officialUrl } : {}),
       ...(d.git ? { git: d.git } : {}),
       ...(d.path ? { path: d.path } : {}),
+      ...(d.theme ? { theme: d.theme } : {}),
     });
   plugins.onChange(changed);
   repositories.onChange(changed);

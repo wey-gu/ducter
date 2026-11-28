@@ -420,6 +420,8 @@ type App struct {
 	sf sfState
 	// imports is 设置 › 导入 / Import (D655): its open cards and the last answer.
 	imports importsState
+	// themes is 设置 › 外观和声音 / Look and sound and 插件 / Plugins (D673).
+	themes themeState
 	// title is the title moment's own state (D87); PlayTitle starts its
 	// sound (nil: silent, as in tests).
 	title     titleState
@@ -1221,6 +1223,8 @@ func (a *App) Welcomed() {
 	if a.S.Settings != nil || inSettings || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
+	// D673 (research/248 phase 1): the active theme applies on every open, not just in Settings.
+	a.send(protocol.ThemesReq{T: "themes"})
 	// Connections (D96): same, once the Partner page asked.
 	if a.S.ConnAsked || inSettings {
 		a.send(protocol.ConnectionsReq{T: "connections"})

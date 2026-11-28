@@ -1,0 +1,48 @@
+{
+  "format": "ducter-theme/1",
+  "name": { "en": "Pebble", "zh": "卵石" },
+  "tokens": {
+    "light": {
+      "bg": "#FFF6EA",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#FFFBF0",
+      "ink": "#2B2118",
+      "inkMuted": "#75654F",
+      "accent": "#FF8A3D",
+      "onAccent": "#2B2118",
+      "line": "#E8D9C4",
+      "userBubble": "#FF8A3D",
+      "onUserBubble": "#2B2118",
+      "partnerBubble": "#FFFFFF",
+      "onPartnerBubble": "#2B2118",
+      "decide": { "dot": "#FF8A3D", "surface": "#FFE3CF", "ink": "#8A3A0C" },
+      "progress": { "dot": "#4BA8F0", "surface": "#DCEFFF", "ink": "#174A75" },
+      "wait": { "dot": "#FFC94D", "surface": "#FFF0BF", "ink": "#6B5000" },
+      "ok": { "dot": "#7FD99A", "surface": "#D6F5DC", "ink": "#1F5E2F" },
+      "fail": { "dot": "#E5577A", "surface": "#FBDDE4", "ink": "#8A1F3B" }
+    },
+    "dark": {
+      "bg": "#17120E",
+      "surface": "#231C16",
+      "surfaceRaised": "#2A221B",
+      "ink": "#F6EBDD",
+      "inkMuted": "#A8957E",
+      "accent": "#FF8A3D",
+      "onAccent": "#2B2118",
+      "line": "#3A3027",
+      "userBubble": "#FF8A3D",
+      "onUserBubble": "#2B2118",
+      "partnerBubble": "#2A221B",
+      "onPartnerBubble": "#F6EBDD",
+      "decide": { "dot": "#FF8A3D", "surface": "#3D2414", "ink": "#FFC39B" },
+      "progress": { "dot": "#4BA8F0", "surface": "#15283A", "ink": "#A9D6FB" },
+      "wait": { "dot": "#FFC94D", "surface": "#362B0E", "ink": "#FFE08A" },
+      "ok": { "dot": "#7FD99A", "surface": "#163222", "ink": "#A6ECBB" },
+      "fail": { "dot": "#E5577A", "surface": "#3A1621", "ink": "#F8A9BC" }
+    }
+  },
+  "motion": { "personality": "bouncy", "press": 70, "enter": 220 },
+  "shape": { "radiusSm": 12, "radiusMd": 16, "radiusLg": 24, "radiusXl": 28, "pill": 999 },
+  "depth": "press",
+  "density": "comfortable"
+}

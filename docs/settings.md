@@ -561,7 +561,9 @@ one** takes an address and a key. Each place your accounts come from is one grou
 row for each app it can read and its switch; tap a row for what it reads, or to stop it reading.
 Reading just happens; sending or changing anything waits for your Go. If a place your accounts come
 from can't be reached, its first row says so once, with **Try again**, and its apps' marks turn grey
-until it answers. All of it is in [Accounts your partner can read](accounts.md). The AI accounts
+until it answers. For calls, **Tuwa** says **Ready to call** and today's calls only while it can
+actually call; when it can't be reached right now, its row says **Can't reach Tuwa right
+now** with **Try again**, and a lapsed sign-in says **Sign in again**. All of it is in [Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex, pi, DeepSeek Harness) live on **Devices**; the last row, **AI accounts**, goes there.
 
 ## Passwords & cards

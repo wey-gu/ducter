@@ -19418,6 +19418,11 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
 @media (pointer: coarse) {
   .dselect-btn,
   .set-item .pick .dselect-btn { min-height: 44px; }
+  /* D666 (research/247 Brief D): the two quiet links under Accounts and the device's name
+     reach a thumb's 44 without moving anything on a pointer screen. */
+  .accounts > .qlink,
+  .acct-form > .qlink { display: inline-flex; align-items: center; min-height: 44px; }
+  .dc-name .dev-name { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; }
   .tb,
   .more-btn:not(.shelf-more),
   .ho-fact,
@@ -26212,6 +26217,7 @@ button.fd-link,
 .import-last { margin: 0 var(--s5) var(--s4); color: var(--ink-muted); font-size: var(--sm); line-height: var(--lh-read); }
 .import-last p { margin: 0; }
 .import-waiting { margin: 0 var(--s5) var(--s3); }
+.import-notice { margin: 0 var(--s5) var(--s4); color: var(--ink-muted); font-size: var(--sm); line-height: var(--lh-read); }
 .import-remove-ask { align-items: center; padding: 0 var(--s5) var(--s4); }
 .import-src > .small.tone-bad { margin: 0 var(--s5) var(--s3); }
 .past-import-offer {
@@ -26226,7 +26232,7 @@ button.fd-link,
 .past-import-offer-acts { display: inline-flex; align-items: center; gap: var(--s4); }
 @media (max-width: 520px) {
   .import-read, .import-consent, .import-last { margin-left: var(--s4); margin-right: var(--s4); }
-  .import-waiting { margin-left: var(--s4); margin-right: var(--s4); }
+  .import-waiting, .import-notice { margin-left: var(--s4); margin-right: var(--s4); }
   .import-remove-ask { padding-left: var(--s4); padding-right: var(--s4); }
 }
 

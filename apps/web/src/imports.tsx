@@ -26,6 +26,8 @@ export const IM: {
   remove: Record<string, boolean>;
   /** The last failure's words (per source). */
   err: Record<string, string>;
+  /** What the last removal did, said under the sources where it happened (D296: never a toast). */
+  notice?: string;
   /** A consent card opened from Past tasks' offer: the pane shows it as it opens. */
   opening?: ImportSourceId;
 } = { busy: {}, consent: {}, read: {}, more: {}, remove: {}, err: {} };
@@ -44,11 +46,16 @@ function onImportsFrame(f: ImportsServerFrame) {
   delete IM.busy[f.id];
   if (f.op === "remove") {
     if (f.ok) {
-      A.toast(t("imports.removed"));
+      IM.notice = t("imports.removed");
+      delete IM.err[f.id];
     } else IM.err[f.id] = t("imports.error.failed");
   } else if (!f.ok) {
     IM.err[f.id] = f.error && A.L.t(`imports.error.${f.error}`) !== `imports.error.${f.error}` ? t(`imports.error.${f.error}`) : t("imports.error.failed");
-  } else delete IM.err[f.id];
+  } else {
+    delete IM.err[f.id];
+    // A run or a consent that went through is newer than the removal: its line no longer stands.
+    IM.notice = undefined;
+  }
   A.changed();
 }
 
@@ -147,7 +154,7 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
         {canBring && !consent && !asking && !busy && (
           <Btn kind={r.imported > 0 ? "secondary" : "primary"} size="sm" label={r.imported > 0 ? t("imports.again") : t("imports.bring")} about={r.app} disabled={busy} onClick={bring} />
         )}
-        {r.state === "failed" && <Btn kind="secondary" size="sm" label={t("imports.retry")} about={r.app} onClick={() => A.send({ t: "imports" })} />}
+        {r.state !== "ready" && r.state !== "looking" && <Btn kind="secondary" size="sm" label={t("imports.retry")} about={r.app} onClick={() => A.send({ t: "imports" })} />}
         <span class={`import-more${more ? " open" : ""}`} ref={moreAt}>
           <MoreButton label={t("imports.more")} open={more} onClick={() => ((IM.more[r.id] = !more), A.changed())} />
           {more &&
@@ -192,6 +199,8 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
 /** Settings › 导入 / Import: the lede, then one row per source. */
 export function ImportSettings() {
   useEffect(() => {
+    // A removal's line belongs to the visit it happened in; a later visit starts from what is true now.
+    IM.notice = undefined;
     if (A.S.welcomed) A.send({ t: "imports" });
   }, [A.S.welcomed]);
   const f = IM.frame;
@@ -203,6 +212,11 @@ export function ImportSettings() {
       {f.sources.map((r) => (
         <ImportRow key={r.id} r={r} />
       ))}
+      {IM.notice && (
+        <p class="small muted import-notice" role="status">
+          {IM.notice}
+        </p>
+      )}
     </section>
   );
 }

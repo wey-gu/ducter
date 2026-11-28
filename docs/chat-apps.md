@@ -14,6 +14,9 @@ all of it as well.
 Your partner speaks there as itself, through a bot or app of your own: your own Telegram bot, your
 own Slack app, your own Feishu / Lark app. It never writes as you, and nobody else can talk to it.
 
+Once an app is linked, it is named wherever Ducter says where you can reach it: on the overview,
+and at the top of **Settings › Chat apps**.
+
 > **Early preview.** Chat apps are new. They were tested carefully, but not yet with every
 > kind of Telegram, Slack or Feishu / Lark account; tell us if something looks off.
 

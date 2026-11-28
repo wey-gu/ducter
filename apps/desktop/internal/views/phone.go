@@ -237,7 +237,10 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 	p := a.ph()
 	pv := cv.Phone
 	name := firstNonEmpty(pv.Provider, cv.Name)
-	down := sourceDown(cv)
+	// One readiness table for calls: only an ok connection can call; unreachable (and any state a
+	// newer home adds) says it cannot, with the one action that asks again.
+	ready := cv.State == "ok"
+	down := !ready
 	a.group(c, "phone:"+cv.ID, "", "", func() {
 		art := "ab_call"
 		if down {
@@ -262,8 +265,17 @@ func (a *App) phoneCard(c *ui.Context, cv protocol.ConnectionView) {
 					a.send(protocol.ConnectionReauth{T: "connection_reauth", ID: cv.ID})
 				}
 			}
+		case cv.State == "unknown":
+			// Not looked at yet (a home just started): a muted "checking", never "can't reach".
+			line, tone = a.L.T("phone.card.checking", name), sideMuted
+			control = func() {}
 		case down:
 			line, tone = a.L.T("phone.card.down", name), sideFailed
+			control = func() {
+				if a.buttonFor(c, a.L.T("acct.retry"), name, btnSecondary, t.ControlSM, t.Surface) {
+					a.send(protocol.ConnectionsReq{T: "connections"})
+				}
+			}
 		}
 		tile := a.clayTile(c, art, down)
 		if strings.EqualFold(name, "Tuwa") {

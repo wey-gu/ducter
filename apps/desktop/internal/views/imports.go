@@ -54,6 +54,10 @@ func (a *App) importsInit() {
 			s.err[ans.ID] = a.importError(ans.Error)
 		} else {
 			delete(s.err, ans.ID)
+			// A run or a consent that went through is newer than the removal: its line no longer stands.
+			if ans.Op != "remove" {
+				s.notice = ""
+			}
 		}
 	}
 	a.S.ImportAnswers = nil
@@ -77,11 +81,13 @@ func (a *App) importError(code string) string {
 
 // importsSay is the partner's line at the top of the pane: what is true there now.
 func (a *App) importsSay() string {
+	v := a.S.Imports
+	if v == nil {
+		return ""
+	}
 	n := 0
-	if v := a.S.Imports; v != nil {
-		for _, s := range v.Sources {
-			n += s.Imported
-		}
+	for _, s := range v.Sources {
+		n += s.Imported
 	}
 	switch n {
 	case 0:
@@ -202,7 +208,9 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 							a.send(protocol.ImportRunReq{T: "import_run", ID: s.ID})
 						}
 					}
-				} else if s.State == "failed" {
+				} else if s.State != "looking" {
+					// Any source that can't be read right now (signed out, not authorized, missing,
+					// failed) gets the one way to ask again, not only a failed read.
 					if a.buttonFor(c, a.L.T("imports.retry"), s.App, btnSecondary, t.ControlSM, t.Surface) {
 						a.send(protocol.ImportsReq{T: "imports"})
 					}

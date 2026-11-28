@@ -58,7 +58,7 @@ func TestImportsPane(t *testing.T) {
 		}
 		app.Receive(importFrame())
 		tt.Frame()
-		for _, want := range []string{L.T("settings.tab.import"), L.T("imports.lede"), "Lody", L.T("imports.state.total", "3"), L.T("imports.bring")} {
+		for _, want := range []string{L.T("settings.tab.import"), app.importsSay(), "Lody", L.T("imports.state.total", "3"), L.T("imports.bring")} {
 			if !hasText(tt, want) {
 				t.Errorf("%s: no %q in %q", lang, want, tt.Texts())
 			}

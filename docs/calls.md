@@ -29,7 +29,7 @@ When you connect, Ducter sets a few things on your Tuwa account for you:
   life there.
 - the phone agent's name: your partner's name.
 
-If Tuwa ever asks you to sign in again, Tuwa's row says so, with **Sign in again**. **Disconnect Tuwa** on its last line asks before it does anything.
+If Tuwa ever asks you to sign in again, Tuwa's row says so, with **Sign in again**. If Tuwa can't be reached right now, the row says that, with **Try again**, and hides today's calls until it can. **Disconnect Tuwa** on its last line asks before it does anything.
 
 ## Ask for a call
 

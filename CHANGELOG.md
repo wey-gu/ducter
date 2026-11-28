@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.102 - 2026-11-28
+
+<!-- whats-new
+zh: 新待办等安静时再问；任务有了列表视图；每件事只有一个状态
+en: New to-dos wait for a quiet moment; a List view for Tasks; one state per task
+-->
+
+**A quieter conversation**
+- New to-dos from your sources come as one card when you're not mid-conversation, held in quiet
+  hours; the card asks once with the count and lists each by its title. Lines name their subject
+  in words, a record of what was done reads as done, and the same line isn't said twice.
+
+**Tasks for builders**
+- Every task has one state, worked out once: working, needs you (with what it waits for),
+  waiting (on what), stopped, done or failed. The counts, the Dock, the phone and your partner all
+  read the same one. A PR shows once, under whoever looks after it.
+- A List view from 8 tasks on: one row per task with its project, computer, agent, age, last step,
+  PR and CI; keys (j/k, x, ⌘A), bulk end, pause, continue, move and reassign with Undo, and saved
+  views.
+
+**Fixes**
+- Claude Code signed in with an API key or gateway token kept by Ducter counts as signed in, and
+  is shown as paid by use (#260, thanks @IceCodeNew).
+
 ## 0.1.101 - 2026-11-28
 
 <!-- whats-new

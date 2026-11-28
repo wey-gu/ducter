@@ -36,6 +36,11 @@ was told to wait for your answer, it is under **Needs you** with the question, u
 reaches the task. One that stopped with nothing still running is a stopped task (below), never
 **Working**.
 
+A row says what the task itself said, in one short line in your language. Until that line is ready,
+the task's own words are shown muted behind **It said:**, so they are never your partner speaking.
+When several things stand on one pull request, it appears once, under the thing that holds it; the
+others are quiet facts on that row (**By …**, **Review: …**, **Handed to …**), each on its own.
+
 What needs you comes first. A question is answered right there. A task that has stopped (it
 waits, but nothing will bring it back by itself) or didn't work out says why in plain words, with
 the way to fix it right beside it:

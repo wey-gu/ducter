@@ -36,6 +36,14 @@ export const onhandWords: { zh: Record<string, string>; en: Record<string, strin
     "onhand.wait.at": "%s 回来",
     "onhand.wait.unsaid": "停下了，没说在等什么",
     "onhand.wait.agent": "在等 %s 回话",
+    // D661 (research/245 §3.3 rule 4): a report shown before its gist exists is the task's own
+    // words, said in the task's voice, never the partner's.
+    "onhand.said": "它说：%s",
+    // D661 (research/245 §3.3 rule 5): the other holders of one outside thing, each its own fact.
+    "onhand.holder.author": "作者：%s",
+    "onhand.holder.review": "复审：%s",
+    "onhand.holder.handoff": "交给：%s",
+    "onhand.holder.on": "%s 上的 %s",
     // D645 (research/245 §3.7, B1): no computer could read GitHub for it; the fix in words.
     "onhand.github.blind": "看不到 GitHub：%s 上没有 gh。装上 gh，或在 %s 上读。",
     "onhand.wait.quiet": "还有 %d 个，一天多没有动静",
@@ -203,6 +211,11 @@ export const onhandWords: { zh: Record<string, string>; en: Record<string, strin
     "onhand.wait.at": "back at %s",
     "onhand.wait.unsaid": "Stopped without saying what it waits for",
     "onhand.wait.agent": "Waiting for %s to answer",
+    "onhand.said": "It said: %s",
+    "onhand.holder.author": "By %s",
+    "onhand.holder.review": "Review: %s",
+    "onhand.holder.handoff": "Handed to %s",
+    "onhand.holder.on": "%[2]s on %[1]s",
     "onhand.github.blind": "Can't see GitHub: no gh on %s. Install gh there, or read it on %s.",
     "onhand.wait.quiet": "%d more, quiet for over a day",
     "onhand.wait.since": "last change %s",

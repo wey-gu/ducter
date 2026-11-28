@@ -8532,6 +8532,11 @@ dl.call-summary dd { margin: 0; }
 .trow .l2.failed {
   color: var(--failed-ink);
 }
+/* D661 (research/245 §3.3 rule 4): the task's own report, before its gist exists, is the
+   task's words, not the partner's: muted ink, no new colour. */
+.trow .l2.said {
+  color: var(--ink-muted);
+}
 .trow .l2.failed > .g {
   color: var(--failed-ink);
 }
@@ -20440,6 +20445,11 @@ html[data-text-size="large"] .brand-mark > svg {
 }
 .ocard .o2.failed {
   color: var(--failed-ink);
+}
+/* D661 (research/245 §3.3 rule 4): the task's own report, before its gist exists, is the
+   task's words, not the partner's: muted ink, no new colour. */
+.ocard .o2.said {
+  color: var(--ink-muted);
 }
 .ocard .o2 .say {
   animation: alive-say var(--t-say) var(--ease) both;

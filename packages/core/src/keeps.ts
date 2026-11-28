@@ -1304,6 +1304,8 @@ export function createKeeps(o: {
       ...(end ? { end } : {}),
       ...(k.end && k.end.said !== "until" ? { noEnd: true as const } : {}),
       ...(pausedWhy ? { pausedWhy } : {}),
+      ...(k.life === "paused" && rt?.pausedBy ? { pausedBy: rt.pausedBy } : {}),
+      ...(f.kind === "routine" ? { routineId: f.routineId } : {}),
       roundsRun: roundsCount,
       items,
       taskIds,

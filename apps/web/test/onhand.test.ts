@@ -84,13 +84,14 @@ describe("On hand rows (D216)", () => {
     const task = A.S.tasks.get("t4")!;
     expect(o.settledLine(task)).toBe(line);
     expect(o.storyOf(task).words).toBe(line);
-    // A done task with no settle line still says its result.
-    expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe("Added three benchmarks.");
+    // A done task with no settle line still says its result (D661: its report with no gist is
+    // the task's own words, 它说 / It said).
+    expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe(A.L.t("onhand.said", "Added three benchmarks."));
   });
 
   test("a done row says its result; Find and the switcher match every word", async () => {
     const { A, o } = await home();
-    expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe("Added three benchmarks.");
+    expect(o.storyOf(A.S.tasks.get("t2")!).words).toBe(A.L.t("onhand.said", "Added three benchmarks."));
     expect(o.matches(A.S.tasks.get("t2")!, "hawdb bench")).toBe(true);
     expect(o.matches(A.S.tasks.get("t1")!, "hawdb")).toBe(false);
     expect(o.switchList("bench").map((x) => x.id)).toEqual(["t2"]);

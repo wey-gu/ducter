@@ -480,3 +480,37 @@ describe("combined results", () => {
     expect((fc.events.filter((e) => e.kind === "ai_msg").at(-1)!.body as any).text).toBe("两个都加好了，只返回未过期的项，各带 2 个测试。");
   });
 });
+
+test("the partner's task facts read the one state and the task's own line (D661)", async () => {
+  const { renderTasks } = await import("../src/index.ts");
+  const card = {
+    taskId: "t1",
+    persona: "default",
+    title: "核对数据迁移设计",
+    project: "",
+    place: { kind: "none" } as const,
+    harness: "codex",
+    attention: "working" as const,
+    residency: "hot" as const,
+    openedAt: "",
+    updatedAt: "",
+    truth: { state: "needs_you" as const, waitsFor: "这个任务停下吗？" },
+    gist: { text: "等你决定要不要继续。", at: "", reportSeq: 1 },
+    lastReport: { taskId: "t1", state: "progress" as const, summary: "I've paused as asked.", questions: [], evidence: [] },
+  };
+  const line = renderTasks([card]);
+  expect(line).toContain("needs_you");
+  expect(line).toContain("等你决定要不要继续。");
+  expect(line).not.toContain("I've paused as asked.");
+  // A task whose attention is done but whose truth is needs-you (a PR ready to merge) stays
+  // open for the partner, never listed among the recently finished.
+  const ready = { ...card, attention: "done" as const, truth: { state: "needs_you" as const, waitsFor: "#11230 可以合并了。" } };
+  expect(renderTasks([ready])).toContain("#11230 可以合并了。");
+  // A second holder of the same PR is one fact on the holder's row, never a second task.
+  const holder = { ...card, taskId: "h1", title: "PR holder", holders: [{ role: "author" as const, taskId: "t1" }] };
+  const other = { ...card, taskId: "t2", title: "The same PR", heldUnder: { ref: "x/y#1", taskId: "h1" } };
+  const both = renderTasks([holder, other]);
+  expect(both).toContain("PR holder");
+  expect(both).not.toContain("The same PR");
+  expect(both).toContain("also holds it: author task t1");
+});

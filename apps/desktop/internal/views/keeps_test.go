@@ -106,7 +106,7 @@ func TestKeepEndHead(t *testing.T) {
 	app, _ := pastApp(t, i18n.ZH)
 	since := app.Now().Add(-40 * time.Minute).UTC().Format(time.RFC3339)
 	app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{
-		Tasks: []protocol.TaskCard{{TaskID: "t_1", Title: "跟着 #11230", Attention: protocol.Working, UpdatedAt: since}},
+		Tasks:  []protocol.TaskCard{{TaskID: "t_1", Title: "跟着 #11230", Attention: protocol.Working, UpdatedAt: since}},
 		Counts: protocol.Counts{Working: 1},
 		Keeps: []protocol.KeepSheet{
 			{ID: "kp_1", Title: "独立复审远程访问设置并跟进 #11230", Life: "on", Run: "same", Since: since, RoundsRun: 5, End: &protocol.KeepEnd{Sentence: "#11230 合并时结束", Look: &protocol.KeepEndLook{Kind: "pr", Ref: "nowledge-co/mem#11230", What: "merged"}}},

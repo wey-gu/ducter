@@ -650,6 +650,11 @@ func (a *App) sourceChips(c *ui.Context, b store.Board) {
 // D467: what stopped and what didn't work out need you too; done today is
 // what 今天做完 lists (today's, never yesterday's).
 func (a *App) stateCounts(b store.Board, lens string) [4]int {
+	// D661 (research/245 §3.3): the home derived one state for the whole board; the strip
+	// counts that, filtered to the lens, so the Mac and the web cannot disagree.
+	if a.S.OnHand != nil && a.S.OnHand.Truth != nil {
+		return a.truthCounts(lens)
+	}
 	sp := a.splitOf(b)
 	// D517: 等你 is the person's one count's items (needsyou.go), the Dock
 	// badge's and the list of partners' numbers; a stopped line counts once.
@@ -658,6 +663,46 @@ func (a *App) stateCounts(b store.Board, lens string) [4]int {
 		n[2] += len(a.looseWaiters())
 	}
 	return n
+}
+
+// truthCounts are the strip's four counts from the snapshot's one truth (D661,
+// research/245 §3.3): needs you, working, waiting and today's done, each filtered to the lens by
+// the project key and group core stamped. The task-less waits and other partners' asks are
+// already in the list, so nothing is added here.
+func (a *App) truthCounts(lens string) [4]int {
+	th := a.S.OnHand.Truth
+	count := func(items []protocol.TruthItem) int {
+		n := 0
+		for _, it := range items {
+			if a.truthInLens(it, lens) {
+				n++
+			}
+		}
+		return n
+	}
+	today := 0
+	for _, it := range th.Done {
+		if it.DoneToday && a.truthInLens(it, lens) {
+			today++
+		}
+	}
+	return [4]int{count(th.NeedsYou), count(th.Working), count(th.Waiting), today}
+}
+
+// truthInLens is whether one truth item stands under the lens: all of them under ""; core's two
+// no-project lenses by ProjectGroup (a computer set-up under 电脑上的事, the rest under 不在项目里);
+// a project's own key under it.
+func (a *App) truthInLens(it protocol.TruthItem, lens string) bool {
+	if lens == "" {
+		return true
+	}
+	switch lens {
+	case lensOther:
+		return it.ProjectKey == "" && it.ProjectGroup != "computer"
+	case lensComputers:
+		return it.ProjectGroup == "computer"
+	}
+	return it.ProjectKey == lens
 }
 
 // boardTop is the board's head: the partner and its sentence (D287), the

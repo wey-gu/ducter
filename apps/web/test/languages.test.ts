@@ -82,7 +82,9 @@ describe("a result is read in its report's language (D292)", () => {
   test("a Korean summary for a Korean task shows under an English interface", async () => {
     const { A, o } = await home();
     expect(A.readerLang(A.S.tasks.get("k1"))).toBe("ko");
-    expect(o.storyOf(A.S.tasks.get("k1")!).words).toBe("벤치마크 세 개를 추가했습니다.");
+    // D661: a report with no gist is the task's own words, 它说 / It said around the report's
+    // own language; the language is still the report's, never the interface's.
+    expect(o.storyOf(A.S.tasks.get("k1")!).words).toBe(A.L.t("onhand.said", "벤치마크 세 개를 추가했습니다."));
   });
   test("an English summary for a Korean task does not", async () => {
     const { A, o } = await home();
@@ -95,7 +97,7 @@ describe("a result is read in its report's language (D292)", () => {
     A.S.channel.push({ ev: {} as any, firstSeq: 1, revision: 0, user: { text: "벤치마크 좀 추가해줘" } as any });
     A.S.channel.push({ ev: {} as any, firstSeq: 2, revision: 0, user: { text: "OK" } as any }); // no language of its own
     expect(A.convLang).toBe("ko");
-    expect(o.storyOf(A.S.tasks.get("k3")!).words).toBe("벤치마크 세 개를 추가했습니다.");
+    expect(o.storyOf(A.S.tasks.get("k3")!).words).toBe(A.L.t("onhand.said", "벤치마크 세 개를 추가했습니다."));
     A.S.channel.splice(0);
   });
 });

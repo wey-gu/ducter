@@ -220,6 +220,10 @@ export interface KeepSheet {
   roundsRun: number;
   /** D650: why it is paused when Ducter paused it, in words (a budget, a sign-in), never a reason code. */
   pausedWhy?: string;
+  /** D661 (research/245 §3.3): who paused it. A person's pause is not an ask; a system pause is. */
+  pausedBy?: "user" | "partner" | "system";
+  /** D661: a routine's id, so a paused routine and its one decision are one item. */
+  routineId?: string;
   /** What it holds now (each item's task, what waits for the person first). */
   items: KeepItem[];
   /** Every task this Keep owns now: a client stands them under the sheet, never in 在做 or 在等;

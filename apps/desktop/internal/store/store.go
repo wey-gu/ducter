@@ -266,8 +266,15 @@ func (t *Task) Title() string {
 	return ""
 }
 
-// Attention is the task's live attention state.
+// Attention is the task's live attention state. D661 (research/245 §3.3): when the card
+// carries core's one derived state, that is the answer, unless a newer live task_state has
+// already moved past the card; the old lookup is the fallback for a home without it.
 func (t *Task) Attention() protocol.Attention {
+	if t.Card != nil && t.Card.Truth != nil && (t.State == nil || t.State.Attention == t.Card.Attention) {
+		if a, ok := attentionOfTruth(t.Card.Truth.State); ok {
+			return a
+		}
+	}
 	switch {
 	case t.State != nil:
 		return t.State.Attention
@@ -275,6 +282,47 @@ func (t *Task) Attention() protocol.Attention {
 		return t.Card.Attention
 	}
 	return protocol.Queued
+}
+
+// attentionOfTruth maps the six words of core's one state to the attention a lane draws.
+func attentionOfTruth(s protocol.TruthState) (protocol.Attention, bool) {
+	switch s {
+	case protocol.TruthNeedsYou:
+		return protocol.NeedsYou, true
+	case protocol.TruthWaiting, protocol.TruthStopped:
+		return protocol.Blocked, true
+	case protocol.TruthWorking:
+		return protocol.Working, true
+	case protocol.TruthDone:
+		return protocol.Done, true
+	case protocol.TruthFailed:
+		return protocol.Failed, true
+	}
+	return "", false
+}
+
+// Truth is core's one derived state for the task: the only state every surface reads.
+func (t *Task) Truth() *protocol.TaskTruth {
+	if t.Card != nil {
+		return t.Card.Truth
+	}
+	return nil
+}
+
+// Gist is the person-language line of the task's latest report, when the home made one.
+func (t *Task) Gist() *protocol.TaskGist {
+	if t.Card != nil {
+		return t.Card.Gist
+	}
+	return nil
+}
+
+// HeldUnder says another row already shows this task's outside thing; the board leaves it out.
+func (t *Task) HeldUnder() *protocol.HeldUnder {
+	if t.Card != nil {
+		return t.Card.HeldUnder
+	}
+	return nil
 }
 
 // Residency is where the task's session is now (provisioning while its place
@@ -2286,6 +2334,11 @@ func (s *Store) Board() Board {
 	tasks = append(extra, tasks...)
 	for _, t := range tasks {
 		if away[t.ID] {
+			continue
+		}
+		// D661 (research/245 §3.3 rule 5): its outside thing is shown once, under its
+		// holder's row, so this row never stands on the board beside it.
+		if t.HeldUnder() != nil {
 			continue
 		}
 		if l := LaneOf(t.Attention()); l != LaneHidden {

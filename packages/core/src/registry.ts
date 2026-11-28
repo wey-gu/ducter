@@ -65,6 +65,8 @@ export interface CoreRegistry extends TaskRegistry {
 /** `zone` is the person's time zone for what "today" means (D310); the core's own when none. */
 export function createRegistry(log: LogStore, clock: Clock = realClock, zone: () => string | undefined = () => undefined): CoreRegistry {
   const cards = new Map<string, TaskCard>();
+  // D661: the report a card's gist belongs to (a later report's gist replaces it).
+  const reportSeqOf = new Map<string, number>();
   // D655 (research/246): a removed source's tasks stay in the Log but leave every list that
   // reads this registry (Past tasks, its search, the partner's task_find) until it is brought in
   // again. `hidden` is by task id; `removedAt` is each app's latest removal, so a later run unhides.
@@ -346,6 +348,16 @@ export function createRegistry(log: LogStore, clock: Clock = realClock, zone: ()
         if (!c) return;
         c.lastReport = b;
         c.updatedAt = e.ts;
+        reportSeqOf.set(b.taskId, e.seq);
+        break;
+      }
+      case "task_gist": {
+        // D661 (research/245 §3.3 rule 4): the newest report's one line. A line for an older
+        // report never replaces a newer report's (the card's words stay newer).
+        const b = e.body as Bodies["task_gist"];
+        const c = cards.get(b.taskId);
+        if (!c || b.reportSeq < (reportSeqOf.get(b.taskId) ?? 0)) break;
+        c.gist = { text: b.text, at: e.ts, reportSeq: b.reportSeq };
         break;
       }
       case "decision": {

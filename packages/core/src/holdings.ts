@@ -8,7 +8,7 @@
 // The reader is the same read-only `gh api …` the owned look uses: on start, then hourly, grouped by
 // repository, plus every fact Ducter already knows (owned_news, a new hand-off). The person hears
 // about closures once, as one quiet line in the partner's voice, only when a holder actually changed.
-import type { Bodies, CheckSpec, LogEvent } from "@ducter/protocol";
+import type { Bodies, CheckSpec, KeepSheet, LogEvent, TaskCard, TruthAttr } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
 import { detect, fill, words, type LangTag } from "@ducter/protocol/src/lang.ts";
@@ -407,4 +407,85 @@ export function createHoldings(o: {
       if (timer !== undefined) clock.clearTimeout(timer);
     },
   };
+}
+
+/** One PR's one row (D661, research/245 §3.3 rule 5). */
+export interface HolderEntry {
+  ref: string;
+  /** The task whose row shows it. */
+  taskId: string;
+  /** The other holders, each an attribute on that row (作者… / 复审… / 交给…). */
+  attrs: TruthAttr[];
+}
+
+export interface HolderIndex {
+  /** Every holder task, by task id: the holder row, or a row held under it. */
+  byTask: Map<string, { ref: string; taskId: string; holder: boolean; attrs: TruthAttr[] }>;
+  /** Every ref's one row. */
+  byRef: Map<string, HolderEntry>;
+}
+
+interface Held {
+  taskId: string;
+  keep?: string;
+  handoffTo?: string;
+  harness?: string;
+  device?: string;
+  openedAt: string;
+}
+
+const deviceOf = (c: TaskCard): string | undefined => (c.place.kind === "none" ? c.place.device : c.place.device);
+
+/**
+ * D661 (research/245 §3.3 rule 5): one holder per outside thing, keyed by `repo#n`. A PR appears
+ * once: under the Keep item that holds it, else the task that opened it (the earliest), else the
+ * hand-off. The others are attributes on that row, never rows of their own.
+ */
+export function holderIndexOf(tasks: TaskCard[], keeps: KeepSheet[] = []): HolderIndex {
+  const refs = new Map<string, Held[]>();
+  const add = (ref: string, h: Held) => {
+    const k = ref.toLowerCase();
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+#\d+$/.test(k)) return;
+    const list = refs.get(k) ?? [];
+    if (!list.some((x) => x.taskId === h.taskId && x.keep === h.keep && x.handoffTo === h.handoffTo)) list.push(h);
+    refs.set(k, list);
+  };
+  for (const c of tasks) {
+    for (const p of c.prs ?? []) add(p.pr, { taskId: c.taskId, harness: c.harness, ...(deviceOf(c) ? { device: deviceOf(c)! } : {}), openedAt: c.openedAt });
+    const h = c.handoff;
+    if (h && (h.item.kind === "pr" || h.item.kind === "issue")) add(h.item.ref, { taskId: c.taskId, handoffTo: h.to, openedAt: h.givenAt || c.openedAt });
+  }
+  for (const k of keeps) {
+    for (const it of k.items ?? []) {
+      if (!it.pr) continue;
+      add(it.pr, { taskId: it.taskId, keep: k.title, openedAt: k.since });
+    }
+  }
+  const byRef = new Map<string, HolderEntry>();
+  const byTask = new Map<string, { ref: string; taskId: string; holder: boolean; attrs: TruthAttr[] }>();
+  for (const [ref, list] of refs) {
+    const keeper = list.find((x) => x.keep);
+    const opener = [...list].filter((x) => !x.keep).sort((a, b) => a.openedAt.localeCompare(b.openedAt))[0];
+    const holder = keeper ?? opener ?? list[0]!;
+    const attrs: TruthAttr[] = [];
+    const seen = new Set<string>();
+    for (const x of list) {
+      // The holder's own PR entry is itself, never an attribute; a Keep or a hand-off on the same
+      // task is a real second fact (its review, who it was handed to).
+      // The holder's own PR/Keep entries are itself; only a hand-off on the same task is a
+      // real second fact (who it was handed to).
+      if (x.taskId === holder.taskId && !x.handoffTo) continue;
+      const role: TruthAttr["role"] = x.keep ? "review" : x.handoffTo ? "handoff" : "author";
+      const key = `${role}:${x.taskId}:${x.keep ?? ""}:${x.handoffTo ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      attrs.push({ role, taskId: x.taskId, ...(x.keep ? { keep: x.keep } : {}), ...(x.handoffTo ? { to: x.handoffTo } : {}), ...(x.harness ? { harness: x.harness } : {}), ...(x.device ? { device: x.device } : {}) });
+    }
+    byRef.set(ref, { ref, taskId: holder.taskId, attrs });
+    for (const x of list) {
+      if (byTask.has(x.taskId)) continue;
+      byTask.set(x.taskId, { ref, taskId: holder.taskId, holder: x.taskId === holder.taskId, attrs: x.taskId === holder.taskId ? attrs : [] });
+    }
+  }
+  return { byTask, byRef };
 }

@@ -13,7 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
 import { still } from "./nav.ts";
 import { wideNow } from "./fold.ts";
-import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place, type ProjectChange } from "@ducter/protocol";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place, type ProjectChange, type TruthAttr, type TruthItem } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A, type Wear } from "./app.ts";
@@ -100,9 +100,12 @@ export function settledLine(task: Task): string | undefined {
 }
 
 /** The second line of a row: what it is on, waits for, asks, or came to. */
-export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" } {
+export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" | "said" } {
   const a = attention(task);
   const r = reportOf(task);
+  // D661 (research/245 §3.3 rule 4): core's one person-language line for the latest report;
+  // the raw report is shown only behind 它说 / It said when no gist exists yet.
+  const gist = task.card?.gist?.text?.trim();
   // D645 (research/245 §3.7, B1): no computer could read GitHub for it; after its quiet the
   // row says so, with the fix (install gh there, or read it on the home).
   const blind = task.card?.githubBlind;
@@ -110,8 +113,9 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: t("onhand.github.blind", blind.device || blind.home || "", blind.home || blind.device || "") };
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    // D539: a copy card says what it copies where, in the reader's words.
-    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words. A question is the task's,
+    // never wrapped in 它说: the person is the one owed an answer.
+    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || task.card?.truth?.waitsFor || task.card?.waitsFor || r?.questions?.[0]?.text || gist || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
@@ -131,7 +135,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     const sent = A.S.bridgeWaitFor(task.id);
     if (sent) return { words: t("onhand.wait.agent", sent.to || sent.agent || "") };
     const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.readerLang(task)) : "";
-    return { words: said || t("onhand.wait.unsaid") };
+    if (gist) return { words: gist };
+    return said ? { words: t("onhand.said", said), tone: "said" } : { words: t("onhand.wait.unsaid") };
   }
   if (a === "working" || a === "queued") {
     const u = A.S.untilOf(task);
@@ -141,6 +146,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     // keeps the quiet ink (it went on). Before this turn holds a step: the turn's start in words.
     const said = saidOf(task, turnStart(task)).at(-1);
     if (said) return { mark: said.bad ? "error" : said.k === "voice" ? "" : said.k, words: said.words };
+    // No live step yet: the last report's gist is the person-language line (never a raw summary here).
+    if (gist) return { words: gist };
     return { words: task.card?.turnAt && task.events.some((e) => e.kind === "task_event") ? t("onhand.turn.fresh") : stateLabel(a) };
   }
   // D633: the last word about it was the outside thing ending: its row says that, not the
@@ -151,9 +158,12 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   // D472: a task that couldn't start says why in its row too (the page's own words, cant.tsx).
   const cant = failed ? cantOf(task) : undefined;
   if (cant) return { words: cantClause(cant), tone: "failed" };
+  if (gist) return { words: gist, ...(failed ? { tone: "failed" as const } : {}) };
   const ev = r && !failed ? headlineEvidence(task.evidence.length ? task.evidence : r.evidence) : undefined;
   const first = r ? sayable(r.summary.split("\n")[0], A.readerLang(task)) : undefined;
-  return { words: first || (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
+  // The report's own words are the task's, not the partner's: 它说 / It said, in the muted ink.
+  if (first) return { words: t("onhand.said", first), tone: "said" };
+  return { words: (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
 }
 
 /** How long it has been at it ("12 分钟"), or when it last changed ("3 分钟前"). */
@@ -282,6 +292,36 @@ export function groupLaneOf(lanes: Task[][]) {
  *  line, a partner's number in the list of partners and On hand's head all count these, and On hand
  *  draws each of them under 等你. A lens counts its tasks; all (and Other) the questions of no task too. */
 export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 (research/245 §3.3): core's needs-you list is the one answer. Never add an item it
+    // does not hold: the strip, the Dock badge and the rows must name the same work.
+    const items = truthInLens(truth.needsYou, lens);
+    const out: NeedItem[] = [];
+    const inLine = new Set<string>();
+    const taskIds = new Set(items.flatMap((i) => (i.taskId ? [i.taskId] : [])));
+    // A stopped line counts once: a group with a part in needs-you is its own card, and its parts
+    // stand aside (D385, D517).
+    for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(lensLanes(lens)), (id) => memberAttention(id))) {
+      if (![...g.ids].some((id) => taskIds.has(id))) continue;
+      for (const id of g.ids) inLine.add(id);
+      const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
+      out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER, key: `g:${g.g.id}`, groupId: g.g.id });
+    }
+    for (const it of items) {
+      if (it.taskId && inLine.has(it.taskId)) continue;
+      const task = it.taskId ? A.S.tasks.get(it.taskId) : undefined;
+      const partner = task ? A.taskPartner(task) : it.persona || DEFAULT_PARTNER;
+      if (it.taskId) out.push({ partner, key: `t:${it.taskId}`, taskId: it.taskId });
+      else if (it.keepId) out.push({ partner, key: `k:${it.keepId}`, keepId: it.keepId });
+      else if (it.routineId) out.push({ partner, key: `r:${it.routineId}`, routineId: it.routineId });
+      else if (it.askId) out.push({ partner, key: `a:${it.askId}`, askId: it.askId });
+      else if (it.decisionId) out.push({ partner, key: `d:${it.decisionId}`, decisionId: it.decisionId });
+      else if (it.callId) out.push({ partner, key: `c:${it.callId}`, callId: it.callId });
+      else if (it.waiterId) out.push({ partner, key: `w:${it.waiterId}`, waiterId: it.waiterId });
+    }
+    return out;
+  }
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
   const out: NeedItem[] = [];
@@ -305,8 +345,9 @@ export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
 }
 
 /** D535: one item of the person's one count, and where it lives: a stopped line, a task, the
- *  partner's own question (its card in the conversation), another partner's (On hand's 等你). */
-export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; decisionId?: string; askId?: string };
+ *  partner's own question (its card in the conversation), another partner's (On hand's 等你), a
+ *  Keep's item or a paused routine. */
+export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; keepId?: string; routineId?: string; decisionId?: string; askId?: string; callId?: string; waiterId?: string };
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
  *  way (not the partner's rethink, which may still ask the person). Said on its row in the words
@@ -578,6 +619,15 @@ export const lensLanes = (lens: string): Task[][] =>
 /** Only all, and the two no-project lenses, hold what belongs to no task: the partner's own asks,
  *  task-less waits, calls. */
 export const looseIn = (lens: string) => !lens || lens === OTHER;
+/** D661 (research/245 §3.3): the snapshot's lists narrowed to a lens. "" is all; a project by
+ *  its key; D654's two no-project lenses keep their own: Computers is the errands and machine
+ *  set-ups (projectGroup "computer"), Other is everything else with no key. */
+export function truthInLens(items: TruthItem[], lens: string): TruthItem[] {
+  if (!lens) return items;
+  if (lens === COMPUTERS) return items.filter((i) => !i.projectKey && i.projectGroup === "computer");
+  if (lens === OTHER) return items.filter((i) => !i.projectKey && i.projectGroup !== "computer");
+  return items.filter((i) => i.projectKey === lens);
+}
 
 /** D654: a project name is one line, cut in the middle when too long (the start and the end
  *  stay), the whole in the tooltip and the ⋯ menu's head. Measured, never a guess at a width. */
@@ -915,6 +965,17 @@ function pinnedOf(key: string) {
 
 /** The strip's four counts in a lens: needs you, working, waiting, done today (D310). */
 export function stateCounts(lens: string, now = Date.now()): number[] {
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 (research/245 §3.3): the snapshot's own lists, never a second derivation. For "" the
+    // four are exactly its counts, so the web can never disagree with the Dock or the Mac.
+    return [
+      truthInLens(truth.needsYou, lens).length,
+      truthInLens(truth.working, lens).length,
+      truthInLens(truth.waiting, lens).length,
+      truthInLens(truth.done, lens).filter((x) => x.doneToday !== false).length,
+    ];
+  }
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
   const loose = looseIn(lens);
@@ -976,11 +1037,20 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
  *  strip can't, whether anything needs you and, when nothing does, what comes next. The counts are
  *  the strip's; the full sentence (headSay) stays the bar's. The Mac's headLine says the same. */
 export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
-  // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
-  const parts = boardParts(lensLanes(lens), now);
-  const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
-  if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
-  if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 (research/245 §3.3): the counts are the snapshot's, and what has halted is its
+    // stopped and failed lists. A question leads; only a board of stops alone says stopped.
+    const halted = truthInLens(truth.stopped, lens).length + truthInLens(truth.failed, lens).length;
+    if (n[0]) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (halted) return halted === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", halted);
+  } else {
+    // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
+    const parts = boardParts(lensLanes(lens), now);
+    const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
+    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+  }
   if (n[1]) return t("onhand.line.working");
   if (n[2]) {
     const w = waitsAhead(lens, now);
@@ -1074,6 +1144,32 @@ export function matches(task: Task, q: string): boolean {
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
 export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "" };
 
+/** D661 (research/245 §3.3 rule 5): who else holds the outside thing, in words: a task's
+ *  agent on its computer ("Mac 上的 Antigravity" / "Antigravity on Mac"), a Keep by its name, a
+ *  hand-off by who it went to. */
+function holderWho(h: TruthAttr): string {
+  if (h.role === "handoff") return h.to?.trim() || h.keep?.trim() || "";
+  if (h.keep?.trim()) return h.keep.trim();
+  // A task holder may name only its task: its card still says which agent on which computer.
+  const held = h.taskId ? A.S.tasks.get(h.taskId) : undefined;
+  const harnessId = h.harness || (held ? harnessOf(held) : "");
+  const device = h.device || (held ? (placeOf(held) as { device?: string }).device : undefined);
+  const harness = harnessId ? harnessName(harnessId) : "";
+  if (!harness) return device ? computerName(device) : "";
+  return device ? t("onhand.holder.on", computerName(device), harness) : harness;
+}
+
+/** D661: each holder its own fact (never a " · " join). */
+export function holderFacts(task: Task): string[] {
+  return (task.card?.holders ?? []).map((h) => {
+    const who = holderWho(h);
+    if (!who) return "";
+    if (h.role === "author") return t("onhand.holder.author", who);
+    if (h.role === "review") return t("onhand.holder.review", who);
+    return t("onhand.holder.handoff", who);
+  });
+}
+
 /** D315: where a card says its task is, each its own element (D291): its project when the board
  *  shows them all, never 其他 / Other, which says nothing; its computer only when it isn't the one
  *  most of the board runs on (the usual needs no saying on every card). The Mac's whereMeta. */
@@ -1084,7 +1180,12 @@ export function whereMeta(task: Task): string[] {
   // its PR merged) says whose it is.
   // D511: so does a Keep's task anywhere but under its Keep (a question in 等你, Find, the rail).
   const helper = NESTED.has(task.id) ? "" : (task.card?.keep?.name ?? task.card?.helper?.name ?? "");
-  return [L.showProj && k !== OTHER && k !== COMPUTERS ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
+  return [
+    L.showProj && k !== OTHER && k !== COMPUTERS ? lensName(k) : "",
+    manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "",
+    helper,
+    ...holderFacts(task),
+  ].filter(Boolean);
 }
 
 /** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
@@ -2845,6 +2946,7 @@ function closeKeepHere() {
 /** D535: the element On hand draws for an item: its row, its line's card, its question's card. */
 function itemSelector(it: NeedItem): string {
   if (it.groupId) return `[data-group="${CSS.escape(it.groupId)}"]`;
+  if (it.keepId) return `[data-keep="${CSS.escape(it.keepId)}"]`;
   if (it.askId) return `[data-ask="${CSS.escape(it.askId)}"]`;
   if (it.decisionId) return `#d-${CSS.escape(it.decisionId)}`;
   const d = it.taskId ? A.S.pendingDecision(it.taskId) : undefined;

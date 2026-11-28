@@ -4,10 +4,14 @@
  * Taken by headless Chrome against a demo core (apps/web/demo-site.ts and demo.ts); see
  * design/site.md "Pictures". The dark one follows the visitor's system, like the rest of the site.
  */
-interface Props { name: string; alt: string; width: number; height: number; sizes?: string; eager?: boolean }
-const { name, alt, width, height, sizes = "100vw", eager = false } = Astro.props;
+/** phone: a phone-width screen of the same view (<name>-phone-{light,dark}.webp), shown at 700px and below instead of a crop of the wide one. */
+interface Props { name: string; alt: string; width: number; height: number; sizes?: string; eager?: boolean; phone?: { width: number; height: number } }
+const { name, alt, width, height, sizes = "100vw", eager = false, phone } = Astro.props;
+const narrow = "(max-width: 700px)";
 ---
 <picture class="appshot">
+  {phone && <source media={`${narrow} and (prefers-color-scheme: dark)`} srcset={`/shots/${name}-phone-dark.webp`} width={phone.width} height={phone.height} />}
+  {phone && <source media={narrow} srcset={`/shots/${name}-phone-light.webp`} width={phone.width} height={phone.height} />}
   <source media="(prefers-color-scheme: dark)" srcset={`/shots/${name}-dark.webp`} />
   <img src={`/shots/${name}-light.webp`} alt={alt} width={width} height={height}
     loading={eager ? "eager" : "lazy"} fetchpriority={eager ? "high" : undefined} decoding="async" />

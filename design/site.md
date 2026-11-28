@@ -90,7 +90,7 @@ system). They are real screens of the web client: headless Chrome against a demo
 `localStorage["ducter.notify.asked"]="1"` before load so the notification ask stays out of frame,
 and loaded once more so the conversation is read (no New messages line) and starts at the top; the
 clock is set with a time zone override so the note says a morning time.
-`many` (D414: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 800 at 2×, `#onhand`, ending on the space under the two Needs-you cards) come from
+`many` (D414: On hand full width, `#onhand/full` at 1440 × 1000 and 2×, cropped to 1440 × 750 and saved at 1920 wide, from `DEMO_LANG=en bun apps/web/demo-onhand.ts`), `many-phone` (the same On hand at 390 × 800 and 2×, `#onhand`, cropped in the space under the first Needs-you card, at 780 × 1454; `Shot`'s `phone` shows it at 700px and below instead of a crop of the wide one), `hero` (720 × 900 at 1.5×) and `onhand-phone` (390 × 800 at 2×, `#onhand`, ending on the space under the two Needs-you cards) come from
 `DEMO_LANG=en bun apps/web/demo-site.ts`; `memory` (`#settings=memory`, the sheet clipped) and
 `done-for-you` (Done for you opened from On hand, clipped) from `DEMO_LANG=en DEMO_MEM=ready
 DEMO_DID=1 bun apps/web/demo.ts`. Resized to WebP (quality 82); each is under 70 KB. Retake them

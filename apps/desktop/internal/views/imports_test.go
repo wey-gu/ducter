@@ -46,6 +46,14 @@ func TestImportFramesDecode(t *testing.T) {
 	if err != nil || a.Imports == nil || a.Imports.Op != "run" || a.Imports.Threads != 2 || a.Imports.Messages != 9 {
 		t.Fatalf("import_answer: %#v %v", a.Imports, err)
 	}
+	p, err := protocol.DecodeServerFrame([]byte(`{"t":"imports","sources":[{"id":"fixture-reader","app":"Fixture Notes","kind":"plugin","state":"ready","imported":1,"consented":true,"added":true,"repo":"https://example.test/fixture.git","author":"Ducter tests","reads":["./threads.json"],"unreviewed":true,"update":{"version":"0.2.0"}}]}`))
+	if err != nil || p.Imports == nil || p.Imports.Sources[0].Kind != "plugin" || !p.Imports.Sources[0].Added || p.Imports.Sources[0].Repo != "https://example.test/fixture.git" || len(p.Imports.Sources[0].Reads) != 1 || !p.Imports.Sources[0].Unreviewed || p.Imports.Sources[0].Update.Version != "0.2.0" {
+		t.Fatalf("plugin imports: %#v %v", p.Imports, err)
+	}
+	u, err := protocol.DecodeServerFrame([]byte(`{"t":"import_answer","id":"fixture-reader","op":"update","ok":true,"needsConsent":true,"widened":true}`))
+	if err != nil || u.Imports == nil || u.Imports.Op != "update" || !u.Imports.NeedsConsent || !u.Imports.Widened {
+		t.Fatalf("update answer: %#v %v", u.Imports, err)
+	}
 }
 
 func TestImportsPane(t *testing.T) {
@@ -103,7 +111,7 @@ func TestImportsPane(t *testing.T) {
 		if !hasText(tt, L.T("imports.last", "2", app.importDay("2026-10-02"))) {
 			t.Errorf("%s: no quiet line after the run: %q", lang, tt.Texts())
 		}
-		if !hasText(tt, L.T("imports.last.skipped", "1")) {
+		if !hasText(tt, L.T("imports.last.skipped.one")) {
 			t.Errorf("%s: the skipped line is missing: %q", lang, tt.Texts())
 		}
 	}

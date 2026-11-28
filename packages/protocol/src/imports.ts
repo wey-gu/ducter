@@ -6,8 +6,14 @@
 // The home reads the source's index for its state; nothing is read until the person says yes, and
 // removal hides what it brought in (never silently: the row says what will be hidden first).
 
-/** The app a source belongs to. Phase 2 has one; the shape allows more without a new pane. */
-export type ImportSourceId = "lody";
+/**
+ * A source in Settings › 导入 / Import: the built-in `"lody"`, or an added plugin's own id (D668,
+ * research/246 §3.6). The wire is a string; the home accepts only ids it knows.
+ */
+export type ImportSourceId = string;
+
+/** Built in, or added by the person from a git URL or a folder. */
+export type ImportSourceKind = "builtin" | "plugin";
 
 /**
  * Whether the source can be read on this computer: ready (lody on PATH and signed in), signed_out
@@ -21,9 +27,11 @@ export interface ImportSourceRow {
   id: ImportSourceId;
   /** The app's own name, untranslated ("Lody"). */
   app: string;
+  /** builtin: shipped with Ducter; plugin: added by the person (D668). */
+  kind?: ImportSourceKind;
   state: ImportSourceState;
   /** What went wrong, in the home's own words (the row translates the code). */
-  problem?: "no_lody" | "signed_out" | "needs_authorization" | "failed";
+  problem?: "no_lody" | "signed_out" | "needs_authorization" | "failed" | "needs_newer" | "sandbox_unavailable" | "hash_mismatch" | "broken" | "plugin_failed";
   /** The encrypted workspaces whose history this computer may not read yet (names). */
   waiting?: string[];
   /** Conversations in the source's index; absent until a look read it. */
@@ -42,6 +50,20 @@ export interface ImportSourceRow {
   last?: { at: string; threads: number; oldest?: string; skipped: number; stopped?: boolean };
   /** A run is in flight on this home. */
   running?: boolean;
+  /** D668: an added source. 你加的 / Added by you, and its repository, in its own elements. */
+  added?: boolean;
+  /** The repository or folder it came from, shown as its own line. */
+  repo?: string;
+  /** Who made it, in their own name. */
+  author?: string;
+  /** The literal paths the consent card names, one line each. Absent for the built-in Lody. */
+  reads?: string[];
+  /** On Ducter's curated list at the pinned commit: Ducter checked this version. */
+  reviewed?: boolean;
+  /** Outside the curated list: 没有人替你检查过 / Nobody has checked it for you. */
+  unreviewed?: boolean;
+  /** A newer commit or content is out; one tap applies it (and asks again if it reads more). */
+  update?: { version?: string; commit?: string };
 }
 
 /** What Settings › Import and Past tasks read, one frame, kept current on every change. */
@@ -64,6 +86,8 @@ export type ImportsClientFrame =
   | { t: "import_run"; id: ImportSourceId }
   // 删掉这个来源 / Remove this source: hide what it brought in (the row asked once, in place).
   | { t: "import_remove"; id: ImportSourceId }
+  // 更新 / Update an added source to the pinned newer commit; a widened read list asks again.
+  | { t: "import_update"; id: ImportSourceId }
   // The offer in Past tasks: shown (it now fades on its own), 先不 (it waits for a mention), or
   // 带进来 (the same consent card, then the run). Past tasks sends `seen` when it draws the line.
   | { t: "import_offer"; id: ImportSourceId; action: "seen" | "decline" | "begin" };
@@ -72,4 +96,4 @@ export type ImportsServerFrame =
   | ({ t: "imports" } & ImportsView)
   // The answer to a consent, a run or a removal: the same ImportAnswer shape the CLI uses, plus what
   // removal hid. The imports frame that follows carries the new rows.
-  | { t: "import_answer"; id: ImportSourceId; op: "consent" | "run" | "remove"; ok: boolean; threads?: number; messages?: number; skipped?: number; removed?: number; stopped?: boolean; error?: string };
+  | { t: "import_answer"; id: ImportSourceId; op: "consent" | "run" | "remove" | "update"; ok: boolean; threads?: number; messages?: number; skipped?: number; removed?: number; stopped?: boolean; error?: string; /** The update widened the read list: show the consent card again. */ needsConsent?: boolean; widened?: boolean; /** The update had nothing to apply. */ upToDate?: boolean; detail?: string };

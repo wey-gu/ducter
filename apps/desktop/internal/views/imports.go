@@ -26,11 +26,12 @@ const importsArt = "wait_file"
 
 type importsState struct {
 	// consent is the source whose consent card is open; read, its read list; remove, its ask.
-	consent string
-	read    string
-	remove  string
-	busy    map[string]bool
-	err     map[string]string
+	consent  string
+	read     string
+	remove   string
+	busy     map[string]bool
+	updating map[string]bool
+	err      map[string]string
 	// offerSent is the line Past tasks drew once this visit (it fades from then on).
 	offerSent bool
 	// notice is the one thing the pane says after an action (a removal happened).
@@ -42,11 +43,30 @@ func (a *App) importsInit() {
 	if s.busy == nil {
 		s.busy = map[string]bool{}
 	}
+	if s.updating == nil {
+		s.updating = map[string]bool{}
+	}
 	if s.err == nil {
 		s.err = map[string]string{}
 	}
 	for _, ans := range a.S.ImportAnswers {
 		delete(s.busy, ans.ID)
+		delete(s.updating, ans.ID)
+		if ans.Op == "update" {
+			if ans.OK {
+				s.notice = a.L.T("imports.updated")
+				if ans.UpToDate {
+					s.notice = a.L.T("imports.update.upToDate")
+				}
+				if ans.NeedsConsent {
+					s.consent = ans.ID
+				}
+				delete(s.err, ans.ID)
+			} else {
+				s.err[ans.ID] = a.importError(ans.Error)
+			}
+			continue
+		}
 		if ans.Op == "remove" && ans.OK {
 			s.notice = a.L.T("imports.removed")
 			delete(s.err, ans.ID)
@@ -69,7 +89,7 @@ func (a *App) importsInit() {
 // importError is the answer's reason in the person's words, never the code.
 func (a *App) importError(code string) string {
 	switch code {
-	case "not_consented", "no_lody", "signed_out", "needs_authorization", "already_running":
+	case "not_consented", "no_lody", "signed_out", "needs_authorization", "already_running", "needs_newer", "sandbox_unavailable", "hash_mismatch", "broken", "plugin_failed", "not_found", "update_failed":
 		return a.L.T("imports.error." + code)
 	}
 	return a.L.T("imports.error.failed")
@@ -112,6 +132,8 @@ func (a *App) importsPanel(c *ui.Context) {
 // importStateWords is the row's state: how many, brought in when, what's new, or why not.
 func (a *App) importStateWords(s protocol.ImportSourceRow) string {
 	switch {
+	case a.imports.updating[s.ID]:
+		return a.L.T("imports.updating")
 	case s.Running:
 		return a.L.T("imports.bringing")
 	case s.State == "looking":
@@ -128,6 +150,8 @@ func (a *App) importStateWords(s protocol.ImportSourceRow) string {
 		return a.L.T("imports.state.fresh", fmt.Sprint(*s.Fresh))
 	case s.Imported > 0 && s.ImportedDay != "":
 		return a.L.T("imports.state.brought", a.importDay(s.ImportedDay))
+	case s.Kind == "plugin":
+		return a.L.T("imports.state.plugin")
 	case s.Total != nil:
 		if *s.Total == 1 {
 			return a.L.T("imports.state.total.one")
@@ -150,15 +174,28 @@ func (a *App) importDay(day string) string {
 }
 
 // importRead is the literal read list, the consent card with its two buttons when yes is set.
-func (a *App) importRead(c *ui.Context, key string, yes func(), no func()) {
+// An added plugin names every path its manifest declares, one line each; the built-in Lody keeps
+// the one sentence about its own command (a reader that goes online through the person's CLI).
+func (a *App) importRead(c *ui.Context, key string, reads []string, added bool, author string, yes func(), no func()) {
 	t := a.T
 	ui.Column(c.Key("read:" + key)).Gap(t.S2).Children(func() {
 		uiText(c.Key("title"), a.L.T("imports.consent.title")).FontSize(t.SM).FontWeight(700)
-		// One thing it reads, said as a line under 它会读：, no bullet (a single item is not a list).
-		uiText(c.Key("path"), a.L.T("imports.consent.path")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
-		uiText(c.Key("command"), a.L.T("imports.consent.command")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+		if len(reads) > 0 {
+			for i, p := range reads {
+				uiText(c.Key(fmt.Sprintf("path:%d", i)), p).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.Ink).Selectable()
+			}
+			uiText(c.Key("nonet"), a.L.T("imports.consent.nonet")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+		} else {
+			// One thing it reads, said as a line under 它会读：, no bullet (a single item is not a list).
+			uiText(c.Key("path"), a.L.T("imports.consent.path")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+			uiText(c.Key("command"), a.L.T("imports.consent.command")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+		}
 		uiText(c.Key("past"), a.L.T("imports.consent.past")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
-		uiText(c.Key("made"), a.L.T("imports.consent.made")).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+		made := a.L.T("imports.consent.made")
+		if added {
+			made = a.L.T("imports.consent.made.plugin", author)
+		}
+		uiText(c.Key("made"), made).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		if yes != nil {
 			ui.Row(c.Key("go")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				if a.buttonFor(c, a.L.T("imports.consent.go"), a.L.T("imports.consent.path"), btnPrimary, t.ControlSM, t.Surface) {
@@ -182,9 +219,15 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 		if s.State != "ready" && s.State != "looking" {
 			tone = sideFailed
 		}
-		a.headRow(c, "imp:"+s.ID, a.brandTile(c, s.ID, s.State != "ready"), s.App, a.importStateWords(s), tone, func() {
+		a.headRow(c, "imp:"+s.ID, a.brandTile(c, s.App, s.State != "ready"), s.App, a.importStateWords(s), tone, func() {
 			ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
-				busy := st.busy[s.ID] || s.Running
+				busy := st.busy[s.ID] || s.Running || st.updating[s.ID]
+				if s.Update != nil && !busy && st.consent != s.ID && st.remove != s.ID {
+					if a.buttonFor(c, a.L.T("imports.update"), s.App, btnSecondary, t.ControlSM, t.Surface) {
+						st.updating[s.ID] = true
+						a.send(protocol.ImportUpdateReq{T: "import_update", ID: s.ID})
+					}
+				}
 				if s.State == "ready" && !busy && st.consent != s.ID && st.remove != s.ID {
 					label := a.L.T("imports.bring")
 					if s.Imported > 0 {
@@ -231,12 +274,40 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 				uiText(c, a.L.T("imports.waiting", strings.Join(s.Waiting, a.L.T("acct.sep")))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			})
 		}
+		if s.Added || s.Author != "" || s.Repo != "" || s.Unreviewed || s.Reviewed || s.Update != nil {
+			a.textBlock(c, "imp-meta:"+s.ID, func() {
+				ui.Column(c).Gap(t.S1).Children(func() {
+					if s.Added {
+						uiText(c.Key("added"), a.L.T("imports.added")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
+					if s.Author != "" {
+						uiText(c.Key("author"), a.L.T("imports.author", s.Author)).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
+					if s.Repo != "" {
+						uiText(c.Key("repo"), s.Repo).Font(t.Mono).FontSize(t.XS).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Selectable()
+					}
+					if s.Unreviewed {
+						uiText(c.Key("unreviewed"), a.L.T("imports.unreviewed")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.Ink)
+					}
+					if s.Reviewed {
+						uiText(c.Key("reviewed"), a.L.T("imports.reviewed")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
+					if s.Update != nil {
+						line := a.L.T("imports.state.updateReady")
+						if s.Update.Version != "" {
+							line = a.L.T("imports.state.update", s.Update.Version)
+						}
+						uiText(c.Key("update"), line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					}
+				})
+			})
+		}
 		if st.read == s.ID {
-			a.textBlock(c, "imp-read:"+s.ID, func() { a.importRead(c, s.ID, nil, nil) })
+			a.textBlock(c, "imp-read:"+s.ID, func() { a.importRead(c, s.ID, s.Reads, s.Added, s.Author, nil, nil) })
 		}
 		if st.consent == s.ID {
 			a.textBlock(c, "imp-consent:"+s.ID, func() {
-				a.importRead(c, s.ID, func() {
+				a.importRead(c, s.ID, s.Reads, s.Added, s.Author, func() {
 					st.consent = ""
 					st.busy[s.ID] = true
 					a.send(protocol.ImportConsentReq{T: "import_consent", ID: s.ID})
@@ -258,7 +329,11 @@ func (a *App) importGroup(c *ui.Context, s protocol.ImportSourceRow) {
 				}
 				uiText(c.Key("line"), line).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				if s.Last.Skipped > 0 {
-					uiText(c.Key("skip"), a.L.T("imports.last.skipped", fmt.Sprint(s.Last.Skipped))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+					skip := a.L.T("imports.last.skipped", fmt.Sprint(s.Last.Skipped))
+					if s.Last.Skipped == 1 {
+						skip = a.L.T("imports.last.skipped.one")
+					}
+					uiText(c.Key("skip"), skip).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 				}
 				if s.Last.Stopped {
 					uiText(c.Key("stop"), a.L.T("imports.last.stopped")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)

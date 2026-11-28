@@ -13,10 +13,12 @@ import type { Bodies, ImportAnswer, ImportSourceId, ImportSourceRow, ImportsView
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { importInto } from "./service.ts";
 import { detectLody, lodyRunner, lookLody, readLody, type LodyExec, type LodyLook } from "./lody.ts";
+import { createPluginRuntime, type PluginEntry, type PluginRuntime } from "./plugins.ts";
+import { sandboxAvailable } from "./sandbox.ts";
 
 export const IMPORTS_FILE = "imports.json";
 /** One source in phase 2: the app's own name, untranslated. */
-export const IMPORT_SOURCE_APP: Record<ImportSourceId, string> = { lody: "Lody" };
+export const IMPORT_SOURCE_APP: Record<"lody", string> = { lody: "Lody" };
 const APP = IMPORT_SOURCE_APP;
 /** A look at the index is reused this long (the pane's own visit, Past tasks' offer). */
 const LOOK_MS = 60_000;
@@ -26,6 +28,8 @@ const OFFER_MS = 24 * 3_600_000;
 interface StoredSource {
   consented?: boolean;
   consentedAt?: string;
+  /** The read list the person said yes to; a widened list asks again (D668). */
+  reads?: string[];
   /** When the offer line was first drawn (it does not come back after that day). */
   offeredAt?: string;
   /** 先不: no offer until the person mentions the app. */
@@ -35,7 +39,7 @@ interface StoredSource {
 }
 
 interface Stored {
-  sources: Partial<Record<ImportSourceId, StoredSource>>;
+  sources: Record<string, StoredSource>;
 }
 
 export interface ImportSourcesDeps {
@@ -51,6 +55,8 @@ export interface ImportSourcesDeps {
   run?: LodyExec;
   /** A look's cache lifetime, injected in tests. */
   lookMs?: number;
+  /** D668: the added plugins' runtime; default one over this data folder. */
+  plugins?: PluginRuntime;
 }
 
 export interface ImportSources {
@@ -63,6 +69,8 @@ export interface ImportSources {
   run(id: ImportSourceId): Promise<ImportAnswer>;
   /** 删掉这个来源: hide what it brought in, never silently. */
   remove(id: ImportSourceId): ImportAnswer;
+  /** 更新 / Update an added source; a widened read list asks again. */
+  update(id: ImportSourceId): Promise<ImportAnswer>;
   /** The offer line was drawn (it fades from then on). */
   offerSeen(id: ImportSourceId): void;
   /** 先不: it waits for the person to mention the app. */
@@ -121,34 +129,41 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
   let stored = load();
   const of = (id: ImportSourceId): StoredSource => (stored.sources[id] ??= {});
 
+  const plugins = d.plugins ?? createPluginRuntime({ dataDir: d.dataDir, now });
+  plugins.onChange(changed);
+
   let detected: { present: boolean; signedIn: boolean; signedOut?: boolean } | undefined;
   let looked: LodyLook | undefined;
   let lookedAt = 0;
   let looking: Promise<void> | undefined;
-  let running = false;
+  const running = new Set<string>();
 
   /** The last run's ledger (the Log is the truth for what was brought in, not this file). */
-  const lastRun = (app: string): (Bodies["import_run"] & { at: string }) | undefined => {
+  const lastRun = (app: string, account?: string): (Bodies["import_run"] & { at: string }) | undefined => {
     const runs = d.log
       .read({ stream: "system", kinds: ["import_run"], limit: 400 })
-      .filter((e) => (e.body as Bodies["import_run"]).app === app && (e.body as Bodies["import_run"]).phase !== "started");
+      .filter((e) => {
+        const b = e.body as Bodies["import_run"];
+        return b.app === app && (account === undefined || b.account === account) && b.phase !== "started";
+      });
     const e = runs.at(-1);
     return e ? { ...(e.body as Bodies["import_run"]), at: e.ts } : undefined;
   };
 
-  const brought = (app: string): { n: number; oldest?: string; day?: string } => {
-    const cards = d.tasks.list().filter((c) => c.imported?.app === app);
+  const brought = (app: string, account?: string): { n: number; oldest?: string; day?: string } => {
+    const cards = d.tasks.list().filter((c) => c.imported?.app === app && (account === undefined || c.imported?.account === account));
     if (!cards.length) return { n: 0 };
     const sorted = [...cards].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
-    const lr = lastRun(app);
+    const lr = lastRun(app, account);
     return { n: cards.length, oldest: sorted[0]!.updatedAt, ...(lr ? { day: day(lr.at, zone()) } : { day: day(sorted.at(-1)!.updatedAt, zone()) }) };
   };
 
-  const row = (id: ImportSourceId): ImportSourceRow => {
+  const lodyRow = (): ImportSourceRow => {
+    const id = "lody";
     const app = APP[id];
     const st = of(id);
-    const got = brought(app);
-    const lr = lastRun(app);
+    const got = brought(app, id);
+    const lr = lastRun(app, id);
     const state: ImportSourceRow["state"] =
       !looked && !detected
         ? "looking"
@@ -172,6 +187,7 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
     return {
       id,
       app,
+      kind: "builtin",
       state,
       ...(problem ? { problem } : {}),
       ...(waiting.length ? { waiting } : {}),
@@ -182,7 +198,42 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
       ...(oldest ? { oldest } : {}),
       consented: !!st.consented,
       ...(last ? { last } : {}),
-      ...(running ? { running: true } : {}),
+      ...(running.has(id) ? { running: true } : {}),
+    };
+  };
+
+  /** D668: an added plugin's row: its own state, its repository, who made it, what it reads. */
+  const pluginRow = (p: PluginEntry): ImportSourceRow => {
+    const id = p.record.id;
+    const app = p.manifest?.app.name ?? p.record.app;
+    const st = of(id);
+    const got = brought(app, id);
+    const lr = lastRun(app, id);
+    const avail = sandboxAvailable();
+    const problem: ImportSourceRow["problem"] | undefined = p.problem ?? (!avail.ok ? "sandbox_unavailable" : undefined);
+    const reads = p.manifest?.reads ?? st.reads ?? [];
+    const consented = !!st.consented && plugins.consented(id, reads);
+    const oldest = got.oldest ? day(got.oldest, zone()) : undefined;
+    const last = lr && (got.n > 0 || lr.threads === 0) ? { at: lr.at, threads: lr.threads, ...(oldest ? { oldest } : {}), skipped: lr.skipped, ...(lr.phase === "stopped" ? { stopped: true } : {}) } : undefined;
+    return {
+      id,
+      app,
+      kind: "plugin",
+      state: problem ? "failed" : "ready",
+      ...(problem ? { problem } : {}),
+      imported: got.n,
+      ...(got.day ? { importedDay: got.day } : {}),
+      ...(oldest ? { oldest } : {}),
+      consented,
+      ...(last ? { last } : {}),
+      ...(running.has(id) ? { running: true } : {}),
+      added: true,
+      ...(p.record.source ? { repo: p.record.source } : p.record.kind === "folder" ? { repo: p.record.dir } : {}),
+      ...(p.manifest?.author.name ?? p.record.author ? { author: p.manifest?.author.name ?? p.record.author } : {}),
+      ...(reads.length ? { reads } : {}),
+      reviewed: p.reviewed,
+      unreviewed: !p.reviewed,
+      ...(p.update ? { update: { ...(p.update.version ? { version: p.update.version } : {}), ...(p.update.commit ? { commit: p.update.commit } : {}) } } : {}),
     };
   };
 
@@ -195,11 +246,12 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
   };
 
   const view = (): ImportsView => {
-    const sources = (Object.keys(APP) as ImportSourceId[]).map(row);
+    const sources = [lodyRow(), ...plugins.list().map(pluginRow)];
     // The first visit starts the look by itself (cheap: the index only), so the row never says
     // "no lody" before anything was looked at.
     if (!lookedAt && !looking) void look();
-    const offer = offerOf(sources[0]!);
+    const lody = sources.find((s) => s.id === "lody")!;
+    const offer = offerOf(lody);
     return { sources, ...(offer ? { offer } : {}) };
   };
 
@@ -211,6 +263,9 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
         const l = await lookLody(run);
         detected = { present: l.present, signedIn: l.signedIn, ...(l.signedOut ? { signedOut: true } : {}) };
         looked = l;
+        // D668: an added source's newer commit is checked at most hourly, only while the pane
+        // or a run asks (research/246 §3.11).
+        await plugins.check().catch(() => undefined);
       } catch {
         detected = { present: false, signedIn: false };
         looked = undefined;
@@ -227,6 +282,13 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
 
   const consent = (id: ImportSourceId) => {
     const st = of(id);
+    if (id !== "lody") {
+      const p = plugins.get(id);
+      const reads = p?.manifest?.reads;
+      if (!p || !reads) return;
+      plugins.consent(id, reads);
+      st.reads = [...reads];
+    }
     st.consented = true;
     st.consentedAt = new Date(now()).toISOString();
     save();
@@ -234,11 +296,33 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
   };
 
   const doRun = async (id: ImportSourceId): Promise<ImportAnswer> => {
-    if (running) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "already_running" };
+    if (running.has(id)) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "already_running" };
     if (!of(id).consented) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "not_consented" };
-    running = true;
+    running.add(id);
     changed();
     try {
+      if (id !== "lody") {
+        const p = plugins.get(id);
+        if (!p) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "not_found" };
+        const reads = p.manifest?.reads ?? [];
+        // The consent is for this exact read list: an update that widened it asks again.
+        if (!plugins.consented(id, reads)) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "not_consented" };
+        if (!p.manifest) return { ok: false, threads: 0, messages: 0, skipped: 0, error: p.problem ?? "broken" };
+        const r = await plugins.run(id);
+        if (r.error) return { ok: false, threads: 0, messages: 0, skipped: 0, error: r.error };
+        if (!r.stream.trim()) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "plugin_failed" };
+        // The host stamps the source: a plugin never claims to be Lody, the person or a task.
+        return await importInto(
+          {
+            log: d.log,
+            tasks: d.tasks,
+            ...(d.persona ? { persona: d.persona } : {}),
+            now,
+            stamp: { app: p.manifest.app.name, account: id, reader: id, readerVersion: p.manifest.version },
+          },
+          r.stream,
+        );
+      }
       const r = await readLody(run, { now });
       detected = { present: r.present, signedIn: r.signedIn, ...(r.present && !r.signedIn ? { signedOut: r.signedOut === true } : {}) };
       looked = { present: r.present, signedIn: r.signedIn, total: r.total, waiting: r.waiting, workspaces: r.workspaces };
@@ -252,12 +336,25 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
     } catch (err) {
       return { ok: false, threads: 0, messages: 0, skipped: 0, error: (err as Error).message || "failed" };
     } finally {
-      running = false;
+      running.delete(id);
       changed();
     }
   };
 
   const remove = (id: ImportSourceId): ImportAnswer => {
+    if (id !== "lody") {
+      const p = plugins.get(id);
+      if (!p) return { ok: false, threads: 0, messages: 0, skipped: 0, error: "not_found" };
+      const app = p.manifest?.app.name ?? p.record.app;
+      const n = d.tasks.list().filter((c) => c.imported?.app === app && c.imported?.account === id).length;
+      d.log.append({ stream: "system", origin: "import", kind: "import_removed", body: { app, at: new Date(now()).toISOString(), threads: n } });
+      const gone = plugins.remove(id);
+      if (!gone.ok) return { ok: false, threads: 0, messages: 0, skipped: 0, error: gone.error ?? "remove_failed" };
+      delete stored.sources[id];
+      save();
+      changed();
+      return { ok: true, threads: 0, messages: 0, skipped: 0 };
+    }
     const app = APP[id];
     const n = d.tasks.list().filter((c) => c.imported?.app === app).length;
     d.log.append({ stream: "system", origin: "import", kind: "import_removed", body: { app, at: new Date(now()).toISOString(), threads: n } });
@@ -265,6 +362,7 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
     const st = of(id);
     delete st.consented;
     delete st.consentedAt;
+    delete st.reads;
     save();
     changed();
     return { ok: true, threads: 0, messages: 0, skipped: 0 };
@@ -280,6 +378,27 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
     },
     run: doRun,
     remove,
+    update: async (id) => {
+      if (id === "lody") return { ok: false, threads: 0, messages: 0, skipped: 0, error: "not_found" };
+      const r = await plugins.update(id);
+      if (r.needsConsent) {
+        const st = of(id);
+        delete st.consented;
+        delete st.consentedAt;
+        save();
+      }
+      changed();
+      return {
+        ok: r.ok,
+        threads: 0,
+        messages: 0,
+        skipped: 0,
+        ...(r.error ? { error: r.error } : {}),
+        ...(r.needsConsent ? { needsConsent: true } : {}),
+        ...(r.widened ? { widened: true } : {}),
+        ...(r.upToDate ? { upToDate: true } : {}),
+      };
+    },
     offerSeen(id) {
       const st = of(id);
       st.offeredAt ??= new Date(now()).toISOString();
@@ -305,7 +424,7 @@ export function createImportSources(d: ImportSourcesDeps): ImportSources {
       changed();
     },
     offerLine() {
-      const r = row("lody");
+      const r = lodyRow();
       if (r.state !== "ready" || r.consented || r.imported > 0) return undefined;
       if (of("lody").declinedAt) return undefined;
       return { app: r.app, ...(r.total ? { total: r.total } : {}) };

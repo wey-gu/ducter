@@ -18,6 +18,8 @@ export const IM: {
   frame?: Extract<ImportsServerFrame, { t: "imports" }>;
   /** A bring-in in flight (per source), until its answer or the next frame says otherwise. */
   busy: Record<string, boolean>;
+  /** An update in flight (per source). */
+  updating: Record<string, boolean>;
   /** The consent card open (per source), and the row's read list. */
   consent: Record<string, boolean>;
   read: Record<string, boolean>;
@@ -28,7 +30,7 @@ export const IM: {
   err: Record<string, string>;
   /** A consent card opened from Past tasks' offer: the pane shows it as it opens. */
   opening?: ImportSourceId;
-} = { busy: {}, consent: {}, read: {}, more: {}, remove: {}, err: {} };
+} = { busy: {}, updating: {}, consent: {}, read: {}, more: {}, remove: {}, err: {} };
 
 function onImportsFrame(f: ImportsServerFrame) {
   if (f.t === "imports") {
@@ -42,6 +44,16 @@ function onImportsFrame(f: ImportsServerFrame) {
     return A.changed();
   }
   delete IM.busy[f.id];
+  delete IM.updating[f.id];
+  if (f.op === "update") {
+    if (f.ok) {
+      A.toast(f.upToDate ? t("imports.update.upToDate") : t("imports.updated"));
+      // A widened read list puts the consent card back before anything runs.
+      if (f.needsConsent) IM.consent[f.id] = true;
+    } else IM.err[f.id] = f.error && A.L.t(`imports.error.${f.error}`) !== `imports.error.${f.error}` ? t(`imports.error.${f.error}`) : t("imports.error.update_failed");
+    A.changed();
+    return;
+  }
   if (f.op === "remove") {
     if (f.ok) {
       A.toast(t("imports.removed"));
@@ -74,24 +86,39 @@ function dayWords(day: string | undefined): string {
 
 /** The row's state in the person's words: how many, brought in when, or what's new. */
 export function stateWords(r: ImportSourceRow): string {
+  if (IM.updating[r.id]) return t("imports.updating");
   if (r.running) return t("imports.bringing");
   if (r.state === "looking") return t("imports.state.looking");
   if (r.state !== "ready") return t(`imports.problem.${r.problem ?? "failed"}`);
   if (r.fresh && r.fresh > 0) return t(r.fresh === 1 ? "imports.state.fresh.one" : "imports.state.fresh", r.fresh);
   if (r.imported > 0) return t("imports.state.brought", dayWords(r.importedDay ?? r.oldest));
+  if (r.kind === "plugin") return t("imports.state.plugin");
   if (r.total !== undefined) return t(r.total === 1 ? "imports.state.total.one" : "imports.state.total", r.total);
   return t("imports.state.looking");
 }
 
 /** The consent card's lines, all literal; `go` absent when it is only being read. */
-function ReadList({ go, no }: { go?: () => void; no?: () => void }) {
+function ReadList({ go, no, reads, added, author }: { go?: () => void; no?: () => void; reads?: string[]; added?: boolean; author?: string }) {
   return (
     <div class="import-read">
       <b>{t("imports.consent.title")}</b>
-      <p>{t("imports.consent.path")}</p>
-      <p>{t("imports.consent.command")}</p>
+      {reads?.length ? (
+        <>
+          {reads.map((p, i) => (
+            <p key={i} class="import-read-path">
+              {p}
+            </p>
+          ))}
+          <p>{t("imports.consent.nonet")}</p>
+        </>
+      ) : (
+        <>
+          <p>{t("imports.consent.path")}</p>
+          <p>{t("imports.consent.command")}</p>
+        </>
+      )}
       <p>{t("imports.consent.past")}</p>
-      <small>{t("imports.consent.made")}</small>
+      <small>{added ? t("imports.consent.made.plugin", author ?? "") : t("imports.consent.made")}</small>
       {go && (
         <div class="btns import-consent-go">
           <Btn kind="primary" label={t("imports.consent.go")} onClick={go} />
@@ -111,6 +138,7 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
   const read = !!IM.read[r.id];
   const asking = !!IM.remove[r.id];
   const busy = !!IM.busy[r.id] || !!r.running;
+  const updating = !!IM.updating[r.id];
   const err = IM.err[r.id];
   const canBring = r.state === "ready" && !busy;
   const bring = () => {
@@ -139,42 +167,68 @@ function ImportRow({ r }: { r: ImportSourceRow }) {
   return (
     <section class="set-card chat-app import-src" aria-label={r.app} data-source={r.id}>
       <div class="chat-head">
-        <BrandTile name={r.id} />
+        <BrandTile name={r.app} />
         <span class="grow">
           <b>{r.app}</b>
           <small class={r.state !== "ready" && r.state !== "looking" ? "tone-bad" : undefined}>{stateWords(r)}</small>
         </span>
-        {canBring && !consent && !asking && !busy && (
-          <Btn kind={r.imported > 0 ? "secondary" : "primary"} size="sm" label={r.imported > 0 ? t("imports.again") : t("imports.bring")} about={r.app} disabled={busy} onClick={bring} />
-        )}
-        {r.state === "failed" && <Btn kind="secondary" size="sm" label={t("imports.retry")} about={r.app} onClick={() => A.send({ t: "imports" })} />}
-        <span class={`import-more${more ? " open" : ""}`} ref={moreAt}>
-          <MoreButton label={t("imports.more")} open={more} onClick={() => ((IM.more[r.id] = !more), A.changed())} />
-          {more &&
-            createPortal(
-              <Menu class="pmenu" label={r.app} anchor={moreAt} onClose={() => ((IM.more[r.id] = false), A.changed())}>
-                <MenuItem onClick={() => ((IM.more[r.id] = false), (IM.read[r.id] = !read), A.changed())}>{t(read ? "imports.details.close" : "imports.what")}</MenuItem>
-                <MenuSep />
-                <MenuItem danger onClick={() => ((IM.more[r.id] = false), (IM.remove[r.id] = true), A.changed())}>
-                  {t("imports.remove")}
-                </MenuItem>
-              </Menu>,
-              document.body,
-            )}
+        <span class="import-acts">
+          {r.update && !consent && !asking && !busy && !updating && (
+            <Btn
+              kind="secondary"
+              size="sm"
+              label={t("imports.update")}
+              about={r.app}
+              onClick={() => {
+                IM.updating[r.id] = true;
+                IM.err[r.id] = "";
+                A.send({ t: "import_update", id: r.id });
+                A.changed();
+              }}
+            />
+          )}
+          {canBring && !consent && !asking && !busy && !updating && (
+            <Btn kind={r.imported > 0 ? "secondary" : "primary"} size="sm" label={r.imported > 0 ? t("imports.again") : t("imports.bring")} about={r.app} disabled={busy} onClick={bring} />
+          )}
+          {r.state === "failed" && <Btn kind="secondary" size="sm" label={t("imports.retry")} about={r.app} onClick={() => A.send({ t: "imports" })} />}
+          <span class={`import-more${more ? " open" : ""}`} ref={moreAt}>
+            <MoreButton label={t("imports.more")} open={more} onClick={() => ((IM.more[r.id] = !more), A.changed())} />
+            {more &&
+              createPortal(
+                <Menu class="pmenu" label={r.app} anchor={moreAt} onClose={() => ((IM.more[r.id] = false), A.changed())}>
+                  <MenuItem onClick={() => ((IM.more[r.id] = false), (IM.read[r.id] = !read), A.changed())}>{t(read ? "imports.details.close" : "imports.what")}</MenuItem>
+                  <MenuSep />
+                  <MenuItem danger onClick={() => ((IM.more[r.id] = false), (IM.remove[r.id] = true), A.changed())}>
+                    {t("imports.remove")}
+                  </MenuItem>
+                </Menu>,
+                document.body,
+              )}
+          </span>
         </span>
       </div>
+      {(r.added || r.repo || r.unreviewed || r.reviewed || r.update) && (
+        <div class="import-meta">
+          {r.added && <p class="small muted import-added">{t("imports.added")}</p>}
+          {r.added && r.author && <p class="small muted import-author">{t("imports.author", r.author)}</p>}
+          {r.repo && <p class="small muted import-repo">{r.repo}</p>}
+          {r.unreviewed && <p class="small import-unreviewed">{t("imports.unreviewed")}</p>}
+          {r.reviewed && <p class="small muted import-reviewed">{t("imports.reviewed")}</p>}
+          {r.update && <p class="small muted import-update">{r.update.version ? t("imports.state.update", r.update.version) : t("imports.state.updateReady")}</p>}
+        </div>
+      )}
       {r.state === "ready" && !!r.waiting?.length && <p class="small muted import-waiting">{t("imports.waiting", r.waiting.join(t("acct.sep")))}</p>}
-      {read && <ReadList />}
+      {read && <ReadList reads={r.reads} added={r.added} author={r.author} />}
       {consent && (
         <div class="import-consent" role="group" aria-label={t("imports.consent.title")}>
-          <ReadList go={yes} no={() => ((IM.consent[r.id] = false), A.changed())} />
+          <ReadList reads={r.reads} added={r.added} author={r.author} go={yes} no={() => ((IM.consent[r.id] = false), A.changed())} />
         </div>
       )}
       {err && <p class="small tone-bad">{err}</p>}
       {r.last && !r.running && (
         <div class="import-last">
           <p>{r.last.threads === 0 ? t("imports.last.none") : t(r.last.threads === 1 ? "imports.last.one" : "imports.last", r.last.threads, dayWords(r.last.oldest ?? r.oldest))}</p>
-          {r.last.skipped > 0 && <p>{t("imports.last.skipped", r.last.skipped)}</p>}
+          {r.last.skipped > 0 && <p>{t(r.last.skipped === 1 ? "imports.last.skipped.one" : "imports.last.skipped", r.last.skipped)}</p>}
           {r.last.stopped && <p>{t("imports.last.stopped")}</p>}
         </div>
       )}

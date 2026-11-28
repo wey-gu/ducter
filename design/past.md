@@ -260,10 +260,14 @@ to write a reader are in `docs/import.md`; the evidence and the mapping are in `
   From {app}**, said once; **带进来的 / Brought in** is the end filter's word, and on a card only
   when the app isn't known. The partner may find it with `task_find` and names the app when citing
   it ("你 10 月在 Lody 里……"), but never sends to it.
-- **The words.** **导入 / Import** (the Settings pane, phase 2), **带进来 / Bring them in**,
+- **The words.** **导入 / Import** (the Settings pane), **带进来 / Bring them in**,
   **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in** (the end filter), **没有人替你检查过 / Nobody has
-  checked it for you** (a source outside Ducter's curated list, phase 3). "Plugin" lives only in
-  the CLI and developer docs.
+  checked it for you** (an added source outside Ducter's curated list), **Ducter 查过这个版本 / Ducter
+  checked this version** (on the list at its pinned commit), **你加的 / Added by you**, and **更新 /
+  Update** (a newer pinned commit; it asks again if it reads more). "Plugin" lives only in the CLI
+  and developer docs. An added reader is installed with `ducter plugin add` and runs only inside
+  the OS sandbox with the paths its `ducter-plugin.json` declares; what it brings in is the same
+  read-only past task as Lody's, stamped by the host (`settings.md` "导入 / Import").
 
 ## Edge cases
 

@@ -32,6 +32,7 @@ import { createRegistry, isActive, type CoreRegistry } from "./registry.ts";
 import { createMarks, createPast } from "./past.ts";
 import { importInto } from "./imports/service.ts";
 import { createImportSources } from "./imports/sources.ts";
+import { createPluginRuntime } from "./imports/plugins.ts";
 import { createTidied, holdOf } from "./tidied.ts";
 import { createResourceProbe, resourcesMoved } from "@ducter/protocol/src/resources.ts";
 import { roomFor } from "./candidates.ts";
@@ -343,6 +344,8 @@ export interface CoreOptions {
   ghInstaller?: GhInstaller;
   /** D655: Settings › 导入 / Import's `lody` runner (tests and demo cores: a fake on a temp PATH). */
   importsRun?: import("./imports/lody.ts").LodyExec;
+  /** D668 (research/246 §3.6): test seams for an added plugin's git, sandbox and curated list. */
+  importsPlugins?: Partial<Omit<import("./imports/plugins.ts").PluginOptions, "dataDir" | "now">>;
   /** D655 test seam: what the partner may say about a detected source, without a `lody` process. */
   importsOffer?: import("@ducter/protocol/src/internal.ts").ImportSourcesPort;
   /** D341: 待办来源 / To-do sources: the seams (a fake gh, a scratch home for Obsidian's vault list, the look's pace). Tests default to no gh and no vaults. */
@@ -1720,6 +1723,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     now: () => clock.now(),
     zone: () => settings.get().quiet?.tz ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
     ...(opts.importsRun ? { run: opts.importsRun } : {}),
+    ...(opts.importsPlugins ? { plugins: createPluginRuntime({ dataDir, now: () => clock.now(), ...opts.importsPlugins }) } : {}),
   });
   const api = { log, tasks, mcp, persona, dataDir, frozen: () => frozen, importSources: opts.importsOffer ? () => opts.importsOffer! : () => importSources, settings, connections, phone, bodies: loadout, said, standing, spine: log.spine, bridgeLink, helpers, handoffs, media, limits: accountUsage, workingMemory, pins, apps, noticedSources, brainHold, freeBudget, freshLook, takenBackFrom: (seq: number) => takeBack.heardFrom(seq), docCheck: (id: string, body: Bodies["report"]) => docCheck.check(id, body), ...(opts.branchAsk ? { branchAsk: opts.branchAsk } : {}), ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D654 (research/245 §3.2): a place's project identity, the one derivation every surface reads.

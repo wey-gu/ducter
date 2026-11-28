@@ -1160,12 +1160,27 @@ confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
   before the first run, **再带一次 / Bring in again** after. The ⋯ menu holds **看看它读什么 /
   What it reads** (the same list, no buttons) and **删掉这个来源 / Remove this source** (it asks
   there, once).
-- **The consent card**, once per source (again only if the read list widens, phase 3), all literal:
+- **An added source** (D668; research/246 §3.6, §3.10, §3.11) is a reader the person installed
+  with `ducter plugin add <git-url|path>`. Its row is the same row, with the app's own name and
+  tile, and three facts of its own, each its own line: **你加的 / Added by you**, who made it
+  (**{author} 写的 / Made by {author}**) and its repository (in mono). Outside Ducter's curated
+  `plugins.json` it says **没有人替你检查过 / Nobody has checked it for you**; on the list at its
+  pinned commit or content hash it says **Ducter 查过这个版本 / Ducter checked this version**. A newer commit or content
+  shows **有新版本 / Update available** and **更新 / Update**; the update runs on the home, never
+  in the app, and a widened read list opens the consent card before anything runs. A source that
+  can't run says why in its state line: needs a newer Ducter, its files changed after they were
+  pinned, its manifest can't be read, this computer can't sandbox it, it printed nothing.
+- **The consent card**, once per source (again only if the read list widens), all literal:
   **它会读：** then the one path in words (**Lody 里你的对话（通过你电脑上的 lody 命令）**); **它会用你电脑
   上已经登录的 lody 命令读你的对话。** (for a reader that goes online through the person's own CLI);
   **带进来的会出现在「做过的事」里，只读。**; who made it (**Ducter 自己写的，内置。**); **带进来 /
   Bring them in** and **先不 / Not now**. Nothing is read before its 带进来. The card is a group in
-  the pane, never a dialog, never a decision card.
+  the pane, never a dialog, never a decision card. For an added source the card names every path
+  its manifest declares, one line each (a glob stays literal, e.g.
+  `~/Library/Notes/**/*.sqlite*`), then **它不能上网，也不能改那些文件。 / It can't go online or change
+  those files.**, **带进来的会出现在「做过的事」里，只读。**, and **{author} 写的，不是 Ducter。 / Made by
+  {author}, not Ducter.** It never borrows Lody's signed-in-command sentence: an added reader has no
+  command of the person's and no network.
 - **The states.** `ready`; `signed_out` (**Lody 还没登录。先在终端里运行 lody login。**);
   `needs_authorization` (**Lody 还没让这台电脑读它加密的 workspace。先在 Lody 里允许这台电脑。**); `missing` (**这台电脑上
   找不到 lody 命令。先按 Lody 的说明装好它。**); `failed` (**这次没读成。再试一次。**); `looking`
@@ -1188,6 +1203,26 @@ confirmation (`a.confirmRow`), and one literal read list in a `textBlock`.
   the source in again after it puts them back. The consent is owed again.
 - **The words** are in both tables (`apps/web/src/i18n-imports.ts`,
   `internal/i18n/imports.go`) and in the product-model glossary: 导入, 带进来, 再带一次,
-  删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段.
-- **Not done here:** added sources and their rows (phase 3), update on a widened read list, the
-  per-computer detection when the home is a server (the reader runs on the home in phase 2).
+  删掉这个来源, 看看它读什么, 带进来了 {n} 段对话…, 有新的 {k} 段, 你加的, 没有人替你检查过,
+  Ducter 查过这个版本, 更新, 它不能上网，也不能改那些文件。
+- **The CLI and the list.** `ducter plugin add <git-url|path>` installs a reader at a pinned
+  commit and content hash; `list` prints what is installed, its pin and what it reads; `remove`
+  deletes its folder and ledger and hides what it brought in (the same `import_removed` the pane
+  writes); `update` moves it to the newer pin. A folder is loaded where the author keeps it (a git
+  folder's HEAD is the pin); a git URL is copied into `<dataDir>/plugins/<id>`. Nothing is run at
+  install or update time. The curated `plugins.json` ships in `packages/core/src/imports/` and is
+  added to by pull request: `{ "format": "ducter-plugins/1", "plugins": [{ "id", "repo",
+  "commit", "version" }] }` (a folder install matches by `hash` instead of `commit`).
+- **The sandbox.** macOS runs the reader under `sandbox-exec` with a generated Seatbelt profile
+  (deny default, read the plugin folder, Ducter's Bun and system libraries plus the declared
+  paths, write only the temporary folder, deny network, exec only the declared programs). Linux
+  uses bubblewrap (`--unshare-net`, a read-only bind per declaration, a tmpfs `/tmp`,
+  `--die-with-parent`, no capabilities). Where neither can run, the source is refused with
+  **这台电脑不能把它关进沙箱。 / This computer can't sandbox it.** and is never run unconfined.
+  The profile text, the denials (a read outside the list, a socket, a write outside temp) and the
+  fixture reader are in `packages/core/test/plugin-sandbox.test.ts`; the Linux live denial run is
+  owed on a Linux box (`todo.md`).
+- **Not done here:** showing the curated list itself as importable apps (the CLI installs it and
+  the row says whether the pinned version is on the list), signing, dependencies, a worker running
+  a plugin where its store is (D377; phase 4), and the `reader` kind. The per-computer detection
+  when the home is a server waits for phase 4; the built-in Lody reader runs on the home.

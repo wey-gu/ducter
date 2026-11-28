@@ -26179,6 +26179,7 @@ button.fd-link,
 .import-where { margin: 0 0 var(--s4); }
 .import-src .chat-head small { white-space: pre-line; }
 .import-src .chat-head > .grow { flex: 1; min-width: 0; }
+.import-acts { display: inline-flex; align-items: center; gap: var(--s2); flex: 0 0 auto; }
 .import-more { position: relative; display: inline-flex; align-items: center; }
 .import-read {
   margin: 0 var(--s5) var(--s4);
@@ -26205,6 +26206,20 @@ button.fd-link,
 .import-last { margin: 0 var(--s5) var(--s4); color: var(--ink-muted); font-size: var(--sm); line-height: var(--lh-read); }
 .import-last p { margin: 0; }
 .import-waiting { margin: 0 var(--s5) var(--s3); }
+.import-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  margin: 0 var(--s5) var(--s2);
+}
+.import-meta p { margin: 0; font-size: var(--sm); line-height: var(--lh-read); }
+.import-meta .import-repo { font-family: var(--mono); font-size: var(--xs); color: var(--ink-muted); overflow-wrap: anywhere; }
+.import-meta .import-unreviewed { color: var(--ink); }
+.import-read-path {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  overflow-wrap: anywhere;
+}
 .import-remove-ask { align-items: center; padding: 0 var(--s5) var(--s4); }
 .import-src > .small.tone-bad { margin: 0 var(--s5) var(--s3); }
 .past-import-offer {
@@ -26220,6 +26235,7 @@ button.fd-link,
 @media (max-width: 520px) {
   .import-read, .import-consent, .import-last { margin-left: var(--s4); margin-right: var(--s4); }
   .import-waiting { margin-left: var(--s4); margin-right: var(--s4); }
+  .import-meta { margin-left: var(--s4); margin-right: var(--s4); }
   .import-remove-ask { padding-left: var(--s4); padding-right: var(--s4); }
 }
 

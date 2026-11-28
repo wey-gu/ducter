@@ -1,0 +1,16 @@
+{
+  "format": "ducter-plugin/1",
+  "id": "fixture-reader",
+  "kind": "importer",
+  "version": "0.1.0",
+  "name": { "en": "Fixture Notes", "zh": "测试笔记" },
+  "app": { "name": "Fixture Notes" },
+  "author": { "name": "Ducter tests" },
+  "emits": "ducter-import/1",
+  "run": ["bun", "main.ts"],
+  "reads": ["./threads.json"],
+  "starts": [],
+  "network": false,
+  "detect": ["./threads.json"],
+  "ducter": "^0.1"
+}

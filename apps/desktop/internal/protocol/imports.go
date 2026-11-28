@@ -18,10 +18,12 @@ type ImportLast struct {
 
 // ImportSourceRow is one source's row in Settings › Import. State: looking | ready | signed_out |
 // needs_authorization | missing | failed. Problem: no_lody | signed_out | needs_authorization |
-// failed (the row's words, never the CLI's).
+// failed, or a plugin's needs_newer | sandbox_unavailable | hash_mismatch | broken | plugin_failed
+// (the row's words, never the CLI's).
 type ImportSourceRow struct {
 	ID          string      `json:"id"`
 	App         string      `json:"app"`
+	Kind        string      `json:"kind,omitempty"` // builtin | plugin
 	State       string      `json:"state"`
 	Problem     string      `json:"problem,omitempty"`
 	Waiting     []string    `json:"waiting,omitempty"`
@@ -33,6 +35,20 @@ type ImportSourceRow struct {
 	Consented   bool        `json:"consented"`
 	Last        *ImportLast `json:"last,omitempty"`
 	Running     bool        `json:"running,omitempty"`
+	// D668: an added source's own facts, each shown on its own line.
+	Added      bool          `json:"added,omitempty"`
+	Repo       string        `json:"repo,omitempty"`
+	Author     string        `json:"author,omitempty"`
+	Reads      []string      `json:"reads,omitempty"`
+	Reviewed   bool          `json:"reviewed,omitempty"`
+	Unreviewed bool          `json:"unreviewed,omitempty"`
+	Update     *ImportUpdate `json:"update,omitempty"`
+}
+
+// ImportUpdate is a newer pinned commit or content for an added source.
+type ImportUpdate struct {
+	Version string `json:"version,omitempty"`
+	Commit  string `json:"commit,omitempty"`
 }
 
 // ImportOffer is Past tasks' one quiet line: a source is here and nothing came in yet.
@@ -57,6 +73,11 @@ type ImportsFrame struct {
 	Removed  int    `json:"removed,omitempty"`
 	Stopped  bool   `json:"stopped,omitempty"`
 	Error    string `json:"error,omitempty"`
+	// D668: the update widened the read list, so the consent card is owed again.
+	NeedsConsent bool   `json:"needsConsent,omitempty"`
+	Widened      bool   `json:"widened,omitempty"`
+	UpToDate     bool   `json:"upToDate,omitempty"`
+	Detail       string `json:"detail,omitempty"`
 }
 
 // ImportsReq subscribes to Settings › 导入 / Import and Past tasks' offer.
@@ -79,6 +100,12 @@ type ImportRunReq struct {
 // ImportRemoveReq is 删掉这个来源 / Remove this source: hide what it brought in.
 type ImportRemoveReq struct {
 	T  string `json:"t"` // "import_remove"
+	ID string `json:"id"`
+}
+
+// ImportUpdateReq is 更新 / Update an added source to its newer pinned commit.
+type ImportUpdateReq struct {
+	T  string `json:"t"` // "import_update"
 	ID string `json:"id"`
 }
 

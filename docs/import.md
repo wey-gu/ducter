@@ -39,6 +39,40 @@ in shows in **Past tasks** read only, and who made the reader. Nothing is read b
 - Running **Bring in again** adds only conversations and messages that are new. A message edited
   in Lody isn't updated, because Ducter only has a copy.
 
+## A reader someone else wrote
+
+A reader doesn't have to ship with Ducter. If someone wrote one for an app you use, add it from
+its git repository or from a folder on this computer:
+
+```sh
+ducter plugin add https://github.com/someone/acme-notes-reader
+ducter plugin add ~/src/my-reader
+```
+
+Ducter installs it at a fixed commit and records a hash of its files; it never runs anything
+while installing. `ducter plugin list` shows what is installed, its pin and what it reads;
+`ducter plugin update <id>` moves to a newer pin; `ducter plugin remove <id>` removes it and hides
+the conversations it brought in.
+
+Its row appears in **Settings › Import**, marked **你加的 / Added by you** with its repository.
+Ducter's own curated list (`plugins.json`) says which version Ducter has checked; a reader that
+isn't on it says **没有人替你检查过 / Nobody has checked it for you** instead.
+
+- **You say what it may read.** The consent card names every path the reader declares, one line
+  each. It can't go online or change those files; it writes only in a temporary folder Ducter
+  gives it and prints the conversations to Ducter. Nothing runs before you choose **Bring them
+  in**.
+- **It is run in a sandbox, or not at all.** On macOS Ducter uses the system's sandbox; on Linux
+  it uses bubblewrap. Where neither can run, the row says **这台电脑不能把它关进沙箱 / This computer
+  can't sandbox it** and nothing is run.
+- **An update that reads more asks again.** If the newer version declares a path you haven't
+  seen, the consent card comes back before anything runs.
+- **Read only.** What it brings in is the same read-only past task as Lody's. It never gets a
+  window, a network connection, a credential or the Log; it only prints the format below.
+
+A reader that needs a vendor's command with a network connection (as Lody's does) stays a
+built-in reader: an added reader is local and offline.
+
 ## Run it
 
 ```sh
@@ -135,3 +169,40 @@ Count their attachments as **skipped** rather than dropping them silently.
 
 A first run on a copy of a small store is the fastest way to see the card. If the format changes
 later, Ducter keeps accepting this one: a new version is added, never swapped in.
+
+## The manifest
+
+A folder a person can add with `ducter plugin add` has a `ducter-plugin.json` at its top:
+
+```json
+{
+  "format": "ducter-plugin/1",
+  "id": "acme-notes",
+  "kind": "importer",
+  "version": "0.2.0",
+  "name": { "en": "Acme Notes", "zh": "Acme 笔记" },
+  "app": { "name": "Acme Notes" },
+  "author": { "name": "Your name" },
+  "emits": "ducter-import/1",
+  "run": ["bun", "main.ts"],
+  "reads": ["~/Library/Application Support/AcmeNotes/**/*.sqlite*"],
+  "starts": [],
+  "network": false,
+  "detect": ["~/Library/Application Support/AcmeNotes/store.sqlite"],
+  "ducter": "^0.1"
+}
+```
+
+- **id** is lower-case letters, digits and `-`; **kind** is `importer` (the only kind now);
+  **version** is your reader's own version.
+- **name** and **app** are what the card says; **author** is who made it, shown on the card.
+- **run** is the command, with `bun` meaning Ducter's own Bun (a single-binary Ducter runs your
+  script in Bun's mode). No `bun install` runs: ship what your reader needs inside the folder.
+- **reads** is every path it opens, literally; `~` is the home folder and a glob is allowed.
+  Nothing outside this list is readable.
+- **starts** names extra programs it may start; **network** must be `false`.
+- **ducter** is the Ducter range it needs, for example `^0.1`. A reader whose range doesn't match
+  is listed as needing a newer Ducter and isn't run.
+
+The same reader can be run by hand while you write it:
+`bun main.ts | ducter import --check`, then `bun main.ts | ducter import -`.

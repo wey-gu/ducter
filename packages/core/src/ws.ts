@@ -2442,6 +2442,7 @@ export function createWsHandler(deps: WsDeps) {
       case "import_consent":
       case "import_run":
       case "import_remove":
+      case "import_update":
       case "import_offer": {
         const imp = deps.importSources?.();
         if (!imp) throw new Error("import isn't available here");
@@ -2452,17 +2453,33 @@ export function createWsHandler(deps: WsDeps) {
           void imp.look().catch(() => undefined);
           return;
         }
-        const id = f.id === "lody" ? "lody" : undefined;
-        if (!id) return send(ws, { t: "import_answer", id: "lody", op: "run", ok: false, error: "unknown_source" });
+        const known = imp.view().sources.find((s) => s.id === f.id)?.id;
+        if (!known) return send(ws, { t: "import_answer", id: typeof f.id === "string" ? f.id : "lody", op: "run", ok: false, error: "unknown_source" });
+        const id = known;
         if (f.t === "import_offer") {
+          if (id !== "lody") return send(ws, { t: "import_answer", id, op: "run", ok: false, error: "unknown_source" });
           if (f.action === "seen" || f.action === "begin") imp.offerSeen(id);
           else imp.offerDecline(id);
           return send(ws, { t: "imports", ...imp.view() });
         }
         if (f.t === "import_remove") {
           const n = imp.view().sources.find((s) => s.id === id)?.imported ?? 0;
-          imp.remove(id);
-          send(ws, { t: "import_answer", id, op: "remove", ok: true, removed: n });
+          const removed = imp.remove(id);
+          send(ws, { t: "import_answer", id, op: "remove", ok: removed.ok, removed: n, ...(removed.error ? { error: removed.error } : {}) });
+          return send(ws, { t: "imports", ...imp.view() });
+        }
+        if (f.t === "import_update") {
+          const r = await imp.update(id);
+          send(ws, {
+            t: "import_answer",
+            id,
+            op: "update",
+            ok: r.ok,
+            ...(r.error ? { error: r.error } : {}),
+            ...(r.needsConsent ? { needsConsent: true } : {}),
+            ...(r.widened ? { widened: true } : {}),
+            ...(r.upToDate ? { upToDate: true } : {}),
+          });
           return send(ws, { t: "imports", ...imp.view() });
         }
         const r = f.t === "import_consent" ? await imp.accept(id) : await imp.run(id);

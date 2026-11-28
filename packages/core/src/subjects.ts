@@ -9,7 +9,7 @@
 // watches (an open PR, an armed wait, a loop) only revises the card; a second done on the same
 // subject wakes nobody. The partner still judges what to say when woken (principle 21).
 import type { Bodies, LogEvent, SubjectCard, TaskCard } from "@ducter/protocol";
-import { subjectKey, subjectLine, subjectStateOf } from "@ducter/protocol";
+import { channelOf, subjectKey, subjectLine, subjectStateOf } from "@ducter/protocol";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { HandoffBody } from "@ducter/protocol/src/handoff.ts";
 
@@ -74,8 +74,9 @@ export function createSubjects(d: SubjectsDeps): Subjects {
   };
 
   /** The message that started the work: the person's latest, else the partner's own start line. */
-  const startMsg = (openSeq: number): number => {
-    const msgs = log.read({ stream: "channel", fromSeq: 0, beforeSeq: openSeq, limit: 200, kinds: ["user_msg", "ai_msg", "ack"] });
+  const startMsg = (openSeq: number, persona?: string): number => {
+    // D312: in the conversation of the partner the task belongs to, never the default's.
+    const msgs = log.read({ stream: channelOf(persona), fromSeq: 0, beforeSeq: openSeq, limit: 200, kinds: ["user_msg", "ai_msg", "ack"] });
     for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i]!.kind === "user_msg") return msgs[i]!.seq;
     return msgs.at(-1)?.seq ?? 0;
   };
@@ -101,7 +102,7 @@ export function createSubjects(d: SubjectsDeps): Subjects {
     const ref = h ? githubRef(h.item.ref) ?? (h.item.kind === "pr" || h.item.kind === "issue" ? h.item.ref : undefined) : prOf(c);
     const key = subjectKey({ taskId, ...(h ? { handoffKey: h.key } : {}), ...(ref ? { ref } : {}) });
     const title = h?.item.title?.trim() || c?.title || open?.body.title || taskId;
-    const start = { key, msgSeq: open ? startMsg(open.seq) : 0, title, taskId };
+    const start = { key, msgSeq: open ? startMsg(open.seq, c?.persona) : 0, title, taskId };
     starts.set(taskId, start);
     return start;
   }
@@ -131,7 +132,9 @@ export function createSubjects(d: SubjectsDeps): Subjects {
     if (quiet) return;
     const same = prev && prev.msgSeq === c.msgSeq && prev.title === c.title && prev.state === c.state && prev.line === c.line && (prev.progress ?? "") === (c.progress ?? "");
     if (same) return;
-    log.append({ stream: "channel", origin: "system", kind: "subject_card", body: { card: c } });
+    // D312: the card lives in the task's own partner's conversation (a second partner's task never lands in the default's).
+    const persona = c.taskId ? tasks.get(c.taskId)?.persona : undefined;
+    log.append({ stream: channelOf(persona), origin: "system", kind: "subject_card", body: { card: c }, ...(persona ? { persona } : {}) } as never);
   };
 
   const cardFor = (taskId: string, at: string, report?: Bodies["report"], byState = false): SubjectCard => {

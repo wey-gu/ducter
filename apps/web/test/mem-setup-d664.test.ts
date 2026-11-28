@@ -198,6 +198,7 @@ describe("one component, live", () => {
     const now = Date.now;
     let clock = 10_000_000;
     Date.now = () => clock;
+    (A as any).memLookedAt = 0; // whatever an earlier file's pane did on the real clock
     try {
       A.lookAtMemSetup();
       expect(sent.at(-1)).toEqual({ t: "mem_health", setup: true });

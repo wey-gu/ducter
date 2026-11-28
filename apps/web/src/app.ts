@@ -3054,7 +3054,8 @@ class AppState {
    */
   lookAtMemSetup(tap = false) {
     const now = Date.now();
-    if (!tap && now - this.memLookedAt < MEM_LOOK_MS) return;
+    // A look stamped in the future (the clock moved back) is stale, never a hold until it catches up.
+    if (!tap && now >= this.memLookedAt && now - this.memLookedAt < MEM_LOOK_MS) return;
     this.memLookedAt = now;
     this.memChecking = true;
     this.send({ t: "mem_health", setup: true });

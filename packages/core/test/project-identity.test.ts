@@ -2,7 +2,7 @@
 // forms of one origin agree, a nested repository is its own project, a folder with no remote is
 // keyed by its computer and path, and the person's rename/merge/hide/pin/order are kept on the home.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OnHand, Place, TaskCard } from "@ducter/protocol";
@@ -39,14 +39,18 @@ test("the same origin is one key: ssh and https, .git, case, a port", () => {
 
 test("a nested repository is its own project; a folder with no remote keys by its computer and path", async () => {
   // The website checkout inside the mem checkout: git's own top is the nested one.
-  const tops: Record<string, string> = { "/Users/weyl/dev/nowledge-mem": "/Users/weyl/dev/nowledge-mem", "/Users/weyl/dev/nowledge-mem/nowledge-labs-website": "/Users/weyl/dev/nowledge-mem/nowledge-labs-website" };
+  // Real folders under the test's temp dir: folderInfo checks the folder exists before asking git.
+  const memDir = join(dir, "nowledge-mem");
+  const siteDir = join(memDir, "nowledge-labs-website");
+  mkdirSync(siteDir, { recursive: true });
+  const tops: Record<string, string> = { [memDir]: memDir, [siteDir]: siteDir };
   const git: GitRun = async (cwd, args) => {
     if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return { ok: !!tops[cwd], out: tops[cwd] ?? "" };
     if (args[0] === "remote") return { ok: true, out: cwd.endsWith("nowledge-labs-website") ? "git@github.com:nowledge-co/nowledge-labs-website.git" : "https://github.com/nowledge-co/mem" };
     return { ok: false, out: "" };
   };
-  const mem = await folderInfo("/Users/weyl/dev/nowledge-mem", git);
-  const site = await folderInfo("/Users/weyl/dev/nowledge-mem/nowledge-labs-website", git);
+  const mem = await folderInfo(memDir, git);
+  const site = await folderInfo(siteDir, git);
   expect(mem.remote).toBe("github.com/nowledge-co/mem");
   expect(site.remote).toBe("github.com/nowledge-co/nowledge-labs-website");
   const a = projectKeyOf(mem.remote, "mac", mem.root!);

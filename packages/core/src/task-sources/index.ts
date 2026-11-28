@@ -814,6 +814,8 @@ export function createTaskSources(d: TaskSourcesDeps): TaskSources {
     // D415: the note's 先留言再开始: Go comments and starts; the other way starts without.
     if (src.kind === "hand_comment") return handover?.answerComment(card, r);
     if (src.kind === "group_review") return;
+    // D667 (research/247 Brief A): Go on the one failed line retries only what failed.
+    if (src.kind === "group_review_failed") return handover?.retryReview(card, r);
     // D394: a review task's round: Go posts each drafted review once; the task hears what went.
     if (src.kind === "reviews") {
       const res = await pile.answerRound(card, r);

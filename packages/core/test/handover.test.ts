@@ -406,6 +406,70 @@ test("review together: a fixed comment names each item's own merged PR; an open 
   expect(card.record).toBe("在「Fix the settings card's label」（#11108）、「Fix the settings card's scroll」（#11156）下留了言：「Fixed in #11163.」");
 });
 
+test("review together: the record names only the comments that went out; the rest is one card with 再试一次", async () => {
+  // research/247 Brief A, rule 10: a claim waits for the call that makes it. Two comments go,
+  // one fails; the permanent record names two, the failed card names one, and a retry posts only it.
+  const b = boot();
+  await sorted(b);
+  const refs = ["acme/mem#11115", "acme/mem#11108", "acme/mem#11156"];
+  const r = await b.ho.hand({ refs, shape: "one_by_one" });
+  await b.ho.idle();
+  const g = () => b.core.taskGroups.get(r.groupId!)!;
+  report(b, "t1", "done", "设置卡的焦点环好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => b.opened.length === 2);
+  report(b, "t2", "done", "设置卡的标签好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => b.opened.length === 3);
+  report(b, "t3", "done", "设置卡的滚动好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => g().hand?.review === "ready");
+  b.gh.failComment.add("acme/mem#11108");
+  const sent = await b.ho.reviewSend(r.groupId!, refs);
+  expect(sent).toMatchObject({ ok: false, done: 2, failed: 1 });
+  expect(b.gh.comments.map((c) => c.number)).toEqual([11115, 11156]);
+  // The record is what went, and only that.
+  const record = decisions(b).filter((d) => d.src?.kind === "group_review").at(-1)!;
+  expect(record.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#11115", "acme/mem#11156"]);
+  expect(record.src!.items!.map((x) => x.text)).toEqual(["Fixed in #11163.", "Fixed in #11163."]);
+  expect(record.record).toContain("Fix the settings card's focus ring");
+  expect(record.record).toContain("Fix the settings card's scroll");
+  expect(record.record).not.toContain("Fix the settings card's label");
+  // One failed line, in the scroll, with its own retry.
+  const failed = decisions(b).find((d) => d.src?.kind === "group_review_failed")!;
+  expect(failed).toMatchObject({ question: "有 1 个没留上，要再试一次吗？", goLabel: "再试一次", holdLabel: "先不留", defaultOption: "hold" });
+  expect(failed.src!.failed!.map((f) => [f.item.ref, f.text, f.op])).toEqual([["acme/mem#11108", "Fixed in #11163.", "comment"]]);
+  // Nothing in the partner's voice claims the missing comment.
+  const said = b.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  expect(said.some((t) => t.includes("留了言"))).toBe(false);
+  // Go on the failed card posts only the one that failed; it is never posted twice.
+  b.gh.failComment.clear();
+  b.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: failed.decisionId, option: "go", by: "user" } });
+  await until(() => b.gh.comments.some((c) => c.number === 11108));
+  expect(b.gh.comments.map((c) => c.number).sort()).toEqual([11108, 11115, 11156]);
+  const second = decisions(b).filter((d) => d.src?.kind === "group_review").at(-1)!;
+  expect(second.src!.items!.map((x) => x.item.ref)).toEqual(["acme/mem#11108"]);
+});
+
+test("review together: a total failure logs no record at all, only the failed line", async () => {
+  const b = boot();
+  await sorted(b);
+  const refs = ["acme/mem#11115", "acme/mem#11108"];
+  const r = await b.ho.hand({ refs, shape: "one_by_one" });
+  await b.ho.idle();
+  const g = () => b.core.taskGroups.get(r.groupId!)!;
+  report(b, "t1", "done", "焦点环好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => b.opened.length === 2);
+  report(b, "t2", "done", "标签好了。", "https://github.com/acme/mem/pull/11163");
+  await until(() => g().hand?.review === "ready");
+  for (const ref of refs) b.gh.failComment.add(ref);
+  const sent = await b.ho.reviewSend(r.groupId!, refs);
+  expect(sent).toMatchObject({ ok: false, done: 0, failed: 2 });
+  expect(b.gh.comments).toHaveLength(0);
+  expect(decisions(b).some((d) => d.src?.kind === "group_review")).toBe(false);
+  const failed = decisions(b).find((d) => d.src?.kind === "group_review_failed")!;
+  expect(failed.question).toBe("有 2 个没留上，要再试一次吗？");
+  expect(failed.src!.failed!.map((f) => f.item.ref)).toEqual(refs);
+  expect(g().hand?.review).not.toBe("sent");
+});
+
 test("plan first: Hold keeps it waiting; a reply goes to the plan's own task, which plans again in place", async () => {
   const b = boot();
   await sorted(b);
@@ -552,8 +616,12 @@ test("D415: a note that asks to comment first: one card, nothing starts; Go comm
   expect(b.gh.comments.map((c) => c.number)).toEqual([398, 412]);
   for (const c of b.gh.comments) expect(c.body.startsWith("我的 ducter agent 要开始做了")).toBe(true);
   expect(b.opened[0]!.brief).toContain('Ducter already left the comment the person\'s note asked for, on acme/mem#398, acme/mem#412: "我的 ducter agent 要开始做了". Don\'t comment again.');
+  // research/247 Brief A: the comment the note asked for is information on the task's own card,
+  // never a line in the partner's voice.
   const said = b.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
-  expect(said.at(-1)).toBe("按你说的，先在 #398、#412 下留了言：「我的 ducter agent 要开始做了」，然后开始做。");
+  expect(said.some((t) => t.includes("留了言"))).toBe(false);
+  const info = b.core.log.read({ stream: "task:t1", kinds: ["subject_info"], limit: 20 }).map((e) => e.body as Bodies["subject_info"]);
+  expect(info.at(-1)).toMatchObject({ taskId: "t1", text: "按你说的，先在 #398、#412 下留了言：「我的 ducter agent 要开始做了」，然后开始做。" });
   const writes = b.core.log.read({ stream: "channel", kinds: ["source_write"], limit: 20 }).map((e) => e.body as Bodies["source_write"]);
   expect(writes.map((w) => [w.op, w.by, w.decisionId])).toEqual([["comment", "go", r.asked], ["comment", "go", r.asked]]);
 });

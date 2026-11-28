@@ -242,15 +242,17 @@ test("upgrading onto a loop a round's done already stopped (hel at 14:01): broug
   expect(loop(b)?.back).toMatchObject({ from: "restart" });
   expect(b.core.tasks.get("swj3zc4w")!.attention).toBe("blocked");
   expect(armed(b, "swj3zc4w")).toHaveLength(1);
-  const said = b.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  // research/247 Brief A: the revived loop is one fact on the task's card, not a partner line.
+  const said = b.core.log.read({ kinds: ["subject_info"], limit: 20 }).map((e) => (e.body as Bodies["subject_info"]).text);
   expect(said.filter((s) => s.includes("被误停了"))).toHaveLength(1);
+  expect(b.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).some((e) => (e.body as Bodies["ai_msg"]).text.includes("被误停了"))).toBe(false);
   expect(og(b)?.health?.state).toBe("back");
   // Another restart: said nothing again.
   await b.core.stop();
   const b2 = boot({ dir: t.dir, clock });
   clock.advance(SETTLE_MS + 1000);
   await flush();
-  const said2 = b2.core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 20 }).map((e) => (e.body as Bodies["ai_msg"]).text);
+  const said2 = b2.core.log.read({ kinds: ["subject_info"], limit: 20 }).map((e) => (e.body as Bodies["subject_info"]).text);
   expect(said2.filter((s) => s.includes("被误停了"))).toHaveLength(1);
 });
 

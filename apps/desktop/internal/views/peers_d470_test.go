@@ -62,7 +62,8 @@ func d470Feed() []*store.Entry {
 		peer(6, codex(protocol.BridgeMsg{Direction: "in", MessageID: "h", Text: "发布清单"})),
 	}
 	seq++
-	es = append(es, &store.Entry{Event: protocol.LogEvent{Seq: seq, TS: at(6)}, AI: &protocol.AIMsg{Text: "你的 Codex 把发布清单发过来了"}})
+	// D667 (research/247 Brief A): the origin goes to the message whose ReplyTo is the request.
+	es = append(es, &store.Entry{Event: protocol.LogEvent{Seq: seq, TS: at(6)}, AI: &protocol.AIMsg{Text: "你的 Codex 把发布清单发过来了", ReplyTo: 8}})
 	return es
 }
 
@@ -103,6 +104,17 @@ func TestD470Spoken(t *testing.T) {
 	}
 	if h, _ := spokenPeers(es, func(id string) bool { return id == "h" }); len(h) != 0 {
 		t.Fatal("a card keeps the line")
+	}
+}
+
+// D667 (research/247 Brief A): a later message for the person carries no origin and keeps
+// the request's line; only the message whose ReplyTo is that request takes it.
+func TestD470OriginFollowsReplyTo(t *testing.T) {
+	es := d470Feed()
+	es[8].AI.ReplyTo = 0
+	hidden, origin := spokenPeers(es, func(string) bool { return false })
+	if len(hidden) != 0 || len(origin) != 0 {
+		t.Fatalf("a message for the person drew hidden %v origin %v", hidden, origin)
 	}
 }
 

@@ -32,8 +32,10 @@ func AskRefs(text string) []string {
 }
 
 // KeepsPoints reports whether the partner's words keep the task's question:
-// all its points (when it makes more than one) and every #ref it names.
-func KeepsPoints(question, said string) bool {
+// all its points (when it makes more than one), every #ref it names, and every
+// object the card's question is about in words (research/247 Brief A: the task's
+// title, the to-do's title). A one-point question is covered by the same check.
+func KeepsPoints(question, said string, objects ...string) bool {
 	if strings.TrimSpace(said) == "" {
 		return false
 	}
@@ -47,6 +49,14 @@ func KeepsPoints(question, said string) bool {
 			short = ref[i:]
 		}
 		if !strings.Contains(low, ref) && !strings.Contains(low, short) {
+			return false
+		}
+	}
+	norm := func(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
+	sn := norm(said)
+	for _, obj := range objects {
+		o := norm(obj)
+		if o != "" && !strings.Contains(sn, o) {
 			return false
 		}
 	}

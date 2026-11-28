@@ -15915,8 +15915,9 @@ svg .wave.w2.on {
   margin: var(--s2) 0;
 }
 /* D394: a review round's card: each drafted review, opened as its PR's pre-read. */
-.src-card:has(.src-reviews) { align-self: stretch; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.src-card:has(.src-reviews) { align-self: stretch; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .partner .src-reviews { margin: 0; padding-inline-start: 0; }
+.src-review-lines { width: 100%; min-width: 0; }
 .src-reviews { min-width: 0; list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--s1); }
 .src-review { display: flex; align-items: center; gap: var(--s2); min-width: 0; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: var(--surface-sunken); }
 .src-review > :not(.src-review-title) { flex-shrink: 0; }
@@ -19064,6 +19065,14 @@ a.pr:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
   color: var(--failed-ink);
 }
 .subject-line {
+  font-size: var(--xs);
+  line-height: 1.0625rem;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+/* research/247 Brief A: one information-only fact, its own quiet line on the card. */
+.subject-info {
+  display: block;
   font-size: var(--xs);
   line-height: 1.0625rem;
   color: var(--ink-muted);

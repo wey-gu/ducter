@@ -347,9 +347,15 @@ export function onHandFrame(f: SourcesServerFrame): boolean {
   }
   if (f.t === "pile_result" && f.clientId && f.clientId === HR.cid && f.op === "group_review") {
     HR.sending = false;
+    // D667 (research/247 Brief A): what didn't go out is a card in the scroll with 再试一次,
+    // never a line inside this sheet or a toast. A real error (nothing sent, a group gone) stays.
+    if (f.error) {
+      HR.error = f.error;
+      A.changed();
+      return true;
+    }
     if ((f.done ?? 0) > 0) A.toast(t("ho.review.done", f.done), undefined, 3200);
-    if (f.failed) HR.said = t("ho.review.failed", f.failed);
-    else (A.sheet = null);
+    A.sheet = null;
     A.changed();
     return true;
   }

@@ -534,7 +534,7 @@ export function createRoutines(opts: {
       const w = words(W, langOfText(s.r.name));
       const month = (patch.budget ?? s.r.budget).monthTokens;
       const cap = (patch.budget ?? s.r.budget).perRunTokens ?? Math.min(cur.tokens * 2, month);
-      log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(w.budgetFirst, { name: s.r.name, n: tokensWords(cur.tokens), month: tokensWords(month), cap: tokensWords(cap) }) }, ...(s.r.persona ? { persona: s.r.persona } : {}) } as never);
+      log.append({ stream: `task:${cur.taskId}`, origin: "system", kind: "subject_info", body: { taskId: cur.taskId, text: fill(w.budgetFirst, { name: s.r.name, n: tokensWords(cur.tokens), month: tokensWords(month), cap: tokensWords(cap) }) } });
     }
     if (Object.keys(patch).length) setState(s, patch);
   }

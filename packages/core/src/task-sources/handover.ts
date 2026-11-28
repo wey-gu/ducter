@@ -13,7 +13,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
+import type { Bodies, FindFacet, FindSaid, FindSummary, FindUnknown, FoundItem, GroupHandView, HandedItem, GroupReview, HandHow, HandPlan, HandShape, HandWhere, HandWho, LogEvent, PileItem, PlaceChoice, PlanPart, ReviewRow, RuleView, SourceAsk, SourceItem, SourceItemRef, SourceOp, TaskCard, TaskGroupView, TodoSet } from "@ducter/protocol";
 import { canBeOne, cutAtWord, defaultShape, TICK_MAX, GROUP_NAME_MAX, SUGGEST_MAX, HAND_CAP, HAND_ITEM_NOTE_MAX, HAND_MAX, HAND_NOTE_MAX, isHeld } from "@ducter/protocol";
 import { redact } from "@ducter/protocol/src/redact.ts";
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
@@ -47,6 +47,9 @@ const W = {
     reviewQ: "在这 {n} 个下面留言？",
     reviewGo: "留言",
     reviewHold: "先不留",
+    reviewFailed: "有 {n} 个没留上，要再试一次吗？",
+    reviewFailedClose: "有 {n} 个留了言，没关掉，要再试一次吗？",
+    reviewRetry: "再试一次",
     // research/244 rule 7: answered already, so the card reads as what was done, with titles.
     recordOn: "在{labels}下留了言：「{text}」",
     recordItem: "「{title}」（{label}）",
@@ -80,6 +83,9 @@ const W = {
     reviewQ: "Comment on these {n}?",
     reviewGo: "Comment",
     reviewHold: "Not now",
+    reviewFailed: "{n} didn't go through. Try again?",
+    reviewFailedClose: "{n} commented but not closed. Try again?",
+    reviewRetry: "Try again",
     recordOn: "Commented on {labels}: “{text}”",
     recordItem: "“{title}” ({label})",
     recordGroupSep: "; ",
@@ -434,7 +440,10 @@ export interface Handover {
   /** A plan card answered (plan_answer, or the card's own buttons). */
   answerPlan(groupId: string, option: "go" | "hold" | "reply", o?: { text?: string; notes?: Record<string, string> }): Promise<{ ok: boolean; error?: string }>;
   review(groupId: string): Promise<GroupReview | undefined>;
-  reviewSend(groupId: string, keep: string[]): Promise<{ ok: boolean; done: number; failed: number; error?: string }>;
+  /** D667: writes first; the record names only what went out. `texts` keeps a retry's exact words. */
+  reviewSend(groupId: string, keep: string[], o?: { texts?: Record<string, string>; closeOnly?: string[] }): Promise<{ ok: boolean; done: number; failed: number; error?: string }>;
+  /** D667 (research/247 Brief A): Go on a failed review's one card retries only those items. */
+  retryReview(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void>;
   /** A task that's a part of a hand-over group still under way (its own write-back waits for review together). */
   inGroup(taskId: string): boolean;
   onEvent(e: LogEvent): void;
@@ -467,6 +476,8 @@ export function createHandover(d: HandoverDeps): Handover {
   const newId = (p: string) => `${p}${randomBytes(5).toString("hex")}`;
   const iso = () => new Date(d.now()).toISOString();
   const handled = new Set<string>();
+  /** D667: a group's comment-before-work fact is said on its first part's card, once. */
+  const commentedSaid = new Set<string>();
   /** D638: the slow parts Go started after its reply (idle waits them; nothing else does). */
   const running = new Set<Promise<void>>();
 
@@ -840,10 +851,8 @@ export function createHandover(d: HandoverDeps): Handover {
       const r = await d.write(refOfItem(i), "comment", { by: how.by, text, ...(how.decisionId ? { decisionId: how.decisionId } : {}), ...(how.standing ? { standing: how.standing.id, said: how.standing.text } : {}) }).catch(() => ({ ok: false }) as WriteResult);
       if (r.ok) refs.push(i.ref);
     }
-    if (refs.length) {
-      const labels = targets.filter((i) => refs.includes(i.ref)).map((i) => i.label).join(W[d.lang()].sep);
-      d.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(W[d.lang()].commented, { labels, text }) } });
-    }
+    // D667 (research/247 Brief A): the comment the note asked for is information, not speech.
+    // The caller puts it on the card of the work it starts; it is never an ai_msg of its own.
     return { refs, text };
   }
 
@@ -1002,6 +1011,13 @@ export function createHandover(d: HandoverDeps): Handover {
     const itemMs: number[] = [];
     try {
       let commented = job.commented;
+      /** D667 (research/247 Brief A): the comment the note asked for joins the card of the work. */
+      const sayCommented = (taskId: string) => {
+        const c = commented;
+        if (!taskId || !c?.refs.length) return;
+        const labels = job.items.filter((i) => c.refs.includes(i.ref)).map((i) => i.label).join(W[lang].sep);
+        d.log.append({ stream: `task:${taskId}`, origin: "system", kind: "subject_info", body: { taskId, text: fill(W[lang].commented, { labels, text: c.text }) } });
+      };
       if (job.standing && job.targets) {
         const t = nowMs();
         commented = await commentOn(job.targets, job.standing.text, { by: "rule", standing: job.standing.covered[0]! });
@@ -1084,6 +1100,7 @@ export function createHandover(d: HandoverDeps): Handover {
         }
         askRule();
         markSet(g.id);
+        sayCommented(g.hand?.plan?.taskId ?? g.members.find((m) => "taskId" in m)?.taskId ?? "");
         save();
         logged(job, t0, itemMs);
         return;
@@ -1100,6 +1117,7 @@ export function createHandover(d: HandoverDeps): Handover {
         d.pile.handed(i.ref, c.taskId);
         askRule(c.harness);
         markSet(undefined, c.taskId);
+        sayCommented(c.taskId);
         save();
         await fullP.catch(() => undefined); // the per-step line reads the whole of the work
         logged(job, t0, itemMs);
@@ -1120,6 +1138,7 @@ export function createHandover(d: HandoverDeps): Handover {
         groups()!.setHand(g.id, { plan: { taskId: c.taskId, state: "planning" } });
         askRule(c.harness);
         markSet(g.id);
+        sayCommented(c.taskId);
         save();
         await fullP.catch(() => undefined);
         logged(job, t0, itemMs);
@@ -1148,6 +1167,7 @@ export function createHandover(d: HandoverDeps): Handover {
         groups()!.setHand(g.id, { parts: { [c.taskId]: its.map((i) => i.ref) } });
         askRule(c.harness);
         markSet(g.id);
+        sayCommented(c.taskId);
         save();
         await fullP.catch(() => undefined);
         logged(job, t0, itemMs);
@@ -1412,45 +1432,93 @@ export function createHandover(d: HandoverDeps): Handover {
     return { groupId, name: g.name, rows, prs: rows.filter((r) => r.pr).length, fixed: rows.filter((r) => r.fixedIn && r.merged !== false).length };
   }
 
-  async function reviewSend(groupId: string, keep: string[]) {
+  async function reviewSend(groupId: string, keep: string[], o: { texts?: Record<string, string>; closeOnly?: string[] } = {}) {
     const r = await review(groupId);
     if (!r) return { ok: false, done: 0, failed: 0, error: "That group isn't there any more." };
     const k = new Set(keep);
+    const closeOnly = new Set(o.closeOnly ?? []);
     // Only a line whose PR is merged goes out: an item with no merged PR of its own is never
-    // called fixed. Its row stays in the review with the true words and the reason.
-    const out = r.rows.flatMap((row) => (row.merged === false ? [] : row.items.filter((i) => k.has(i.ref)).map((i) => ({ item: i, text: row.comment, close: row.close, taskId: row.taskId }))));
+    // called fixed. Its row stays in the review with the true words and the reason. A retry keeps
+    // the exact text the person saw on the sheet (never a line derived again from newer state).
+    const out = r.rows.flatMap((row) => (row.merged === false ? [] : row.items.filter((i) => k.has(i.ref)).map((i) => ({ item: i, text: o.texts?.[i.ref] ?? row.comment, close: row.close, taskId: row.taskId }))));
     if (!out.length) return { ok: false, done: 0, failed: 0, error: "Nothing is kept to send." };
     const lang = d.lang();
     const w = W[lang];
-    const decisionId = newId("d_");
-    handled.add(decisionId);
-    // research/244 rule 7: this card is answered here and then; it may never read as a question.
-    // Group the rows by the line each one got, and name every to-do by its title (rule 4).
-    const byText = new Map<string, { item: SourceItemRef }[]>();
-    for (const x of out) byText.set(x.text, [...(byText.get(x.text) ?? []), { item: x.item }]);
-    const record = [...byText.entries()]
-      .map(([text, rows]) =>
-        fill(w.recordOn, {
-          labels: rows
-            .map(({ item }) => fill(w.recordItem, { title: item.title, label: item.label || item.ref }))
-            .join(w.recordSep),
-          text,
-        }),
-      )
-      .join(w.recordGroupSep);
-    // The Go was given on the sheet that showed every line (D359's close sheet): recorded as given there and then.
-    d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.reviewQ, { n: out.length }), record, goLabel: w.reviewGo, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review", item: out[0]!.item, groupId, items: out.map((x) => ({ item: x.item, text: x.text })) } } });
-    d.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId, option: "go", by: "user" } });
-    let done = 0;
-    let failed = 0;
+    // D667 (research/247 Brief A, rule 10): the writes come first and the record is built
+    // from their results, so a card can never name a comment that did not go out.
+    const posted: typeof out = [];
+    const recordItems: { item: SourceItemRef; text: string }[] = [];
+    const failed: NonNullable<SourceAsk["failed"]> = [];
     for (const x of out) {
-      const c = await d.write(x.item, "comment", { by: "go", decisionId, ...(x.taskId ? { taskId: x.taskId } : {}), text: x.text });
-      const res = c.ok && x.close ? await d.write(x.item, "close", { by: "go", decisionId, text: "completed" }) : c;
-      if (res.ok) done++;
-      else failed++;
+      if (closeOnly.has(x.item.ref)) {
+        // The comment already went in the first pass; a retry closes only, never comments twice.
+        const cl = await d.write(x.item, "close", { by: "go", ...(x.taskId ? { taskId: x.taskId } : {}), text: "completed" });
+        if (cl.ok) posted.push(x);
+        else failed.push({ item: x.item, text: x.text, op: "close", ...(cl.error ? { why: cl.error } : {}) });
+        continue;
+      }
+      const c = await d.write(x.item, "comment", { by: "go", ...(x.taskId ? { taskId: x.taskId } : {}), text: x.text });
+      if (!c.ok) {
+        failed.push({ item: x.item, text: x.text, op: "comment", ...(c.error ? { why: c.error } : {}) });
+        continue;
+      }
+      // The comment really went: only now may the permanent record name it.
+      recordItems.push({ item: x.item, text: x.text });
+      if (x.close) {
+        const cl = await d.write(x.item, "close", { by: "go", ...(x.taskId ? { taskId: x.taskId } : {}), text: "completed" });
+        if (!cl.ok) {
+          failed.push({ item: x.item, text: x.text, op: "close", ...(cl.error ? { why: cl.error } : {}) });
+          continue;
+        }
+      }
+      posted.push(x);
     }
-    if (done) groups()?.setHand(groupId, { review: "sent" });
-    return { ok: done > 0 && !failed, done, failed };
+    if (recordItems.length) {
+      const decisionId = newId("d_");
+      handled.add(decisionId);
+      // research/244 rule 7: this card is answered here and then; it may never read as a question.
+      // Group the rows by the line each one got, and name every to-do by its title (rule 4).
+      const byText = new Map<string, { item: SourceItemRef }[]>();
+      for (const x of recordItems) byText.set(x.text, [...(byText.get(x.text) ?? []), { item: x.item }]);
+      const record = [...byText.entries()]
+        .map(([text, rows]) =>
+          fill(w.recordOn, {
+            labels: rows
+              .map(({ item }) => fill(w.recordItem, { title: item.title, label: item.label || item.ref }))
+              .join(w.recordSep),
+            text,
+          }),
+        )
+        .join(w.recordGroupSep);
+      // The Go was given on the sheet that showed every line (D359's close sheet): recorded as given there and then.
+      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question: fill(w.reviewQ, { n: out.length }), record, goLabel: w.reviewGo, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review", item: recordItems[0]!.item, groupId, items: recordItems.map((x) => ({ item: x.item, text: x.text })) } } });
+      d.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId, option: "go", by: "user" } });
+    }
+    if (failed.length) {
+      // D667 (research/247 Brief A): the failures are one line with one way to retry, in the
+      // scroll — never a toast. A total failure logs only this card, never a record.
+      const decisionId = newId("d_");
+      const onlyClose = failed.every((f) => f.op === "close");
+      const question = fill(onlyClose ? w.reviewFailedClose : w.reviewFailed, { n: failed.length });
+      d.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId, question, goLabel: w.reviewRetry, holdLabel: w.reviewHold, defaultOption: "hold", reversible: false, src: { kind: "group_review_failed", item: failed[0]!.item, groupId, failed } } });
+    }
+    if (posted.length || recordItems.length) groups()?.setHand(groupId, { review: "sent" });
+    // `done` is what the toast says went: the comments that really went out (a close-only retry
+    // adds no new comment, so it never says one again).
+    return { ok: failed.length === 0, done: recordItems.length, failed: failed.length };
+  }
+
+  /** D667 (research/247 Brief A): Go on a failed review's card retries only what failed. */
+  async function retryReview(card: Bodies["decision"], r: Bodies["decision_resolved"]): Promise<void> {
+    const src = card.src as SourceAsk | undefined;
+    if (!src || src.kind !== "group_review_failed" || !src.groupId || !src.failed?.length || r.option !== "go") return;
+    const texts: Record<string, string> = {};
+    const closeOnly: string[] = [];
+    for (const f of src.failed) {
+      texts[f.item.ref] = f.text;
+      if (f.op === "close") closeOnly.push(f.item.ref);
+    }
+    await reviewSend(src.groupId, src.failed.map((f) => f.item.ref), { texts, ...(closeOnly.length ? { closeOnly } : {}) });
   }
 
   // ---------- the conversation's set ----------
@@ -1496,6 +1564,7 @@ export function createHandover(d: HandoverDeps): Handover {
     answerPlan,
     review,
     reviewSend,
+    retryReview,
     inGroup(taskId) {
       return hands().some((g) => g.hand!.review !== "sent" && g.members.some((m) => !isHeld(m) && m.taskId === taskId && m.taskId !== g.hand!.plan?.taskId));
     },
@@ -1515,6 +1584,12 @@ export function createHandover(d: HandoverDeps): Handover {
       d.bind(taskId, bind);
       for (const i of bind) d.pile.handed(i.ref, taskId);
       if (group.hand) groups()?.setHand(group.id, { parts: { ...(group.hand.parts ?? {}), [taskId]: bind.map((i) => i.ref) } });
+      const c = group.hand?.commented;
+      if (c?.refs.length && !commentedSaid.has(group.id)) {
+        commentedSaid.add(group.id);
+        const labels = (group.hand?.items ?? []).filter((i) => c.refs.includes(i.ref)).map((i) => i.label).join(W[d.lang()].sep);
+        d.log.append({ stream: `task:${taskId}`, origin: "system", kind: "subject_info", body: { taskId, text: fill(W[d.lang()].commented, { labels, text: c.text }) } });
+      }
     },
     async idle() {
       while (running.size) await Promise.all([...running]);

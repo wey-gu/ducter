@@ -78,6 +78,11 @@ function fakeGh(state: Map<string, "open" | "merged" | "closed">): Exec {
   };
 }
 
+/*
+ * research/247 Brief A: a closed outside thing is a fact on each holder's card (`subject_info`),
+ * never one summary message. The old `summaries` helper reads no settled ai_msg any more.
+ */
+const infos = (core: ReturnType<typeof boot>["core"]) => core.log.read({ kinds: ["subject_info"], limit: 500 }).map((e) => e.body as Bodies["subject_info"]);
 const summaries = (core: ReturnType<typeof boot>["core"]) => core.log.read({ stream: "channel", kinds: ["ai_msg"], limit: 200 }).map((e) => e.body as Bodies["ai_msg"]).filter((b) => b.settled);
 const lines = (core: ReturnType<typeof boot>["core"], taskId: string) => core.log.read({ stream: `task:${taskId}`, kinds: ["task_event"], limit: 200 }).map((e) => e.body as Bodies["task_event"]).filter((b) => b.from === "ducter");
 
@@ -141,24 +146,17 @@ describe("D633: anything Ducter holds about an outside thing settles when it end
       expect(lines(second.core, "loop11406").some((b) => b.text?.includes("#11406 已合并，这件结束。"))).toBe(true);
       // The Keep's own round records the same line (not only the task transcript).
       expect(second.core.keeps.page(loopKeep.keepId)?.rounds.some((r) => r.report?.includes("#11406 已合并，这件结束。"))).toBe(true);
-      const sums = summaries(second.core);
-      expect(sums).toHaveLength(1);
-      expect(sums[0]!.settled).toMatchObject({ prs: 5, issues: 0 });
-      // research/244 rule 4: each one by its title, not a count; the verb once (rule: the fix).
-      expect(sums[0]!.text).toContain("「跟进 nowledge-co/mem#11441」");
-      expect(sums[0]!.text).toContain("「盯 mem#11406 的收尾」");
-      expect(sums[0]!.text).toContain("都合并了");
-      expect(sums[0]!.text.match(/都合并了/g)).toHaveLength(1);
-      expect(sums[0]!.text).not.toMatch(/^\d+ 个 PR/);
-      expect(sums[0]!.text).toContain("收了尾");
-      expect(sums[0]!.settled).toMatchObject({ prs: 5, issues: 0 });
-      expect((sums[0]!.settled as { names?: unknown[] }).names).toHaveLength(5);
+      // research/247 Brief A: no summary message at all; each merge is on its holder's card.
+      expect(summaries(second.core)).toHaveLength(0);
+      const texts = new Set(infos(second.core).map((b) => b.text));
+      for (const n of ["11441", "378", "11389", "11408", "11406"]) expect(texts.has(`PR #${n} 合并了`)).toBe(true);
     }
     // The repair ran once: a second start changes nothing and says nothing.
     {
       const third = boot(t.dir, { exec: fakeGh(gh), holdingsEveryMs: 60 * 60_000 });
       await sleep(50);
-      expect(summaries(third.core)).toHaveLength(1);
+      expect(summaries(third.core)).toHaveLength(0);
+      expect(new Set(infos(third.core).map((b) => b.text))).toEqual(new Set(["PR #11441 合并了", "PR #378 合并了", "PR #11389 合并了", "PR #11408 合并了", "PR #11406 合并了"]));
       expect(third.core.log.read({ stream: `task:loop11406`, kinds: ["task_event"], limit: 200 }).filter((e) => (e.body as Bodies["task_event"]).from === "ducter")).toHaveLength(1);
     }
   });
@@ -195,17 +193,11 @@ describe("D633: anything Ducter holds about an outside thing settles when it end
       expect(core.tasks.get("wait77")!.attention).toBe("done");
       const loopKeep = core.keeps.all().find((k) => k.from.kind === "loop" && k.from.taskId === "issuewatch")!;
       expect(loopKeep.life).toBe("done");
-      const sums = summaries(core);
-      expect(sums).toHaveLength(1);
-      expect(sums[0]!.settled).toMatchObject({ prs: 1, issues: 1 });
-      // research/244 rule 4: the issue and the PR by their titles; one verb per kind.
-      expect(sums[0]!.text).toContain("「盯 acme/site#42」");
-      expect(sums[0]!.text).toContain("「等别人的 PR #77」");
-      // one of each kind: each its verb once, and 都 only over two or more.
-      expect(sums[0]!.text).toContain("」关闭了");
-      expect(sums[0]!.text).toContain("」合并了");
-      expect(sums[0]!.text).not.toContain("都关闭了");
-      expect(sums[0]!.text).not.toContain("都合并了");
+      // research/247 Brief A: the issue and the PR each on a card, no summary message.
+      expect(summaries(core)).toHaveLength(0);
+      const texts = new Set(infos(core).map((b) => b.text));
+      expect(texts.has("#42 关闭了")).toBe(true);
+      expect(texts.has("PR #77 合并了")).toBe(true);
     }
   });
 
@@ -231,8 +223,10 @@ describe("D633: anything Ducter holds about an outside thing settles when it end
     expect(core.tasks.get("t1")!.attention).toBe("done");
     expect(core.handoffs.all().find((x) => x.item.ref === "nowledge-co/mem#2")?.state).toBe("given");
     expect(core.tasks.get("t2")!.attention).toBe("blocked");
-    expect(summaries(core)).toHaveLength(1);
+    expect(summaries(core)).toHaveLength(0);
+    const before = infos(core).length;
+    expect(infos(core).map((b) => b.text)).toEqual(["PR #1 合并了"]);
     await core.holdings.sweep();
-    expect(summaries(core)).toHaveLength(1); // nothing closed, nothing said
+    expect(infos(core)).toHaveLength(before); // nothing closed, nothing added
   });
 });

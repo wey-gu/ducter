@@ -73,6 +73,7 @@ function srcKind(src: NonNullable<DecisionState["src"]>): string {
     case "review":
     case "reviews":
     case "group_review":
+    case "group_review_failed":
       return github ? "pr" : "comment";
     case "write":
     case "hand_comment":

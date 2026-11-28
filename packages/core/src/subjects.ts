@@ -50,6 +50,11 @@ export interface Subjects {
   cardOf(taskId: string): SubjectCard | undefined;
   /** Every card, latest per subject. */
   cards(): SubjectCard[];
+  /**
+   * D667: one information-only fact joins the subject's card, in place. Never a message and
+   * never a wake; the newest fact is the one the card carries.
+   */
+  info(taskId: string, text: string): void;
 }
 
 export interface SubjectsDeps {
@@ -137,7 +142,7 @@ export function createSubjects(d: SubjectsDeps): Subjects {
     for (const [k, v] of byKey) if (k !== c.key && v.taskId && v.taskId === c.taskId) byKey.delete(k);
     byKey.set(c.key, c);
     if (quiet) return;
-    const same = prev && prev.msgSeq === c.msgSeq && prev.title === c.title && prev.state === c.state && prev.line === c.line && (prev.progress ?? "") === (c.progress ?? "") && (prev.took ?? 0) === (c.took ?? 0);
+    const same = prev && prev.msgSeq === c.msgSeq && prev.title === c.title && prev.state === c.state && prev.line === c.line && (prev.progress ?? "") === (c.progress ?? "") && (prev.info ?? "") === (c.info ?? "") && (prev.took ?? 0) === (c.took ?? 0);
     if (same) return;
     // D312: the card lives in the task's own partner's conversation (a second partner's task never lands in the default's).
     const persona = c.taskId ? tasks.get(c.taskId)?.persona : undefined;
@@ -253,11 +258,31 @@ export function createSubjects(d: SubjectsDeps): Subjects {
       state,
       line: line || "",
       ...(progress ? { progress } : {}),
+      // D667: an information-only fact stays on the card across reports and a result; the
+      // newest one is kept whole (a later fact replaces it, never stacks another line).
+      ...(prevCard?.info ? { info: prevCard.info } : {}),
       ...(took ? { took } : {}),
       // The card opens the task that started the subject (a helper never takes the card over).
       taskId: prevCard?.taskId ?? taskId,
       at,
     };
+  };
+
+  /**
+   * D667 (research/247 Brief A): an information-only fact joins the subject's card. It is a
+   * revision of the same card (never a message, never a wake); if the card already says the same
+   * fact — D665's artifact line is the merge — nothing is added and nothing is logged.
+   */
+  const info = (taskId: string, text: string, at?: string): void => {
+    const t = String(text ?? "").trim();
+    if (!t || !tasks.get(taskId)) return;
+    const when = at ?? tasks.get(taskId)?.updatedAt ?? new Date().toISOString();
+    const s = startOf(taskId, when);
+    const prev = byKey.get(s.key) ?? cardFor(taskId, when);
+    if (prev.info === t || prev.line === t) return;
+    // The card's result line may already be the same fact in the card's own words (`PR #578 合并了`).
+    if (prev.line && (prev.line.includes(t) || t.includes(prev.line))) return;
+    put({ ...prev, info: t, at: when });
   };
 
   const wakeFor = (e: LogEvent): boolean => {
@@ -317,6 +342,11 @@ export function createSubjects(d: SubjectsDeps): Subjects {
         put(cardFor(id, e.ts));
         break;
       }
+      case "subject_info": {
+        const b = e.body as Bodies["subject_info"];
+        info(b.taskId, b.text, e.ts);
+        break;
+      }
       case "task_state": {
         const b = e.body as Bodies["task_state"];
         const c = tasks.get(b.taskId);
@@ -361,5 +391,6 @@ export function createSubjects(d: SubjectsDeps): Subjects {
       return byKey.get(startOf(taskId, c.updatedAt).key);
     },
     cards: () => [...byKey.values()],
+    info,
   };
 }

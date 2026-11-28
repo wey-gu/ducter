@@ -51,7 +51,8 @@ const feed = () => {
     e({ peer: { direction: "in", messageId: "x", ...cc, text: "CI 红了" } }, 4),
     e({ peer: { direction: "in", messageId: "k", ...codex, text: "要你定" } }, 5),
     e({ peer: { direction: "in", messageId: "h", ...codex, text: "发布清单" } }, 6),
-    e({ ai: { text: "你的 Codex 把发布清单发过来了，要我去跑吗？" } }, 6),
+    // D667 (research/247 Brief A): the origin goes to the message whose replyTo is the request.
+    e({ ai: { text: "你的 Codex 把发布清单发过来了，要我去跑吗？", replyTo: 8 } }, 6),
   ];
 };
 
@@ -112,6 +113,13 @@ describe("the conversation says it once (D470)", () => {
     expect(spokenPeers(f as never, (id) => id === "h").hidden.size).toBe(0);
     const g = [...f.slice(0, 8), { ev: { seq: 20, ts: "" }, user: { text: "?" } }, f[8]!];
     expect(spokenPeers(g as never, () => false).hidden.size).toBe(0);
+  });
+  test("a later message for the person carries no origin, and the request keeps its line", () => {
+    const f = feed();
+    const g = f.map((x, i) => (i === 8 ? { ev: (x as { ev: object }).ev, ai: { text: "另一个任务的进展。" } } : x));
+    const { hidden, origin } = spokenPeers(g as never, () => false);
+    expect(hidden.size).toBe(0);
+    expect(origin.size).toBe(0);
   });
   test("Ducter's own local traffic is no line and no origin (research/244 §5.2)", () => {
     expect(peerInConversation({})).toBe(true);

@@ -183,7 +183,9 @@ become the note, the same as on the sheet.
 When every part is done, the group offers **Review together**: each pull request with its checks, its
 size, what it did and the comment it will leave on its issue. Turn off any comment with **Not this
 one**, then **Comment on these {n}** posts them all at once. Ones that were already fixed are closed
-after their comment; the rest close themselves when their pull request is merged.
+after their comment; the rest close themselves when their pull request is merged. If a comment
+doesn't go out, the card under the work names only the ones that did, and one line in the conversation
+names what didn't, with **Try again**; trying again posts only those, never a comment twice.
 
 ## When a new one comes
 

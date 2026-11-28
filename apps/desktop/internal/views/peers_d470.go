@@ -316,7 +316,10 @@ func spokenPeers(entries []*store.Entry, asked func(string) bool) (map[int64]boo
 			if n.User != nil || (n.Peer != nil && n.Peer.Direction == "in") {
 				break
 			}
-			if n.AI != nil {
+			// D667 (research/247 Brief A, rule 3): the origin belongs to the message
+			// whose replyTo is this request. A later message for the person carries none, and
+			// the request keeps its line rather than hiding under words that never answered it.
+			if n.AI != nil && n.AI.ReplyTo == e.Event.Seq {
 				hidden[e.Event.Seq] = true
 				if origin[n.Event.Seq] == nil {
 					origin[n.Event.Seq] = p

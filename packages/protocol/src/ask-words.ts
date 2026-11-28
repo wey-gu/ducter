@@ -15,11 +15,16 @@ export function refsNamed(text: string): string[] {
   return [...new Set((String(text ?? "").match(REF) ?? []).map((r) => r.toLowerCase()))];
 }
 
+/** Whitespace-collapsed, case-folded: how an object's name is compared. */
+const norm = (s: string) => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+
 /**
  * Whether the partner's words keep the task's question: all its points (when it makes more than
- * one) and every #ref it names. A question with neither is the partner's to say.
+ * one), every #ref it names, and every object the card's question is about in words (D667,
+ * research/247 Brief A: the task's title, the to-do's title). A one-point question is covered by
+ * the same check. A question with none of them is the partner's to say.
  */
-export function keepsPoints(question: string, said: string): boolean {
+export function keepsPoints(question: string, said: string, objects: (string | undefined)[] = []): boolean {
   const q = String(question ?? "");
   const s = String(said ?? "");
   if (!s.trim()) return false;
@@ -29,6 +34,12 @@ export function keepsPoints(question: string, said: string): boolean {
     // A bare "#11230" counts when the said words name that number at all (the repo may be dropped).
     const short = ref.includes("#") ? ref.slice(ref.indexOf("#")) : ref;
     if (!s.toLowerCase().includes(ref) && !s.toLowerCase().includes(short)) return false;
+  }
+  // The question's object must survive in words, not only in the number or the card around it.
+  const sn = norm(s);
+  for (const obj of objects) {
+    const o = norm(obj ?? "");
+    if (o && !sn.includes(o)) return false;
   }
   return true;
 }

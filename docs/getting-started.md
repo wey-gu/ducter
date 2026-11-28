@@ -162,10 +162,12 @@ make it Saturday").
 one small card under the message that started it: what it is working on, where it stands (in
 progress, waiting on you, done, or didn't work out), and the newest thing that came of it — while
 it works, the latest progress; once your partner has said the result, the concrete fact instead (the
-merged PR, or what the task left to show for it), with how long it took on its own line. The card
-changes in place as the work moves; a progress note never becomes a new message. You hear from your
-partner only when something needs you, fails, or is finally done — once. A card that is only
-information and not answered by tomorrow leaves the conversation; the task keeps it.
+merged PR, or what the task left to show for it), with how long it took on its own line. One extra
+fact can sit on it as its own quiet line — a merge that closed the work, a routine's first run's real
+cost, a loop that came back — and only the newest one shows. The card changes in place as the work
+moves; a progress note never becomes a new message. You hear from your partner only when something
+needs you, fails, or is finally done — once. A card that is only information and not answered by
+tomorrow leaves the conversation; the task keeps it.
 
 ## 3. Get your first result
 

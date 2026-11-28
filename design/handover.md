@@ -225,8 +225,11 @@ with the shapes in `packages/protocol/src/handover.ts`.
   `group_review` → rows: each part's to-dos, its PR (the draft PR it opened, or a pull link in its
   report), GitHub's checks (`gh pr checks --json bucket`), its size, its result line, and the line each
   to-do gets in its own language; the already-fixed ones with their comment and `close`.
-  `group_review_send {keep}` is one decision recorded as given on the sheet (D359's close sheet), each
-  comment a `source_write` in 替你做过的; only the already-fixed close. A part's own write-back card
+  `group_review_send {keep}` writes every comment first, then logs one decision recorded as given on
+  the sheet (D359's close sheet), each comment a `source_write` in 替你做过的; only the already-fixed
+  close. Failures are one `group_review_failed` card whose Go goes back through the same path with
+  only the failed refs and their exact text (`closeOnly` when the comment already went, so a retry
+  never comments twice). A part's own write-back card
   (D341) is held while its group is under way (`propose` → `held`).
 - **The conversation.** `todos do=find` posts the set card (Log kind `todo_set`, re-logged with its
   group once handed over); `todos do=hand set= note= shape= group=` hands it over (packages/partner).

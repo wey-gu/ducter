@@ -593,12 +593,10 @@ export function createWork(o: WorkOptions): Work {
     const backedOff = !a.atISO && !rhythm && streak > WAIT_REPEAT_N;
     const every = backedOff ? `${Math.max(1, Math.round((at - now) / 60_000))} min` : "";
     if (backedOff && streak === WAIT_REPEAT_N + 1) {
-      // Said once per task and reason, in the partner's voice, only as an offer to stop waiting.
-      const said = log.read({ stream: "channel", kinds: ["ai_msg"], limit: 2000 }).some((e) => {
-        const b = e.body as Bodies["ai_msg"];
-        return b.waitSlow?.taskId === taskId && normReason(b.waitSlow.reason) === normReason(reason);
-      });
-      if (!said) log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: fill(wordsOf(reason).slow, { reason, n: String(streak) }), waitSlow: { taskId, reason } } });
+      // D667 (research/247 Brief A): the backed-off fact rides the task's card, not a line of
+      // its own. The streak is structural, so this fires once per run of the same wait; a report
+      // that starts a fresh wait starts a fresh count.
+      log.append({ stream: `task:${taskId}`, origin: "system", kind: "subject_info", body: { taskId, text: fill(wordsOf(reason).slow, { reason, n: String(streak) }) } });
     }
     try {
       // D394: a task has one timer of its own, the newest. A round started by another wake (a

@@ -695,7 +695,7 @@ export function groupReviewLines(src: NonNullable<import("@ducter/protocol").Bod
 export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/protocol").Bodies["decision"]["src"]> }) {
   return (
     <div class="src-card">
-      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "reviews" && src.kind !== "hand_comment" && src.kind !== "offer" && src.kind !== "picks" && <SourceChip src={src.item} states={false} />}
+      {src.kind !== "where_rule" && src.kind !== "group_review" && src.kind !== "group_review_failed" && src.kind !== "reviews" && src.kind !== "hand_comment" && src.kind !== "offer" && src.kind !== "picks" && <SourceChip src={src.item} states={false} />}
       {/* D415: the hand-over's note asked to tell the issues first: each one, then the line as it goes out. */}
       {src.kind === "hand_comment" && (
         <>
@@ -748,6 +748,30 @@ export function SourceCardBody({ src }: { src: NonNullable<import("@ducter/proto
                     <SourceChip src={(src.items ?? []).find((x) => x.item.ref === ref)!.item} small states={false} />
                     <span class="src-review-title" dir="auto">
                       {title}
+                    </span>
+                  </div>
+                  {text && (
+                    <blockquote class="src-quote" dir="auto">
+                      {text}
+                    </blockquote>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* D667 (research/247 Brief A): the failed writes, one line, with the card's 再试一次. */}
+      {src.kind === "group_review_failed" && src.failed && (
+        <div class="src-review-lines">
+          <ul class="src-reviews">
+            {src.failed.map(({ item, text }) => (
+              <li key={item.ref} class="src-review src-review-detail">
+                <div class="grow">
+                  <div class="src-review-head">
+                    <SourceChip src={item} small states={false} />
+                    <span class="src-review-title" dir="auto">
+                      {item.title}
                     </span>
                   </div>
                   {text && (

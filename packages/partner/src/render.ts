@@ -4,7 +4,7 @@
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
 import type { AskLine, Attention, Bodies, CantStart, ChatThread, LogEvent, ReplyRef, TaskCard } from "../../protocol/src/index.ts";
-import { LIMIT_RESET_GRACE_MS, REPLY_QUOTE } from "../../protocol/src/index.ts";
+import { LIMIT_RESET_GRACE_MS, REPLY_QUOTE, prOf } from "../../protocol/src/index.ts";
 import { harnessName } from "../../protocol/src/harnesses.ts";
 import { richShownWords } from "../../protocol/src/rich.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
@@ -948,6 +948,55 @@ function took(c: TaskCard): string {
 /** Open tasks listed in a fresh session's seed; the rest are named by count (research/48 F2). */
 export const OPEN_TASKS_MAX = 20;
 
+/** The mergeable state GitHub reports, in the one word the task line carries (D671). */
+function mergeWord(m: string): string {
+  switch (m) {
+    case "clean":
+      return "mergeable";
+    case "dirty":
+      return "conflicts with its base";
+    case "behind":
+      return "behind its base branch";
+    case "draft":
+      return "still a draft";
+    case "blocked":
+      return "not mergeable (blocked)";
+    case "unstable":
+      return "not mergeable (unstable)";
+    default:
+      return `not mergeable (${m})`;
+  }
+}
+
+/**
+ * D671: a task that owns an open PR: the PR's own standing as facts, newer than and overriding
+ * the task's own last report (which can predate the latest review or CI). Its checks (n of m passed
+ * and which are pending), its reviews (changes requested by whom and when), and whether it can merge.
+ */
+function prStanding(c: TaskCard): string {
+  const pr = prOf(c.prs);
+  if (!pr || pr.state !== "open" || pr.letGo) return "";
+  const st = pr.standing;
+  if (!st) return "";
+  // Bounded like the board's own facts (pr-state.ts names at most three reviewers; the owned
+  // look names at most four failed or pending checks), so the line stays within the task budget.
+  const parts: string[] = [];
+  for (const x of (st.changes ?? []).slice(0, 3)) parts.push(`changes requested by ${x.by} ${x.at.slice(0, 16).replace("T", " ")}`);
+  if (st.approvedBy?.length) parts.push(`approved by ${st.approvedBy.slice(0, 3).join(", ")}`);
+  if (st.awaiting?.length) parts.push(`waiting for a review from ${st.awaiting.slice(0, 3).join(", ")}`);
+  if (st.checks) {
+    const k = st.checks;
+    let s = `checks ${k.passed}/${k.total} passed`;
+    if (k.failed.length) s += `, failed: ${k.failed.slice(0, 4).join(", ")}`;
+    if (k.pending.length) s += `, pending: ${k.pending.slice(0, 4).join(", ")}`;
+    parts.push(s);
+  }
+  if (st.merge) parts.push(mergeWord(st.merge));
+  if (st.draft) parts.push("still a draft");
+  if (!parts.length) return "";
+  return ` · PR ${pr.pr}: ${parts.join("; ")}`;
+}
+
 export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup" | "keptBy">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
   // D661: a PR shown under its holder's row is one task here too, never two.
@@ -971,7 +1020,10 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
   const line = (c: TaskCard) => {
     const where =
       c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? ` · browser on ${c.place.device && c.place.device !== "local" ? c.place.device : "the home"}` : "";
-    const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.gist?.text ?? c.lastReport.summary, 200)}` : "";
+    // D671: the owned PR's own standing overrides the task's last report when they disagree
+    // (a report written before a reviewer asked for changes still says "only an approval is missing").
+    const prFacts = prStanding(c);
+    const last = prFacts ? prFacts : c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.gist?.text ?? c.lastReport.summary, 200)}` : "";
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
     // D128: one the user opened themselves (their words are its brief); you report it like any task.
     const yours = c.openedBy === "you" ? " · the user opened this one themselves" : "";

@@ -11126,6 +11126,15 @@ button.filecard:focus-visible { outline: 2px solid var(--ink); outline-offset: 3
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* D654: fixed words (不在项目里 / Not in a project, 电脑上的事 / On your computers, All) wrap;
+   middle ellipsis is for project names only. */
+.lens-row .nm b.fixed,
+.lens-col .lens-row .nm b.fixed {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
 .lens-row .stat {
   display: flex;
   gap: 6px;

@@ -50,8 +50,11 @@ A row:
   stopped, a task that didn't work out); in the narrow row of names, the name itself in that ink.
 
 D471 (amended): the name is never two ragged lines at a hyphen; one line with a middle ellipsis
-keeps its start and end. A project whose every task never started there (its folder missing on that computer,
-D395) is no project yet: no row; its tasks stand under All, where their fix is. All counts every task.
+keeps its start and end. Middle ellipsis is for project names only: the fixed words
+**不在项目里 / Not in a project** and **电脑上的事 / On your computers** (and 全部 / All) never
+truncate mid-word — they wrap, or the column gives them room, at any width. A project whose every
+task never started there (its folder missing on that computer, D395) is no project yet: no row; its
+tasks stand under All, where their fix is. All counts every task.
 
 **Managing a project, with zero setup.** Everything is on the row's ⋯ (D421's one menu), and every
 one is reversible from the same menu: **改名 / Rename** (kept per project key on the home, so every

@@ -4,9 +4,14 @@ package views
 // the card's key and name, draws one row per repository with its machines as an attribute, splits
 // 其他 into 不在项目里 and 电脑上的事, and keeps the person's rename/merge/hide/pin/order on the home.
 import (
+	"fmt"
+	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -115,8 +120,8 @@ func TestProjectLensHasNoClientDerivation(t *testing.T) {
 	if !strings.Contains(body, "onhand.more") || !strings.Contains(body, "folded") {
 		t.Error("the overflow is not one 更多 / More menu")
 	}
-	if !strings.Contains(string(tab), "middleEllipsis") || !strings.Contains(string(tab), "fitWhere") || strings.Contains(string(tab), "MaxLines(2)") {
-		t.Error("a project name or its computers can still wrap or be cut")
+	if !strings.Contains(string(tab), "middleEllipsis") || !strings.Contains(string(tab), "fitWhere") || !strings.Contains(string(tab), "MaxLines(2)") {
+		t.Error("a project name still wraps (middleEllipsis missing), its computers wrap (fitWhere missing), or the fixed words never wrap (MaxLines(2) missing)")
 	}
 }
 
@@ -141,5 +146,58 @@ func TestProjectLensOrderAndFitting(t *testing.T) {
 	}
 	if shown, rest := fitWhere([]string{"hel", "mac"}, 200, func(s string) float32 { return float32(len(s)) * 6.4 }); len(shown) != 2 || rest != 0 {
 		t.Fatalf("all of them fit: %v +%d", shown, rest)
+	}
+}
+
+// D654: the fixed words (不在项目里 / Not in a project, 电脑上的事 / On your computers) are never
+// cut mid-word. Middle ellipsis is for project names only; the fixed words wrap. Checked whole in
+// both languages, at the tabs width (1000) and the column width (1400).
+func TestProjectLensFixedWordsWhole(t *testing.T) {
+	for _, tc := range []struct {
+		lang  i18n.Lang
+		names [2]string
+	}{
+		{i18n.EN, [2]string{"Not in a project", "On your computers"}},
+		{i18n.ZH, [2]string{"不在项目里", "电脑上的事"}},
+	} {
+		app, _ := iaApp(t, tc.lang)
+		at := "2026-11-27T15:00:00Z"
+		none := protocol.Place{Kind: "none"}
+		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{
+			Tasks: []protocol.TaskCard{
+				{TaskID: "n1", Title: "Read the research", ProjectGroup: "none", Place: none, Harness: "claude-code", Attention: protocol.Done, OpenedAt: at, UpdatedAt: at},
+				{TaskID: "c1", Title: "Prow MCP on hel", ProjectGroup: "computer", Place: none, Harness: "claude-code", Attention: protocol.Failed, OpenedAt: at, UpdatedAt: at},
+			},
+			Counts: protocol.Counts{DoneToday: 1},
+		}})
+		app.Route = RouteOnHand
+		for _, w := range []int{1000, 1400} {
+			tt := ui.NewTesterWith(app.View, w, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+			tt.Frame()
+			tt.Frame()
+			all := strings.Join(tt.Texts(), " ")
+			for _, name := range tc.names {
+				if !strings.Contains(all, name) {
+					t.Errorf("%s at %d: %q is not whole (cut mid-word) in %q", tc.lang, w, name, all)
+				}
+			}
+			if os.Getenv("DUCTER_SHOTS") != "" {
+				dir := os.Getenv("DUCTER_SHOTS_DIR")
+				if dir == "" {
+					dir = ".shots/desktop"
+				}
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				f, err := os.Create(filepath.Join(dir, fmt.Sprintf("lens-fixed-%s-%d.png", tc.lang, w)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := png.Encode(f, tt.Image()); err != nil {
+					t.Fatal(err)
+				}
+				f.Close()
+			}
+		}
 	}
 }

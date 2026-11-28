@@ -400,7 +400,13 @@ export function createOwned(o: { log: LogStore; tasks: CoreRegistry; runner: () 
             // It goes with the next look, after this turn; where the PR stands is known now (for
             // the task's own wake and the partner's [live] line).
             held = true;
-            if (got.next.standing) m.set(pr, { ...seen, standing: got.next.standing });
+            if (got.next.standing) {
+              m.set(pr, { ...seen, standing: got.next.standing });
+              // D671: the standing is a fact of the card too, even while the news waits for the
+              // turn to end — the partner's <tasks> line and task_read read it from the card, and a
+              // stale report must not read as the PR's state in the meantime.
+              if (moved(seen, got.next)) log.append({ stream: `task:${taskId}`, origin: "system", kind: "owned_news", body: { taskId, pr, news: [], seen: got.next } });
+            }
             continue;
           }
           if (await tell(taskId, pr, lines, got.next, seen)) {

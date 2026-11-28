@@ -125,6 +125,24 @@ test("news waits while the task is in a turn; a push not its own is said; a rest
   expect(gh.calls).toBe(calls); // no longer watched
 });
 
+test("the card carries the PR's standing even while its news waits for the turn to end (D671)", async () => {
+  const { gh, exec } = fakeGitHub();
+  gh.head = "4b52ac6552163d67c90997c3123d8f1d750ec6b6";
+  gh.runs = [];
+  gh.reviews.push({ id: 41, by: "hawkingrei", at: "2026-11-22T03:17:00Z", state: "CHANGES_REQUESTED", text: "still reaches the shared graph error response", on: gh.head } as never);
+  const statuses = { state: "pending", n: 10, failed: [] as string[], pending: ["tide"] };
+  const exec2: Exec = async (argv, o) => ((argv[2] ?? "").endsWith("/status") ? { exitCode: 0, stdout: JSON.stringify(statuses) } : exec(argv, o));
+  const { log, tasks, work, sent } = setup(exec2);
+  openTask(log, "xf", "graph_error_response_tests intermittently misses the typed cause");
+  checkpoint(log, "xf", { gitRef: gh.head, owns: ["nowledge-co/mem#10847"] });
+  tasks.setState("xf", "working", "hot"); // a turn is running: the news waits for it
+  await work.owned.sweep();
+  expect(sent).toEqual([]); // not delivered to the task mid-turn
+  const card = tasks.onHand().tasks.find((c) => c.taskId === "xf")!;
+  expect(card.prs?.[0]?.standing?.changes?.[0]?.by).toBe("hawkingrei");
+  expect(card.prs?.[0]?.standing?.checks).toMatchObject({ passed: 9, total: 10 });
+});
+
 test("another task's report naming the PR in its evidence reaches the task that owns it (by the PR's identity, never words)", async () => {
   expect(prIdentity("https://github.com/nowledge-co/mem/pull/10932/files")).toBe("nowledge-co/mem#10932");
   expect(prIdentity("Nowledge-Co/Mem/pull/10932")).toBe("nowledge-co/mem#10932");

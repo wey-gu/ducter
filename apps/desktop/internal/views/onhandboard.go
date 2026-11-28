@@ -392,7 +392,13 @@ func (a *App) lensRow(c *ui.Context, key, name string, tasks []*store.Task, on, 
 			if g != nil && key != "" && key != lensOther && key != lensComputers {
 				nameW -= 26
 			}
-			uiText(c, middleEllipsis(c, name, nameW, 14)).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().Width(nameW).Clip().MinWidth(0).Tooltip(name).AccessHidden(true)
+			if key == lensOther || key == lensComputers {
+				// D654: middle ellipsis is for project names only. The fixed words (不在项目里 /
+				// Not in a project, 电脑上的事 / On your computers) never truncate mid-word: they wrap.
+				uiText(c, name).FontSize(14).FontWeight(600).TextColor(ink).MaxLines(2).Width(nameW).MinWidth(0).AccessHidden(true)
+			} else {
+				uiText(c, middleEllipsis(c, name, nameW, 14)).FontSize(14).FontWeight(600).TextColor(ink).SingleLine().Width(nameW).Clip().MinWidth(0).Tooltip(name).AccessHidden(true)
+			}
 			// D455: where it lives, each computer its own element (D291), one line; what does not
 			// fit is +N, never a cut line. The row's tooltip has the whole list.
 			if len(where) > 0 {

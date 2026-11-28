@@ -41,6 +41,8 @@ func (it needItem) key() string {
 		return "d:" + it.dec.DecisionID
 	case it.ask != nil:
 		return "a:" + it.ask.DecisionID
+	case it.keep != "":
+		return "k:" + it.keep
 	case it.task != nil:
 		return "t:" + it.task.ID
 	}

@@ -1163,6 +1163,12 @@ class AppState {
     this.onAmbient?.();
     if (f.t === "task_history" || f.t === "task_index") this.pageHistory(f.taskId);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
+    if (f.t === "task_bulk_result") return this.bulkToast(f);
+    if (f.t === "task_bulk_undone") {
+      if (f.ok) this.toast(this.L.t("onhand.bulk.undone", f.undone));
+      else if (f.message) this.toast(f.message);
+      return;
+    }
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     // D521: a stop the agent refused: the row runs on, and says so once.
     if (f.t === "action_result" && f.action === "stop_background" && !f.ok) {
@@ -4223,6 +4229,13 @@ class AppState {
   /** D602: the task whose 结束任务 asks in place (its one line under the head), or none. */
   ending?: string;
 
+  /** D662 (research/245 §3.5): On hand is in 列表 / List now (set by the board each render), so
+   *  its keys and the wide layout know; and the one way a saved view is applied. */
+  listMode = false;
+  /** The board has eight tasks or more, so the toggle (and its ⌘1 / ⌘2) is offered. */
+  listOffered = false;
+  applyView?: (v: import("@ducter/protocol").BoardView) => void;
+
   /** D602: 结束任务 / End task: a finished task an open PR still holds lets each one go (it stays open on GitHub). */
   endTask(id: string) {
     this.ending = undefined;
@@ -4235,6 +4248,32 @@ class AppState {
     if (t && (action === "merge" || action === "open_pr")) t.acting = action;
     this.send({ t: "task_action", taskId: id, action });
     this.changed();
+  }
+
+  /** D662 (research/245 §3.5): one gesture on a selection; core runs each through its own
+   *  path and answers once. The bar asks first; this only sends. */
+  bulk(taskIds: string[], op: import("@ducter/protocol").BulkOp, opts: { device?: string; harness?: string; model?: string } = {}) {
+    if (!taskIds.length) return;
+    this.send({ t: "task_bulk", taskIds, op, ...opts });
+  }
+
+  /** The batch's own Undo, good for ten seconds. */
+  bulkUndo(batchId: string) {
+    this.send({ t: "task_bulk_undo", batchId });
+  }
+
+  /** D662 (research/245 §3.5): 存成视图 / Save as view, and removing one of the person's own. */
+  viewSave(view: import("@ducter/protocol").BoardView, remove = false) {
+    this.send({ t: "view_save", view, ...(remove ? { remove: true } : {}) });
+  }
+
+  private bulkToast(f: Extract<ServerFrame, { t: "task_bulk_result" }>) {
+    if (f.message) {
+      this.toast(f.message);
+      return;
+    }
+    const words = this.L.t(f.op === "end" ? "onhand.bulk.said.end" : f.op === "pause" ? "onhand.bulk.said.pause" : f.op === "continue" ? "onhand.bulk.said.continue" : f.op === "move" ? "onhand.bulk.said.move" : f.op === "reassign" ? "onhand.bulk.said.reassign" : "onhand.bulk.said.drop", f.done);
+    this.toast(words, { label: this.L.t("undo.action"), run: () => this.bulkUndo(f.batchId) }, 10_000);
   }
 
   /** D521: one background job of a task stopped through its agent's own stop; the row says 在停… until its end arrives. */

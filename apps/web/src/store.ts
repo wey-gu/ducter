@@ -4,7 +4,7 @@
 // Pure data; tested without a DOM.
 import { countDoneToday, endedUnmet, prGoesOn, prsCarried } from "@ducter/protocol";
 import type { KeyResult } from "@ducter/protocol";
-import type { ActivityStep, Attention, Bodies, BridgeReceipt, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RecalledMemory, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, BridgeReceipt, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RecalledMemory, RoutineView, ServerFrame, TaskBody, TaskCard, TruthState, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 import { outwardOf, type OutwardAct } from "@ducter/protocol/src/outward.ts";
 import { askOpen } from "@ducter/protocol/src/open-asks.ts";
@@ -176,7 +176,30 @@ export function laneOf(a: Attention): Lane {
 
 // D285: the person's own name for it comes first, then the latest retitle.
 export const title = (t: Task) => t.card?.mark?.name || t.open?.title || t.card?.title || "";
-export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.attention ?? "queued";
+/**
+ * D661 (research/245 §3.3): the snapshot's derived state is the one every surface reads. A
+ * live `task_state` event that disagrees with the card is newer than the snapshot, so it wins; else
+ * truth decides the lane. `waiting` and `stopped` both read as Waiting here: D467's rows tell a
+ * fresh stop from old news by the clock (`stoppedWait`), never by a second lane.
+ */
+const TRUTH_LANE: Record<TruthState, Attention> = {
+  needs_you: "needs_you",
+  working: "working",
+  waiting: "blocked",
+  stopped: "blocked",
+  done: "done",
+  failed: "failed",
+};
+export const attention = (t: Task): Attention => {
+  const truth = t.card?.truth?.state;
+  if (truth && (!t.state || t.state.attention === t.card?.attention)) {
+    // D661 turn 2: a stopped task that now needs the person stands where its row can offer
+    // Continue / Put down, never as a bare question card.
+    if (truth === "needs_you" && t.card?.truth?.needs === "stopped") return "blocked";
+    return TRUTH_LANE[truth];
+  }
+  return t.state?.attention ?? t.card?.attention ?? "queued";
+};
 /** D310: how many of these tasks are 今天做完 / Done today, by the one rule every surface uses
  *  (`isDoneToday`: finished well, on today's local day; failed and missed waits are their own). */
 export function doneTodayOf(tasks: Task[], now = Date.now()): number {
@@ -284,6 +307,8 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
+  /** D662 (research/245 §3.5): the person's saved views, from the home. */
+  views: import("@ducter/protocol").BoardView[] = [];
   /** D454: tasks and groups removed from Tasks on this screen, before the home's next On hand says so. */
   awayNow = new Set<string>();
   waiters = new Map<string, WaiterView>();
@@ -416,6 +441,9 @@ export class Store {
       case "on_hand":
         this.applyOnHand(f.onHand);
         return;
+      case "view_saved":
+        this.views = f.views;
+        return;
       case "folder_changes": {
         const ft = this.tasks.get(f.taskId);
         if (ft) ft.folder = f.changes ?? undefined;
@@ -491,6 +519,7 @@ export class Store {
 
   private applyOnHand(o: OnHand) {
     this.onHand = o;
+    this.views = o.views ?? [];
     if (o.waiters) {
       const armed = new Set(o.waiters.map((w) => w.waiterId));
       for (const w of o.waiters) this.waiters.set(w.waiterId, w);
@@ -1254,6 +1283,8 @@ export class Store {
     const extra = [...this.tasks.values()].filter((t) => !seen.has(t.id) && (t.open || t.card) && !stale(t)).sort((a, b) => (b.events[0]?.seq ?? 0) - (a.events[0]?.seq ?? 0));
     for (const t of [...extra, ...fromSnap]) {
       if (away.has(t.id)) continue;
+      // D661 (research/245 §3.3): a PR shown under its holder's row appears once, never twice.
+      if (t.card?.heldUnder) continue;
       const l = laneOf(attention(t));
       if (l !== LANE.hidden) lanes[l]!.push(t);
     }

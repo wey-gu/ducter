@@ -113,8 +113,22 @@ task in {name}** where the bare ＋ stood.
    while a turn runs (or a start is queued); a task told to wait for the person is 等你 with its question
    until the answer reaches it; a turn that ended with nothing running is stopped (D467's 停下了). A
    task whose GitHub read no computer can run says so on its row after half an hour, with the fix
-   (装上 gh on that computer, or 在 hel 上读). D584: a row whose story is only the state's own word (**在做 / 做完了**, a task
-   that said nothing yet) has no second line: its time (**在做 3 分钟了 / 7:52 做完**) says it.
+   (装上 gh on that computer, or 在 hel 上读). **D661 (research/245 §3.3): one state, derived
+   once in core.** `OnHand.truth` is `{needsYou, working, waiting, stopped, done, failed}`; each
+   card carries the same state in `truth`, and the head's line, the counts, the sections, the Dock
+   badge, the menu bar, the phone and the partner's facts read it, so the Mac and the web cannot
+   disagree. **在做** means a turn is running now or a start is queued, never a card nobody moved;
+   **等你** carries `waitsFor`, one line of what the person owes it, until the answer is delivered to
+   that task; **等结果** waits on a named thing that comes back by itself, says when it is blind, and
+   after half an hour becomes **等你** with its fix; **停下了** is a rest with nothing running and
+   nothing asked (D467), and after its half hour it is 等你. A Keep's held item and a routine Ducter
+   paused for a budget or a sign-in count as 等你 through the same function. D584: a row whose story
+   is only the state's own word (**在做 / 做完了**, a task that said nothing yet) has no second line:
+   its time (**在做 3 分钟了 / 7:52 做完**) says it. D661 turn 2: a stopped task that now needs the
+   person never asks the old bare **这个任务停下吗？**; its line is the fact (**它停了 40 分钟，没说在等什么。/
+   It stopped 40 minutes ago without saying what it waits for.**) and its row offers **接着做 / 放下**
+   (Continue / Put down). A real question names its object; a Keep, a PR, a blind read and a call each
+   name theirs.
    **How a stuck task is said** (D467 round 4, D471; core-free, from what the home already knows, in one
    classifier, `onhandfix.go` `stuckFix` and the web's `stuckOf`): couldn't start (D472's line and its
    real fix, one implementation with the task's page, `cant.tsx` / `cant.go`: **拉一份到 {computer} 上**,
@@ -200,8 +214,8 @@ detail, on hover and in the task.
 | Part | What it shows |
 |---|---|
 | State mark | A 32-pt sunk round with a group part's glyph: a flag (needs you, stopped), D498's pebble (working: it beats once each time a step lands and rests between, dimmed after ten quiet minutes; research/216), Ongoing's drawn repeat (a task in rounds between rounds), the D279 ring filling toward its next look (waiting), a tick (a new result; quiet once seen), a cross (didn't work out) |
-| Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; D508: past two lines cut at a word's end, the whole title then its tooltip, and no other tooltip; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. +a −d and 草稿 PR / 已合并 at the end |
-| Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it |
+| Subject | The short title (15/600, D471: up to two lines; a title a source already cut is said to its last real word and never cut again; D508: past two lines cut at a word's end, the whole title then its tooltip, and no other tooltip; a seen result's recedes to soft ink), then where: its project when the board shows them all (never 其他 / Other), its computer when it isn't the one most tasks run on; each its own element. D661: another holder of the same PR is a fact on this row, each its own element (**作者：Mac 上的 Antigravity**, **复审：PR Babysitter**, **交给：…**), never a row of its own. +a −d and 草稿 PR / 已合并 at the end |
+| Living line | What it is on now (D210's latest step or the agent's words, held by D425's dwell, up to two lines); what it waits for (D467 rev.: never the title's words again: then the report's first line, else its look); why it stopped (two lines, in the needs-you ink); what came of it. D661: when it is the report's words, the row says the person-language gist of the latest report (`gist`, one cheap-model line, D519's asker); until that exists the raw report is shown in the muted face behind **它说：… / It said: …**, never as Ducter speaking |
 | Quiet (working) | D498: no progress line. After ten minutes with no step, under the living line, **上一步 {ago} / last step {ago}** in the quiet ink (a fact; the partner judges a stall, D481). The living line is D498's `saidOf`: this turn's latest line in a sentence (the agent's words, a step that said what it was for, or the unworded steps as one gist, **跑了 3 条命令，看了 2 个文件**), never a bare command; a failed step the task went past keeps the quiet ink. The client asks once for a working task's history |
 | Outcome (done) | D467 (rev.): what it made, to open: a PR chip (GitHub's mark, **#1190**): D508: the PR Ducter watches for it first, else the report's evidence, the merge or draft PR, or `PR #n` in a repo task's result |
 | Under its PR (D508) | A finished task whose PR is open is not done: its living line is where the PR stands (`pr-state.ts`), the phase in the state's ink and its facts each its own element: **在等 CI 跑完**, **CI 没过** (**没过的：{names}**), **在等评审** (**等 {who} 看**), **{who} 要求修改**, **和 {base} 有冲突**, **还是草稿**, **可以合了** (**{who} 通过了评审**), CI as **CI 过了 {n}/{m}** or **CI 都过了**; its mark the waiting ring at rest (ready: the flag); its right edge when it last moved. Ready stands in 待你处理 with **到 GitHub 合并 / Merge on GitHub**; every other open phase in 等结果; merged or closed in 今天做完 (**已合并** beside its +a −d). Never 合进 {base} or 开草稿 PR while a PR holds the branch |
@@ -519,6 +533,58 @@ the peek; `{mac,web}-r2-…` and the frame sequences `{mac,web}-r2-motion-01..06
 
 A task's `wait_for` is refused when its reason reads as notes (`shorthand` in `core/src/work.ts`)
 or its check only reads the clock (`clockCheck`). The reason is shown to the person as written.
+
+## 列表 / List (D662, research/245 §3.5)
+
+**Who.** The heavy multi-agent developer: 20 to 100 tasks over four to six repositories, three
+computers and four or more agents, helpers and loops running overnight. The consumer with 3 to 8
+tasks never sees it; the fresh user has 1 or 2.
+
+**Felt before / after.** Before: 吃力 — scanning 22 cards with no way to say "all of these, end",
+and the same PR or project read three ways. After: 好用 — one dense row per task, one key to end
+ten finished things, and the confirmation says exactly what will and won't happen.
+
+**How it starts.** Nothing to set up. From eight tasks on, the board's head offers **概览 / Overview**
+and **列表 / List** (a segmented choice beside Find); ⌘2 on the board goes on to List, ⌘1 in the
+List comes back to Overview (on Overview ⌘1 is still the conversation). The choice is kept per
+device and is never made by itself.
+
+**The table.** One row per task (a card shown under another holder's PR is not a second row,
+D661), 32 tall, a shared control (`tableRow` / `TableRow`): the state's drawn glyph (D661's state;
+a failure in the done tier), the title (13/600), then in 12: project, computer, AI agent, age (the
+state's own time), last step (the gist; before it, the task's own words muted behind 它说 / It
+said), PR and CI, each its own cell, never joined. Under 760 wide the computer and agent columns
+step out (their filter chips stay); a phone shows a two-line row (the title, then the glyph,
+project, age and last step as separate facts). The list has no peek beside it: the row is the
+peek, and the table takes the board's width up to 1060.
+
+**Sort and filter.** By urgency (needs-you, stopped, working, waiting, done; the oldest first in a
+tier), by last change, or by age. Chips for state, project, computer, AI agent and from-source (a
+chip with one value is not drawn); the project column stays, and 来自 / From's own chips still
+narrow the board on the Mac. **存成视图 / Save as view** keeps the filter, the sort and the mode
+with a name on the home (`views.json`, the `view_save` frame), so every device has it; it is
+listed under the projects as **视图 / Views**, after the three built-ins, each shown only while it
+has rows: **今天要我看的 / Needs me today**, **跑了很久的 / Running long** (working or in rounds
+for over six hours), **PR 在等 / PRs waiting**. Under eight tasks there are no views either.
+
+**Many at once.** x picks a row, ⌘-click picks, ⇧-click and ⇧↑↓ extend, ⌘A picks every row the
+filter shows. A picked set raises the selection bar (`selectionBar` / `SelectionBar`) at the
+board's foot: **已选 n 个 / n selected**, then **结束 / End**, **暂停 / Pause**, **接着做 /
+Continue**, **换到… / Move to…**, **换人做… / Reassign…**, **放下 / Put down** (each only when it
+fits one of the picked), and **取消选择 / Deselect**. A press (or e, p, m, a, ⌘⌫) never acts: it
+raises the one ask in the bar that names the count and what is skipped — 「8 个里 2 个正在做，会做完
+这一轮再停。」 / "Of 8, 2 are working; they stop when this round ends." — with **就这样 / Do it**
+and **先不 / Not now**. Core runs each task through its own path (`work.endTask`, the runner's
+interrupt, reopen and drop, the loadout switch), logs one `task_bulk` record for the gesture, and
+answers once; the toast says what was done with **撤销 / Undo** for ten seconds. A working task
+is never cut mid-turn: its end is queued and lands when its turn ends (Undo cancels it). A Keep
+that owns an ended task stops with it, on the same clock.
+
+**Keys.** j/k or ↑↓ move, ⏎ opens, Esc lets go (the ask, then the selection, then the filter, then
+Find), x picks, ⇧ extends, ⌘A picks all, / finds, f the first filter chip (web), g p the row's
+project, g s its state, e ends, p pauses, m moves, a reassigns, ⌘⌫ puts down. They are said once
+at the list's foot in drawn caps (`keyCaps` / `KeyCaps`); ⌘⌫ is written 「⌘ 退格」 / "⌘ Delete"
+(⌫ is not a glyph a phone draws as text, D211).
 
 ## Keys
 

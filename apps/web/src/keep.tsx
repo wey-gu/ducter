@@ -15,7 +15,7 @@ import { ComposerBox, echoed } from "./composer.tsx";
 import { CopyLine } from "./lend.tsx";
 import { clock, colTime, harnessName, receiptWords, spoken, splitFacts, when } from "./format.ts";
 import { prFacts, prPhaseWords } from "./onhand-pr.tsx";
-import { soon } from "./onhand.tsx";
+import { holderFacts, soon } from "./onhand.tsx";
 import { healthLine, interval, rhythm } from "./past.tsx";
 import { DecisionCard } from "./views.tsx";
 import { GConfirm } from "./set-grid.tsx";
@@ -517,11 +517,18 @@ function ReleaseAsk({ x }: { x: KeepItem }) {
   );
 }
 
+/** D661: a held task's other holders, each its own fact (the row is under its Keep). */
+function holderFactsOf(task: import("./store.ts").Task | undefined): string[] {
+  return task ? holderFacts(task) : [];
+}
+
 function ItemRow({ x }: { x: KeepItem }) {
   const w = itemWords(x);
   // D624: the facts a board used to show (CI, draft, a conflict or changes, the head) stand on
-  // the row through the same words On hand uses, each its own element.
-  const facts = x.said ? prFacts(x.said) : [];
+  // the row through the same words On hand uses, each its own element. D661: another holder
+  // of the same PR (作者… / 复审… / 交给…) is one of those facts too.
+  const task = A.S.tasks.get(x.taskId);
+  const facts = [...(x.said ? prFacts(x.said) : []), ...holderFactsOf(task)];
   return (
     <div class="kp-item">
       <i class={`kp-dot big ${x.at}`} aria-hidden="true" />

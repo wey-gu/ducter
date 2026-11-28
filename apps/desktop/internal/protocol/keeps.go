@@ -112,10 +112,14 @@ type KeepSheet struct {
 	Until       string     `json:"until,omitempty"`
 	// D650: the end as the head says it (a testable sentence and the look code
 	// runs), or noEnd; how many rounds it has run; why Ducter paused it, in words.
-	End         *KeepEnd        `json:"end,omitempty"`
-	NoEnd       bool            `json:"noEnd,omitempty"`
-	RoundsRun   int             `json:"roundsRun"`
-	PausedWhy   string          `json:"pausedWhy,omitempty"`
+	End       *KeepEnd `json:"end,omitempty"`
+	NoEnd     bool     `json:"noEnd,omitempty"`
+	RoundsRun int      `json:"roundsRun"`
+	PausedWhy string   `json:"pausedWhy,omitempty"`
+	// PausedBy (D661, research/245 §3.3): who paused it; a system pause is an ask.
+	PausedBy string `json:"pausedBy,omitempty"`
+	// RoutineID (D661): a paused routine and its one decision are one item.
+	RoutineID   string          `json:"routineId,omitempty"`
 	Items       []KeepItem      `json:"items"`
 	TaskIDs     []string        `json:"taskIds"`
 	Asks        int             `json:"asks"`

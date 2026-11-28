@@ -724,9 +724,13 @@ func (a *App) shortcuts(c *ui.Context) {
 	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyY):
 		a.OpenDid() // D300
 	case c.Shortcut(ui.Cmd, ui.Key1):
-		a.Route = RouteConversation
+		if !a.boardStep(false) { // D662: in 列表, ⌘1 is one step back to 概览
+			a.Route = RouteConversation
+		}
 	case c.Shortcut(ui.Cmd, ui.Key2):
-		a.Route = RouteOnHand
+		if !a.boardStep(true) { // D662: on the board already, ⌘2 goes on to 列表
+			a.Route = RouteOnHand
+		}
 	case c.Shortcut(ui.Cmd, ui.Key3):
 		a.OpenDevices()
 	case c.Shortcut(ui.Cmd, ui.Key4):
@@ -770,6 +774,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		if a.Route == RouteOnHand && a.keepEsc() {
 			break // D533: a Keep's open editor closes first
+		}
+		if a.Route == RouteOnHand && a.tableEsc() {
+			break // D662: the list's ask, then its selection, then its filter
 		}
 		if !a.taskEsc(c) && !a.escDevice() {
 			a.Up()
@@ -1307,6 +1314,8 @@ func (a *App) Receive(f protocol.ServerFrame) {
 				a.send(protocol.AsksGet{T: "asks_get", IDs: ids})
 			}
 		}
+	case "task_bulk_result", "task_bulk_undone":
+		a.bulkCame(f) // D662: said with its Undo on the next frame (onhandtable.go)
 	case "mem_done":
 		// D652: 改 / 忘掉 on Memory answered after Nowledge Mem did (or didn't).
 		a.memDone(f.MemDone)

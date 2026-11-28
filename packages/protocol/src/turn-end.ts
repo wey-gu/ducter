@@ -16,7 +16,8 @@ export interface TurnEndState {
 
 /** The question the person owes it, if any: an open decision, or the question in its last report. */
 export function questionFor(c: Pick<TaskCard, "pendingDecision" | "lastReport">): string | undefined {
-  const asked = c.pendingDecision?.question?.trim();
+  // D453: an offer is not a question; it never counts as needs-you.
+  const asked = c.pendingDecision && !c.pendingDecision.offer ? c.pendingDecision.question?.trim() : "";
   if (asked) return asked;
   if (c.lastReport?.state !== "needs_input") return undefined;
   const q = c.lastReport.questions?.map((x) => x.text?.trim()).find(Boolean);

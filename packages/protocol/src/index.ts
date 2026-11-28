@@ -29,6 +29,7 @@ export * from "./later.ts";
 export * from "./open-asks.ts";
 export * from "./subject.ts";
 export * from "./task-groups.ts";
+export * from "./views.ts";
 export * from "./imports.ts";
 export * from "./partners.ts";
 export * from "./helpers.ts";
@@ -657,6 +658,10 @@ export interface Bodies {
     imported?: ImportedTask;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string; cant?: CantStart; /** D645 (research/245 §3.7): what it waits for when it waits on the person, in one line. */ waitsFor?: string };
+  // D662 (research/245 §3.5): one bulk action on a selection, logged once as a batch, with what
+  // it did and what it skipped. Each task still went through its own path (end, stop, move, reassign),
+  // so the batch is a record of the person's one gesture, never a second way to act.
+  task_bulk: { op: import("./views.ts").BulkOp; taskIds: string[]; done: number; skipped: number; pending?: number; keeps?: string[] };
   // D325: the person's words held for after this turn (做完再说, or a steer its agent can't take
   // mid-turn): the whole queue as it is now, in order. Ducter holds them, not the agent, so each
   // can be changed, taken back or said now; at the turn's end they go as the next turn. [] = none.
@@ -664,6 +669,9 @@ export interface Bodies {
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
   // and on every switch. The card shows the latest one.
   body_selected: { taskId: string; harness: string; model?: string; effort?: string; why: BodyWhy };
+  // D661 (research/245 §3.3 rule 4): one cheap-model line for one report, in the person's
+  // language, appended after the report; the card's `gist` is the newest one.
+  task_gist: { taskId: string; reportSeq: number; text: string };
   // role "user" + from "user" = text the user sent straight into the task (logged by the runner).
   task_event: {
     taskId: string;
@@ -1290,6 +1298,17 @@ export interface TaskCard {
   /** D645 (research/245 §3.7, B1): no computer could read GitHub for it at this time (no gh,
    *  signed out). The row says so with its fix after 30 minutes; cleared by a read that worked. */
   githubBlind?: { since: string; device?: string; home?: string };
+  /** D661 (research/245 §3.3): the one state core derived for it, from facts. Every surface
+   *  reads this, never a state of its own. */
+  truth?: import("./truth.ts").TaskTruth;
+  /** D661 (research/245 §3.3 rule 4): the person-language gist of its latest report (one
+   *  cheap-model line). Absent: the raw report is shown muted behind 它说 / It said. */
+  gist?: import("./truth.ts").TaskGist;
+  /** D661 (research/245 §3.3 rule 5): its outside thing is shown under another holder's row;
+   *  the board leaves this row out and the holder names it as an attribute. */
+  heldUnder?: import("./truth.ts").HeldUnder;
+  /** D661: the other holders of the outside thing this row holds (作者… / 复审…), each its own element. */
+  holders?: import("./truth.ts").TruthAttr[];
   /** D498 (D427): a task in rounds Ducter keeps: its rhythm and where the rounds stand, so On hand
    *  stands it under 一直在跑 / Ongoing and says its rhythm, never "working for 182 hours". */
   rounds?: import("./past.ts").TaskRounds;
@@ -1401,6 +1420,11 @@ export interface OnHand {
    *  It takes the place of `helpers` and the cards' `rounds` for a client that reads it (an older
    *  client still reads those, kept for it). */
   keeps?: import("./keeps.ts").KeepSheet[];
+  /** D661 (research/245 §3.3): the one computed state every surface reads. */
+  truth?: import("./truth.ts").OnHandTruth;
+  /** D662 (research/245 §3.5): the person's saved views, kept on the home so every device has
+   *  them. The three built-ins are not here; clients add them (BUILTIN_VIEWS). */
+  views?: import("./views.ts").BoardView[];
 }
 
 /** D312: one partner's own open question, as On hand lists it (a tap shows that partner). */
@@ -2115,6 +2139,13 @@ export type ClientFrame =
   | MadeClientFrame
   // D654 (research/245 §3.2): the project row's ⋯ (rename, merge, unmerge, hide, pin, order).
   | { t: "project_change"; change: ProjectChange }
+  // D662 (research/245 §3.5): the filter + sort + mode saved with a name on the home
+  // (views.json), so every device has it. remove takes one away (the person's own only).
+  | { t: "view_save"; view: import("./views.ts").BoardView; remove?: boolean }
+  // D662 (research/245 §3.5): one action on a selection, each task through its own path, and
+  // the undo of that one batch within its ten seconds.
+  | { t: "task_bulk"; taskIds: string[]; op: import("./views.ts").BulkOp; device?: string; harness?: string; model?: string; clientId?: string }
+  | { t: "task_bulk_undo"; batchId: string }
   | AppsClientFrame
   // D300: 替你做过的 / Done for you (did.ts).
   | DidClientFrame
@@ -2342,6 +2373,14 @@ export type ServerFrame =
   // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
   // these would be lost (count, the first few paths).
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }
+  // D662 (research/245 §3.5): the person's views as they stand at the home, after a save or a
+  // removal (the same list OnHand.views carries).
+  | { t: "view_saved"; views: import("./views.ts").BoardView[] }
+  // D662 (research/245 §3.5): one batch's answer: what moved, what was skipped and why, how
+  // many are still at work and will stop when this round ends, and the id whose Undo is good for
+  // ten seconds.
+  | { t: "task_bulk_result"; batchId: string; op: import("./views.ts").BulkOp; total: number; done: number; skipped: number; pending: number; keeps: number; undoUntil: string; message?: string }
+  | { t: "task_bulk_undone"; batchId: string; ok: boolean; undone: number; message?: string }
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | ({ t: "file_open"; id: string } & ({ ok: true; file: MediaRef } | { ok: false; error: import("./media.ts").FileOpenError; message?: string }))
@@ -3887,3 +3926,4 @@ export interface LendFrame {
 }
 export * from "./names.ts";
 export * from "./pr-state.ts";
+export * from "./truth.ts";

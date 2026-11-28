@@ -44,6 +44,24 @@ its own.
 ¹ active = `queued · working · needs-you · blocked · done?`.
 Terminal states: `failed · dropped · superseded`. `done` is resting, not terminal.
 
+## The board's one state (D661, research/245 §3.3)
+
+Attention above is the event-sourced machine. The board's six words are its projection, derived once
+in core from facts and read by every surface; a client never sets one.
+
+| Word | Facts |
+|---|---|
+| working | a turn is running now (its residency `hot`) or a start is queued |
+| needs_you | it asked (a decision, a question in its report), it was told to wait for the person, or it stopped with no waiter after a person-facing step; always with `waitsFor`, one line |
+| waiting | a named thing that comes back by itself (CI, a timer, a computer, another agent's answer), with its name; a read that fails is blind, and after 30 minutes becomes needs_you with its fix |
+| stopped | nothing is running, nothing waits, nothing asked (D467's 停下了); after 30 minutes it is needs_you |
+| done, failed | as attention says |
+
+A task told to wait for the person stays needs_you until the answer is delivered to that task; a turn
+that ends leaves working at once; a resume with no delivery cannot move it, whatever the partner says.
+`OnHandTruth` (the snapshot's `truth`) carries the six lists; a Keep's held item, a paused routine, a
+partner's own ask, a live call and a task-less wait are items in the same lists.
+
 **Stall rule (D473):** a turn that ends with no report gets one nudge; a second miss sets the
 window to `needs-you` and C hands it to M with a typed `mend` (rethink). M climbs the read ladder
 (8), then steers (one clear next step), switches its agent, or tells the user in one line; it never

@@ -156,7 +156,18 @@ var sayMarks = map[string]struct{ colon, comma, semi, stop, gap string }{
 // stopped or didn't work out, it says so, never 没有要你定的.
 func (a *App) headLine(b store.Board, lens string, n [4]int) string {
 	sp := a.splitOf(b)
+	// D661 turn 2: only a needs-you stop is counted by the strip; a fresh stop (truth Stopped)
+	// stands apart and must not make the question look like a stop. A home without truth keeps
+	// the old reading.
 	halted := len(sp.stopped) + len(sp.failed)
+	if a.S.OnHand != nil && a.S.OnHand.Truth != nil {
+		halted = 0
+		for _, x := range sp.stopped {
+			if t := x.Truth(); t != nil && t.Needs == "stopped" {
+				halted++
+			}
+		}
+	}
 	switch {
 	case n[0] > 0 && n[0] <= halted && halted == 1:
 		return a.L.T("onhand.line.stopped.one")
@@ -368,7 +379,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 					meta = append(meta, a.L.T("og.round.every", a.rhythm(time.Duration(rounds.EveryMs)*time.Millisecond)))
 				}
 				for _, m := range meta {
-					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
+					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(260)
 				}
 				ui.Spacer(c)
 				if ch := taskChanges(task); ch != nil {
@@ -399,7 +410,7 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 				meta := a.whereMeta(task)
 				where := func() {
 					for _, m := range meta {
-						uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(180)
+						uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(260)
 					}
 				}
 				if s := taskTodo(task); s != nil {
@@ -426,12 +437,21 @@ func (a *App) taskCard(c *ui.Context, task *store.Task, w float32) {
 			case seen:
 				ink = t.InkMuted
 			}
+			if s.said && !stopped && !failed {
+				ink = t.InkMuted // D661: the raw report behind 它说 is context, not the row's voice
+			}
 			sw := s.words
 			if mending {
 				sw = a.L.T("note.mend_"+mendHow, mendName) // D473: what Ducter is doing about it
 			}
 			if stopped || failed {
-				sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
+				// D661 turn 2: a stopped task that needs the person says its fact, never a bare
+				// question; its Continue / Put down are the row's choices.
+				if t := task.Truth(); t != nil && t.Needs == "stopped" && strings.TrimSpace(t.WaitsFor) != "" {
+					sw = t.WaitsFor
+				} else {
+					sw = a.stuckFix(task).clause() // D467 round 4: what to do, not the log
+				}
 			}
 			if att == protocol.Blocked && !stopped && !mending {
 				sw = a.waitCardWords(task, sw) // D467: never the title again
@@ -605,7 +625,53 @@ func (a *App) whereMeta(task *store.Task) []string {
 			meta = append(meta, a.L.T("bg.onhand", n))
 		}
 	}
+	// D661 (research/245 §3.3 rule 5): another holder of the same outside thing, each its
+	// own element (作者 / 复审 / 交给), never a line joined by a dot.
+	if task.Card != nil {
+		for _, h := range task.Card.Holders {
+			if f := a.holderFact(h); f != "" {
+				meta = append(meta, f)
+			}
+		}
+	}
 	return meta
+}
+
+// holderFact is one other holder of an outside thing in the row's words (D661,
+// research/245 §3.3 rule 5): the role and who holds it. A task's who is its agent, with the
+// computer it runs on when that is known; a Keep is its name; a hand-off is who it went to.
+func (a *App) holderFact(h protocol.TruthAttr) string {
+	who := ""
+	switch {
+	case h.Keep != "":
+		who = h.Keep
+	case h.Role == "handoff" && h.To != "":
+		who = h.To
+	case h.Harness != "" || h.Device != "":
+		agent := harnessName(h.Harness)
+		switch {
+		case h.Device != "" && agent != "":
+			who = a.L.T("onhand.holder.on", a.computerName(h.Device), agent)
+		case h.Device != "":
+			who = a.computerName(h.Device)
+		default:
+			who = agent
+		}
+	case h.To != "":
+		who = h.To
+	}
+	if who == "" {
+		return ""
+	}
+	switch h.Role {
+	case "author":
+		return a.L.T("onhand.holder.author", who)
+	case "review":
+		return a.L.T("onhand.holder.review", who)
+	case "handoff":
+		return a.L.T("onhand.holder.handoff", who)
+	}
+	return ""
 }
 
 // usualComputer is the computer most of the board's placed tasks run on.

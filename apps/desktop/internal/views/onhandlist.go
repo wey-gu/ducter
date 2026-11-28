@@ -94,6 +94,8 @@ type onHandState struct {
 	// A drag on a project row keeps the person's order (the Mac and the wide web).
 	projDrag           bool
 	projFrom, projOver string
+	// D662: 列表 / List (onhandtable.go).
+	tbl tableState
 }
 
 // latestStep is the task's latest step or words: the newest one this Mac
@@ -125,8 +127,12 @@ func latestStep(task *store.Task) *protocol.LogEvent {
 }
 
 // rowStory is a row's second line: its mark (a step's kind, or ""), the
-// words, the code beside them, and a tone ("needs", "failed" or "").
-type rowStory struct{ mark, words, code, tone string }
+// words, the code beside them, a tone ("needs", "failed" or ""), and whether
+// the words are the task's own raw report (D661: said muted behind 它说).
+type rowStory struct {
+	mark, words, code, tone string
+	said                    bool
+}
 
 func (a *App) nowLine(task *store.Task) (rowStory, bool) {
 	ev := latestStep(task)
@@ -184,6 +190,11 @@ func (a *App) storyOf(task *store.Task) rowStory {
 	}
 	switch att {
 	case protocol.NeedsYou:
+		// D661 (research/245 §3.3): the truth's one line of what it waits for is the row's
+		// words; a question is never wrapped in 它说.
+		if t := task.Truth(); t != nil && strings.TrimSpace(t.WaitsFor) != "" {
+			return rowStory{words: t.WaitsFor, tone: "needs"}
+		}
 		q := ""
 		if d := a.S.PendingDecision(task.ID); d != nil {
 			q = a.questionOf(d)
@@ -197,6 +208,10 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		}
 		return rowStory{words: q, tone: "needs"}
 	case protocol.Blocked:
+		// D661 turn 2: a stopped task that needs the person says its fact, never a bare question.
+		if t := task.Truth(); t != nil && t.Needs == "stopped" && strings.TrimSpace(t.WaitsFor) != "" {
+			return rowStory{words: t.WaitsFor, tone: "needs"}
+		}
 		// D382: a question put off: when it asks again, and what.
 		if w, ok := a.laterRow(task); ok {
 			return rowStory{words: w}
@@ -223,8 +238,14 @@ func (a *App) storyOf(task *store.Task) rowStory {
 			}
 			return rowStory{words: a.L.T("onhand.wait.agent", who)}
 		}
+		// D661 (research/245 §3.3 rule 4): the report's one person-language line; without
+		// one, the raw report is shown muted as what it said.
+		if g := task.Gist(); g != nil && strings.TrimSpace(g.Text) != "" {
+			return rowStory{words: g.Text}
+		}
 		if rep != nil && strings.TrimSpace(rep.Summary) != "" {
-			return rowStory{words: strings.SplitN(strings.TrimSpace(rep.Summary), "\n", 2)[0]}
+			raw := strings.SplitN(strings.TrimSpace(rep.Summary), "\n", 2)[0]
+			return rowStory{words: a.L.T("onhand.said", raw), said: true}
 		}
 		return rowStory{words: a.L.T("onhand.wait.unsaid")}
 	case protocol.Working, protocol.Queued:
@@ -246,6 +267,11 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		if task.Card != nil && task.Card.TurnAt != "" && len(stepsHeld(task)) > 0 {
 			return rowStory{words: a.L.T("onhand.turn.fresh")}
 		}
+		// D661 (research/245 §3.3 rule 4): no live step yet; its latest report's one
+		// person-language line says where it is.
+		if g := task.Gist(); g != nil && strings.TrimSpace(g.Text) != "" {
+			return rowStory{words: g.Text}
+		}
 		return rowStory{words: a.stateLabel(att)}
 	}
 	// D472: a task that couldn't start says why in its row too (cant.go).
@@ -257,8 +283,15 @@ func (a *App) storyOf(task *store.Task) rowStory {
 		return rowStory{words: s}
 	}
 	s := rowStory{}
-	if rep != nil {
-		s.words = strings.SplitN(rep.Summary, "\n", 2)[0]
+	// D661 (research/245 §3.3 rule 4): its latest report's one person-language line; without
+	// a gist, the raw report is shown muted as what it said.
+	if g := task.Gist(); g != nil && strings.TrimSpace(g.Text) != "" {
+		s.words = g.Text
+	} else if rep != nil {
+		if raw := strings.SplitN(strings.TrimSpace(rep.Summary), "\n", 2)[0]; raw != "" {
+			s.words = a.L.T("onhand.said", raw)
+			s.said = true
+		}
 	}
 	if s.words == "" {
 		s.words = a.stateLabel(att)
@@ -867,6 +900,9 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				case "failed":
 					ink = t.Failed.Ink
 				}
+				if s.said {
+					ink = t.InkMuted // D661: the raw report behind 它说 is context, not the row's voice
+				}
 				if s.mark != "" {
 					mk := t.InkMuted
 					if s.tone == "failed" {
@@ -905,7 +941,7 @@ func (a *App) taskRow(c *ui.Context, task *store.Task, state bool) {
 				// and its computer when there are two or more. Who does it and
 				// its branch are in the task.
 				for _, m := range a.whereMeta(task) {
-					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(200)
+					uiText(c.Key("meta:"+m), m).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(0).MaxWidth(260)
 				}
 			})
 			if u := task.Card; !rail && u != nil && u.Until != nil && u.Until.State == "on" {

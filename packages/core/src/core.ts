@@ -135,11 +135,16 @@ import { createGitLogin, type GitLogin, type GitLoginState } from "@ducter/proto
 import { createGhInstaller, useOwnTools, type GhInstaller } from "./gh-install.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { createProjects } from "./projects.ts";
+import { createViews } from "./views.ts";
+import { createBulk } from "./bulk.ts";
 import { createProjectIdentities } from "./project-identity.ts";
 import { createTaskGroups, type TaskGroups } from "./task-groups.ts";
 import { createOnHandAway } from "./onhand-away.ts";
 import { createAsks, type Asks } from "./asks.ts";
 import { createSubjects, type Subjects } from "./subjects.ts";
+import { createGists, taskGistAsk, type Gists } from "./gists.ts";
+import { countsOfTruth, onHandTruth, truthOf } from "./truth.ts";
+import { holderIndexOf } from "./holdings.ts";
 import { PLAN_SCHEMA } from "./task-sources/handover.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -382,6 +387,10 @@ export interface CoreOptions {
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   /** D511: the cheap model's reading of a Keep's end (tests and demos pass a fake; else the partner's agent's). */
   keeps?: { endAsk?: import("./keeps.ts").KeepEndAsk; roundAsk?: import("./keeps.ts").KeepRoundAsk; rulesAsk?: import("./keeps.ts").KeepRulesAsk; /** D650: the read a testable end runs (a fake in tests). */ endLook?: (ref: string, kind: "pr" | "issue") => Promise<"open" | "merged" | "closed" | undefined> };
+  /** D661 (research/245 §3.3 rule 4): the cheap model's one line per report (tests and demos pass a fake). */
+  gists?: { ask?: import("./gists.ts").TaskGistAsk };
+  /** D661 demo/test seam: false leaves the old board (no derived truth, no gists), for a before shot. */
+  truth?: false;
   /** D522 test seam: the slug writer's model (a fake in tests; else the cheapest model of the partner's agent). */
   branchAsk?: (prompt: string) => Promise<string>;
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; /** D429 test seam: the move of a late loop to an awake computer (the real one is task_switch's). */ loopsMove?: import("./loops.ts").LoopWhere["move"]; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; ownedEveryMs?: number; /** D633: how often outside things are read from GitHub (0/absent in tests: none). */ holdingsEveryMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
@@ -932,6 +941,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     remote: (dev, path) => computers.folderInfo(dev, path, 15_000),
     ...(homeRoots.explicit ? { allowed: (p: string) => insideRoots(p, homeRoots.roots) } : {}),
   });
+  // D662 (research/245 §3.5): 列表's filter + sort + mode, saved with a name on the home.
+  const boardViews = createViews({ dataDir, onChange: () => onHandChanged() });
   // D654: one computer, one project key: a place that says the home's name is the home, and a
   // worker's name is its id.
   const canonicalDevice = (dev: string): string => {
@@ -1042,6 +1053,20 @@ export function startCore(opts: CoreOptions = {}): Core {
     indexHelper(e);
     onHandChanged();
   });
+  // D656, D661 §3.3: a task's sent Bridge message with no answer yet is a named wait that
+  // comes back by itself. Indexed from the one Log, the same fact the card's own row reads.
+  const bridgeWaits = new Map<string, { who?: string; seq: number }>();
+  const bridgeAnswered = new Set<string>();
+  const indexBridgeWait = (e: LogEvent) => {
+    if (e.kind !== "bridge_msg") return;
+    const b = e.body as Bodies["bridge_msg"];
+    if (b.direction === "in" && b.inReplyTo) bridgeAnswered.add(b.inReplyTo);
+    if (b.direction !== "out" || b.by !== "task" || !b.taskId || !b.messageId || b.state !== "sent" || bridgeAnswered.has(b.messageId)) return;
+    const prev = bridgeWaits.get(b.taskId);
+    if (!prev || e.seq > prev.seq) bridgeWaits.set(b.taskId, { ...(b.to || b.agent ? { who: b.to || b.agent } : {}), seq: e.seq });
+  };
+  for (const e of log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 })) indexBridgeWait(e);
+  log.subscribe(indexBridgeWait);
   /** D507: what each helper keeps now (the one model: On hand's sheet reads it, a helper's app will too). */
   const helperItemsOf = (id: string) => helperItems(id, { tasksOf: () => helperIndex.tasks, card: (t) => tasks.get(t) });
   const helperHolds = (taskId: string): boolean => {
@@ -1096,6 +1121,68 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => {
     if (backgroundIndex.onEvent(e)) onHandChanged();
   });
+  // D661 (research/245 §3.3): the one state every surface reads, derived from the decorated
+  // snapshot's facts. One holder per repo#n first: a PR appears once, under the Keep item that holds
+  // it, else the task that opened it, else the hand-off; the others are attributes on that row.
+  const truthDecorate = (o: OnHand): OnHand => {
+    const holder = holderIndexOf(o.tasks, o.keeps ?? []);
+    const withHolders = o.tasks.map((c) => {
+      const h = holder.byTask.get(c.taskId);
+      if (!h) return c;
+      return h.holder
+        ? { ...c, ...(h.attrs.length ? { holders: h.attrs } : {}) }
+        : { ...c, heldUnder: { ref: h.ref, taskId: h.taskId } };
+    });
+    const tasksWithHeld = withHolders.map((c) => (c.heldUnder ? c : c));
+    const keepItems = new Map<string, import("@ducter/protocol").KeepItem>();
+    for (const k of o.keeps ?? []) for (const it of k.items ?? []) keepItems.set(it.taskId, it);
+    const truth = onHandTruth({
+      now: clock.now(),
+      day: dayKey(clock.now(), zone()),
+      tasks: tasksWithHeld,
+      ...(o.keeps?.length ? { keeps: o.keeps.map((k) => ({ id: k.id, title: k.title, life: k.life, ...(k.pausedWhy ? { pausedWhy: k.pausedWhy } : {}), ...(k.pausedBy ? { pausedBy: k.pausedBy } : {}), ...(k.routineId ? { routineId: k.routineId } : {}), ...(k.projectKey ? { projectKey: k.projectKey } : {}), ...(k.persona ? { persona: k.persona } : {}), items: k.items })) } : {}),
+      // D312, D650: a partner-level ask (the partner's own question, a Keep's stall or a routine
+      // paused by Ducter) needs the same person, through the same function. A task's own decision
+      // is already its card's question; only the task-less ones are added here.
+      asks: [
+        ...(o.asks ?? []).map((a) => ({ persona: a.persona, decisionId: a.decisionId, question: a.question, at: a.at })),
+        ...decisions
+          .openIds()
+          .map((id) => decisions.get(id))
+          .filter((d): d is NonNullable<typeof d> => !!d && !d.taskId && !d.offer)
+          .map((d) => ({ persona: "default", decisionId: d.decisionId, question: d.question, at: d.defaultAt ?? new Date(clock.now()).toISOString(), ...(d.keep?.id ? { keepId: d.keep.id } : {}), ...(d.keep?.title ? { title: d.keep.title } : {}), ...(d.routineId ? { routineId: d.routineId } : {}) })),
+      ],
+      ...(o.calls?.length ? { calls: o.calls.map((c) => ({ callId: c.callId, state: c.state, ...(c.plan?.name ? { name: c.plan.name } : {}) })) } : {}),
+      waiters: o.waiters.map((w) => ({ waiterId: w.waiterId, ...(w.taskId ? { taskId: w.taskId } : {}), ...(w.reason ? { reason: w.reason } : {}), state: w.state, ...(w.persona ? { persona: w.persona } : {}) })),
+      waiterOf: (id) => o.waiters.find((w) => w.taskId === id && w.state === "armed"),
+      bridgeOf: (id) => bridgeWaits.get(id),
+      subjectOf: (id) => subjects.cardOf(id),
+      keepItemOf: (id) => keepItems.get(id),
+      mendingOf: (id) => !!o.tasks.find((c) => c.taskId === id)?.mending,
+      asOf: log.head(),
+    });
+    const byTask = new Map(truth.needsYou.concat(truth.working, truth.waiting, truth.stopped, truth.done, truth.failed).filter((x) => x.taskId).map((x) => [x.taskId!, x]));
+    const tasks = withHolders.map((c) => {
+      const it = byTask.get(c.taskId);
+      if (!it) {
+        // A row held under another (or a never-started task): its card still carries the derived
+        // state, so opening it anywhere says the same thing.
+        const t = truthOf({
+          now: clock.now(),
+          card: c,
+          ...(o.waiters.find((w) => w.taskId === c.taskId && w.state === "armed") ? { waiter: o.waiters.find((w) => w.taskId === c.taskId && w.state === "armed")! } : {}),
+          ...(keepItems.get(c.taskId) ? { keepItem: keepItems.get(c.taskId)! } : {}),
+          ...(bridgeWaits.get(c.taskId) ? { bridge: bridgeWaits.get(c.taskId) } : {}),
+          ...(subjects.cardOf(c.taskId) ? { subject: subjects.cardOf(c.taskId) } : {}),
+          ...(c.mending ? { mending: true } : {}),
+        });
+        return { ...c, truth: t };
+      }
+      const t = { state: it.state, ...(it.needs ? { needs: it.needs } : {}), ...(it.waitsFor ? { waitsFor: it.waitsFor } : {}), ...(it.wait ? { wait: it.wait } : {}), ...(it.since ? { since: it.since } : {}) };
+      return { ...c, truth: t };
+    });
+    return { ...o, tasks, truth, counts: countsOfTruth(truth) };
+  };
   tasks.setDecorator((o0) => {
     const awayIds = onHandAway.tasks();
     const o = awayIds.length ? { ...o0, tasks: o0.tasks.filter((c) => !onHandAway.isTask(c.taskId)), away: awayIds } : o0;
@@ -1110,7 +1197,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     const groups = taskGroups.list().filter((g) => !onHandAway.isGroup(g.id));
     // D481: every question open at the home, as of now: the one source of truth every client closes its stale cards by.
     const openAsks = { ids: decisions.openIds(), asOf: log.head() };
-    return { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), openAsks };
+    const savedViews = boardViews.list();
+    const final = { ...on, ...(added.length ? { projects: added } : {}), ...(calls.length ? { calls } : {}), ...(asks.length ? { asks } : {}), ...(groups.length ? { groups } : {}), ...(savedViews.length ? { views: savedViews } : {}), openAsks };
+    return opts.truth === false ? final : truthDecorate(final);
   });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
@@ -1279,6 +1368,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   let handoffsForSubjects: ReturnType<typeof createHandoffs> | undefined;
   const subjects = createSubjects({ log, tasks, handoffs: () => handoffsForSubjects });
   log.subscribe((e) => subjects.onEvent(e));
+  // D661 (research/245 §3.3 rule 4): one cheap-model line per report for the task's row. The
+  // asker is set once the runner exists (below); until then reports wait in its queue.
+  const gists: Gists = createGists({ log, ...(opts.gists?.ask ? { ask: opts.gists.ask } : {}) });
+  log.subscribe((e) => gists.onEvent(e));
   const unsubscribePartner = log.subscribe((e) => {
     if (!triggersPartner(e) || (e.kind === "report" && !subjects.shouldWake(e)) || !asks.wakes(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e)) || (calendarRef && !calendarRef.wakes(e)) || (taskSourcesRef && !taskSourcesRef.wakes(e)) || (kindRetryRef && !kindRetryRef.wakes(e)) || !appFill.wakes(e)) return;
     wake(e);
@@ -1642,6 +1735,12 @@ export function startCore(opts: CoreOptions = {}): Core {
     return r.ok ? { ok: true, changed: change } : r;
   };
   api.projectList = () => tasks.onHand().projectList ?? [];
+  api.views = () => boardViews.list();
+  api.viewSave = (view, remove) => {
+    if (remove) return boardViews.remove(view.id);
+    const r = boardViews.save(view);
+    return r.ok ? { ok: true, views: r.views } : r;
+  };
   // D312: with more than one partner, the default partner keeps to its own too, and a task's
   // brief and Mem identity are those of the partner it is for.
   const memOf = new Map<string, MemIdentity | undefined>();
@@ -2080,6 +2179,55 @@ export function startCore(opts: CoreOptions = {}): Core {
   log.subscribe((e) => void ((e.kind === "task_loop" || e.kind === "routine") && syncKeeps()));
   helpers.onChange(syncKeeps);
   api.keeps = keeps;
+  // D662 (research/245 §3.5): the list's many-at-once. Every op goes through the task's own
+  // door; the batch is logged once, and its undo lives ten seconds.
+  const bulk = createBulk({
+    task: (id) => {
+      const c = tasks.get(id);
+      if (!c) return undefined;
+      const place = (c as { place?: import("@ducter/protocol").Place }).place;
+      return { id: c.taskId, title: c.title, attention: c.attention, harness: c.harness, ...(c.model ? { model: c.model } : {}), device: place && "device" in place && place.device ? place.device : "local", ...(c.imported ? { imported: true } : {}) };
+    },
+    end: (id) => work.endTask(id),
+    interrupt: async (id) => {
+      if (!runner?.interrupt) throw new Error("Pausing isn't available here.");
+      await runner.interrupt(id);
+    },
+    reopen: async (id) => {
+      if (!runner?.reopen) throw new Error("Continue isn't available here.");
+      await runner.reopen(id);
+    },
+    drop: async (id) => {
+      if (runner?.drop) await runner.drop(id);
+      const now = tasks.get(id);
+      if (now && now.attention !== "dropped") tasks.setState(id, "dropped", now.residency);
+    },
+    undrop: async (id) => (runner?.undrop ? runner.undrop(id) : { ok: false, message: "Undo isn't available." }),
+    switch: (id, to) => {
+      const c = tasks.get(id);
+      if (!c) return Promise.resolve({ ok: false, message: "I can't find that task." });
+      const harness = to.harness ?? c.harness;
+      return loadout.switchTask(id, harness, to.model ?? (harness === c.harness ? c.model : undefined), runner, to.device);
+    },
+    keepOf: (id) => ((k) => (k ? { id: k.id, name: k.name } : undefined))(keeps.ofTask(id)),
+    stopKeep: async (id) => {
+      const r = await keeps.change(id, { act: { action: "stop" } }, { by: "you" });
+      return r.ok ? { ok: true } : { ok: false, message: r.error };
+    },
+    logBatch: (b) => {
+      log.append({ stream: "channel", origin: "user", kind: "task_bulk", body: { op: b.op, taskIds: b.taskIds, done: b.done, skipped: b.skipped, pending: b.pending, ...(b.keeps.length ? { keeps: b.keeps } : {}) } });
+    },
+    now: () => clock.now(),
+  });
+  // A queued end lands at the turn's boundary: the task's state leaves working (its turn ended,
+  // whatever it ended in), never mid-turn.
+  log.subscribe((e) => {
+    if (e.kind !== "task_state") return;
+    const b = e.body as import("@ducter/protocol").Bodies["task_state"];
+    if (b.attention !== "working" && b.attention !== "queued") void bulk.turnEnded(b.taskId);
+  });
+  api.bulk = (req) => bulk.run(req);
+  api.bulkUndo = (id) => bulk.undo(id);
 
   // D627: freeze for a move. The work clock holds every routine/loop/wait/owned timer, Keeps
   // holds its sweeps and doorbells, the chat apps stop polling (their cursors are written), and a
@@ -2127,6 +2275,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       openPrs: (id) => work.owned.of(id),
       mark: (id) => ((c) => (c ? marks.get(c.persona, id) : undefined))(tasks.get(id)),
     });
+  if (opts.gists?.ask) gists.setAsk(opts.gists.ask);
   if (opts.keeps?.endAsk) keeps.setEndAsk(opts.keeps.endAsk);
   if (opts.keeps?.endLook) keeps.setEndLook(opts.keeps.endLook);
   if (opts.keeps?.roundAsk) keeps.setRoundAsk(opts.keeps.roundAsk);
@@ -3463,6 +3612,10 @@ export function startCore(opts: CoreOptions = {}): Core {
       // D511: a Keep's end, read once from the person's words on the cheapest model (tool-less, its own folder).
       if (!opts.keeps?.endAsk)
         keepsRef?.setEndAsk(keepEndAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "keep-end", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
+      // D661 (research/245 §3.3 rule 4): each report in one line to the person, on the same
+      // cheap model as a Keep's round. Not in tests (a fake agent would take it for a task's session).
+      if (!opts.gists?.ask && process.env.NODE_ENV !== "test")
+        gists.setAsk(taskGistAsk(createHarnessAsk({ onUsed: lookUsed, harness: () => runner?.harness, pick: brainInUse, dataDir, cheap: true, dir: "task-gist", timeoutMs: 60_000, system: "You answer with one JSON object and nothing else. You never use tools." })));
       // D519: each round of a Keep in one line to the person, read once from its report on the same cheap model.
       // Not in tests (a fake agent would take it for a task's session): they pass a fake.
       if (!opts.keeps?.roundAsk && process.env.NODE_ENV !== "test")
@@ -3577,6 +3730,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       agents.stop();
       updateAll.stop_();
       memPlugins.stop();
+      gists.stop();
       release.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();

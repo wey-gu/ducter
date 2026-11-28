@@ -36,6 +36,13 @@ was told to wait for your answer, it is under **Needs you** with the question, u
 reaches the task. One that stopped with nothing still running is a stopped task (below), never
 **Working**.
 
+A row says what the task itself said, in one short line in your language. Until that line is ready,
+the task's own words are shown muted behind **It said:**, so they are never your partner speaking.
+A task that stopped never asks the old bare "Should this task stop?"; it says how long it has been
+stopped and that it did not say what it waits for, with **Continue** and **Put down** beside it.
+When several things stand on one pull request, it appears once, under the thing that holds it; the
+others are quiet facts on that row (**By …**, **Review: …**, **Handed to …**), each on its own.
+
 What needs you comes first. A question is answered right there. A task that has stopped (it
 waits, but nothing will bring it back by itself) or didn't work out says why in plain words, with
 the way to fix it right beside it:
@@ -152,6 +159,38 @@ or **Merged** once you've done either from Ducter, or once its pull request merg
 - Three or more results you've already opened fold under **9 more you've seen**. A new result stays in view
   until you open it.
 - What needs you never folds.
+
+### List: every task as one row
+
+Once you have eight tasks or more, the top of Tasks offers **Overview** and **List**. Overview is
+the calm board you know. **List** shows every task as one line, so forty tasks fit on a screen:
+
+- what state it's in, its title, its project, the computer it runs on, the AI agent doing it, how
+  long it has been in that state, its last step, and its pull request and CI checks;
+- a last step that starts with **It said:** in grey is the task's own words, before Ducter has
+  put them in a line for you;
+- **State**, **Project**, **Computer**, **AI agent** and **From** narrow the list, and the sort
+  puts it **By urgency** (what needs you first), **By last change** or **By age**.
+
+Your choice stays on this device; List never turns itself on. With fewer than eight tasks you
+won't see any of this.
+
+**Save as view** keeps the filters and the order with a name you give. Saved views show under
+your projects as **Views**, on every device you use. Three are there already, whenever they have
+something in them: **Needs me today**, **Running long** (working for over six hours) and **PRs
+waiting**.
+
+**Several at once.** Press **x** on a row, or **⌘-click** rows, to pick them; **⇧-click** or
+**⇧** with the arrow keys picks a run of rows and **⌘A** picks every row the list shows. A bar at the bottom
+offers **End**, **Pause**, **Continue**, **Move to…** (another computer), **Reassign…** (another
+AI agent) and **Put down**. Whatever you press, it asks first and says what will happen, for
+example "Of 8, 2 are working; they stop when this round ends." A task that is working finishes
+its current round before it ends. After **Do it**, **Undo** is there for ten seconds.
+
+The keys, shown at the foot of the list: **j** / **k** move, **Enter** opens, **Esc** steps back,
+**/** finds, **g p** shows only this row's project and **g s** its state, **e** ends, **p**
+pauses, **m** moves, **a** reassigns and **⌘ Delete** puts down. On a Mac, **⌘2** on Tasks goes to
+the list and **⌘1** comes back to the overview. On a phone each task is a two-line row.
 
 ### Projects
 

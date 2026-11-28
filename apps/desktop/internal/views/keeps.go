@@ -710,14 +710,25 @@ func (a *App) keepItemRow(c *ui.Context, x protocol.KeepItem, w float32, first b
 			uiText(c.Key("st"), keepWords(autospace(text))).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.5))
 			// D624: the facts a board used to show (CI, draft, a conflict or changes, the head)
 			// stand on the row through the same words On hand uses, each its own element.
+			fs := []string{}
 			if x.Said != nil {
-				if fs := a.prFacts(*x.Said); len(fs) > 0 {
-					ui.Row(c.Key("facts")).Gap(t.S3).Wrap().MinWidth(0).Children(func() {
-						for i, f := range fs {
-							uiText(c.Key(fmt.Sprint("fact", i)), f).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5)).Shrink(1).MinWidth(0)
-						}
-					})
+				fs = append(fs, a.prFacts(*x.Said)...)
+			}
+			// D661: another holder of the same PR (作者… / 复审… / 交给…) is a fact on the
+			// row too, never a row of its own.
+			if task := a.S.Task(x.TaskID); task != nil && task.Card != nil {
+				for _, h := range task.Card.Holders {
+					if f := a.holderFact(h); f != "" {
+						fs = append(fs, f)
+					}
 				}
+			}
+			if len(fs) > 0 {
+				ui.Row(c.Key("facts")).Gap(t.S3).Wrap().MinWidth(0).Children(func() {
+					for i, f := range fs {
+						uiText(c.Key(fmt.Sprint("fact", i)), f).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5)).Shrink(1).MinWidth(0)
+					}
+				})
 			}
 		})
 		ui.Column(c.Key("acts")).Gap(2).Shrink(0).AlignItems(ui.End).Children(func() {

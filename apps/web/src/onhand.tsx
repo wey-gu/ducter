@@ -13,12 +13,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { KeepPageView, KeepSheetCard, K, keepOfTask, openKeep } from "./keep.tsx";
 import { still } from "./nav.ts";
 import { wideNow } from "./fold.ts";
-import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place, type ProjectChange } from "@ducter/protocol";
+import { bgRunning, callEnded, helperGlance, looseMatch, type Bodies, type HelperWork, type LogEvent, type Place, type ProjectChange, type TruthAttr, type TruthItem } from "@ducter/protocol";
 import { blocksOf, type Block } from "@ducter/protocol/src/transcript.ts";
 import { sayable, proofLabel } from "@ducter/protocol/src/say.ts";
 import { A, type Wear } from "./app.ts";
 import type { TableLang } from "./i18n.ts";
-import { Btn, Chev, Facts, Field, MoreButton, TaskLink } from "./controls.tsx";
+import { Btn, Chev, Facts, Field, MoreButton, Seg, TaskLink } from "./controls.tsx";
 import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 import { openPast } from "./past.tsx";
 import { openDid } from "./did.tsx";
@@ -45,6 +45,7 @@ import { echoes, ensureSteps, firstSentence, lastStepAt, Outcome, outcomeOf, Pee
 import { healthLine, rhythm, RepeatGlyph, reviewLine } from "./past.tsx";
 import { hasPR, PrLine, prFacts, prPhaseWords, prRowOf, prWords } from "./onhand-pr.tsx";
 import { prOf } from "@ducter/protocol/src/pr-state.ts";
+import { ListBoard, BoardViews, LIST_FROM, listRows, listTasks, readMode, truthState, writeMode, type BulkAsk } from "./onhand-list.tsx";
 import { cutAtWord } from "@ducter/protocol";
 import { DEFAULT_PARTNER } from "@ducter/protocol/src/partners.ts";
 
@@ -100,9 +101,12 @@ export function settledLine(task: Task): string | undefined {
 }
 
 /** The second line of a row: what it is on, waits for, asks, or came to. */
-export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" } {
+export function storyOf(task: Task): { mark?: string; words: string; code?: string; tone?: "needs" | "failed" | "said" } {
   const a = attention(task);
   const r = reportOf(task);
+  // D661 (research/245 §3.3 rule 4): core's one person-language line for the latest report;
+  // the raw report is shown only behind 它说 / It said when no gist exists yet.
+  const gist = task.card?.gist?.text?.trim();
   // D645 (research/245 §3.7, B1): no computer could read GitHub for it; after its quiet the
   // row says so, with the fix (install gh there, or read it on the home).
   const blind = task.card?.githubBlind;
@@ -110,11 +114,16 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     return { words: t("onhand.github.blind", blind.device || blind.home || "", blind.home || blind.device || "") };
   if (a === "needs_you") {
     const d = A.S.pendingDecision(task.id);
-    // D539: a copy card says what it copies where, in the reader's words.
-    const q = (d?.copyKey ? copyKeyTitle(d) : d?.question) || r?.questions?.[0]?.text || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
+    // D539: a copy card says what it copies where, in the reader's words. D661 turn 2: the one
+    // truth's line wins — a stopped task says its fact and its own choices, never a bare question;
+    // a real question names its object.
+    const q = (d?.copyKey ? copyKeyTitle(d) : "") || task.card?.truth?.waitsFor || d?.question || r?.questions?.[0]?.text || gist || (r?.summary ? sayable(r.summary, A.readerLang(task)) : "");
     return { words: q || stateLabel(a), tone: "needs" };
   }
   if (a === "blocked") {
+    // D661 turn 2: a stopped task that needs the person says its fact (how long, and that it did
+    // not say), never the old bare question; its Continue / Put down are the row's own choices.
+    if (task.card?.truth?.needs === "stopped" && task.card.truth.waitsFor) return { words: task.card.truth.waitsFor, tone: "needs" };
     // D382: a question put off: when it asks again, and what.
     const later = A.S.pendingDecision(task.id);
     if (later?.later) return { words: t("later.row", soon(later.later), later.said || later.question) };
@@ -131,7 +140,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     const sent = A.S.bridgeWaitFor(task.id);
     if (sent) return { words: t("onhand.wait.agent", sent.to || sent.agent || "") };
     const said = r?.summary?.trim() ? sayable(r.summary.trim().split("\n")[0], A.readerLang(task)) : "";
-    return { words: said || t("onhand.wait.unsaid") };
+    if (gist) return { words: gist };
+    return said ? { words: t("onhand.said", said), tone: "said" } : { words: t("onhand.wait.unsaid") };
   }
   if (a === "working" || a === "queued") {
     const u = A.S.untilOf(task);
@@ -141,6 +151,8 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
     // keeps the quiet ink (it went on). Before this turn holds a step: the turn's start in words.
     const said = saidOf(task, turnStart(task)).at(-1);
     if (said) return { mark: said.bad ? "error" : said.k === "voice" ? "" : said.k, words: said.words };
+    // No live step yet: the last report's gist is the person-language line (never a raw summary here).
+    if (gist) return { words: gist };
     return { words: task.card?.turnAt && task.events.some((e) => e.kind === "task_event") ? t("onhand.turn.fresh") : stateLabel(a) };
   }
   // D633: the last word about it was the outside thing ending: its row says that, not the
@@ -151,9 +163,12 @@ export function storyOf(task: Task): { mark?: string; words: string; code?: stri
   // D472: a task that couldn't start says why in its row too (the page's own words, cant.tsx).
   const cant = failed ? cantOf(task) : undefined;
   if (cant) return { words: cantClause(cant), tone: "failed" };
+  if (gist) return { words: gist, ...(failed ? { tone: "failed" as const } : {}) };
   const ev = r && !failed ? headlineEvidence(task.evidence.length ? task.evidence : r.evidence) : undefined;
   const first = r ? sayable(r.summary.split("\n")[0], A.readerLang(task)) : undefined;
-  return { words: first || (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
+  // The report's own words are the task's, not the partner's: 它说 / It said, in the muted ink.
+  if (first) return { words: t("onhand.said", first), tone: "said" };
+  return { words: (ev && proofLabel(ev, A.readerLang(task))) || stateLabel(a), ...(failed ? { tone: "failed" as const } : {}) };
 }
 
 /** How long it has been at it ("12 分钟"), or when it last changed ("3 分钟前"). */
@@ -282,6 +297,36 @@ export function groupLaneOf(lanes: Task[][]) {
  *  line, a partner's number in the list of partners and On hand's head all count these, and On hand
  *  draws each of them under 等你. A lens counts its tasks; all (and Other) the questions of no task too. */
 export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 (research/245 §3.3): core's needs-you list is the one answer. Never add an item it
+    // does not hold: the strip, the Dock badge and the rows must name the same work.
+    const items = truthInLens(truth.needsYou, lens);
+    const out: NeedItem[] = [];
+    const inLine = new Set<string>();
+    const taskIds = new Set(items.flatMap((i) => (i.taskId ? [i.taskId] : [])));
+    // A stopped line counts once: a group with a part in needs-you is its own card, and its parts
+    // stand aside (D385, D517).
+    for (const g of boardGroups(A.S.onHand?.groups?.filter((x) => !A.S.awayNow.has(x.id)), groupLaneOf(lensLanes(lens)), (id) => memberAttention(id))) {
+      if (![...g.ids].some((id) => taskIds.has(id))) continue;
+      for (const id of g.ids) inLine.add(id);
+      const first = [...g.ids].map((id) => A.S.tasks.get(id)).find(Boolean);
+      out.push({ partner: first ? A.taskPartner(first) : DEFAULT_PARTNER, key: `g:${g.g.id}`, groupId: g.g.id });
+    }
+    for (const it of items) {
+      if (it.taskId && inLine.has(it.taskId)) continue;
+      const task = it.taskId ? A.S.tasks.get(it.taskId) : undefined;
+      const partner = task ? A.taskPartner(task) : it.persona || DEFAULT_PARTNER;
+      if (it.taskId) out.push({ partner, key: `t:${it.taskId}`, taskId: it.taskId });
+      else if (it.keepId) out.push({ partner, key: `k:${it.keepId}`, keepId: it.keepId });
+      else if (it.routineId) out.push({ partner, key: `r:${it.routineId}`, routineId: it.routineId });
+      else if (it.askId) out.push({ partner, key: `a:${it.askId}`, askId: it.askId });
+      else if (it.decisionId) out.push({ partner, key: `d:${it.decisionId}`, decisionId: it.decisionId });
+      else if (it.callId) out.push({ partner, key: `c:${it.callId}`, callId: it.callId });
+      else if (it.waiterId) out.push({ partner, key: `w:${it.waiterId}`, waiterId: it.waiterId });
+    }
+    return out;
+  }
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
   const out: NeedItem[] = [];
@@ -305,8 +350,9 @@ export function needsYouItems(lens = "", now = Date.now()): NeedItem[] {
 }
 
 /** D535: one item of the person's one count, and where it lives: a stopped line, a task, the
- *  partner's own question (its card in the conversation), another partner's (On hand's 等你). */
-export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; decisionId?: string; askId?: string };
+ *  partner's own question (its card in the conversation), another partner's (On hand's 等你), a
+ *  Keep's item or a paused routine. */
+export type NeedItem = { partner: string; key: string; taskId?: string; groupId?: string; keepId?: string; routineId?: string; decisionId?: string; askId?: string; callId?: string; waiterId?: string };
 
 /** D473, D471: a failure or a stop Ducter is mending right now: its newest event is a repair under
  *  way (not the partner's rethink, which may still ask the person). Said on its row in the words
@@ -578,6 +624,15 @@ export const lensLanes = (lens: string): Task[][] =>
 /** Only all, and the two no-project lenses, hold what belongs to no task: the partner's own asks,
  *  task-less waits, calls. */
 export const looseIn = (lens: string) => !lens || lens === OTHER;
+/** D661 (research/245 §3.3): the snapshot's lists narrowed to a lens. "" is all; a project by
+ *  its key; D654's two no-project lenses keep their own: Computers is the errands and machine
+ *  set-ups (projectGroup "computer"), Other is everything else with no key. */
+export function truthInLens(items: TruthItem[], lens: string): TruthItem[] {
+  if (!lens) return items;
+  if (lens === COMPUTERS) return items.filter((i) => !i.projectKey && i.projectGroup === "computer");
+  if (lens === OTHER) return items.filter((i) => !i.projectKey && i.projectGroup !== "computer");
+  return items.filter((i) => i.projectKey === lens);
+}
 
 /** D654: a project name is one line, cut in the middle when too long (the start and the end
  *  stay), the whole in the tooltip and the ⋯ menu's head. Measured, never a guess at a width. */
@@ -823,6 +878,8 @@ export function LensColumn() {
       {groups.map((g) => (
         <LensEntry key={g.key} k={g.key} name={g.name} tasks={g.tasks} on={lens === g.key} where={g.where} hidden={g.hidden} pinned={g.pinned} renamed={pinnedOf(g.key)?.renamed} aliases={g.aliases} />
       ))}
+      {/* D662 (research/245 §3.5): the saved views, under the projects. */}
+      <BoardViews tasks={lensLanes("").flat()} />
       {/* D455: a folder on any computer of the home, looked through by that computer. */}
       {A.ntBrowsable().length > 0 && (
         <button class="lens-add" type="button" title={t("addfolder.about")} onClick={() => A.openAddFolder()}>
@@ -915,6 +972,17 @@ function pinnedOf(key: string) {
 
 /** The strip's four counts in a lens: needs you, working, waiting, done today (D310). */
 export function stateCounts(lens: string, now = Date.now()): number[] {
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 (research/245 §3.3): the snapshot's own lists, never a second derivation. For "" the
+    // four are exactly its counts, so the web can never disagree with the Dock or the Mac.
+    return [
+      truthInLens(truth.needsYou, lens).length,
+      truthInLens(truth.working, lens).length,
+      truthInLens(truth.waiting, lens).length,
+      truthInLens(truth.done, lens).filter((x) => x.doneToday !== false).length,
+    ];
+  }
   const l = lensLanes(lens);
   const parts = boardParts(l, now);
   const loose = looseIn(lens);
@@ -976,11 +1044,23 @@ export function headSay(lens: string, n = stateCounts(lens), now = Date.now()): 
  *  strip can't, whether anything needs you and, when nothing does, what comes next. The counts are
  *  the strip's; the full sentence (headSay) stays the bar's. The Mac's headLine says the same. */
 export function headLine(lens: string, n = stateCounts(lens), now = Date.now()): string {
-  // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
-  const parts = boardParts(lensLanes(lens), now);
-  const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
-  if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
-  if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+  const truth = A.S.onHand?.truth;
+  if (truth) {
+    // D661 turn 2: a stopped task that is now needs-you counts in its stopped list, so a board of
+    // only stops says so; a real question leads.
+    const stoppedNeeds = truthInLens(truth.needsYou, lens).filter((x) => x.needs === "stopped").length;
+    // Only needs-you items are in n[0]; the stopped/failed lists stand apart from it, so they
+    // must not be added to its halted count (a fresh stop is not the person's yet).
+    const halted = stoppedNeeds;
+    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+  } else {
+    // D467: the line is true to the body: what only stopped is said as stopped, never "nothing needs you".
+    const parts = boardParts(lensLanes(lens), now);
+    const halted = Math.min(n[0]!, parts.stopped.length + parts.failed.length);
+    if (n[0] && n[0] > halted) return n[0] === 1 ? t("onhand.say.needs.one") : t("onhand.say.needs", n[0]);
+    if (n[0]) return n[0] === 1 ? t("onhand.line.stopped.one") : t("onhand.line.stopped", n[0]);
+  }
   if (n[1]) return t("onhand.line.working");
   if (n[2]) {
     const w = waitsAhead(lens, now);
@@ -1006,7 +1086,7 @@ export function moodOf(n: number[]): "needsyou" | "working" | "waiting" | "done"
 /** The board's head (D287): the partner, its face saying how the whole stands, and its one sentence;
  *  under it the strip of four counts (each one a filter; pressed again, or Esc, lets go), Find from
  *  ten tasks, New task here under a project. */
-function BoardTop({ lens, groups, findable, room }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room }) {
+function BoardTop({ lens, groups, findable, room, mode, onMode, showMode }: { lens: string; groups: LensGroup[]; findable: boolean; room: Room; mode?: "overview" | "list"; onMode?: (m: "overview" | "list") => void; showMode?: boolean }) {
   const n = stateCounts(lens);
   L.filter = 0; // D467: no strip, so no filter; Find and the lens narrow
   const g = groups.find((x) => x.key === lens && x.key !== OTHER && x.key !== COMPUTERS);
@@ -1036,6 +1116,9 @@ function BoardTop({ lens, groups, findable, room }: { lens: string; groups: Lens
             </button>
           )}
           <span class="grow" />
+          {/* D662 (research/245 §3.5): one board, two ways to look: offered from eight tasks on,
+              kept per device, never the default by itself. */}
+          {showMode && mode && onMode && <Seg label={t("onhand.view.label")} value={mode} options={[{ v: "overview", label: t("onhand.overview") }, { v: "list", label: t("onhand.list") }]} onPick={onMode} />}
           {findable && <Find />}
         </div>
       )}
@@ -1072,7 +1155,33 @@ export function matches(task: Task, q: string): boolean {
 // ---------- the keys, the focus and the selection ----------
 
 /** The list's state that outlives a render: the row the keys are on, what is selected, Find. */
-export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "" };
+export const L = { walked: false, focus: "", sel: new Set<string>(), anchor: "", find: "", order: [] as string[], dropAsk: false, filter: 0, quietOn: false, showProj: false, usual: "", groupAsk: null as string | null, source: "", /** D662 (research/245 §3.5): the view this device chose, its filter and sort. */ mode: readMode() as "overview" | "list", tfilter: {} as import("@ducter/protocol").TaskFilter, sort: "urgency" as import("@ducter/protocol").TaskSort, pickOp: "" as "" | import("@ducter/protocol").BulkOp, gPending: 0 };
+
+/** D661 (research/245 §3.3 rule 5): who else holds the outside thing, in words: a task's
+ *  agent on its computer ("Mac 上的 Antigravity" / "Antigravity on Mac"), a Keep by its name, a
+ *  hand-off by who it went to. */
+function holderWho(h: TruthAttr): string {
+  if (h.role === "handoff") return h.to?.trim() || h.keep?.trim() || "";
+  if (h.keep?.trim()) return h.keep.trim();
+  // A task holder may name only its task: its card still says which agent on which computer.
+  const held = h.taskId ? A.S.tasks.get(h.taskId) : undefined;
+  const harnessId = h.harness || (held ? harnessOf(held) : "");
+  const device = h.device || (held ? (placeOf(held) as { device?: string }).device : undefined);
+  const harness = harnessId ? harnessName(harnessId) : "";
+  if (!harness) return device ? computerName(device) : "";
+  return device ? t("onhand.holder.on", computerName(device), harness) : harness;
+}
+
+/** D661: each holder its own fact (never a " · " join). */
+export function holderFacts(task: Task): string[] {
+  return (task.card?.holders ?? []).map((h) => {
+    const who = holderWho(h);
+    if (!who) return "";
+    if (h.role === "author") return t("onhand.holder.author", who);
+    if (h.role === "review") return t("onhand.holder.review", who);
+    return t("onhand.holder.handoff", who);
+  });
+}
 
 /** D315: where a card says its task is, each its own element (D291): its project when the board
  *  shows them all, never 其他 / Other, which says nothing; its computer only when it isn't the one
@@ -1084,7 +1193,12 @@ export function whereMeta(task: Task): string[] {
   // its PR merged) says whose it is.
   // D511: so does a Keep's task anywhere but under its Keep (a question in 等你, Find, the rail).
   const helper = NESTED.has(task.id) ? "" : (task.card?.keep?.name ?? task.card?.helper?.name ?? "");
-  return [L.showProj && k !== OTHER && k !== COMPUTERS ? lensName(k) : "", manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "", helper].filter(Boolean);
+  return [
+    L.showProj && k !== OTHER && k !== COMPUTERS ? lensName(k) : "",
+    manyComputers() && p.kind !== "none" && p.device && p.device !== L.usual ? computerName(p.device) : "",
+    helper,
+    ...holderFacts(task),
+  ].filter(Boolean);
 }
 
 /** D521: a running task's one quiet fact: how many of its agent's jobs still run in the background. */
@@ -1115,11 +1229,19 @@ const typing = () => {
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLElement && el.isContentEditable);
 };
 
-function move(by: number, open: boolean) {
+function move(by: number, open: boolean, shift = false) {
   const o = L.order;
   if (!o.length) return;
   const i = o.indexOf(L.focus);
   const next = o[i < 0 ? (by > 0 ? 0 : o.length - 1) : Math.max(0, Math.min(o.length - 1, i + by))]!;
+  if (shift && A.listMode && !open) {
+    if (!L.anchor) L.anchor = L.focus;
+    if (L.anchor) extend(next);
+    L.focus = next;
+    A.changed();
+    requestAnimationFrame(() => document.querySelector(`[data-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: "nearest" }));
+    return;
+  }
   L.focus = next;
   L.walked = true; // D471: the peek follows what the keys moved to
   if (open) A.go({ name: "task", id: next, full: A.route.name !== "conv" && !!A.route.full });
@@ -1194,29 +1316,107 @@ function extend(id: string) {
   A.changed();
 }
 
+/** The rows a list key acts on: the selection, else the row the keys are on. */
+function keyIDs(): string[] {
+  return L.sel.size ? [...L.sel] : L.focus ? [L.focus] : [];
+}
+
+/** e / p / ⌘⌫ / m / a: the selection's bar takes the gesture (the focused row joins an empty
+ *  selection). e, p and ⌘⌫ raise its one ask; m and a open its menu. A key never acts unasked. */
+function barAct(op: import("@ducter/protocol").BulkOp) {
+  const ids = keyIDs();
+  if (!ids.length) return;
+  if (!L.sel.size) L.sel.add(L.focus);
+  L.pickOp = op;
+  A.changed();
+}
+
 /** j/k (or the arrows) walk the list, Enter opens, x selects, / finds, Esc lets go first. In the
  *  rail beside an opened task, j/k open the next one. */
 function useKeys(room: Room) {
   useEffect(() => {
     if (room === "phone") return;
     const k = (e: KeyboardEvent) => {
-      if (A.sheet || A.live || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (A.sheet || A.live || e.defaultPrevented) return;
       // D325: the locator's card has its own keys (the arrows move its choice).
       if ((e.target as Element | null)?.closest?.(".locator")) return;
+      const rail = room === "rail";
+      const list = !!A.listMode && room === "full" && !rail;
+      const mod = e.metaKey || e.ctrlKey;
+      // D662 (research/245 §3.5): ⌘2 on the board (already 任务 / Tasks) goes on to 列表 / List,
+      // ⌘1 in the list comes back to 概览 / Overview; ⌘1 on Overview is the app's own (the
+      // conversation). So each key is one step, and the app's ⌘1 / ⌘2 keep their meaning.
+      const offered = !!A.listOffered && room === "full";
+      if (offered && mod && !e.altKey && !e.shiftKey && ((e.code === "Digit2" && L.mode === "overview") || (e.code === "Digit1" && L.mode === "list"))) {
+        e.preventDefault();
+        const m = e.code === "Digit1" ? "overview" : "list";
+        L.mode = m;
+        writeMode(m);
+        A.changed();
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "KeyA") {
+        e.preventDefault();
+        L.sel.clear();
+        for (const id of L.order) L.sel.add(id);
+        L.anchor = L.order[0] ?? "";
+        A.changed();
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "Backspace") {
+        e.preventDefault();
+        barAct("drop");
+        return;
+      }
+      if (list && mod && !e.altKey && e.code === "KeyK") {
+        e.preventDefault();
+        document.querySelector<HTMLElement>(".sel-bar .btn")?.focus();
+        return;
+      }
+      if (mod || e.altKey) return;
       if (e.key === "/" && !typing()) {
         const f = document.getElementById("onhand-find");
         if (f) return void (e.preventDefault(), f.focus());
       }
       if (typing()) return;
-      const rail = room === "rail";
-      if (e.key === "j" || e.key === "ArrowDown") return void (e.preventDefault(), move(1, rail));
-      if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail));
+      if (list) {
+        if (e.key === "x" && L.focus) return void (e.preventDefault(), toggle(L.focus));
+        if (e.key === "f") {
+          e.preventDefault();
+          document.querySelector<HTMLElement>(".filter-chip")?.focus();
+          return;
+        }
+        // g p / g s first: the p after a g is the project, not Pause.
+        if (L.gPending && Date.now() - L.gPending < 1200 && (e.key === "p" || e.key === "s")) {
+          e.preventDefault();
+          L.gPending = 0;
+          const task = A.S.tasks.get(L.focus);
+          if (!task) return;
+          if (e.key === "p") L.tfilter = { ...L.tfilter, project: task.card?.projectKey ?? "" };
+          else L.tfilter = { ...L.tfilter, state: truthState(task) };
+          if (!L.tfilter.project) delete L.tfilter.project;
+          A.changed();
+          return;
+        }
+        L.gPending = 0;
+        if (e.key === "g") {
+          e.preventDefault();
+          L.gPending = Date.now();
+          return;
+        }
+        if (e.key === "e") return void (e.preventDefault(), barAct("end"));
+        if (e.key === "p") return void (e.preventDefault(), barAct("pause"));
+        if (e.key === "m") return void (e.preventDefault(), barAct("move"));
+        if (e.key === "a") return void (e.preventDefault(), barAct("reassign"));
+      }
+      if (e.key === "j" || e.key === "ArrowDown") return void (e.preventDefault(), move(1, rail, e.shiftKey));
+      if (e.key === "k" || e.key === "ArrowUp") return void (e.preventDefault(), move(-1, rail, e.shiftKey));
       if ((e.key === "Enter" || e.key === "o") && L.focus && !rail) return void (e.preventDefault(), A.go({ name: "task", id: L.focus, full: A.route.name === "onhand" && !!A.route.full }));
-      if (e.key === "x" && L.focus && room === "full") return void (e.preventDefault(), toggle(L.focus));
-      if (e.key === "Escape" && (L.sel.size || L.find || L.filter || L.source) && !rail) {
+      if (e.key === "Escape" && (L.sel.size || L.find || L.filter || L.source || Object.keys(L.tfilter).length) && !rail) {
         e.preventDefault();
         if (L.sel.size) L.sel.clear();
         else if (L.find) L.find = "";
+        else if (Object.keys(L.tfilter).length) L.tfilter = {};
         else if (L.filter) L.filter = 0; // D261: then the strip's filter
         else L.source = ""; // D654: then 来自 / From
         L.dropAsk = false;
@@ -1433,7 +1633,8 @@ const TaskCard = memo(function TaskCard({ task, room, focus, sel }: RowProps) {
   // D467: a waiting line that only says the title again gives way to what the task last said, else
   // when it looks again, else nothing (the heartbeat says when it is back).
   // D467 round 4: what stopped or didn't work out says what fixes it, and offers it.
-  const stuck = room !== "rail" && (stopped || failed) ? stuckOf(task) : undefined;
+  const truthStopped = task.card?.truth?.needs === "stopped";
+  const stuck = room !== "rail" && (stopped || failed) && !truthStopped ? stuckOf(task) : undefined;
   // D584: a story that is only the state's own word (在做 / 做完了) is what the row's time already
   // says (在做 3 分钟了 / 7:52 做完): the status is said once, the second line left out.
   const bare = !stuck && !mend && s.words === stateLabel(a);
@@ -1867,6 +2068,62 @@ export function OnHandList({ room }: { room: Room }) {
   L.usual = usualComputer(all);
   const q = L.find.trim();
   const rail = room === "rail";
+  // D662 (research/245 §3.5): 概览 / Overview or 列表 / List. List is offered from eight tasks
+  // on, kept per device, and never becomes the default by itself. A rail stays rows.
+  const listOn = !rail && L.mode === "list" && all.length >= LIST_FROM;
+  A.listMode = listOn;
+  A.listOffered = !rail && all.length >= LIST_FROM;
+  A.applyView = (v) => {
+    L.tfilter = { ...v.filter };
+    L.sort = v.sort;
+    L.mode = v.mode;
+    writeMode(v.mode);
+    A.changed();
+  };
+  if (listOn) {
+    const rows = listRows(all, L.tfilter, L.sort, q);
+    L.order = rows.map((x) => x.id);
+    for (const id of [...L.sel]) if (!all.some((x) => x.id === id)) L.sel.delete(id);
+    const setMode = (m: "overview" | "list") => {
+      if (L.mode === m) return;
+      L.mode = m;
+      writeMode(m);
+      A.changed();
+    };
+    return (
+      <div class={`onhand-list room-${room} list-mode${entering ? " entering" : ""}`}>
+        {room !== "full" && <LensTabs />}
+        {room === "full" && <LensTabs inBoard />}
+        <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} mode={L.mode} onMode={setMode} showMode={all.length >= LIST_FROM} />
+        <ListBoard
+          room={room === "phone" ? "phone" : room === "side" ? "side" : "full"}
+          tasks={all}
+          rows={rows}
+          filter={L.tfilter}
+          sort={L.sort}
+          mode={L.mode}
+          focus={L.focus}
+          sel={L.sel}
+          onFilter={(f) => ((L.tfilter = f), A.changed())}
+          onSort={(x) => ((L.sort = x), A.changed())}
+          onSave={(name) => A.viewSave({ id: `v_${Date.now().toString(36)}`, name, filter: { ...L.tfilter }, sort: L.sort, mode: L.mode })}
+          onFocus={(id) => ((L.focus = id), (L.walked = true), A.changed())}
+          onPick={(id, e) => pickClick(e, id, room)}
+          onOpen={(id) => openRow(id, room)}
+          onClear={() => (L.sel.clear(), A.changed())}
+          onBulk={(ask) => {
+            const ids = [...L.sel];
+            if (!ids.length) return;
+            A.bulk(ids, ask.op, { ...(ask.device ? { device: ask.device } : {}), ...(ask.harness ? { harness: ask.harness } : {}) });
+            L.sel.clear();
+            A.changed();
+          }}
+          pick={L.pickOp}
+          onPicked={() => (L.pickOp = "")}
+        />
+      </div>
+    );
+  }
   const f = rail ? 0 : L.filter;
   const show = (i: number) => !f || f === i;
   const keep = (ts: Task[]) => (q ? ts.filter((x) => matches(x, q)) : ts);
@@ -1950,7 +2207,7 @@ export function OnHandList({ room }: { room: Room }) {
         <>
           {room !== "full" && <LensTabs />}
           {room === "full" && <LensTabs inBoard />}
-          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} />
+          <BoardTop lens={lens} groups={groups} findable={all.length >= FIND_FROM} room={room} mode={all.length >= LIST_FROM ? "overview" : undefined} showMode={all.length >= LIST_FROM} onMode={(m) => { L.mode = m; writeMode(m); A.changed(); }} />
         </>
       )}
       {q && !shown && <p class="none">{t("onhand.find.none")}</p>}
@@ -2845,6 +3102,7 @@ function closeKeepHere() {
 /** D535: the element On hand draws for an item: its row, its line's card, its question's card. */
 function itemSelector(it: NeedItem): string {
   if (it.groupId) return `[data-group="${CSS.escape(it.groupId)}"]`;
+  if (it.keepId) return `[data-keep="${CSS.escape(it.keepId)}"]`;
   if (it.askId) return `[data-ask="${CSS.escape(it.askId)}"]`;
   if (it.decisionId) return `#d-${CSS.escape(it.decisionId)}`;
   const d = it.taskId ? A.S.pendingDecision(it.taskId) : undefined;

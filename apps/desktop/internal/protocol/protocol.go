@@ -1187,6 +1187,105 @@ type TaskCard struct {
 	// Background (D521): the work its agent runs beside its turn, every one
 	// still running and the newest finished, folded from its Log by core.
 	Background *TaskBackground `json:"background,omitempty"`
+	// Truth (D661, research/245 §3.3): the one state core derived
+	// for it, from facts. Every surface reads it, never a state of its own.
+	Truth *TaskTruth `json:"truth,omitempty"`
+	// Gist (D661 §3.3 rule 4): the person-language line of its latest
+	// report. Absent: the raw report is shown muted behind 它说 / It said.
+	Gist *TaskGist `json:"gist,omitempty"`
+	// HeldUnder (D661 §3.3 rule 5): its outside thing is shown under
+	// another holder's row; the board leaves this row out.
+	HeldUnder *HeldUnder `json:"heldUnder,omitempty"`
+	// Holders (D661 §3.3 rule 5): the other holders of the outside thing
+	// this row holds (作者… / 复审…), each its own element.
+	Holders []TruthAttr `json:"holders,omitempty"`
+}
+
+// TruthState is the six words of the board's one state (D661,
+// research/245 §3.3): working, needs_you, waiting, stopped, done, failed.
+type TruthState string
+
+const (
+	TruthWorking  TruthState = "working"
+	TruthNeedsYou TruthState = "needs_you"
+	TruthWaiting  TruthState = "waiting"
+	TruthStopped  TruthState = "stopped"
+	TruthDone     TruthState = "done"
+	TruthFailed   TruthState = "failed"
+)
+
+// TruthWait is the named thing a waiting task waits on; Blind means no
+// computer could read it and Fix is the way on.
+type TruthWait struct {
+	Name  string `json:"name"`
+	Back  string `json:"back,omitempty"`
+	Blind bool   `json:"blind,omitempty"`
+	Fix   string `json:"fix,omitempty"`
+}
+
+// TaskTruth is one task's derived state (D661).
+type TaskTruth struct {
+	State TruthState `json:"state"`
+	// Needs (D661 turn 2): question | stopped | blind | ready | keep | routine.
+	Needs    string     `json:"needs,omitempty"`
+	WaitsFor string     `json:"waitsFor,omitempty"`
+	Wait     *TruthWait `json:"wait,omitempty"`
+	Since    string     `json:"since,omitempty"`
+}
+
+// TruthAttr is another holder of the same outside thing, shown as an
+// attribute on the holder's row.
+type TruthAttr struct {
+	Role    string `json:"role"` // author | review | handoff
+	TaskID  string `json:"taskId,omitempty"`
+	Keep    string `json:"keep,omitempty"`
+	To      string `json:"to,omitempty"`
+	Harness string `json:"harness,omitempty"`
+	Device  string `json:"device,omitempty"`
+}
+
+// TaskGist is the one cheap-model line of a report (D661 §3.3 rule 4).
+type TaskGist struct {
+	Text      string `json:"text"`
+	At        string `json:"at"`
+	ReportSeq int64  `json:"reportSeq"`
+}
+
+// HeldUnder says which row shows a task's outside thing (D661 §3.3 rule 5).
+type HeldUnder struct {
+	Ref    string `json:"ref"`
+	TaskID string `json:"taskId"`
+}
+
+// TruthItem is one row of OnHandTruth: a task, a Keep's paused routine, a
+// partner's ask, a call or a task-less wait.
+type TruthItem struct {
+	TaskTruth
+	TaskID       string      `json:"taskId,omitempty"`
+	KeepID       string      `json:"keepId,omitempty"`
+	RoutineID    string      `json:"routineId,omitempty"`
+	DecisionID   string      `json:"decisionId,omitempty"`
+	AskID        string      `json:"askId,omitempty"`
+	CallID       string      `json:"callId,omitempty"`
+	WaiterID     string      `json:"waiterId,omitempty"`
+	Persona      string      `json:"persona,omitempty"`
+	ProjectKey   string      `json:"projectKey,omitempty"`
+	ProjectGroup string      `json:"projectGroup,omitempty"`
+	Line         string      `json:"line,omitempty"`
+	Attrs        []TruthAttr `json:"attrs,omitempty"`
+	DoneToday    bool        `json:"doneToday,omitempty"`
+}
+
+// OnHandTruth is the board's one computed state (D661, research/245 §3.3).
+type OnHandTruth struct {
+	NeedsYou []TruthItem `json:"needsYou"`
+	Working  []TruthItem `json:"working"`
+	Waiting  []TruthItem `json:"waiting"`
+	Stopped  []TruthItem `json:"stopped"`
+	Done     []TruthItem `json:"done"`
+	Failed   []TruthItem `json:"failed"`
+	AsOf     int64       `json:"asOf"`
+	At       string      `json:"at"`
 }
 
 // GitHubBlind (D645, research/245 §3.7, B1) is a task whose GitHub
@@ -1327,6 +1426,11 @@ type OnHand struct {
 	// Keeps (D511): 看守中 / Looking after, each Keep on or paused its own
 	// sheet. Present: it takes the place of Helpers and the cards' Rounds.
 	Keeps []KeepSheet `json:"keeps,omitempty"`
+	// Truth (D661, research/245 §3.3): the one computed state every
+	// surface reads.
+	Truth *OnHandTruth `json:"truth,omitempty"`
+	// Views (D662): the person's saved views, kept on the home.
+	Views []BoardView `json:"views,omitempty"`
 }
 
 // TaskHelper (D507) names the helper a task's work came to.
@@ -3184,10 +3288,13 @@ type ServerFrame struct {
 	// Keep (D511): keep_result's page (ID is the Keep's); absent: no such Keep.
 	Keep *KeepPage `json:"keep,omitempty"`
 	// KeepEdit (D533): keep_changed and keep_proposal, read on their own.
-	KeepEdit    *KeepEditFrame `json:"-"`
-	Persona     string         `json:"persona,omitempty"`
-	PersonaName string         `json:"personaName,omitempty"`
-	Machine     string         `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
+	KeepEdit *KeepEditFrame `json:"-"`
+	// D662: task_bulk_result / task_bulk_undone, and view_saved's views, read on their own.
+	Bulk        *BulkResult `json:"-"`
+	Views       []BoardView `json:"-"`
+	Persona     string      `json:"persona,omitempty"`
+	PersonaName string      `json:"personaName,omitempty"`
+	Machine     string      `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	// Ping (welcome, D293): the home answers {t:"ping"} with {t:"pong"}, so
 	// a socket silent for 45 s may be closed and dialled again.
 	Ping bool `json:"ping,omitempty"`
@@ -3693,6 +3800,10 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return decodeApps(data, ServerFrame{T: head.T})
 	case "keep_changed", "keep_proposal":
 		return decodeKeepEdit(data, ServerFrame{T: head.T})
+	case "task_bulk_result", "task_bulk_undone":
+		return decodeBulk(data, ServerFrame{T: head.T})
+	case "view_saved":
+		return decodeViews(data, ServerFrame{T: head.T})
 	case "mention_list", "slash_list":
 		// D534: the composers' @ and / lists ("items" and "entries" are their own shapes).
 		return decodeMentions(data, ServerFrame{T: head.T})

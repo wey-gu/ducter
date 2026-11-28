@@ -936,8 +936,6 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
   }
 }
 
-const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
-
 /** How long a finished task took, roughly: grounds for "一般十来分钟" in the next ack (D120). */
 function took(c: TaskCard): string {
   if (!["done", "done_claimed", "failed"].includes(c.attention)) return "";
@@ -952,24 +950,28 @@ export const OPEN_TASKS_MAX = 20;
 
 export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase" | "taskGroup" | "keptBy">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
-  const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
+  // D661: a PR shown under its holder's row is one task here too, never two.
+  const cards = all.filter((c) => !c.heldUnder && !(c.attention === "dropped" && c.reason === "not started"));
   // D651 (research/246): what another app had is never listed here (it is read only, and
   // task_find is how it is reached); the count below says it is one task_find away.
   const earlier = cards.filter((c) => c.imported);
   const own = cards.filter((c) => !c.imported);
-  // Those that need the user first, then the most recently moved.
-  const rank = (c: TaskCard) => (c.attention === "needs_you" || c.attention === "blocked" ? 0 : 1);
-  const allOpen = own.filter((c) => ACTIVE.has(c.attention));
+  // Those that need the user first, then the most recently moved. D661: the one state core
+  // derived (a stopped task needs a look too), never a client's own reading.
+  const stateOf = (c: TaskCard) => c.truth?.state ?? c.attention;
+  const rank = (c: TaskCard) => (["needs_you", "stopped", "waiting"].includes(stateOf(c)) ? 0 : 1);
+  const OPEN = new Set(["working", "needs_you", "waiting", "stopped"]);
+  const allOpen = own.filter((c) => OPEN.has(stateOf(c)));
   const open = allOpen.length > OPEN_TASKS_MAX ? [...allOpen].sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, OPEN_TASKS_MAX) : allOpen;
   const hidden = allOpen.length - open.length;
   const closed = own
-    .filter((c) => !ACTIVE.has(c.attention))
+    .filter((c) => !OPEN.has(stateOf(c)))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, maxDone);
   const line = (c: TaskCard) => {
     const where =
       c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? ` · browser on ${c.place.device && c.place.device !== "local" ? c.place.device : "the home"}` : "";
-    const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
+    const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.gist?.text ?? c.lastReport.summary, 200)}` : "";
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
     // D128: one the user opened themselves (their words are its brief); you report it like any task.
     const yours = c.openedBy === "you" ? " · the user opened this one themselves" : "";
@@ -977,8 +979,10 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     const g = ctx?.taskGroup?.(c.taskId);
     const group = g ? ` · group "${clip(g.name, 40)}" part ${g.part} of ${g.of}${g.held.length ? `; held in line: ${g.held.map((h) => `"${clip(h, 60)}"`).join(", ")}` : ""}` : "";
     // D511: a task in rounds is something Ducter looks after: its rhythm, a pause or a stop go through keep_change.
-    const kept = ctx?.keptBy?.(c.taskId) && ACTIVE.has(c.attention) ? " · Ducter looks after it in rounds (keep_change, never task_send, changes it, stops it or gives its next round an ask: next_round)" : "";
-    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${group}${kept}${where}${last}`;
+    const kept = ctx?.keptBy?.(c.taskId) && OPEN.has(stateOf(c)) ? " · Ducter looks after it in rounds (keep_change, never task_send, changes it, stops it or gives its next round an ask: next_round)" : "";
+    const waits = c.truth?.state === "needs_you" && c.truth.waitsFor ? ` · waiting for the user: ${clip(c.truth.waitsFor, 200)}` : "";
+    const also = c.holders?.length ? ` · also holds it: ${c.holders.map((h) => `${h.role}${h.taskId ? ` task ${h.taskId}` : ""}${h.keep ? ` (${h.keep})` : ""}${h.to ? ` (${h.to})` : ""}`).join(", ")}` : "";
+    return `- ${c.taskId} "${clip(c.title, 120)}" · ${stateOf(c)}${waits}${also}${yours}${took(c)}${merged}${group}${kept}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");

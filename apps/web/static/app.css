@@ -8532,6 +8532,11 @@ dl.call-summary dd { margin: 0; }
 .trow .l2.failed {
   color: var(--failed-ink);
 }
+/* D661 (research/245 §3.3 rule 4): the task's own report, before its gist exists, is the
+   task's words, not the partner's: muted ink, no new colour. */
+.trow .l2.said {
+  color: var(--ink-muted);
+}
 .trow .l2.failed > .g {
   color: var(--failed-ink);
 }
@@ -20446,6 +20451,11 @@ html[data-text-size="large"] .brand-mark > svg {
 .ocard .o2.failed {
   color: var(--failed-ink);
 }
+/* D661 (research/245 §3.3 rule 4): the task's own report, before its gist exists, is the
+   task's words, not the partner's: muted ink, no new colour. */
+.ocard .o2.said {
+  color: var(--ink-muted);
+}
 .ocard .o2 .say {
   animation: alive-say var(--t-say) var(--ease) both;
 }
@@ -26211,4 +26221,208 @@ button.fd-link,
   .import-read, .import-consent, .import-last { margin-left: var(--s4); margin-right: var(--s4); }
   .import-waiting { margin-left: var(--s4); margin-right: var(--s4); }
   .import-remove-ask { padding-left: var(--s4); padding-right: var(--s4); }
+}
+
+/* D662 (research/245 §3.5): 列表 / List — the same board as one dense table. 32 pt a row,
+   13/600 title and 12 for the rest; every fact its own cell (PR and CI never dot-joined); the
+   filter chips and the selection bar are the shared controls. */
+.onhand-list-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s2);
+  min-height: 34px;
+}
+.filter-bar .grow { flex: 1; }
+.fchip-wrap { position: relative; display: inline-flex; }
+.filter-chip.on {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.filter-menu,
+.bulk-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  min-width: 180px;
+}
+.filter-clear { color: var(--ink-muted); }
+.view-save-wrap { margin-left: auto; }
+.view-save-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: min(360px, 100%);
+}
+.view-save-inline .field { height: 32px; }
+.otable {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.otable-head,
+.otable > .lrow {
+  display: grid;
+  grid-template-columns: 20px minmax(160px, 1.7fr) minmax(72px, .65fr) minmax(56px, .5fr) minmax(72px, .6fr) 64px minmax(120px, 1.1fr) 56px 60px;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 var(--s3);
+  min-width: 0;
+}
+.otable-head {
+  height: 28px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-sunken);
+  font-size: var(--xs);
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--ink-muted);
+}
+.otable > .lrow {
+  height: 32px;
+  border-top: 1px solid var(--line-soft);
+  cursor: pointer;
+  color: var(--ink);
+  font-size: var(--xs);
+  line-height: 1.2;
+}
+.otable > .lrow:first-of-type { border-top: 0; }
+.otable > .lrow:hover,
+.otable > .lrow:focus-visible {
+  background: var(--row-hover);
+  outline: none;
+}
+.otable > .lrow.sel { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.otable > .lrow.at { box-shadow: inset 0 0 0 2px var(--accent); }
+.otable > .lrow > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otable .c-state { display: flex; align-items: center; justify-content: center; color: var(--ink-muted); }
+.otable .lmark.k-needs_you,
+.otable .lmark.k-stopped { color: var(--needs-ink); }
+.otable .lmark.k-working { color: var(--working-ink, var(--accent)); }
+.otable .lmark.k-waiting { color: var(--waiting-ink, var(--ink-muted)); }
+.otable .lmark.k-done { color: var(--done-ink, var(--ink-muted)); }
+.otable .c-title { font-size: var(--sm); font-weight: 600; }
+.otable .c-project,
+.otable .c-computer,
+.otable .c-agent,
+.otable .c-age { color: var(--ink-muted); }
+.otable .c-step { color: var(--ink-muted); }
+.otable .c-step.said { color: var(--faded-ink); font-style: italic; }
+.otable .c-pr,
+.otable .c-ci { font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+.otable > .lrow.s-needs_you .c-title { color: var(--needs-ink); }
+.otable > .lrow.s-stopped .c-title { color: var(--ink-muted); }
+
+.otable.compact { border: 0; background: transparent; gap: 0; }
+.otable.compact > .lrow {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s1);
+  height: auto;
+  min-height: 44px;
+  padding: var(--s2) var(--s1);
+  border-top: 1px solid var(--line-soft);
+  background: transparent;
+}
+.otable.compact > .lrow .c-title { font-size: var(--sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.otable.compact > .lrow .c-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink-muted);
+  font-size: var(--xs);
+}
+.otable.compact > .lrow .c-meta .c-step { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otable.compact > .lrow .lmark { display: inline-flex; width: 16px; height: 16px; }
+
+.sel-bar {
+  position: sticky;
+  bottom: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  box-shadow: var(--floating);
+}
+.sel-bar > b { font-size: var(--sm); font-weight: 700; }
+.sel-bar .grow { flex: 1; }
+.sel-bar .bulk-ask { flex: 0 1 auto; min-width: 0; font-size: var(--sm); color: var(--ink); }
+.sel-bar .sel-clear { color: var(--ink-muted); }
+.list-foot {
+  padding: var(--s2) var(--s1) 0;
+  color: var(--ink-muted);
+}
+.key-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  align-items: center;
+}
+.key-cap { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--xs); }
+.key-cap kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 -1px 0 var(--line);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0 2px;
+}
+.view-head {
+  padding: 0 10px 2px;
+  font-size: var(--xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+}
+.view-row { justify-content: flex-start; text-align: left; }
+
+/* 列表 takes the board's whole width: no peek beside it (the row is the peek). */
+.board-wrap:has(.list-mode) .peek-col { display: none; }
+.board-col:has(> .list-mode) { flex: 1 1 1060px; width: auto; max-width: 1060px; }
+.onhand-list-table { container-type: inline-size; }
+/* Narrower than every column: the computer and the agent step out (the filter chips keep them). */
+@container (max-width: 760px) {
+  .otable-head,
+  .otable > .lrow {
+    grid-template-columns: 20px minmax(130px, 1.5fr) minmax(64px, .6fr) 64px minmax(110px, 1fr) 56px 60px;
+  }
+  .otable .c-computer,
+  .otable .c-agent,
+  .otable-head .c-computer,
+  .otable-head .c-agent { display: none; }
+}
+@media (max-width: 700px) {
+  .filter-bar { gap: var(--s1); }
+  .view-save-wrap { margin-left: 0; }
 }

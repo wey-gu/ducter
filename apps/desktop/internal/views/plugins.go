@@ -5,6 +5,8 @@
 package views
 
 import (
+	"fmt"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
@@ -190,16 +192,42 @@ func (a *App) themeList(c *ui.Context, includePebble bool) {
 			a.themeConsentCard(c, r)
 		}
 	}
-	if len(rows) == 0 && !includePebble {
-		a.note(c, a.L.T("settings.look.back.note"))
+}
+
+// pluginsDocs is the docs page that says how a look is added (`ducter plugin add`).
+const pluginsDocs = DocsURL + "/plugins"
+
+// pluginsSay is what is true on Plugins now (D475: the head is the state, never what the pane
+// is for): no look but Pebble, or how many are installed and which is in use.
+func (a *App) pluginsSay() string {
+	v := a.S.Themes
+	if v == nil {
+		return ""
+	}
+	switch n := len(v.Themes); n {
+	case 0:
+		return a.L.T("say.plugins.none")
+	case 1:
+		return a.L.T("say.plugins.one", a.activeThemeName())
+	default:
+		return a.L.T("say.plugins.n", fmt.Sprint(n), a.activeThemeName())
 	}
 }
 
-// pluginsPanel is Settings › 插件 / Plugins: the lede and the looks as plugin rows.
+// pluginsPanel is Settings › 插件 / Plugins: the head says what is installed; what a plugin may do
+// is the pane's note; then the looks as one group, Pebble first (the one tap back always here
+// too), and with none installed the group's foot says where one appears and how one is added.
 func (a *App) pluginsPanel(c *ui.Context) {
-	// The head says what plugins are and the limit they keep, once (no second line repeating it).
 	a.panelHead(c, TabPlugins, a.L.T("plugins.lede"))
+	a.ledeNote(c, "plugins-note", a.L.T("plugins.lede"))
 	a.group(c, "plugins", a.L.T("plugins.theme.group"), a.L.T("settings.look.themes.note"), func() {
-		a.themeList(c, false)
+		a.themeList(c, true)
+		if v := a.S.Themes; v == nil || len(v.Themes) == 0 {
+			a.footRow(c, "plugins-none", a.L.T("plugins.none"), func() {
+				if a.quietLink(c, "plugins-how", a.L.T("plugins.how"), a.L.T("plugins.how")) {
+					a.openLink(pluginsDocs)
+				}
+			})
+		}
 	})
 }

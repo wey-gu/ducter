@@ -540,7 +540,13 @@ func (a *App) partnersGroup(c *ui.Context, top bool) {
 						})
 						a.thinksPick(c, p)
 					}
-					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, 52).Children(func() {
+					// A quiet 改一下 / Change that starts the line starts its words, not its tap
+					// padding, on the text edge under the name (the web's --end-pad pull).
+					actsIn := float32(52)
+					if ps.editing != id && p.ID == shown && !many {
+						actsIn -= a.textPad(a.controlHeight(t.ControlSM))
+					}
+					ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(0, 0, 0, actsIn).Children(func() {
 						if ps.editing == id {
 							if a.button(c, a.L.T("partners.rename.save"), btnPrimary, t.ControlSM, t.Surface) {
 								save()

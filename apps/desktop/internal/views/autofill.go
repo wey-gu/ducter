@@ -161,41 +161,51 @@ func (a *App) autofillPanel(c *ui.Context) {
 			a.afDetails(c, f.SavedDetails)
 			return
 		}
-		read, kept := "", ""
+		// D291, as the web (D644): the name is the row's title; the email and the phone stand apart
+		// under it, each its own fact; what else is kept is the line after.
+		var title string
+		var facts []string
+		kept := ""
 		n := 0
 		for _, d := range f.SavedDetails {
 			if !d.Kept {
 				continue
 			}
 			n++
-			if d.Value != "" {
-				if read != "" {
-					read += a.L.T("acct.sep") // D291: a list, said as one
-				}
+			if d.Value != "" && d.Key != "address" {
 				v := d.Value
 				if d.Key == "phone" {
 					// D589: a phone number is one word: it never breaks at its spaces (+86 / 138…).
 					v = strings.ReplaceAll(v, " ", "\u00a0")
 				}
-				read += v
-			} else {
-				if kept != "" {
-					kept += a.L.T("acct.sep")
+				if d.Key == "name" && title == "" {
+					title = v
+				} else if len(facts) < 2 {
+					facts = append(facts, v)
 				}
-				kept += a.L.T("af.d." + d.Key)
+				continue
 			}
-		}
-		title, help := a.L.T("af.d.add"), a.L.T("af.d.why")
-		if n > 0 {
-			title, help = read, kept
 			if kept != "" {
-				help = a.L.T("af.d.also", kept)
+				kept += a.L.T("acct.sep")
 			}
-			if title == "" {
-				title = a.L.T("af.d.kept", n)
-			}
+			kept += a.L.T("af.d." + d.Key)
 		}
-		a.afRow(c, "details", a.afPebble(c, "details", drawPersonMark), title, help, "", "", func() {
+		if title == "" && len(facts) > 0 {
+			title, facts = facts[0], facts[1:]
+		}
+		help := a.L.T("af.d.why")
+		switch {
+		case n == 0:
+			title = a.L.T("af.d.add")
+		case kept != "":
+			help = a.L.T("af.d.also", kept)
+		default:
+			help = ""
+		}
+		if title == "" {
+			title = a.L.T("af.d.kept", n)
+		}
+		a.afRowFacts(c, "details", a.afPebble(c, "details", drawPersonMark), title, facts, help, "", "", func() {
 			s.editing, s.sure = "details", false
 			s.details = map[string]string{}
 			for _, d := range f.SavedDetails {
@@ -238,6 +248,12 @@ func (a *App) afUsed(at string) string {
 // words start on the text edge with the add row's under it; when it was
 // last used at the right edge; the whole row opens it.
 func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark, state string, open func()) {
+	a.afRowFacts(c, key, tile, title, nil, help, mark, state, open)
+}
+
+// afRowFacts is afRow with a line of facts under the title, each its own element (D291: your
+// details' email and phone, as the web's, never one run joined to the name).
+func (a *App) afRowFacts(c *ui.Context, key string, tile func(), title string, facts []string, help, mark, state string, open func()) {
 	t := a.T
 	a.sep(c)
 	r := ui.Row(c.Key("af-row:"+key)).Gap(t.S3).Padding(t.S4, t.S5).MinHeight(64).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(title).Focusable()
@@ -251,6 +267,13 @@ func (a *App) afRow(c *ui.Context, key string, tile func(), title, help, mark, s
 		a.tileCol(c, tile)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
 			uiText(c, title).FontSize(t.MD).FontWeight(700).SingleLine()
+			if len(facts) > 0 {
+				ui.Row(c.Key("af-facts:" + key)).Gap(t.S3).Wrap().Children(func() {
+					for i, f := range facts {
+						uiText(c.Key("fact:"+strconv.Itoa(i)), f).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
+					}
+				})
+			}
 			if help != "" {
 				uiText(c, help).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.5))
 			}

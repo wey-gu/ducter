@@ -13,7 +13,7 @@ import { createPortal } from "preact/compat";
 import { words } from "@ducter/protocol/src/lang.ts";
 import { A } from "./app.ts";
 import { BrandTile } from "./brand.tsx";
-import { Btn, DangerButton, Field, MoreButton, Toggle } from "./controls.tsx";
+import { AddRow, Btn, DangerButton, Field, MoreButton, Toggle } from "./controls.tsx";
 import { Waiting } from "./set-grid.tsx";
 import { Menu, MenuHead, MenuItem, MenuSep } from "./menu.tsx";
 
@@ -396,9 +396,9 @@ function AvailableRow({ a }: { a: ImportAvailable }) {
     A.changed();
   };
   return (
-    <div class="import-avail" data-plugin={a.id}>
+    <div class="chat-row tiled import-avail" data-plugin={a.id}>
       <ImportTile app={a.app} icon={a.icon} />
-      <span class="import-avail-main">
+      <span class="grow import-avail-main">
         <span class="import-avail-name">
           <b>{a.app}</b>
           <small class="import-avail-version">{t("imports.avail.version", a.version)}</small>
@@ -411,7 +411,7 @@ function AvailableRow({ a }: { a: ImportAvailable }) {
           <span class={a.reviewed ? "muted" : "import-avail-unreviewed"}>{t(a.reviewed ? "imports.reviewed" : "imports.unreviewed")}</span>
         </span>
       </span>
-      <span class="import-avail-acts">
+      <span class="g-acts import-avail-acts">
         <Btn kind="secondary" size="sm" label={busy ? t("imports.avail.installing") : t("imports.bring")} about={a.app} busy={busy} disabled={busy} onClick={bring} />
         <span class={`import-more${more ? " open" : ""}`} ref={moreAt}>
           <MoreButton label={t("imports.more")} open={more} onClick={() => ((IM.more[a.id] = !more), A.changed())} />
@@ -431,73 +431,87 @@ function AvailableRow({ a }: { a: ImportAvailable }) {
   );
 }
 
-/** 加一个插件仓库: the person's own sources, and the one field that adds another. */
+/** An address that may wrap only after a slash (never inside a name: wey-/gu at 390). */
+function urlBreaks(url: string) {
+  const parts = url.split("/");
+  return parts.map((p, i) => (i < parts.length - 1 ? [p, "/", <wbr key={i} />] : p));
+}
+
+/** 插件仓库 / Plugin repositories: a group as every other (its title and note above the card), one
+ *  row per repository with its count at the right edge, and 加一个插件仓库 as the shared add row
+ *  that opens the field in place. */
 function Repositories() {
   const repos = IM.frame?.repositories ?? [];
   const add = IM.addRepo;
+  const count = (r: ImportRepository) => (r.state === "failed" ? t("imports.repo.unread") : r.plugins === undefined ? t("imports.repo.looking") : t(r.plugins === 1 ? "imports.repo.count.one" : "imports.repo.count", r.plugins));
   return (
-    <section class="import-repos" aria-label={t("imports.repo.title")}>
-      <div class="import-repos-head">
-        <span class="grow">
-          <b>{t("imports.repo.title")}</b>
-          <small class="muted">{t("imports.repo.lede")}</small>
-        </span>
-        <Btn kind="text" size="sm" label={t(add ? "imports.repo.close" : "imports.repo.add")} onClick={() => ((IM.addRepo = !add), (IM.err["source"] = ""), A.changed())} />
-      </div>
-      {add && (
-        <div class="import-repo-add">
-          <Field value={IM.repoUrl} label={t("imports.repo.field")} placeholder="https://github.com/you/your-plugins" onInput={(v) => ((IM.repoUrl = v), A.changed())} onKeyDown={(e) => e.key === "Enter" && IM.repoUrl.trim() && (A.send({ t: "import_source_add", url: IM.repoUrl.trim() }), A.changed())} />
-          <div class="btns">
-            <Btn
-              kind="primary"
-              label={t("imports.repo.submit")}
-              busy={IM.adding}
-              disabled={!IM.repoUrl.trim()}
-              onClick={() => {
-                IM.adding = true;
-                A.send({ t: "import_source_add", url: IM.repoUrl.trim() });
-                A.changed();
-              }}
-            />
-          </div>
-        </div>
-      )}
-      {repos.map((r) =>
-        r.official ? (
-          <div class="import-repo-row import-repo-official" key={r.id}>
-            <span class="import-repo-name">{t("imports.repo.official")}</span>
-            <span class="import-repo-url">{r.url}</span>
-            <span class="import-repo-count">{r.state === "failed" ? t("imports.repo.unread") : r.plugins === undefined ? t("imports.repo.looking") : t(r.plugins === 1 ? "imports.repo.count.one" : "imports.repo.count", r.plugins)}</span>
+    <section class="set import-repos" aria-label={t("imports.repo.title")}>
+      <h3>{t("imports.repo.title")}</h3>
+      <p class="g-note">{t("imports.repo.lede")}</p>
+      <div class="set-card chat-app g-group import-repo-card">
+        {repos.map((r) =>
+          r.official ? (
+            <div class="chat-row import-repo-row import-repo-official" key={r.id}>
+              <span class="grow">
+                <b class="import-repo-name">{t("imports.repo.official")}</b>
+                <small class="import-repo-url">{urlBreaks(r.url)}</small>
+              </span>
+              <span class={`g-state import-repo-count${r.state === "failed" ? " tone-bad" : ""}`}>{count(r)}</span>
+            </div>
+          ) : (
+            <div class="chat-row import-repo-row" key={r.id}>
+              <span class="grow">
+                <b class="import-repo-name">{urlBreaks(r.url)}</b>
+                <small class={`import-repo-count${r.state === "failed" ? " tone-bad" : ""}`}>{count(r)}</small>
+              </span>
+              {IM.removeRepo[r.id] ? (
+                <span class="g-acts import-repo-ask">
+                  <small>{t("imports.repo.remove.ask")}</small>
+                  <Btn kind="text" size="sm" label={t("imports.remove.no")} onClick={() => ((IM.removeRepo[r.id] = false), A.changed())} />
+                  <DangerButton
+                    label={t("imports.remove.yes")}
+                    about={r.url}
+                    onClick={() => {
+                      A.send({ t: "import_source_remove", id: r.id });
+                      A.changed();
+                    }}
+                  />
+                </span>
+              ) : (
+                <DangerButton quiet label={t("imports.repo.remove")} about={r.url} onClick={() => ((IM.removeRepo[r.id] = true), A.changed())} />
+              )}
+            </div>
+          ),
+        )}
+        {add ? (
+          <div class="g-block import-repo-add">
+            <Field value={IM.repoUrl} label={t("imports.repo.field")} placeholder="https://github.com/you/your-plugins" onInput={(v) => ((IM.repoUrl = v), A.changed())} onKeyDown={(e) => e.key === "Enter" && IM.repoUrl.trim() && (A.send({ t: "import_source_add", url: IM.repoUrl.trim() }), A.changed())} />
+            <div class="btns">
+              <Btn
+                kind="primary"
+                size="sm"
+                label={t("imports.repo.submit")}
+                busy={IM.adding}
+                disabled={!IM.repoUrl.trim()}
+                onClick={() => {
+                  IM.adding = true;
+                  A.send({ t: "import_source_add", url: IM.repoUrl.trim() });
+                  A.changed();
+                }}
+              />
+              <Btn kind="text" size="sm" label={t("imports.repo.close")} onClick={() => ((IM.addRepo = false), (IM.err["source"] = ""), A.changed())} />
+            </div>
           </div>
         ) : (
-          <div class="import-repo-row" key={r.id}>
-            <span class="import-repo-name">{r.url}</span>
-            <span class="import-repo-count">{r.state === "failed" ? t("imports.repo.unread") : r.plugins === undefined ? t("imports.repo.looking") : t(r.plugins === 1 ? "imports.repo.count.one" : "imports.repo.count", r.plugins)}</span>
-            {IM.removeRepo[r.id] ? (
-              <span class="import-repo-ask">
-                <small>{t("imports.repo.remove.ask")}</small>
-                <Btn kind="text" size="sm" label={t("imports.remove.no")} onClick={() => ((IM.removeRepo[r.id] = false), A.changed())} />
-                <DangerButton
-                  label={t("imports.remove.yes")}
-                  about={r.url}
-                  onClick={() => {
-                    A.send({ t: "import_source_remove", id: r.id });
-                    A.changed();
-                  }}
-                />
-              </span>
-            ) : (
-              <Btn kind="text" size="sm" label={t("imports.repo.remove")} about={r.url} onClick={() => ((IM.removeRepo[r.id] = true), A.changed())} />
-            )}
-          </div>
-        ),
-      )}
+          <AddRow label={t("imports.repo.add")} onClick={() => ((IM.addRepo = true), (IM.err["source"] = ""), A.changed())} />
+        )}
+      </div>
       {IM.repoNotice && (
-        <p class="small muted import-notice" role="status">
+        <p class="g-note import-notice" role="status">
           {IM.repoNotice}
         </p>
       )}
-      {IM.err["source"] && <p class="small tone-bad">{IM.err["source"]}</p>}
+      {IM.err["source"] && <p class="g-note tone-bad">{IM.err["source"]}</p>}
     </section>
   );
 }
@@ -515,8 +529,8 @@ export function ImportSettings() {
   const available = f.available ?? [];
   return (
     <section class="set imports">
-      <p class="small sub import-lede">{t("imports.lede")}</p>
-      <p class="small muted import-where">{t("imports.where")}</p>
+      {/* D666: the head (PaneSays) says what was brought in; what is true of the whole pane is its note. */}
+      <p class="small lede-note import-where">{t("imports.where")}</p>
       {f.sources.map((r) => (
         <ImportRow key={r.id} r={r} />
       ))}
@@ -526,10 +540,10 @@ export function ImportSettings() {
         </p>
       )}
       {available.length > 0 && (
-        <section class="import-available" aria-label={t("imports.avail.title")}>
-          <p class="small sub import-avail-title">{t("imports.avail.title")}</p>
-          <p class="small muted import-avail-lede">{t("imports.avail.lede")}</p>
-          <div class="import-avail-card">
+        <section class="set import-available" aria-label={t("imports.avail.title")}>
+          <h3>{t("imports.avail.title")}</h3>
+          <p class="g-note">{t("imports.avail.lede")}</p>
+          <div class="set-card chat-app g-group import-avail-card">
             {available.map((a) => (
               <AvailableRow key={a.id} a={a} />
             ))}
@@ -571,3 +585,6 @@ export function ImportOfferLine() {
     </div>
   );
 }
+
+/** The pane's frame as it stands (the head's line reads what was brought in, D666). */
+export const importsFrame = () => IM.frame;

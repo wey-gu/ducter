@@ -193,6 +193,9 @@ func (a *App) paneSay(tab, lede string) string {
 		return a.notifySay()
 	case TabLook:
 		return a.lookSay()
+	case TabPlugins:
+		// Its purpose is the pane's note (ledeNote); while the looks are read the head is the title alone.
+		return a.pluginsSay()
 	case TabTodos:
 		return a.todosSay()
 	case TabImport:
@@ -708,6 +711,9 @@ func (a *App) placesMap(c *ui.Context) {
 				p.now, p.nowInk = a.L.T("home.now.on"), t.Done.Ink
 			} else if cl.LastSeen != "" {
 				p.now = a.L.T("home.now.seen", a.ago(cl.LastSeen))
+			} else {
+				// A phone paired but never here says so, as Your devices does: 随时找我 alone overclaimed.
+				p.now = a.L.T("device.client.never")
 			}
 			places = append(places, p)
 		}

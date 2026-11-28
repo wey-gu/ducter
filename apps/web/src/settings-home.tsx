@@ -17,7 +17,8 @@ import { MemAsk, memCant, memLine, memPluginRows } from "./mem-plugin.tsx";
 import { groupNoted, memNeeds, memPhase, memStateView, peersSwitchOn } from "./mem-view.ts";
 import { failedWhy, Notebook, peersReaching, peersSay } from "./memory.tsx";
 import { noBrain } from "./partner-story.tsx";
-import { activeThemeName } from "./plugins.tsx";
+import { activeThemeName, pluginsSay } from "./plugins.tsx";
+import { importsFrame } from "./imports.tsx";
 import { savedPaper } from "./settings-more.tsx";
 import { TS } from "./todos.tsx";
 import { UsageWeek } from "./usage-week.tsx";
@@ -171,9 +172,15 @@ export function paneSay(page: SettingsPage): string {
       return notifySay();
     case "todos":
       return todosSay();
-    case "import":
-      // The pane's own lede is its one line; no second sentence above it.
-      return "";
+    case "import": {
+      // D666, as the Mac: the state of what was brought in, never what the pane is for.
+      const f = importsFrame();
+      if (!f) return "";
+      const n = f.sources.reduce((sum, s) => sum + (s.imported ?? 0), 0);
+      return n === 0 ? t("say.import") : n === 1 ? t("say.import.one") : t("say.import.n", n);
+    }
+    case "plugins":
+      return pluginsSay();
     case "chats":
       return chatsSay();
     case "autofill":
@@ -455,7 +462,8 @@ export function mapPlaces(): MapPlace[] {
     // D551, as the Mac: a browser window on a computer the home doesn't know as one is not a place of its own.
     if (!hand) continue;
     const role = cl.handset?.added ? t("home.role.lent") : t("home.role.phone");
-    const now = cl.connected ? t("home.now.on") : cl.lastSeen ? t("home.now.seen", ago(A.L, cl.lastSeen)) : "";
+    // A phone paired but never here says so, as Your devices does: 随时找我 alone overclaimed.
+    const now = cl.connected ? t("home.now.on") : cl.lastSeen ? t("home.now.seen", ago(A.L, cl.lastSeen)) : t("device.client.never");
     out.push({ key: `cl:${cl.id}`, art: clientArt(cl), name: cl.name, role, now, away: false, home: false });
   }
   return out;

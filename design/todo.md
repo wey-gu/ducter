@@ -96,6 +96,17 @@ line.
 - [ ] **The Mac's keepClauses under a long Chinese run** (D583 fixed the web's lone 「。」 under keep-all; the Mac
   breaks anywhere, so it has not shown one). Trigger: a lone punctuation mark seen in a Mac shot.
 
+## Settings, after the 2026-11-28 pass (`settings.md` "Every pane a pleasure")
+
+- [ ] **The author's review of `.shots/setpolish/`** (`findings.md` first, then the before/after pairs it names).
+- [ ] **插件 / Plugins' own clay.** It borrows To-do sources' note page; it needs its own through D53's art
+  process (a look, not a list). Trigger: the next art batch.
+- [ ] **Adding a look from inside Ducter.** Today the empty state points at the docs (`ducter plugin add`).
+  Trigger: the official index lists looks the way Import's Available lists readers.
+- [ ] **飞书 / Lark's mark** on Chat apps is the letter fallback. Trigger: its brand mark in `brand.tsx`'s set.
+- [ ] **A zh count never wraps before its measure word** (**2 / 个密钥** on Passwords & cards' head at 390), in
+  `keepClauses` on both clients.
+
 ## Settings, after D589 (`settings.md` "Every pane, end to end (D589)")
 
 - [ ] **The author's review of `.shots/settings-r5/`** (the five crops named in D589's report first).

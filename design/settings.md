@@ -1346,3 +1346,35 @@ is named, and a change says its word where it happened.
 4. **44 at a finger.** **用地址和密钥添加 / Add with an address and key**, **怎么连 / How to
    connect** and a device's name (the rename) reach a thumb's 44 at 390, and stay lean on a pointer
    screen.
+
+## Every pane a pleasure (D675, 2026-11-28)
+
+Every pane shot again on both clients as they were on rc/0.1.104 (theme plugins D673 included): the
+web at 390 and 1180, the Mac at 1000 and 1400, zh and en, light and dark, against
+`demo-settings-real.ts` with `DEMO_NEEDS=1` (`.shots/setpolish/{before,after}`, the ranked list in
+`.shots/setpolish/findings.md`, 2x crops in `crops/`). The newest panes had not been brought into the
+grammar every other pane keeps; the fixes are in the shared pieces where one existed.
+
+**Who is here, and what they felt.** H opens 插件 / Plugins after `ducter plugin add` and C opens it
+because a friend said "there are looks now": both met a card with nothing in it and a stray line on its
+edge naming Pebble **卵石**, and no way to anything (不放心, 卡住). On the web, 导入 / Import read as a
+different app: no partner, its own card with a border, a full-width **带进来** bar per row on a phone, and
+its repositories as loose text under a hairline. F meets Overview's **随时找我** under a phone that has
+never connected.
+
+| # | Where | Found | Now |
+|---|---|---|---|
+| 1 | 插件 / Plugins, both | An empty card, **卵石是 Ducter 自带的外观。** on the card's edge, the head the pane's purpose, no way forward | The head is the state (**还没装别人做的外观；现在是 Ducter 自带的 Pebble。** / **装了 n 套别人做的外观；现在用的是{name}。**); the purpose and its limit are the pane's note; **外观 / Looks** is a group titled above its card with **Pebble** first (in use, or **换回 Pebble**), each installed look after it; with none, the card's foot says **别人做的外观装好以后会在这里，换上之前先问你。** with **怎么装 ›** (the docs' Plugins page) |
+| 2 | 导入 / Import, web | No partner head; the lede and the note on their own edges; Available a bordered box of its own; **带进来** a full-width bar at 390; the repositories under a hairline with a large title, the add as a bare text button, the official address breaking inside a name | The head is the state, as the Mac's (D666): **还没从别的 app 带进来什么。**; **在这台电脑上读…** is the pane's note; **可以带进来的** and **插件仓库** are groups (title and note above the card); an Available row is the shared row (the app's tile, its words, **带进来** and ⋯ at the right edge, under the words on a phone as every row's control, D273); a repository is a row with its count at the right edge; **加一个插件仓库** is the shared add row that opens the field in the card; removing one is the quiet destructive action that asks in place (D289); an address wraps only after a slash |
+| 3 | 外观 / Looks on the web's 这台手机 / This computer | The group's title drawn as an empty row inside the card | Titled above its card, as the Mac's Look and every other group (D582) |
+| 4 | 导入 / Import, Mac | **加一个插件仓库** a quiet text button in a text block; the official repository's name, address and count as three stacked lines | The shared add row; the official repository as one row, its count at the right edge |
+| 5 | 密码和银行卡 › 你的资料 / Your details, Mac | **Wey Gu、weyl.gu@gmail.com、+86 138 0000 0000** as one bold title (D291) | The name is the title; the email and the phone stand apart under it, as the web's (D644) |
+| 6 | 伙伴们 / Your partners, both | **改一下 / Change** starting 10 right of the text edge (its tap padding) | Its words start on the text edge under the name (the web's `--end-pad`; the Mac's `textPad`) |
+| 7 | 和你的其他 agent 通信 / Agent messaging, web | 49 between the picture and the first card, twice any other pane's | The page's one rhythm (24) |
+| 8 | 概览 / Overview, both | A phone paired but never connected read **随时找我** alone, while Your devices said **还没连上过** | Its now line says **还没连上过 / Hasn't connected yet** |
+
+Held: the rows' grammar (a control under its words on a phone, D273), the needs' order, the Pebble
+tile's width (it is the look's own preview, D673). Left, ranked in `findings.md`: 插件's clay is still
+To-do sources' (it needs its own art, D53); 飞书 / Lark's tile is the letter fallback; a zh count can
+wrap before its measure word (**2 / 个密钥**); a long Obsidian vault name wraps inside its brackets;
+the update card's lone ring on Your devices reads as a choice.

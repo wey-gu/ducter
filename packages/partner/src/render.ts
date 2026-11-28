@@ -242,6 +242,8 @@ export interface RenderCtx {
   /** D348: the folder changes this task's previous report said could be undone, if any. */
   undoBefore?(taskId: string, reportSeq: number): Bodies["report"]["folder"];
   decision(decisionId: string): Bodies["decision"] | undefined;
+  /** D659 (#257): the connection write a decision staged, for a card drawn in history. */
+  staged?(decisionId: string): { connection: string; action: string; state: string; summary?: string; error?: string } | undefined;
   /** D407: the user's app this task keeps current each round, if any. */
   taskApp?(taskId: string): string | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
@@ -519,6 +521,11 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
       const by = b.by === "default" ? " by default" : "";
+      // D659 (#257): a staged connection write is never a plain ask. Its answer only starts
+      // Ducter's own run; the outcome is the [write ...] line that wakes you.
+      const w = b.write ?? d?.write ?? (d?.taskId ? undefined : ctx.staged?.(b.decisionId));
+      if (w)
+        return `[the user answered your staged write: ${b.option}${by}] ${w.action} on ${w.connection} (decision ${b.decisionId}). ${b.option === "go" ? "Ducter runs it itself and the outcome wakes you; nothing to call." : "Nothing has been sent; the held line is the fact to act on."}${b.text ? ` · user: ${b.text}` : ""}`;
       if (d?.routineId) {
         // A routine's proposal or review card (D114): Ducter acts on the answer itself.
         const what = b.option === "go" ? "it is on now and runs by itself; nothing to do" : b.option === "hold" ? "it stays off" : "the user replied instead";
@@ -553,6 +560,13 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
       const fwd = b.option === "hold" ? " (the task keeps waiting)" : " (already forwarded to the task)";
       return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}${fwd}`;
+    }
+    case "connection_call": {
+      const c = e.body as Bodies["connection_call"];
+      if (c.op !== "write" || !c.decisionId || c.state === "needs_go") return "";
+      if (c.state === "done") return `[your staged write ran: Ran: ${c.action} on ${c.connection}${c.summary ? ` (${c.summary})` : ""}; decision ${c.decisionId}. It ran once by itself; never run it again. Say one short line in the user's language that it went out.`;
+      if (c.state === "failed") return `[your staged write failed: Failed: ${c.action} on ${c.connection}: ${c.error ?? "no reason"}; nothing was sent; decision ${c.decisionId}. Tell the user plainly in one short line and offer the one next step; don't stage the same write again unchanged.]`;
+      return `[your staged write was not run: ${c.answer === "reply" ? "the user replied instead" : "the user said Hold"}; nothing was sent; decision ${c.decisionId}.${c.answer === "reply" ? " Read their reply and act on that; the card is done." : " Say nothing unless the user asks."} ${c.action} on ${c.connection}.]`;
     }
     case "waiter": {
       const b = e.body as Bodies["waiter"];
@@ -771,6 +785,12 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       if (e.origin === "user") return `[${t} the user, by button] task ${b.taskId}: ${userAction(b, ctx, 160)}`;
       return `[${t} task ${b.taskId} ${b.state}] ${clip(b.text, 160)}`;
     }
+    case "connection_call": {
+      const c = e.body as Bodies["connection_call"];
+      if (c.op !== "write" || !c.decisionId || c.state === "needs_go") return null; // the staged decision line carries it
+      const what = c.state === "done" ? `Ran: ${c.action} on ${c.connection}${c.summary ? ` (${c.summary})` : ""}` : c.state === "failed" ? `Failed: ${c.action} on ${c.connection}: ${c.error ?? "no reason"}; nothing was sent` : `Held: ${c.action} on ${c.connection}; nothing was sent`;
+      return `[${t} write ${c.state === "done" ? "ran" : c.state === "failed" ? "failed" : "held"}, decision ${c.decisionId}] ${what}`;
+    }
     case "waiter": {
       const b = e.body as Bodies["waiter"];
       if (b.routineId) return null;
@@ -844,6 +864,9 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D427: the keeper's one word about a task in rounds that is late or failing (its own card).
       if (d.loop) return `[${t} Ducter said once, on its own card, that task ${d.loop.taskId}'s rounds aren't keeping time: "${clip(d.question, 200)}" (Go runs a round now). Never restate it.]`;
       if (d.src?.kind === "group_review") return `[${t} the user sent the review-together comments for group ${d.src.groupId} (${d.src.items?.length ?? 0})]`;
+      // D659 (#257): a staged connection write is a staged write, never an `ask` in history.
+      const w = d.write ?? (d.taskId ? undefined : ctx.staged?.(d.decisionId));
+      if (w) return `[${t} you staged a write: ${w.action} on ${w.connection} (connection_call decision ${d.decisionId}; nothing had run yet)] ${clip(d.question, 220)}`;
       return `[${t} ${d.taskId ? `task ${d.taskId} asks (ask ${d.decisionId})` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {

@@ -586,7 +586,7 @@ export interface ConnectionsApi {
   /** Runs a read. A write is refused here: it needs stage() and the user's Go. */
   read(who: ConnectionCaller, connection: string, action: string, input: unknown, account?: string): Promise<ConnectionOutcome>;
   /** Records a write that waits for Go on decisionId (the partner made the card). */
-  stage(connection: string, action: string, input: unknown, decisionId: string, account?: string): { ok: true; callId: string } | { ok: false; error: string };
+  stage(connection: string, action: string, input: unknown, decisionId: string, account?: string, o?: { wake?: "always" | "fail" | "none" | "quietDone" }): { ok: true; callId: string; write: { connection: string; action: string } } | { ok: false; error: string };
   /** Runs the write staged on decisionId, once, only if the user said Go. */
   runApproved(decisionId: string): Promise<ConnectionOutcome>;
   /** Lets a task read one connection (the partner decides; recorded). */

@@ -402,7 +402,7 @@ export interface ProactiveOptions {
   drafter?: Drafter;
   /** A client app is open (fold-ins; a meeting line needs no notification). */
   present: () => boolean;
-  /** The person's zone (quiet hours', else the last client's, else the server's). */
+  /** The person's zone (the newest app's hello, else quiet hours', else the server's; D658). */
   zone: () => string;
   /** D222: the calendars to read in a calendar account (the ones the person lets it read). */
   calendarIds?: (a: import("../connections.ts").AppTarget) => Promise<string[]>;
@@ -1010,7 +1010,7 @@ export function createProactive(o: ProactiveOptions): Proactive {
     };
     const plan = await sendPlan(o.connections, f.reply, f.send.text ?? f.draft?.text ?? "").catch(() => undefined);
     if (!plan) return fail("no_send");
-    const staged = o.connections.stage(f.reply.connectionId, plan.action, plan.input, f.decisionId, f.reply.account);
+    const staged = o.connections.stage(f.reply.connectionId, plan.action, plan.input, f.decisionId, f.reply.account, { wake: "none" });
     if (!staged.ok) return fail(staged.error);
     const r = await o.connections.runApproved(f.decisionId);
     if (!r.ok) return fail(r.error);

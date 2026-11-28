@@ -281,6 +281,21 @@ export interface Expect {
   /** D222: a calendar change card of this kind was made / none was. */
   calCard?: "create" | "move" | "cancel" | "respond";
   noCalCard?: boolean;
+  /**
+   * D658: one calendar change card's own facts, as core staged it (the streamed tool input
+   * carries only the title early, so the card and its staged write are the truth).
+   */
+  calCardFacts?: {
+    change?: "create" | "move" | "cancel" | "respond";
+    allDay?: boolean;
+    title?: RegExp;
+    /** The card's start (a date for an all-day event, ISO with offset otherwise). */
+    start?: RegExp;
+    /** The event's location, from the write it staged. */
+    where?: RegExp;
+    /** The event's description, from the write it staged (where the open details go). */
+    note?: RegExp;
+  };
   /** D383: a file or block made earlier was put under a message (by name or block JSON) / nothing was. */
   madeShown?: RegExp;
   noMadeShown?: boolean;
@@ -3684,6 +3699,75 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "I can't make the design sync today, decline it" }],
     expect: { lines: 1, opens: 0, msgs: [0, 1], maxChars: 140, calCard: "respond", called: [{ tool: "calendar" }], forbid: [/\b(declined it|I've declined|done|sent)\b/i] },
     rubric: "The user wants to decline Sam's Design sync invitation today. It finds the event (calendar do=agenda) and proposes the answer (calendar do=propose, respond, declined), so a card shows that Sam will hear. Nothing or one short English line; it never claims it already declined, opens no task.",
+  },
+  {
+    id: "calendar-allday-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    steps: [{ user: "帮我记一下 12 月 12 号周六去 Kong Office 参加 Rust x AI Meetup，具体几点还没定，议题还要发给张晋涛" }],
+    expect: {
+      lines: 1,
+      opens: 0,
+      msgs: [0, 1],
+      maxChars: 90,
+      calCard: "create",
+      called: [{ tool: "calendar" }],
+      // A day with no hour is an all-day event: the date only, never a midnight guess.
+      calCardFacts: {
+        change: "create",
+        allDay: true,
+        start: /^\d{4}-\d\d-\d\d$/,
+        title: /^(?!.*(待|TBD|tbd|几点|议题)).*Rust/i,
+        where: /Kong Office/i,
+        note: /(下午|时间|几点|待|confirm)/i,
+      },
+      forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/],
+    },
+    rubric: "The user gives the day (12 Dec), the place (Kong Office) and the name (Rust × AI Meetup) but no hour, and says the topic is still to be sent. It proposes a create through the calendar tool as an all-day event on that date (start as a date only), with the title just the thing's name (no 待定/几点/议题 in it), Kong Office in where, and the open parts (the afternoon, the time to confirm, the topic to send) in note. It invents no time (no 00:00), writes nothing or one short Chinese line, claims nothing was added, and opens no task.",
+  },
+  {
+    id: "calendar-title-note-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    steps: [{ user: "明天下午三点和 Lina 对一下 HawDB 的发布（议题待定，会议室还没订）" }],
+    expect: {
+      lines: 1,
+      opens: 0,
+      msgs: [0, 1],
+      maxChars: 90,
+      calCard: "create",
+      called: [{ tool: "calendar" }],
+      calCardFacts: {
+        change: "create",
+        allDay: false,
+        start: /T15:00/,
+        title: /^(?!.*(待|TBD|tbd|议题|会议室)).*HawDB/i,
+        note: /(议题|待定|会议室)/,
+      },
+      forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/],
+    },
+    rubric: "A timed event tomorrow at 15:00, with two things still open said in brackets. It proposes a create through the calendar tool at 15:00, with the title just the thing's name about the HawDB release (no 议题待定 or 会议室 in it) and the open parts in note (the topic to decide, the room not booked). It writes nothing or one short Chinese line, never claims it was added, and opens no task.",
+  },
+  {
+    id: "calendar-correct-time-zh",
+    category: "calendar",
+    lang: "zh",
+    calendar: true,
+    steps: [{ user: "帮我记一下 12 月 12 号周六下午去 Kong Office 参加 Rust x AI Meetup" }, { user: "那个具体时间应该是 12.12 的周六下午新加坡时间，三点开始" }],
+    expect: {
+      lines: 1,
+      opens: 0,
+      msgs: [0, 1],
+      maxChars: 90,
+      calCard: "create",
+      called: [{ tool: "calendar" }],
+      // The correction makes a new card with the time the person named, not the same midnight.
+      calCardFacts: { change: "create", allDay: false, start: /T15:00/ },
+      forbid: [/已(经)?(添加|加好|加上|发出|约好)|加好了|搞定/],
+    },
+    rubric: "The person first gives a day and part of a day with no hour, then corrects the time: Saturday afternoon, Singapore time, at 15:00. The second proposal is a create at 15:00 on 12 Dec (in the person's zone, Singapore when they named it), not the same all-day/midnight card again. The title stays the thing's name (Rust × AI Meetup), the place stays Kong Office. It writes nothing or one short Chinese line after the correction, never claims it was added, and opens no task.",
   },
   {
     id: "calendar-clash-zh",

@@ -1037,6 +1037,48 @@ OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4
   So it is offered per task ("look in my school's parent portal"), not as a watcher.
 - A watcher over a browser profile is a v2 question.
 
+### 18.7 A staged write: the card, Go runs it, and the wake (D659; reported in #257)
+
+A connection write is one object from staging to outcome, for every connection and every partner:
+
+1. **The card stages one write.** `connection_call` (or the calendar's `propose`, which is the
+   same `connections.stage`) records a `connection_call` with `state: needs_go`, `staged: true`,
+   its `decisionId`, and a wake policy: `always` for the partner's own cards, `quietDone` for the
+   calendar (a successful calendar change is the card's; a failure or a held answer wakes), `none`
+   for Ducter's own find replies. The decision body carries `write: {connection, action}` so the
+   answer is never mistaken for a plain `ask`.
+2. **Go is Ducter's.** A Log subscriber in core reads the new `decision_resolved` and calls
+   `runApproved` itself: the write is found by its decision id in whichever partner's conversation
+   staged it, executes once there, and records `done` / `failed` / `held` in that same conversation
+   with that partner's persona. The model never needs a second `connection_call` to make a Go
+   happen. A call with only `decisionId` after the fact is a read-back of the recorded outcome,
+   never a second run; a concurrent call while it runs is told to wait for the outcome.
+3. **The outcome is the wake, and the history shows it.** The recorded `connection_call` wakes the
+   partner with **Ran: `<action>` on `<connection>` (`<summary>`)** or **Failed: `<error>`; nothing
+   was sent** (Hold and Reply: **nothing was sent**), always with the decision id. The
+   `decision_resolved` line for a staged write wakes nobody. A re-cut draws the decision as **you
+   staged a write: `<action>` on `<connection>` (connection_call decision X)**, never **you asked
+   (ask)**, and the outcome as **write ran / failed / held, decision X**. Persona's trigger list
+   says so where it explains **your question answered**.
+4. **No duplicate staging.** While a staged call is unanswered or approved and running (still
+   `needs_go`), staging the same connection + action + target is refused with the earlier
+   decision id and **end your turn**. The target is the input's identifying destination/thing
+   (`thread_id`, `to`, `channel`, `channelId`, `eventId`, `path`, `ref`, a calendar's event fields,
+   …); a message's body is not compared, so two different drafts for the same thread are still one
+   target. No target fields: the whole input is compared, so two different sends never collide.
+   A Slack message and an email reply differ by action; two different threads or channels differ by
+   target.
+5. **No preamble leak, no re-cut thrash.** The write branch does not `flushPending`: a line written
+   before the card is a preamble, not a message. One read larger than what is left before
+   `recutAt` is cut for that turn (with a note saying it was cut and how to read less at a time)
+   instead of putting the session over the budget and re-cutting every turn; the re-cut policy is
+   otherwise unchanged.
+
+*The calendar is an instance, not a special case:* its `propose` stages through the same
+`connections.stage` with `quietDone`; its old subscriber is gone. The zone, all-day, title/where/
+note rules of its card are the calendar file's own (`design/calendar.md` §5) and `design/decisions.md`
+D658 (the calendar's zone).
+
 ## 19. What the person must set up
 
 | Path | What they do | Where their mail passes |

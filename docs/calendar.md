@@ -46,6 +46,14 @@ Tap **Add to calendar**, **Move it**, **Cancel event**, **Accept** or **Decline*
 or **Not now** (**Keep it** for a cancel) to leave everything as it is. When it's done, the card
 says so and links to the event. Nobody writes to your calendar without that tap.
 
+If you know the day but not the hour ("the meetup is on the 12th, some time in the afternoon"),
+it's added as an all-day event on that date. The time still to be confirmed, the topic still to
+be sent and anything else open go in the event's notes, not in its title.
+
+Times are where you are, not where the calendar was set up: if your Mac says Singapore time, an
+event you ask for is in Singapore time, and the other side's time is shown only when it really
+differs from yours.
+
 Cancelling someone else's meeting declines it for you; only the organizer can move it, so your
 partner offers to reply to them instead.
 

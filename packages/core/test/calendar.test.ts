@@ -13,9 +13,9 @@ const NOW = Date.parse("2026-11-18T08:00:00+09:00");
 let dir: string;
 let f: ReturnType<typeof fakeCalendarStore>;
 let cal: Calendar;
-const make = (accounts?: string[]) => {
+const make = (accounts?: string[], zone: () => string = () => ZONE) => {
   f = fakeCalendarStore(twoAccounts(), accounts ? { accounts } : {});
-  cal = createCalendar({ dataDir: dir, connections: f.store, zone: () => ZONE, now: () => NOW, log: f.log as never });
+  cal = createCalendar({ dataDir: dir, connections: f.store, zone, now: () => NOW, log: f.log as never });
 };
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "ducter-cal-"));
@@ -120,6 +120,55 @@ test("propose create: lands in the account the guests share, notifies them, says
   expect(f.staged.get("d_2")!.input.sendUpdates).toBe("none");
 });
 
+test("a day with no hour is an all-day event on that date, and the open details are the description", async () => {
+  const r = await cal.propose(
+    {
+      change: "create",
+      title: "Rust × AI Meetup",
+      start: "2026-12-12",
+      // A midnight guess with minutes must still be an all-day event on the 12th, not 00:00.
+      minutes: 30,
+      where: "Kong Office",
+      note: "周六下午，新加坡时间，几点待定；议题待发给张晋涛",
+      zone: "Asia/Singapore",
+      theirZone: "Asia/Singapore",
+      theirName: "张晋涛",
+    },
+    "d_allday",
+  );
+  expect(r.ok).toBe(true);
+  if (!r.ok) return;
+  // The card and the write are on the date, end-exclusive next day, and there is no time at all.
+  expect(r.cal).toMatchObject({ kind: "create", title: "Rust × AI Meetup", start: "2026-12-12", end: "2026-12-13", allDay: true, where: "Kong Office" });
+  expect(r.cal.theirZone).toBeUndefined(); // the person's own zone is not "the other side"
+  const s = f.staged.get("d_allday")!;
+  expect(s.input.event).toMatchObject({
+    summary: "Rust × AI Meetup",
+    start: { date: "2026-12-12" },
+    end: { date: "2026-12-13" },
+    location: "Kong Office",
+    description: "周六下午，新加坡时间，几点待定；议题待发给张晋涛",
+  });
+  expect((s.input.event as { start: { dateTime?: string } }).start.dateTime).toBeUndefined();
+});
+
+test("the zone is the person's: what they named wins; a home that only says UTC falls back to the calendar's", async () => {
+  // What they said in this request ("Singapore time") beats the home's zone, and a same-offset
+  // theirZone is dropped: the incident's Asia/Tokyo midnight cannot happen when the person said
+  // Singapore.
+  const r = await cal.propose({ change: "create", title: "Rust × AI Meetup", start: "2026-12-12T15:00", minutes: 60, zone: "Asia/Singapore", theirZone: "Asia/Singapore", attendees: ["lina@nowledge-labs.ai"] }, "d_zone");
+  expect(r.ok && r.cal).toMatchObject({ start: "2026-12-12T15:00:00+08:00", end: "2026-12-12T16:00:00+08:00" });
+  expect(r.ok && r.cal.theirZone).toBeUndefined();
+  expect(f.staged.get("d_zone")!.input).toMatchObject({ event: { start: { dateTime: "2026-12-12T15:00:00+08:00", timeZone: "Asia/Singapore" } } });
+
+  // A server home on UTC with no app's hello says nothing: the target calendar's own zone stands in.
+  cal.stop();
+  make(undefined, () => "UTC");
+  const fallback = await cal.propose({ change: "create", title: "取快递", start: "2026-12-12T15:00", minutes: 30 }, "d_fallback");
+  expect(fallback.ok && fallback.cal).toMatchObject({ start: "2026-12-12T15:00:00+08:00" });
+  expect(f.staged.get("d_fallback")!.input).toMatchObject({ event: { start: { dateTime: "2026-12-12T15:00:00+08:00", timeZone: "Asia/Hong_Kong" } } });
+});
+
 test("propose respond: the whole guest list goes back with only their answer changed; the organizer hears", async () => {
   const g = await cal.glance("2026-11-18", "2026-11-18");
   const sync = g.days[0]!.events.find((e) => e.title === "Design sync")!;
@@ -150,26 +199,16 @@ test("propose move: their own event moves (guests told); someone else's can't; c
   expect(unknown.ok).toBe(false);
 });
 
-test("Go runs it once by core and the partner isn't woken; Hold runs nothing; a reply wakes it", async () => {
+test("calendar cards never wake on the answer: the general staged-write runner owns their Go", async () => {
   await cal.glance("2026-11-18", "2026-11-18");
   const r = await cal.propose({ change: "create", title: "Lunch", start: "2026-11-19T12:00" }, "d_go");
   expect(r.ok).toBe(true);
   f.log.append({ stream: "channel", origin: "partner", kind: "decision", body: { decisionId: "d_go", question: "Add?", goLabel: "Add to calendar", defaultOption: "hold", reversible: false, cal: r.ok ? r.cal : undefined } satisfies Bodies["decision"] });
   const go = f.resolve("d_go", "go");
+  // The answer alone wakes nobody: core's runner writes the outcome, and that call wakes it.
   expect(cal.wakes(go)).toBe(false);
-  f.resolve("d_go", "go"); // a second tap
-  await Bun.sleep(10);
-  expect(f.ran).toEqual(["d_go"]);
-  const done = f.events.filter((e) => e.kind === "connection_call" && (e.body as Bodies["connection_call"]).state === "done");
-  expect((done[0]!.body as Bodies["connection_call"]).link).toContain("google.com/calendar");
-  const r2 = await cal.propose({ change: "create", title: "Tea", start: "2026-11-19T15:00" }, "d_hold");
-  expect(r2.ok).toBe(true);
-  const hold = f.resolve("d_hold", "hold");
+  const hold = f.resolve("d_go", "hold");
   expect(cal.wakes(hold)).toBe(false);
-  await Bun.sleep(10);
-  expect(f.ran).toEqual(["d_go"]);
-  const reply = f.resolve("d_hold", "reply");
-  expect(cal.wakes(reply)).toBe(true);
   // Not a calendar card: wakes as always.
   expect(cal.wakes(f.resolve("d_other", "go"))).toBe(true);
 });

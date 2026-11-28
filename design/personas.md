@@ -402,6 +402,13 @@ Built:
   question; triggers wake the partner they belong to. Proactive notes, the first words, Bridge and
   the home's own questions stay the default's. Chat apps carry every partner in one thread (D516,
   below).
+- **A staged write's Go runs as the partner that staged it.** A write (a calendar change, a
+  connection's send) is found by its decision id in whichever partner's conversation staged it,
+  wherever Go is answered from, and its done/failed/held line is recorded in that same
+  conversation with that partner's persona. A Log subscriber or a timer has no acting partner, so
+  it must never run "the default partner's" write and find nothing: that was the calendar's
+  forever-**正在添加…** on 多比's card (D631's class). A failed run records `failed` there; the card
+  shows it, and it is never silent.
 - **Tasks and routines carry their partner** from creation (a New task or a routine made in its
   conversation too); a routine's runs are its tasks; a task's brief names its partner, its
   `memory_search` is its partner's, and it runs as its partner's Mem identity.

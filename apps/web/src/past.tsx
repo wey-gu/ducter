@@ -298,8 +298,9 @@ export function Marked({ text, q }: { text: string; q: string }) {
 }
 
 function endWord(it: PastItem): string {
-  // D651 (research/246): Brought in sits beside Done; it is how an imported card ended.
-  if (it.imported) return t("past.end.imported");
+  // D651: Brought in is the end filter's word. On a card the app's name is the fact; the ending
+  // is said there only when the app isn't known (the app pill would otherwise repeat it).
+  if (it.imported) return it.imported.app ? "" : t("past.end.imported");
   if (ACTIVE.has(it.attention)) return t("past.end.active");
   if (it.attention === "failed") return t("past.end.failed");
   if (it.attention === "dropped") return t("past.end.dropped");
@@ -371,7 +372,7 @@ function Card({ it, wide }: { it: PastItem; wide: boolean }) {
             ) : null}
             {it.integrated && <span class="pint">{t(it.integrated.act === "merge" ? "onhand.pr.merged" : "onhand.pr.draft")}</span>}
             {it.outside && <span class="pint">{t("past.out.from", harnessName(it.outside.agent))}</span>}
-            {it.imported && <span class="pint">{t("past.imp.from", it.imported.app)}</span>}
+            {it.imported?.app && <span class="pint">{t("past.imp.from", it.imported.app)}</span>}
             {it.imported?.gone && <span class="pint">{t("past.out.gone")}</span>}
             {it.from?.step && <span class="pfrom">{t("past.from.step", it.from.title, it.from.step)}</span>}
             {end && <span class={`pend${active ? " live" : ""}`}>{end}</span>}
@@ -525,7 +526,7 @@ function Chips() {
   const f = P.filter;
   const chips: { key: string; label: string; f: Filter }[] = [{ key: "all", label: t("past.all"), f: { kind: "all" } }, { key: "starred", label: t("past.starred"), f: { kind: "starred" } }];
   for (const p of (r?.facets.projects ?? []).slice(0, 6)) chips.push({ key: `p:${p.name}`, label: p.name || t("past.other"), f: { kind: "project", v: p.name } });
-  if ((r?.facets.harnesses.length ?? 0) > 1) for (const h of r!.facets.harnesses) chips.push({ key: `h:${h.harness}`, label: harnessName(h.harness), f: { kind: "harness", v: h.harness } });
+  if ((r?.facets.harnesses.length ?? 0) > 1) for (const h of r!.facets.harnesses) if (h.harness) chips.push({ key: `h:${h.harness}`, label: harnessName(h.harness), f: { kind: "harness", v: h.harness } });
   for (const g of (r?.facets.tags ?? []).slice(0, 8)) chips.push({ key: `t:${g.tag}`, label: `#${g.tag}`, f: { kind: "tag", v: g.tag } });
   const keyOf = (x: Filter) => (x.kind === "all" || x.kind === "starred" ? x.kind : `${x.kind[0]}:${x.v}`);
   const cur = keyOf(f);
@@ -556,7 +557,7 @@ function Chips() {
 function Narrow() {
   const computers = P.res?.facets.computers ?? [];
   const home = A.homeName || t("past.c.home");
-  const endings: NonNullable<PastQuery["ended"]>[] = ["done", "failed", "cancelled", "on_hand"];
+  const endings: NonNullable<PastQuery["ended"]>[] = ["done", "failed", "cancelled", "on_hand", "imported"];
   return (
     <div class="pchips narrow" role="group">
       {computers.length > 1 &&

@@ -49,15 +49,19 @@ const HISTORY: H[] = [
     ["跑一遍伙伴的评测", "Run the partner eval"],
   ].map(([zh, en], i): H => ({ key: `recent${i}`, days: 0.3 + i * 0.15, title: [zh!, en!], report: ["做完了。", "Done."] })),
   { key: "hotel", days: 9, title: ["订 12 月 6 号京都的酒店", "Book a Kyoto hotel for Dec 6"], report: ["订好了京都站旁的酒店，两晚。", "Booked a hotel by Kyoto Station, two nights."] },
-  { key: "lody_kyoto", days: 34, title: ["京都酒店和机票一起看", "Kyoto hotel and flights together"], report: ["", ""], imported: { app: "Lody", threadId: "S-8f2a" } },
 ];
 
+/** D651: the one thread brought in from another app, only for the scenario that asks about it. */
+const IMPORTED_HISTORY: H = { key: "lody_kyoto", days: 34, title: ["京都酒店和机票一起看", "Kyoto hotel and flights together"], report: ["", ""], imported: { app: "Lody", threadId: "S-8f2a" } };
+
 /** Seeds the history; the scenario's keys map to their task ids (as seeded tasks do). */
-export function seedHistory(core: EvalCore, back: { ms: number }, zh: boolean): Map<string, string> {
+export function seedHistory(core: EvalCore, back: { ms: number }, zh: boolean, opts: { imported?: boolean } = {}): Map<string, string> {
   const ids = new Map<string, string>();
   const L = (p: [string, string]) => (zh ? p[0] : p[1]);
   const at = (days: number, min = 0) => (back.ms = days * DAY - min * 60_000);
-  for (const h of [...HISTORY].sort((a, b) => b.days - a.days)) {
+  // D651: the imported scenario has no other Kyoto hotel task to mix up with the Lody thread.
+  const history = opts.imported ? [...HISTORY.filter((h) => h.key !== "hotel"), IMPORTED_HISTORY] : HISTORY;
+  for (const h of [...history].sort((a, b) => b.days - a.days)) {
     const taskId = `h_${h.key}`;
     ids.set(h.key, taskId);
     const stream = `task:${taskId}`;

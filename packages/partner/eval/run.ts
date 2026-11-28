@@ -867,7 +867,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   let lastUser = 0;
   const waiters = new Map<string, Bodies["waiter"]>();
   // D391: earlier tasks over six weeks, found by task_find and redone by task_fork; their keys as seeded tasks'.
-  if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"))) idOf.set(k, id), keyOf.set(id, k);
+  if (sc.history) for (const [k, id] of seedHistory(core as never, back, sc.lang.startsWith("zh"), { imported: !!sc.importedHistory })) idOf.set(k, id), keyOf.set(id, k);
   for (const s of sc.seed ?? []) {
     if ("user" in s) lastUser = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: s.user } }).seq;
     else if ("ai" in s) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: s.ai, replyTo: lastUser } });

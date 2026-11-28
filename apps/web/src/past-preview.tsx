@@ -157,7 +157,7 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
     it.branch ? <span class="pv-mono">{it.branch}</span> : null,
     it.computer,
     it.model ? `${harnessName(it.harness)} ${it.model}` : harnessName(it.harness),
-    it.imported ? <span class="pint">{t("past.imp.from", it.imported.app)}</span> : null,
+    it.imported?.app ? <span class="pint">{t("past.imp.from", it.imported.app)}</span> : null,
     it.imported?.gone ? <span class="pint">{t("past.out.gone")}</span> : null,
     acts.dateOf(it.updatedAt),
   ];
@@ -175,7 +175,7 @@ export function Preview({ it, acts }: { it: PastItem | undefined; acts: PreviewA
         )}
         <section class="pv-sec">
           <h4>{t("pv.result")}</h4>
-          <p class={`pv-report${it.attention === "failed" ? " failed" : ""}`}>{report || (it.imported ? t("past.imp.note", it.imported.app) : t("pv.noreport"))}</p>
+          <p class={`pv-report${it.attention === "failed" ? " failed" : ""}`}>{report || (it.imported ? t("past.imp.note") : t("pv.noreport"))}</p>
         </section>
         {last && (
           <section class="pv-sec">

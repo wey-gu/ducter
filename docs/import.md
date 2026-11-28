@@ -84,7 +84,8 @@ Each thread becomes one past task:
   folder's name, marked **文件夹不在了 / Folder gone** if that folder isn't on this computer.
 - the person's messages become its **steps**; the agent's last words show as **最后说的 / Last
   words**.
-- its ending is **带进来的 / Brought in**, beside Done, Didn't work and Cancelled.
+- it sits under the **带进来的 / Brought in** end filter. Its card says **从 {app} 带进来的 / From
+  {app}** once; **Brought in** is on the card only when the app isn't known.
 
 A card offers **打开 / Open** and **带着它开新任务 / New task from this**. It never offers
 **接着做 / Continue**: the conversation lives in the other app and Ducter only has a copy. Import

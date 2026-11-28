@@ -116,10 +116,12 @@ func pastResult(items []protocol.PastItem, id string) protocol.ServerFrame {
 			po = append(po, it.Project)
 		}
 		pn[it.Project]++
-		if hn[it.Harness] == 0 {
-			ho = append(ho, it.Harness)
+		if it.Harness != "" {
+			if hn[it.Harness] == 0 {
+				ho = append(ho, it.Harness)
+			}
+			hn[it.Harness]++
 		}
-		hn[it.Harness]++
 		if it.Mark != nil {
 			for _, tg := range it.Mark.Tags {
 				if tn[tg] == 0 {

@@ -228,7 +228,7 @@ func (a *App) pastWhereBody(c *ui.Context, it *protocol.PastItem) {
 		})
 	} else if it.Imported != nil {
 		a.pastWhereSection(c, "result", a.L.T("past.result"), func() {
-			uiText(c, keepWords(autospace(a.L.T("past.imp.note", it.Imported.App)))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MinWidth(0)
+			uiText(c, keepWords(autospace(a.L.T("past.imp.note")))).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).MinWidth(0)
 		})
 	}
 	if lw := strings.TrimSpace(it.LastWords); lw != "" && !strings.Contains(result, lw) {
@@ -314,8 +314,8 @@ func (a *App) pastWherePills(c *ui.Context, it *protocol.PastItem) {
 func (a *App) pastEndWord(it *protocol.PastItem) (string, ui.Color) {
 	t := a.T
 	switch {
-	case it.Imported != nil:
-		// D651 (research/246): its own ending beside Done.
+	case it.Imported != nil && it.Imported.App == "":
+		// D651: Brought in is the end filter's word; here only when the app is unknown.
 		return a.L.T("past.end.imported"), t.InkMuted
 	case it.Attention == protocol.Failed:
 		return a.L.T("past.end.failed"), t.Failed.Ink

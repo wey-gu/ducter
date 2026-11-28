@@ -936,11 +936,12 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
   if (closed.length) {
     out.push("Recently finished:");
     out.push(...closed.map(line));
+    // D391: everything older is one task_find away. D651 (research/246): imported threads are
+    // never listed, but they are counted here among them; the line stays where it was, so a history
+    // with nothing imported says exactly what it said before.
+    const older = earlier.length + (own.length - allOpen.length - closed.length);
+    if (older > 0) out.push(`- (${older} earlier tasks not listed; task_find finds one by the user's words)`);
   }
-  // D391: everything older is one task_find away. D651 (research/246): imported threads are
-  // never listed, but they are counted here among them.
-  const older = earlier.length + (own.length - allOpen.length - closed.length);
-  if (older > 0) out.push(`- (${older} earlier tasks not listed; task_find finds one by the user's words)`);
   return out.join("\n");
 }
 

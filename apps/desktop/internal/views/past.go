@@ -384,6 +384,9 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 	}
 	if len(res.Facets.Harnesses) > 1 {
 		for _, h := range res.Facets.Harnesses {
+			if h.Harness == "" {
+				continue
+			}
 			chips = append(chips, chip{pastFilter{"harness", h.Harness}, harnessName(h.Harness), h.N})
 		}
 	}
@@ -399,7 +402,7 @@ func (a *App) pastChips(c *ui.Context, res *protocol.PastFrame) {
 			more = append(more, chip{pastFilter{"computer", pc.Name}, name, pc.N})
 		}
 	}
-	for _, e := range []struct{ v, key string }{{"done", "past.ended.done"}, {"failed", "past.ended.failed"}, {"cancelled", "past.ended.cancel"}, {"on_hand", "past.ended.onhand"}} {
+	for _, e := range []struct{ v, key string }{{"done", "past.ended.done"}, {"failed", "past.ended.failed"}, {"cancelled", "past.ended.cancel"}, {"on_hand", "past.ended.onhand"}, {"imported", "past.ended.imported"}} {
 		more = append(more, chip{pastFilter{"ended", e.v}, a.L.T(e.key), 0})
 	}
 	for i, tg := range res.Facets.Tags {
@@ -887,16 +890,18 @@ func (a *App) pastMeta(c *ui.Context, it *protocol.PastItem) {
 			uiText(c.Key("outside"), a.L.T("past.out.from", harnessName(o.Agent))).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 		}
 		if imp := it.Imported; imp != nil {
-			// D651 (research/246): from another app, read only; its folder may be gone.
-			uiText(c.Key("imported"), a.L.T("past.imp.from", imp.App)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			// D651: from another app, read only; the app is the one emphasised fact, said once.
+			if imp.App != "" {
+				uiText(c.Key("imported"), a.L.T("past.imp.from", imp.App)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
+			}
 			if imp.Gone {
 				uiText(c.Key("imp-gone"), a.L.T("past.out.gone")).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).SingleLine().Shrink(0)
 			}
 		}
 		end, ink := "", t.InkMuted
 		switch {
-		case it.Imported != nil:
-			// D651 (research/246): its own ending beside Done.
+		case it.Imported != nil && it.Imported.App == "":
+			// D651: Brought in is the end filter's word; on a card only when the app is unknown.
 			end = a.L.T("past.end.imported")
 		case it.Attention == protocol.Failed:
 			end, ink = a.L.T("past.end.failed"), t.Failed.Ink

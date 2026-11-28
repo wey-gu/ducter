@@ -2855,7 +2855,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   tools.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). A task brought in from another app (imported) is read only: never send to it. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one goes back to work in its own session and place: branch and worktree, browser and sign-ins): the user's follow-up or correction, the next step of the same errand or goal, or a question that needs the task's own judgment, or their ask to close or end it (it ends itself and lets go of PRs it no longer needs). Separate work (another bug, another errand), anything after the user merged its work, or a new one the user asks for, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -3420,7 +3420,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     tools.register(
       "partner",
       "task_find",
-      "When the user names an earlier Ducter task (\"接着上周那个 compaction 的 PR\"): finds it by their words (time words kept), best first, with where it stopped; taskId: its steps. One clear fit: act (task_send or task_fork), naming it by title and day; several alike: ask which. An imported one (imported: {app, day}, read from another app) is read only: never task_send or task_fork it; open it or start a new task from it, and name the app when you cite it. Never unasked.",
+      "When the user names an earlier Ducter task (\"接着上周那个 compaction 的 PR\"): finds it by their words (time words kept), best first, with where it stopped; taskId: its steps. One clear fit: act (task_send or task_fork), naming it by title and day; several alike: ask which. Never unasked.",
       {
         type: "object",
         properties: {

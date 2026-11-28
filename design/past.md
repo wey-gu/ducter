@@ -67,7 +67,8 @@ A card, at a glance what it was and how it ended:
 - line three, small: project · agent · date · **+a −d** · 已合并 / 草稿 PR, and an ending other
   than done: **没做成 / Didn't work**, **取消了 / Cancelled**, **还在手头 / Still on hand**;
   D651: a task brought in from another app adds **从 {app} 带进来的 / From {app}** and, when
-  its folder isn't here, **文件夹不在了 / Folder gone**, and its ending is **带进来的 / Brought in**.
+  its folder isn't here, **文件夹不在了 / Folder gone**; **带进来的 / Brought in** is the end
+  filter's word (and a card's when the app isn't known).
 
 Hover (or the keys on it) lifts the card 2 pt with a deeper drop, and shows its actions.
 
@@ -255,10 +256,12 @@ to write a reader are in `docs/import.md`; the evidence and the mapping are in `
 - **Its project.** `repo` when the reader has it; else the folder's origin remote; else the
   folder's name, marked **文件夹不在了 / Folder gone**. No row is made in `projects.json`.
 - **Read only.** The card offers **打开 / Open** and **带着它开新任务 / New task from this**; never
-  Continue, Continue with another agent or a redo. The partner may find it with `task_find` and
-  names the app when citing it ("你 10 月在 Lody 里……"), but never sends to it.
+  Continue, Continue with another agent or a redo. Its one provenance fact is **从 {app} 带进来的 /
+  From {app}**, said once; **带进来的 / Brought in** is the end filter's word, and on a card only
+  when the app isn't known. The partner may find it with `task_find` and names the app when citing
+  it ("你 10 月在 Lody 里……"), but never sends to it.
 - **The words.** **导入 / Import** (the Settings pane, phase 2), **带进来 / Bring them in**,
-  **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in**, **没有人替你检查过 / Nobody has
+  **从 {app} 带进来的 / From {app}**, **带进来的 / Brought in** (the end filter), **没有人替你检查过 / Nobody has
   checked it for you** (a source outside Ducter's curated list, phase 3). "Plugin" lives only in
   the CLI and developer docs.
 
